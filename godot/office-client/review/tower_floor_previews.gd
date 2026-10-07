@@ -7,10 +7,10 @@ const Service = preload("res://office_service_prop.gd")
 
 const FLOOR_TOP := 0.14
 const WALL_HEIGHT := 2.35
-const WALL_THICKNESS := 0.12
-const STANDARD_SCALE := 0.001
-const BASEMENT_SCALE := 0.002
-const LOBBY_SCALE := 0.005
+const WALL_THICKNESS := 0.3
+const STANDARD_SCALE := 0.01
+const BASEMENT_SCALE := 0.01
+const LOBBY_SCALE := 0.01
 
 const PALETTE := {
 	"lobby": "#3d655a",
@@ -56,6 +56,16 @@ func _capture_all() -> void:
 		quit(1)
 		return
 	output_directory = args[0]
+	if DisplayServer.get_name() == "headless":
+		push_error("Tower review renders require an X11/GL display; the headless dummy renderer has no viewport texture.")
+		quit(1)
+		return
+	var requested_ids: Array[String] = []
+	if args.size() > 1:
+		for requested_id in args[1].split(","):
+			var normalized_id := requested_id.strip_edges().to_upper()
+			if not normalized_id.is_empty():
+				requested_ids.append(normalized_id)
 	DirAccess.make_dir_recursive_absolute(output_directory)
 
 	var raw_plan := FileAccess.get_file_as_string("res://floor_plan.json")
@@ -72,18 +82,41 @@ func _capture_all() -> void:
 		jobs.append({"id": "B%d" % basement, "floor": 0, "basement": basement})
 	for floor_number in range(1, 13):
 		jobs.append({"id": "F%d" % floor_number, "floor": floor_number, "basement": 0})
+	jobs.append({
+		"id": "B1-GATE",
+		"floor": 0,
+		"basement": 1,
+		"cameraFocus": "b1-gate",
+		"title": "SALARYMAN OS  /  B1 OPEN-AIR YARD",
+		"subtitle": "FENCED EXTERIOR GATE  ·  NO ROOF",
+	})
+	jobs.append({
+		"id": "F2-WINDOW",
+		"floor": 2,
+		"basement": 0,
+		"cameraFocus": "f2-window",
+		"title": "SALARYMAN OS  /  F2 EXTERIOR WALL",
+		"subtitle": "VISIBLE GLAZING  ·  30 CM WALL",
+	})
 
 	for job in jobs:
+		var floor_id := str(job["id"])
+		if not requested_ids.is_empty() and not requested_ids.has(floor_id):
+			continue
+		print("Preparing native Tower preview: ", floor_id)
 		active_floor = Node3D.new()
 		active_floor.name = "Preview_%s" % job["id"]
 		scene_world.add_child(active_floor)
 		_render_floor(active_floor, job)
+		print("Scene ready for native Tower preview: ", floor_id)
 		_update_camera(job)
-		title_label.text = "SALARYMAN OS  /  TOWER %s" % job["id"]
-		subtitle_label.text = _subtitle_for(job)
+		title_label.text = str(job.get("title", "SALARYMAN OS  /  TOWER %s" % job["id"]))
+		subtitle_label.text = str(job.get("subtitle", _subtitle_for(job)))
 		for frame in range(4):
+			print("Waiting for Tower render frame ", frame + 1, ": ", floor_id)
 			await process_frame
-		await RenderingServer.frame_post_draw
+			print("Tower render frame ready: ", floor_id, " / ", frame + 1)
+		print("Capturing Tower viewport: ", floor_id, " / display=", DisplayServer.get_name())
 		var image := root.get_texture().get_image()
 		var filename := "%s.png" % str(job["id"]).to_lower()
 		var output_path := output_directory.path_join(filename)
@@ -115,8 +148,9 @@ func _create_review_scene() -> void:
 	sunlight.rotation_degrees = Vector3(-55, -28, 0)
 	sunlight.light_color = Color("#ffe2b2")
 	sunlight.light_energy = 1.05
-	sunlight.shadow_enabled = true
+	sunlight.shadow_enabled = false
 	scene_world.add_child(sunlight)
+	root.size = Vector2i(1280, 800)
 
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -139,7 +173,7 @@ func _create_review_scene() -> void:
 	overlay.add_child(subtitle_label)
 	var footer := Label.new()
 	footer.text = "GODOT 3D REVIEW RENDER  ·  NATIVE TOWER PROPS  ·  NOT GAMEPLAY FOOTAGE"
-	footer.position = Vector2(42, 1012)
+	footer.position = Vector2(42, 752)
 	footer.add_theme_font_size_override("font_size", 15)
 	footer.add_theme_color_override("font_color", Color("#c9b995"))
 	overlay.add_child(footer)
@@ -192,9 +226,18 @@ func _render_floor(parent: Node3D, job: Dictionary) -> void:
 		return
 
 	if floor_number == 1:
-		origin = Vector2(49975750.0, 49997800.0)
-		# The lobby joins the office concourse at the north edge.
-		bounds = [49975000, 49997000, 4000, 800]
+		var base_layout: Dictionary = plan.get("baseLayout", {})
+		var lobby: Dictionary = base_layout.get("elevatorLobby", {})
+		bounds = lobby.get("bounds", bounds)
+		var hallways: Array = base_layout.get("hallways", [])
+		if bounds.size() >= 4 and not hallways.is_empty():
+			var main_hall: Array = hallways[0]
+			var opening_center_x := int(bounds[0]) + int(plan.get("lobbyHallwayOpening", 0))
+			var hallway_center_x := int(main_hall[0]) + int(main_hall[2]) / 2
+			origin = Vector2(
+				float(opening_center_x - hallway_center_x),
+				float(int(bounds[1]) + int(bounds[3])),
+			)
 		room_material = "lobby"
 	elif floor_number == 7:
 		room_material = "temple"
@@ -208,21 +251,20 @@ func _render_floor(parent: Node3D, job: Dictionary) -> void:
 	var z0 := (float(bounds[1]) - origin.y) * scale_factor
 	var width := float(bounds[2]) * scale_factor
 	var depth := float(bounds[3]) * scale_factor
-	if floor_number == 1:
-		# The source lobby extends well beyond the visible lobby/concourse shell.
-		width = 20.0
-		depth = 9.0
-		x0 = -3.75
-		z0 = -4.0
 	var floor_rect := Rect2(x0, z0, width, depth)
 
 	_add_floor_slab(parent, floor_rect, room_material)
-	_add_outer_shell(parent, floor_rect)
+	if floor_number == 1:
+		_add_lobby_shell(parent, floor_rect)
+	elif is_basement and basement_number == 1:
+		_add_b1_shell(parent, floor_rect, scale_factor)
+	else:
+		_add_outer_shell(parent, floor_rect)
 
 	if floor_number >= 2 and floor_number <= 12:
 		_add_standard_hallways(parent, scale_factor)
 	if floor_number == 1:
-		_add_lobby(parent, floor_rect)
+		_add_lobby(parent, floor_rect, scale_factor, origin)
 	elif floor_number == 6:
 		_add_first_office_floor(parent, scale_factor)
 	elif floor_number == 7:
@@ -280,8 +322,8 @@ func _add_outer_shell(parent: Node3D, rect: Rect2) -> void:
 	var front := rect.position.y + rect.size.y
 	var back := rect.position.y
 	_wall_h(parent, left, right, back, Color(PALETTE["wall_dark"]), WALL_HEIGHT, "rear_wall")
-	_wall_v(parent, left, back, front, Color(PALETTE["wall"]), WALL_HEIGHT, "left_wall")
-	_wall_v(parent, right, back, front, Color(PALETTE["wall"]), WALL_HEIGHT, "right_wall")
+	_add_windowed_side_wall(parent, left, back, front, "left_wall")
+	_add_windowed_side_wall(parent, right, back, front, "right_wall")
 	# Cut away the near wall so the whole 3D miniature reads clearly.
 	_wall_h(parent, left, right, front, Color(PALETTE["wall_dark"]), 0.52, "cutaway_wall")
 	_add_box(parent, Vector3((left + right) * 0.5, WALL_HEIGHT + 0.02, back), Vector3(rect.size.x, 0.055, 0.18), Color(PALETTE["brass"]), "rear_brass_cap")
@@ -289,6 +331,104 @@ func _add_outer_shell(parent: Node3D, rect: Rect2) -> void:
 	_add_box(parent, Vector3(right, WALL_HEIGHT + 0.02, (back + front) * 0.5), Vector3(0.18, 0.055, rect.size.y), Color(PALETTE["brass"]), "right_brass_cap")
 	for x in [left + 0.14, right - 0.14]:
 		_add_box(parent, Vector3(x, 1.1, back + 0.14), Vector3(0.055, 2.1, 0.055), Color("#78917b"), "wall_rib")
+
+
+func _add_windowed_side_wall(parent: Node3D, x: float, back: float, front: float, key: String) -> void:
+	var cursor := back
+	var window_width := 3.2
+	for index in range(1, 7):
+		var center := lerpf(back, front, float(index) / 7.0)
+		var opening_top := center - window_width * 0.5
+		var opening_bottom := center + window_width * 0.5
+		_wall_v(parent, x, cursor, opening_top, Color(PALETTE["wall"]), WALL_HEIGHT, "%s_segment" % key)
+		_add_glass_pane(
+			parent,
+			Vector3(x, 1.48, center),
+			Vector3(WALL_THICKNESS, 1.18, window_width),
+			"%s_glass" % key,
+		)
+		_add_box(parent, Vector3(x, 2.08, center), Vector3(WALL_THICKNESS + 0.1, 0.1, window_width + 0.1), Color(PALETTE["brass"]), "%s_window_header" % key)
+		_add_box(parent, Vector3(x, 0.88, center), Vector3(WALL_THICKNESS + 0.1, 0.1, window_width + 0.1), Color(PALETTE["brass"]), "%s_window_sill" % key)
+		cursor = opening_bottom
+	_wall_v(parent, x, cursor, front, Color(PALETTE["wall"]), WALL_HEIGHT, "%s_end" % key)
+
+
+func _add_glass_pane(parent: Node3D, at: Vector3, size: Vector3, key: String) -> void:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.42, 0.69, 0.74, 0.52)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.roughness = 0.18
+	mesh.material = material
+	var pane := MeshInstance3D.new()
+	pane.mesh = mesh
+	pane.position = at
+	pane.name = key
+	parent.add_child(pane)
+
+
+func _add_lobby_shell(parent: Node3D, rect: Rect2) -> void:
+	var left := rect.position.x
+	var right := rect.position.x + rect.size.x
+	var back := rect.position.y
+	var front := rect.position.y + rect.size.y
+	var opening_offset := float(plan.get("lobbyHallwayOpening", 0)) * LOBBY_SCALE
+	var opening_center := left + opening_offset
+	var opening_width := 1.8
+	_wall_h(parent, left, right, back, Color(PALETTE["wall_dark"]), WALL_HEIGHT, "lobby_back_wall")
+	_add_windowed_side_wall(parent, left, back, front, "lobby_left_wall")
+	_add_windowed_side_wall(parent, right, back, front, "lobby_right_wall")
+	_wall_h(parent, left, opening_center - opening_width * 0.5, front, Color(PALETTE["wall_dark"]), 0.52, "lobby_entry_left")
+	_wall_h(parent, opening_center + opening_width * 0.5, right, front, Color(PALETTE["wall_dark"]), 0.52, "lobby_entry_right")
+	_add_box(parent, Vector3(opening_center - opening_width * 0.5, 1.12, front), Vector3(0.12, 2.24, 0.12), Color(PALETTE["brass"]), "lobby_entry_frame_left")
+	_add_box(parent, Vector3(opening_center + opening_width * 0.5, 1.12, front), Vector3(0.12, 2.24, 0.12), Color(PALETTE["brass"]), "lobby_entry_frame_right")
+
+
+func _add_b1_shell(parent: Node3D, rect: Rect2, scale_factor: float) -> void:
+	var b1: Dictionary = plan.get("businessSuiteLayout", {}).get("b1", {})
+	var interior: Array = b1.get("interiorBusinessHalf", [])
+	var access: Array = b1.get("yardAccess", [])
+	var exterior_gate: Array = b1.get("exteriorGate", [])
+	if interior.size() < 4 or access.size() < 2 or exterior_gate.size() < 2:
+		return
+	var left := rect.position.x
+	var right := rect.position.x + rect.size.x
+	var top := rect.position.y
+	var bottom := rect.position.y + rect.size.y
+	var divider_x := left + float(int(interior[0]) + int(interior[2])) * scale_factor
+	var access_z := top + float(access[1]) * scale_factor
+	var exterior_gate_z := top + float(exterior_gate[1]) * scale_factor
+	var gate_half_width := 1.5
+	_wall_v(parent, left, top, bottom, Color(PALETTE["wall"]), WALL_HEIGHT, "b1_business_outer_wall")
+	_wall_h(parent, left, divider_x, top, Color(PALETTE["wall_dark"]), WALL_HEIGHT, "b1_business_back_wall")
+	_wall_h(parent, left, divider_x, bottom, Color(PALETTE["wall_dark"]), WALL_HEIGHT, "b1_business_front_wall")
+	_add_preview_fence_v(parent, divider_x, top, access_z - gate_half_width, "b1_divider_north")
+	_add_preview_fence_v(parent, divider_x, access_z + gate_half_width, bottom, "b1_divider_south")
+	_add_preview_fence_h(parent, divider_x, right, top, "b1_yard_back_fence")
+	_add_preview_fence_h(parent, divider_x, right, bottom, "b1_yard_front_fence")
+	_add_preview_fence_v(parent, right, top, exterior_gate_z - gate_half_width, "b1_yard_gate_north")
+	_add_preview_fence_v(parent, right, exterior_gate_z + gate_half_width, bottom, "b1_yard_gate_south")
+
+
+func _add_preview_fence_h(parent: Node3D, left: float, right: float, z: float, key: String) -> void:
+	if right <= left:
+		return
+	for rail in [{"name": "lower", "height": 0.28}, {"name": "middle", "height": 0.72}, {"name": "upper", "height": 1.28}]:
+		_add_box(parent, Vector3((left + right) * 0.5, rail["height"], z), Vector3(right - left, 0.07, 0.07), Color(PALETTE["metal"]), key + "_" + rail["name"])
+	for index in range(int((right - left) / 6.0) + 2):
+		var x := left + minf(float(index) * 6.0, right - left)
+		_add_box(parent, Vector3(x, 0.68, z), Vector3(0.09, 1.36, 0.09), Color(PALETTE["metal"]), key + "_post")
+
+
+func _add_preview_fence_v(parent: Node3D, x: float, top: float, bottom: float, key: String) -> void:
+	if bottom <= top:
+		return
+	for rail in [{"name": "lower", "height": 0.28}, {"name": "middle", "height": 0.72}, {"name": "upper", "height": 1.28}]:
+		_add_box(parent, Vector3(x, rail["height"], (top + bottom) * 0.5), Vector3(0.07, 0.07, bottom - top), Color(PALETTE["metal"]), key + "_" + rail["name"])
+	for index in range(int((bottom - top) / 6.0) + 2):
+		var z := top + minf(float(index) * 6.0, bottom - top)
+		_add_box(parent, Vector3(x, 0.68, z), Vector3(0.09, 1.36, 0.09), Color(PALETTE["metal"]), key + "_post")
 
 
 func _add_standard_hallways(parent: Node3D, scale_factor: float) -> void:
@@ -436,14 +576,27 @@ func _add_temple(parent: Node3D, floor_data: Dictionary, scale_factor: float) ->
 		_add_box(parent, Vector3(tree_position.x, FLOOR_TOP + 0.03, tree_position.y), Vector3(5.0, 0.045, 3.0), Color("#c0b18d"), "quiet_garden_pad")
 
 
-func _add_lobby(parent: Node3D, rect: Rect2) -> void:
+func _add_lobby(parent: Node3D, rect: Rect2, scale_factor: float, origin: Vector2) -> void:
 	var center := Vector3(rect.position.x + rect.size.x * 0.5, FLOOR_TOP + 0.015, rect.position.y + rect.size.y * 0.52)
 	_add_box(parent, center, Vector3(rect.size.x * 0.58, 0.045, rect.size.y * 0.60), Color(PALETTE["rug"]), "lobby_rug")
 	_place_prop(parent, "desk", Vector3(center.x, FLOOR_TOP, center.z - 0.15), 1.05, true)
-	for index in range(4):
-		var x := rect.position.x + 6.5 + float(index) * 2.25
-		_add_elevator(parent, Vector2(x, rect.position.y + 0.55), 1.0, false)
-	_add_elevator(parent, Vector2(rect.position.x + rect.size.x - 1.2, rect.position.y + 0.55), 1.0, true)
+	var base_layout: Dictionary = plan.get("baseLayout", {})
+	var lobby_data: Dictionary = base_layout.get("elevatorLobby", {})
+	var lobby_bounds: Array = lobby_data.get("bounds", [])
+	var hallways: Array = base_layout.get("hallways", [])
+	if lobby_bounds.size() >= 4 and not hallways.is_empty():
+		var main_hall: Array = hallways[0]
+		var hall_center_x := int(main_hall[0]) + int(main_hall[2]) / 2
+		var opening_center_x := int(lobby_bounds[0]) + int(plan.get("lobbyHallwayOpening", 0))
+		var elevator_center_x := (float(opening_center_x) - origin.x) * scale_factor
+		var elevator_y := (float(int(lobby_bounds[1]) + int(lobby_bounds[3]) - 800) - origin.y) * scale_factor
+		for point in base_layout.get("passengerElevators", {}).get("positions", []):
+			var x := elevator_center_x + float(int(point[0]) - hall_center_x) * scale_factor
+			_add_elevator(parent, Vector2(x, elevator_y), scale_factor, false)
+		var service_position: Array = base_layout.get("serviceElevator", {}).get("position", [])
+		if service_position.size() >= 2:
+			var service_x := elevator_center_x + float(int(service_position[0]) - hall_center_x) * scale_factor
+			_add_elevator(parent, Vector2(service_x, elevator_y), scale_factor, true)
 	_place_prop(parent, "atm", Vector3(rect.position.x + 2.2, FLOOR_TOP, rect.position.y + rect.size.y - 1.1), 0.8)
 	_place_prop(parent, "vending_machine", Vector3(rect.position.x + rect.size.x - 2.1, FLOOR_TOP, rect.position.y + rect.size.y - 1.1), 0.8)
 	_place_prop(parent, "pay_phone", Vector3(rect.position.x + 3.8, FLOOR_TOP, rect.position.y + rect.size.y - 1.1), 0.8)
@@ -773,20 +926,43 @@ func _update_camera(job: Dictionary) -> void:
 		scale_factor = BASEMENT_SCALE
 	elif floor_number == 1:
 		scale_factor = LOBBY_SCALE
-	var origin := Vector2(49975750.0, 49997800.0) if floor_number == 1 else Vector2.ZERO
+	var origin := Vector2.ZERO
+	if floor_number == 1:
+		var base_layout: Dictionary = plan.get("baseLayout", {})
+		var lobby: Dictionary = base_layout.get("elevatorLobby", {})
+		bounds = lobby.get("bounds", bounds)
+		var hallways: Array = base_layout.get("hallways", [])
+		if bounds.size() >= 4 and not hallways.is_empty():
+			var main_hall: Array = hallways[0]
+			origin = Vector2(
+				float(int(bounds[0]) + int(plan.get("lobbyHallwayOpening", 0)) - int(main_hall[0]) - int(main_hall[2]) / 2),
+				float(int(bounds[1]) + int(bounds[3])),
+			)
 	var width := float(bounds[2]) * scale_factor
 	var depth := float(bounds[3]) * scale_factor
-	if floor_number == 1:
-		width = 20.0
-		depth = 9.0
 	var x0 := (float(bounds[0]) - origin.x) * scale_factor
 	var z0 := (float(bounds[1]) - origin.y) * scale_factor
-	if floor_number == 1:
-		x0 = -3.75
-		z0 = -4.0
 	var center := Vector3(x0 + width * 0.5, 0.0, z0 + depth * 0.5)
 	var dimension := maxf(width, depth)
+	var camera_focus := str(job.get("cameraFocus", ""))
+	if camera_focus == "b1-gate":
+		var gate: Array = plan.get("businessSuiteLayout", {}).get("b1", {}).get("exteriorGate", [])
+		if gate.size() >= 2:
+			var gate_target := Vector3(float(gate[0]) * STANDARD_SCALE, 0.82, float(gate[1]) * STANDARD_SCALE)
+			camera.size = 18.0
+			camera.far = 90.0
+			camera.position = gate_target + Vector3(-12.0, 8.0, 0.0)
+			camera.look_at(gate_target, Vector3.UP)
+			return
+	elif camera_focus == "f2-window":
+		var window_center := Vector3(0.0, 1.35, depth / 7.0)
+		camera.size = 10.0
+		camera.far = 120.0
+		camera.position = window_center + Vector3(10.0, 3.0, 0.0)
+		camera.look_at(window_center, Vector3.UP)
+		return
 	camera.size = maxf(dimension * 1.48, 12.0)
+	camera.far = maxf(dimension * 4.0, 250.0)
 	camera.position = center + Vector3(dimension * 0.70, dimension * 1.25, dimension * 0.95)
 	camera.look_at(center + Vector3(0.0, 0.3, 0.0), Vector3.UP)
 

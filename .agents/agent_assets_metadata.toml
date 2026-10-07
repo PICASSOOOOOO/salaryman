@@ -1831,3 +1831,45 @@ mtime_ms = 1791385411462
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b48861a4-b412-49ab-a776-b3ee1e15aa4b/582a581d-8bcc-49ad-abe0-91cb520341d4"
 storage_version_token = "1791385956310288"
 content_type = "image/png"
+
+[[outputs]]
+id = "BRuf7Qd8w1bJ5DF2ADa65"
+uri = "file://dist/tower-review-renders/contact-sheet.png"
+type = "image"
+title = "Tower floor renders — B1–B6, F1–F12"
+description = "Native Godot 3D overview renders for all 18 floors, plus the B1 gate and F2 window close-ups."
+logical_id = "90a794ed-34bd-473b-9abb-d62639176a3f"
+content_hash = "sha256:46d91fc9b4dca985fa3b24173b7418a858095e2d8873e92ca9b00a6dcf2394a9"
+size = 114742
+mtime_ms = 1791392497222
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/90a794ed-34bd-473b-9abb-d62639176a3f/b0498aa9-ae3d-46cf-b02a-727f25d29f4a"
+storage_version_token = "1791392569846826"
+content_type = "image/png"
+
+[[outputs]]
+id = "g162XGwEOGf36Oiq2np-l"
+uri = "file://dist/tower-review-renders/b1-gate.png"
+type = "image"
+title = "B1 open-air fenced yard gate"
+description = "Native-scale detail view showing the open gate and the yard fence with no roof."
+logical_id = "d894d361-84c2-40e5-aade-fa87d88613a6"
+content_hash = "sha256:553df192f2d318fc01007ca73aae4fbe1656a55405d7a52c04dd1035f1db9d5e"
+size = 30248
+mtime_ms = 1791392185616
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d894d361-84c2-40e5-aade-fa87d88613a6/5c800564-ec21-40a7-916f-382fca5600d0"
+storage_version_token = "1791392570616145"
+content_type = "image/png"
+
+[[outputs]]
+id = "hE5qlZZaYSGFgMhkH4979"
+uri = "file://dist/tower-review-renders/f2-window.png"
+type = "image"
+title = "F2 exterior window and wall"
+description = "Native-scale window close-up with the 30 cm outer wall."
+logical_id = "773e7e19-d86f-4013-895e-4f4aa0624661"
+content_hash = "sha256:c2b67fb75801dafd37da09b6bd4ad2a2272e9b4cc8b2b9d168442e7d6218c8a0"
+size = 29217
+mtime_ms = 1791392185842
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/773e7e19-d86f-4013-895e-4f4aa0624661/b959bdee-8265-4915-a7ff-780ed6962fef"
+storage_version_token = "1791392571391840"
+content_type = "image/png"

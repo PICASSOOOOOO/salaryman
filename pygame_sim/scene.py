@@ -81,6 +81,7 @@ class TowerScene:
     idle_seconds: float = 0.0
     seated_chair_id: str | None = None
     building_object_states: dict[str, dict[str, int]] = field(default_factory=dict)
+    opened_door_ids: set[str] = field(default_factory=set)
     _construction_signature: str = field(default="", init=False, repr=False)
     autopilot_snapshot: AutopilotSnapshot = field(
         default_factory=lambda: AutopilotSnapshot("unlinked", {}, "NO DESKTOP LINK", 0)
@@ -522,6 +523,17 @@ class TowerScene:
     def _collides_with_object(self, position: tuple[int, int]) -> bool:
         """Use simple axis-aligned footprints so movement slides around props."""
         player_half_width, player_half_height = (90, 90)
+        if self.current_room == "basement_b1":
+            b1_layout = FLOOR_PLAN["businessSuiteLayout"]["b1"]
+            interior_half = b1_layout["interiorBusinessHalf"]
+            divider_x = int(interior_half[0]) + int(interior_half[2])
+            access_y = int(b1_layout["yardAccess"][1])
+            gate_half_width = 150
+            if (
+                abs(position[0] - divider_x) <= player_half_width + 15
+                and abs(position[1] - access_y) > gate_half_width + player_half_height
+            ):
+                return True
         for item in self.objects.objects:
             if item.room != self.current_room:
                 continue
@@ -547,7 +559,10 @@ class TowerScene:
             maze_cells = room_data.get("mazeCells") if room_data else None
             if not isinstance(maze_cells, list):
                 return False
-            cell = (position[0] // 1_000, position[1] // 1_000)
+            cell_size = int(room_data.get("mazeCellUnits", 1_000))
+            if cell_size <= 0:
+                return False
+            cell = (position[0] // cell_size, position[1] // cell_size)
             return any(
                 isinstance(maze_cell, list)
                 and len(maze_cell) == 2
@@ -835,6 +850,14 @@ class TowerScene:
             return InteractionResult(False, message)
         return self.objects.interact(target, state, self, vending_item=vending_item)
 
+    def toggle_door(self, door_id: str) -> bool:
+        """Toggle an interactive door that does not change rooms."""
+        if door_id in self.opened_door_ids:
+            self.opened_door_ids.remove(door_id)
+            return False
+        self.opened_door_ids.add(door_id)
+        return True
+
     def focus_on_interaction(self, office_object: OfficeObject) -> None:
         """Briefly focus an approved service object after a game interaction."""
         if office_object.camera_focus_enabled:
@@ -921,7 +944,8 @@ class TowerScene:
             return False
         self.current_floor = 1
         self._place_at_room_spawn("lobby")
-        self.player_position = (49_978_650, 50_000_800)
+        back_entry = FLOOR_PLAN["businessSuiteLayout"]["lobbyBackEntrance"]
+        self.player_position = (int(back_entry[0]), int(back_entry[1]))
         return True
 
     def _place_basement_level(self, level: int) -> bool:

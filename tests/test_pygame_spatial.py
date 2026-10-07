@@ -8,6 +8,7 @@ import pygame
 from pygame_sim.scene import build_tower_scene
 from pygame_sim.state import OfficeState
 from pygame_sim.ui import SolarPunkRenderer
+from pygame_sim.world_layout import FLOOR_PLAN
 
 
 class PygameSpatialTests(unittest.TestCase):
@@ -44,23 +45,74 @@ class PygameSpatialTests(unittest.TestCase):
         hallway = rooms["recreation"].bounds
         first_office = rooms["executive"].bounds
         office_04 = rooms["office_04"].bounds
+        base_layout = FLOOR_PLAN["baseLayout"]
+        lobby_bounds = base_layout["elevatorLobby"]["bounds"]
+        main_hall, west_cross, _east_cross = base_layout["hallways"]
+        opening = int(FLOOR_PLAN["lobbyHallwayOpening"])
+        lobby_origin_x = lobby_bounds[0] + opening - (
+            main_hall[0] + main_hall[2] // 2
+        )
+        lobby_origin_y = lobby_bounds[1] + lobby_bounds[3]
 
-        self.assertGreaterEqual(lobby[2], hallway[0] + hallway[2])
-        self.assertGreaterEqual(lobby[3], hallway[1] + hallway[3])
-        self.assertEqual(hallway[1] + hallway[3], first_office[1])
-        self.assertLessEqual(hallway[0], first_office[0])
-        self.assertGreaterEqual(hallway[0] + hallway[2], office_04[0] + office_04[2])
+        self.assertEqual(list(lobby), lobby_bounds)
+        self.assertEqual(hallway, (0, 0, 62_225, 70_711))
+        self.assertEqual(
+            lobby_bounds[0] + opening - lobby_origin_x,
+            main_hall[0] + main_hall[2] // 2,
+        )
+        self.assertEqual(lobby_bounds[1] + lobby_bounds[3] - lobby_origin_y, 0)
+        self.assertEqual(base_layout["clearEnvelopeUnits"], [62_225, 70_711])
+        expanded_area_ratio = (62_225 * 70_711) / (22_000 * 25_000)
+        self.assertAlmostEqual(expanded_area_ratio, 8.0, places=4)
+        self.assertEqual(main_hall[2], 1_200)
+        self.assertEqual(west_cross[3], 800)
+        self.assertEqual(FLOOR_PLAN["rooms"][-1]["mazeCellUnits"], 2_828)
+        self.assertEqual(first_office[1] + first_office[3], west_cross[1])
+        self.assertEqual(office_04[1], west_cross[1] + west_cross[3])
+
+        lobby_hallway_center = main_hall[0] + main_hall[2] // 2
+        elevator_y = lobby_bounds[1] + lobby_bounds[3] - 800
+        expected_passenger_positions = {
+            (
+                lobby_bounds[0] + opening + int(position[0]) - lobby_hallway_center,
+                elevator_y,
+            )
+            for position in base_layout["passengerElevators"]["positions"]
+        }
+        passenger_ids = {
+            "lobby-elevator-1",
+            "lobby-elevator-2",
+            "lobby-elevator",
+            "lobby-elevator-4",
+        }
+        self.assertEqual(
+            {
+                scene.objects.get(object_id).position
+                for object_id in passenger_ids
+            },
+            expected_passenger_positions,
+        )
+        service_x = (
+            lobby_bounds[0]
+            + opening
+            + int(base_layout["serviceElevator"]["position"][0])
+            - lobby_hallway_center
+        )
+        self.assertEqual(
+            scene.objects.get("lobby-service-elevator").position,
+            (service_x, elevator_y),
+        )
 
         office_doors = [
             item for item in scene.objects.objects
             if item.kind == "door" and item.room == "recreation"
         ]
         self.assertEqual(len(office_doors), 4)
-        hallway_bottom = hallway[1] + hallway[3]
-        hallway_left = hallway[0]
-        hallway_right = hallway[0] + hallway[2]
-        self.assertTrue(all(item.position[1] == hallway_bottom - 100 for item in office_doors))
-        self.assertTrue(all(hallway_left <= item.position[0] <= hallway_right for item in office_doors))
+        expected_doors = {
+            tuple(int(value) for value in office["entrance"])
+            for office in base_layout["offices"]
+        }
+        self.assertEqual({item.position for item in office_doors}, expected_doors)
 
     def test_nearby_interactions_route_without_renderer_logic(self):
         state = OfficeState.with_default_roster()
@@ -88,11 +140,21 @@ class PygameSpatialTests(unittest.TestCase):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
         scene.select_room("executive")
-        scene.player_position = (1_750, 6_200)
+        desk = scene.objects.get("executive-desk")
+        scene.player_position = (
+            desk.position[0],
+            desk.position[1] - desk.collision_half_extents[1] - 91,
+        )
 
-        scene.move(-100, 0)
+        scene.move(0, 50)
 
-        self.assertEqual(scene.player_position, (1_750, 6_200))
+        self.assertEqual(
+            scene.player_position,
+            (
+                desk.position[0],
+                desk.position[1] - desk.collision_half_extents[1] - 91,
+            ),
+        )
         scene.player_position = scene.objects.get("executive-chair").position
         self.assertTrue(scene.set_player_action("sit"))
         result = scene.interact(state)
@@ -128,10 +190,11 @@ class PygameSpatialTests(unittest.TestCase):
     def test_player_actions_stay_grounded_and_sit_on_a_nearby_chair(self):
         scene = build_tower_scene()
         scene.select_room("executive")
-        scene.player_position = (1_000, 7_100)
+        chair = scene.objects.get("executive-chair-3")
+        scene.player_position = (chair.position[0] - 300, chair.position[1] + 20)
 
         self.assertTrue(scene.set_player_action("sit", duration=1.0))
-        self.assertEqual(scene.player_position, (1_300, 7_080))
+        self.assertEqual(scene.player_position, chair.position)
         self.assertEqual(scene.player_action, "sit")
         self.assertEqual(scene.seated_workstation_id, "executive-desk-3")
 
@@ -302,10 +365,31 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(scene.current_room, "recreation")
 
         scene.current_floor = 3
-        stairs = scene.objects.get("executive-stairs")
+        stairs = scene.objects.get("floor-03-stairwell-2")
         result = scene.interact(state, stairs.id)
         self.assertEqual(result.destination, "floor:4")
-        self.assertEqual(scene.current_room, "recreation")
+        self.assertEqual(scene.current_room, "construction_f04")
+
+    def test_tower_office_doors_toggle_and_b1_yard_fence_has_one_open_gate(self):
+        state = OfficeState.with_default_roster()
+        scene = build_tower_scene()
+        door = scene.objects.get("floor-02-business-01-door")
+        scene.select_room(door.room)
+        scene.player_position = door.position
+
+        opened = scene.interact(state, door.id)
+        self.assertTrue(opened.success)
+        self.assertIn(door.id, scene.opened_door_ids)
+        closed = scene.interact(state, door.id)
+        self.assertTrue(closed.success)
+        self.assertNotIn(door.id, scene.opened_door_ids)
+
+        b1 = FLOOR_PLAN["businessSuiteLayout"]["b1"]
+        divider_x = int(b1["interiorBusinessHalf"][0]) + int(b1["interiorBusinessHalf"][2])
+        access_y = int(b1["yardAccess"][1])
+        scene.current_room = "basement_b1"
+        self.assertTrue(scene._collides_with_object((divider_x, access_y + 1_000)))
+        self.assertFalse(scene._collides_with_object((divider_x, access_y)))
 
     def test_headless_spatial_scene_renders(self):
         screen = pygame.display.set_mode((1180, 720))

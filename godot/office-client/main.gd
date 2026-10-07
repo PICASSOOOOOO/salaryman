@@ -13,7 +13,6 @@ const HOST := "127.0.0.1"
 const PORT := 4242
 const WORLD_SCALE := 0.01
 const WORLD_ORIGIN_REBASE_THRESHOLD := 1_000_000.0
-const LOBBY_RENDER_ANCHOR_PX := Vector2i(2250, 2200)
 const FLOOR_HEIGHT := 0.08
 const WALL_HEIGHT := 2.7
 const CAMERA_DISTANCE_MIN := 8.0
@@ -261,10 +260,15 @@ func _build_building_shell() -> void:
 		structural_wall_thickness * 0.6
 	)
 	var elevator_lobby: Dictionary = base_layout.get("elevatorLobby", {})
-	var lobby_spawn: Array = elevator_lobby.get("spawn", [])
 	var lobby_bounds: Array = elevator_lobby.get("bounds", [])
-	if lobby_spawn.size() >= 2:
-		lobby_render_origin_px = Vector2i(int(lobby_spawn[0]), int(lobby_spawn[1])) - LOBBY_RENDER_ANCHOR_PX
+	var standard_hallways: Array = base_layout.get("hallways", [])
+	if lobby_bounds.size() >= 4 and not standard_hallways.is_empty():
+		var main_hall: Array = standard_hallways[0]
+		lobby_render_origin_px = lobby_render_origin_from_plan(
+			lobby_bounds,
+			main_hall,
+			int(floor_plan.get("lobbyHallwayOpening", 0)),
+		)
 	var room_specs: Array = []
 	for room_data in floor_plan["rooms"]:
 		var bounds: Array = room_data["bounds"]
@@ -337,13 +341,18 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 	var bottom := float(render_position_px.y + rect_size_px.y) * WORLD_SCALE
 	var wall_half := structural_wall_thickness / 2.0
 	if room_id == "recreation":
-		var hall_core_left := 9000.0 * WORLD_SCALE + wall_half
-		var hall_core_right := 13000.0 * WORLD_SCALE - wall_half
-		var hall_left := -wall_half
-		var hall_right := 22000.0 * WORLD_SCALE + wall_half
-		var cross_top := 11000.0 * WORLD_SCALE + wall_half
-		var cross_bottom := 14000.0 * WORLD_SCALE - wall_half
-		_add_horizontal_solid_wall("%sNorthWall" % room_id, hall_core_left, hall_core_right, top - wall_half)
+		var hallways: Array = floor_plan.get("baseLayout", {}).get("hallways", [])
+		if hallways.size() < 3:
+			return
+		var main_hall: Array = hallways[0]
+		var west_cross: Array = hallways[1]
+		var east_cross: Array = hallways[2]
+		var hall_core_left := float(main_hall[0]) * WORLD_SCALE + wall_half
+		var hall_core_right := float(int(main_hall[0]) + int(main_hall[2])) * WORLD_SCALE - wall_half
+		var hall_left := left - wall_half
+		var hall_right := right + wall_half
+		var cross_top := float(west_cross[1]) * WORLD_SCALE + wall_half
+		var cross_bottom := float(int(west_cross[1]) + int(west_cross[3])) * WORLD_SCALE - wall_half
 		_add_horizontal_solid_wall("%sSouthWall" % room_id, hall_core_left, hall_core_right, bottom + wall_half)
 		_add_structural_wall(
 			"%sWestCrossWall" % room_id,
@@ -371,7 +380,13 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 			)
 		else:
 			_add_structural_wall("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
-		_add_structural_wall("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
+		_add_vertical_opening_wall(
+			"%sWallRight" % room_id,
+			right,
+			top,
+			bottom,
+			[{"center": (top + bottom) / 2.0, "kind": "window"}],
+		)
 		_add_structural_wall("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), float(rect_size_px.x) * WORLD_SCALE, true)
 		_add_horizontal_wall_segments("%sWallBottom" % room_id, left, right, bottom, [float(floor_plan["lobbyHallwayOpening"]) * WORLD_SCALE], 1.8)
 	elif room_id == "executive_suite":
@@ -391,29 +406,39 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
 	elif room_id == "basement_b1":
 		_add_structural_wall("%sWallLeft" % room_id, Vector3(left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
-		_add_structural_wall("%sWallTop" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, top), float(rect_size_px.x) * WORLD_SCALE, true)
-		_add_structural_wall("%sWallBottom" % room_id, Vector3((left + right) / 2.0, WALL_HEIGHT / 2.0, bottom), float(rect_size_px.x) * WORLD_SCALE, true)
 		var b1_layout: Dictionary = floor_plan.get("businessSuiteLayout", {}).get("b1", {})
+		var interior_half: Array = b1_layout.get("interiorBusinessHalf", [])
 		var b1_gate: Array = b1_layout.get("exteriorGate", [])
-		if b1_gate.size() >= 2:
-			var gate_z := float(render_position_px.y + int(b1_gate[1])) * WORLD_SCALE
-			_add_vertical_opening_wall(
-				"%sWallRight" % room_id,
-				right,
-				top,
-				bottom,
-				[{"center": gate_z, "kind": "door"}],
-			)
-		else:
-			_add_structural_wall("%sWallRight" % room_id, Vector3(right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), float(rect_size_px.y) * WORLD_SCALE, false)
+		var yard_access: Array = b1_layout.get("yardAccess", [])
+		if interior_half.size() < 4 or b1_gate.size() < 2 or yard_access.size() < 2:
+			return
+		var divider_x := left + float(int(interior_half[0]) + int(interior_half[2])) * WORLD_SCALE
+		var interior_top := top + float(int(interior_half[1])) * WORLD_SCALE
+		var interior_bottom := interior_top + float(int(interior_half[3])) * WORLD_SCALE
+		_add_horizontal_solid_wall("%sBusinessNorthWall" % room_id, left, divider_x, interior_top)
+		_add_horizontal_solid_wall("%sBusinessSouthWall" % room_id, left, divider_x, interior_bottom)
+		var access_z := top + float(int(yard_access[1])) * WORLD_SCALE
+		var exterior_gate_z := top + float(int(b1_gate[1])) * WORLD_SCALE
+		var gate_half_width := 1.5
+		_add_yard_fence_vertical("%sBusinessFenceNorth" % room_id, divider_x, top, access_z - gate_half_width)
+		_add_yard_fence_vertical("%sBusinessFenceSouth" % room_id, divider_x, access_z + gate_half_width, bottom)
+		_add_yard_fence_horizontal("%sYardFenceNorth" % room_id, divider_x, right, top)
+		_add_yard_fence_horizontal("%sYardFenceSouth" % room_id, divider_x, right, bottom)
+		_add_yard_fence_vertical("%sYardFenceEastNorth" % room_id, right, top, exterior_gate_z - gate_half_width)
+		_add_yard_fence_vertical("%sYardFenceEastSouth" % room_id, right, exterior_gate_z + gate_half_width, bottom)
 	elif room_id in ["executive", "public", "office_03", "office_04"]:
 		var outer_left := left - wall_half
 		var outer_right := right + wall_half
 		var outer_top := top - wall_half
 		var outer_bottom := bottom + wall_half
 		var wall_length_z := bottom - top + structural_wall_thickness
-		_add_structural_wall("%sWallLeft" % room_id, Vector3(outer_left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), wall_length_z, false)
-		_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), wall_length_z, false)
+		var window_opening := [{"center": (top + bottom) / 2.0, "kind": "window"}]
+		if room_id in ["executive", "office_03"]:
+			_add_vertical_opening_wall("%sWallLeft" % room_id, outer_left, top, bottom, window_opening)
+			_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), wall_length_z, false)
+		else:
+			_add_structural_wall("%sWallLeft" % room_id, Vector3(outer_left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), wall_length_z, false)
+			_add_vertical_opening_wall("%sWallRight" % room_id, outer_right, top, bottom, window_opening)
 		var entrance: Array = spec["entrance"]
 		var door_center := float(entrance[0]) * WORLD_SCALE
 		if spec["doorSide"] == "north":
@@ -427,8 +452,18 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 		var outer_right := right + wall_half
 		var outer_top := top - wall_half
 		var outer_bottom := bottom + wall_half
-		_add_structural_wall("%sWallLeft" % room_id, Vector3(outer_left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), bottom - top + structural_wall_thickness, false)
-		_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), bottom - top + structural_wall_thickness, false)
+		if room_id.begins_with("basement_"):
+			_add_structural_wall("%sWallLeft" % room_id, Vector3(outer_left, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), bottom - top + structural_wall_thickness, false)
+			_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), bottom - top + structural_wall_thickness, false)
+		else:
+			var window_openings: Array = []
+			for index in range(1, 8):
+				window_openings.append({
+					"center": lerpf(top, bottom, float(index) / 8.0),
+					"kind": "window",
+				})
+			_add_vertical_opening_wall("%sWallLeft" % room_id, outer_left, top, bottom, window_openings)
+			_add_vertical_opening_wall("%sWallRight" % room_id, outer_right, top, bottom, window_openings)
 		_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
 		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
 
@@ -488,7 +523,7 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 		var x := int(bounds[0]) + int(int(bounds[2]) / 2.0)
 		var y := int(bounds[1])
 		var height := int(bounds[3])
-		var gap := 600
+		var gap := 180
 		if y == 0:
 			_add_business_wall(
 				room,
@@ -533,15 +568,47 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 			_add_business_suite_sign("basement_b1", business, bounds)
 			break
 
-	for segment in [[2150, 4300], [7850, 4300]]:
-		_add_business_wall(
-			"basement_b1",
-			"B1YardDivider%d" % int(segment[0]),
-			false,
-			10000,
-			int(segment[0]),
-			int(segment[1]),
-			wall_keys,
+func _add_yard_fence_horizontal(node_prefix: String, left: float, right: float, z: float) -> void:
+	var length := right - left
+	if length <= 0.2:
+		return
+	var center_x := (left + right) / 2.0
+	for rail in [{"name": "Lower", "height": 0.3}, {"name": "Middle", "height": 0.78}, {"name": "Upper", "height": 1.28}]:
+		_add_solid_box(
+			"%s%sRail" % [node_prefix, rail["name"]],
+			Vector3(center_x, rail["height"], z),
+			Vector3(length, 0.07, 0.07),
+			materials["metal"],
+		)
+	for index in range(int(length / 6.0) + 2):
+		var x := left + minf(float(index) * 6.0, length)
+		_add_solid_box(
+			"%sPost%d" % [node_prefix, index],
+			Vector3(x, 0.68, z),
+			Vector3(0.09, 1.36, 0.09),
+			materials["metal"],
+		)
+
+
+func _add_yard_fence_vertical(node_prefix: String, x: float, top: float, bottom: float) -> void:
+	var length := bottom - top
+	if length <= 0.2:
+		return
+	var center_z := (top + bottom) / 2.0
+	for rail in [{"name": "Lower", "height": 0.3}, {"name": "Middle", "height": 0.78}, {"name": "Upper", "height": 1.28}]:
+		_add_solid_box(
+			"%s%sRail" % [node_prefix, rail["name"]],
+			Vector3(x, rail["height"], center_z),
+			Vector3(0.07, 0.07, length),
+			materials["metal"],
+		)
+	for index in range(int(length / 6.0) + 2):
+		var z := top + minf(float(index) * 6.0, length)
+		_add_solid_box(
+			"%sPost%d" % [node_prefix, index],
+			Vector3(x, 0.68, z),
+			Vector3(0.09, 1.36, 0.09),
+			materials["metal"],
 		)
 
 
@@ -2445,7 +2512,22 @@ func _door_panel(panel_name: String, position: Vector3, size: Vector3, material:
 
 
 static func door_swing_angle(is_open: bool) -> float:
-	return -0.42 if is_open else 0.0
+	return -1.45 if is_open else 0.0
+
+
+static func lobby_render_origin_from_plan(
+	lobby_bounds: Array,
+	main_hall: Array,
+	opening_offset: int,
+) -> Vector2i:
+	if lobby_bounds.size() < 4 or main_hall.size() < 4:
+		return Vector2i.ZERO
+	var opening_center_x := int(lobby_bounds[0]) + opening_offset
+	var hallway_center_x := int(main_hall[0]) + int(main_hall[2]) / 2
+	return Vector2i(
+		opening_center_x - hallway_center_x,
+		int(lobby_bounds[1]) + int(lobby_bounds[3]),
+	)
 
 
 func _sync_door_states(objects: Array) -> void:
@@ -2461,7 +2543,10 @@ func _sync_door_states(objects: Array) -> void:
 		var pivot := door_root.get_node_or_null("DoorPivot") as Node3D
 		if pivot == null:
 			continue
-		var is_open := bool(object.get("nearby", false))
+		var destination_room: Variant = object.get("destinationRoom")
+		var is_open := bool(object.get("doorOpen", false))
+		if destination_room is String and not str(destination_room).is_empty():
+			is_open = is_open or bool(object.get("nearby", false))
 		if bool(door_root.get_meta("door_open", false)) == is_open:
 			continue
 		door_root.set_meta("door_open", is_open)

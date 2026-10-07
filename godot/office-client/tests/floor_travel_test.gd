@@ -15,6 +15,23 @@ func _run_tests() -> void:
 	var floor_plan = JSON.parse_string(FileAccess.get_file_as_string("res://floor_plan.json"))
 	assert(floor_plan is Dictionary)
 	client.floor_plan_data = floor_plan
+	var base_layout: Dictionary = floor_plan["baseLayout"]
+	var lobby_bounds: Array = base_layout["elevatorLobby"]["bounds"]
+	var main_hall: Array = base_layout["hallways"][0]
+	var lobby_origin: Vector2i = OfficeClient.lobby_render_origin_from_plan(
+		lobby_bounds,
+		main_hall,
+		int(floor_plan["lobbyHallwayOpening"]),
+	)
+	assert(lobby_bounds[0] + int(floor_plan["lobbyHallwayOpening"]) - lobby_origin.x == main_hall[0] + main_hall[2] / 2)
+	assert(lobby_bounds[1] + lobby_bounds[3] - lobby_origin.y == 0)
+	assert(int(base_layout["clearEnvelopeUnits"][0]) == 62_225)
+	assert(int(base_layout["clearEnvelopeUnits"][1]) == 70_711)
+	assert(is_equal_approx(float(base_layout["structure"]["wallThicknessMeters"]), 0.3))
+	assert(is_equal_approx(float(base_layout["structure"]["wallServiceCavityMeters"]), 0.12))
+	var b1_layout: Dictionary = floor_plan["businessSuiteLayout"]["b1"]
+	assert(b1_layout["exteriorLoadingYardHalf"].size() == 4)
+	assert(b1_layout["exteriorGate"].size() == 2)
 
 	assert(OfficeClient.CAMERA_DISTANCE_LEVELS.size() == 3)
 	assert(is_equal_approx(OfficeClient.camera_distance_for_level(0), 8.0))
@@ -61,7 +78,7 @@ func _run_tests() -> void:
 		assert(tone.mix_rate == 22050)
 		assert(tone.data.size() > 0)
 	assert(is_equal_approx(OfficeClient.door_swing_angle(false), 0.0))
-	assert(is_equal_approx(OfficeClient.door_swing_angle(true), -0.42))
+	assert(is_equal_approx(OfficeClient.door_swing_angle(true), -1.45))
 	for kind in [
 		"fire_extinguisher", "temple_tree", "reflection_screen", "meditation_cushion",
 		"temple_audio_control", "chapel_pew", "chapel_altar", "library_shelf",
@@ -124,6 +141,10 @@ func _run_tests() -> void:
 	assert(door.get_node_or_null("DoorPivot/DoorLeaf") is MeshInstance3D)
 	assert(door.get_node_or_null("DoorPivot/DoorWindow") is MeshInstance3D)
 	assert(client.dynamic_root.get_node_or_null("test-door/DoorPivot") is Node3D)
+	client._sync_door_states([{"kind": "door", "id": "test-door", "doorOpen": true}])
+	assert(bool(door.get_meta("door_open", false)))
+	client._sync_door_states([{"kind": "door", "id": "test-door", "doorOpen": false}])
+	assert(not bool(door.get_meta("door_open", false)))
 	client._build_elevator_transition_car(Vector3.ZERO)
 	var cabin: Node3D = client.elevator_transition_root
 	assert(cabin.name == "ElevatorCabin")

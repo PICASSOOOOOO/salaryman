@@ -817,6 +817,8 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "constructionTaskId": item.construction_task_id,
                     "constructionComplete": item.completed,
                     "cameraFocusEnabled": item.camera_focus_enabled,
+                    "destinationRoom": item.destination_room,
+                    "doorOpen": item.id in scene.opened_door_ids,
                     "nearby": item == scene.nearby_object,
                     "cleanliness": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("cleanliness"),
                     "condition": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("condition"),

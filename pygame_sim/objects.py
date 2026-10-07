@@ -7,7 +7,7 @@ simulation and its economy rules.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from math import hypot
 from typing import TYPE_CHECKING, Literal
 
@@ -16,7 +16,7 @@ from .approved_content import (
     APPROVED_INTERACTIVE_OBJECT_KINDS,
 )
 from .business_services import actions_for_business
-from .world_layout import FLOOR_PLAN
+from .world_layout import FLOOR_PLAN, scale_legacy_position
 
 if TYPE_CHECKING:
     from .scene import TowerScene
@@ -185,8 +185,15 @@ class OfficeObjectRegistry:
     """Stable object lookup and shared interaction dispatch."""
 
     objects: list[OfficeObject] = field(default_factory=list)
+    auto_scale_legacy_coordinates: bool = False
+    _legacy_positions: dict[str, tuple[int, int]] = field(default_factory=dict, repr=False)
 
-    def add(self, office_object: OfficeObject) -> None:
+    def add(
+        self,
+        office_object: OfficeObject,
+        *,
+        scale_legacy_coordinates: bool | None = None,
+    ) -> None:
         if self.get(office_object.id) is not None:
             raise ValueError(f"duplicate office object id: {office_object.id}")
         if (
@@ -196,7 +203,47 @@ class OfficeObjectRegistry:
             raise ValueError(
                 f"interactive object kind is not approved: {office_object.kind}"
             )
+        should_scale = (
+            self.auto_scale_legacy_coordinates
+            if scale_legacy_coordinates is None
+            else scale_legacy_coordinates
+        )
+        legacy_position = office_object.position
+        legacy_display_position = office_object.display_position
+        if should_scale:
+            parent = self.get(office_object.parent_id) if office_object.parent_id else None
+            parent_legacy_position = (
+                self._legacy_positions.get(office_object.parent_id)
+                if office_object.parent_id
+                else None
+            )
+            if parent is not None and parent_legacy_position is not None:
+                scaled_position = (
+                    parent.position[0] + legacy_position[0] - parent_legacy_position[0],
+                    parent.position[1] + legacy_position[1] - parent_legacy_position[1],
+                )
+                scaled_display_position = (
+                    (
+                        parent.position[0] + legacy_display_position[0] - parent_legacy_position[0],
+                        parent.position[1] + legacy_display_position[1] - parent_legacy_position[1],
+                    )
+                    if legacy_display_position is not None
+                    else None
+                )
+            else:
+                scaled_position = scale_legacy_position(office_object.room, legacy_position)
+                scaled_display_position = (
+                    scale_legacy_position(office_object.room, legacy_display_position)
+                    if legacy_display_position is not None
+                    else None
+                )
+            office_object = replace(
+                office_object,
+                position=scaled_position,
+                display_position=scaled_display_position,
+            )
         self.objects.append(office_object)
+        self._legacy_positions[office_object.id] = legacy_position
 
     def remove(self, object_id: str) -> None:
         self.objects[:] = [item for item in self.objects if item.id != object_id]
@@ -262,7 +309,12 @@ class OfficeObjectRegistry:
         if item.kind == "door":
             state.close_page()
             destination_room = item.destination_room
-            if destination_room is None or not scene.select_room(destination_room):
+            if destination_room is None:
+                opened = scene.toggle_door(item.id)
+                message = f"{item.label.upper()} / {'OPEN' if opened else 'CLOSED'}"
+                state.notice = message
+                return InteractionResult(True, message)
+            if not scene.select_room(destination_room):
                 return InteractionResult(False, "OFFICE NOT AVAILABLE")
             message = f"ENTERED {scene.room.label}"
             state.notice = message
@@ -469,7 +521,7 @@ class OfficeObjectRegistry:
 def build_tower_object_registry() -> OfficeObjectRegistry:
     """Create the fixed physical-object contract for the first tower slice."""
 
-    registry = OfficeObjectRegistry()
+    registry = OfficeObjectRegistry(auto_scale_legacy_coordinates=True)
     # Historical workstation placements are deliberately kept inert; the active
     # registry below is the only source of furniture and interactables.
     """
@@ -609,11 +661,6 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     # Do not register the old free workstation sets or decorative corridor
     # props. Shared furniture is added only from server-owned office inventory.
     entries = [
-        OfficeObject("lobby-elevator-1", "elevator", "PASSENGER ELEVATOR", "lobby", (49_975_500, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
-        OfficeObject("lobby-elevator-2", "elevator", "PASSENGER ELEVATOR", "lobby", (49_976_300, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
-        OfficeObject("lobby-elevator", "elevator", "PASSENGER ELEVATOR", "lobby", (49_977_100, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
-        OfficeObject("lobby-elevator-4", "elevator", "PASSENGER ELEVATOR", "lobby", (49_977_900, 50_000_000), "SELECT AN OPEN FLOOR", destination_floor=6),
-        OfficeObject("lobby-service-elevator", "service_elevator", "SERVICE ELEVATOR", "lobby", (49_977_600, 49_999_100), "B1–B6 / OPEN FLOORS", destination_floor=6),
         OfficeObject("lobby-stairs", "stairs", "STAIRWELL 01", "lobby", (49_978_650, 50_000_800), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=1),
         OfficeObject("lobby-stairwell-2", "stairs", "STAIRWELL 02", "lobby", (49_975_350, 50_000_900), "STAIRS / SELECT AN ADJACENT FLOOR", stairwell_number=2),
         OfficeObject("lobby-reception-desk", "desk", "RECEPTION DESK", "lobby", (49_978_250, 49_999_600), "ASK RECEPTION"),
@@ -624,38 +671,162 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-restroom-stall-1", "restroom_stall", "RESTROOM STALL", "lobby", (49_978_300, 50_002_200), "PRIVATE RESTROOM / RESTORE STAMINA"),
         OfficeObject("lobby-restroom-stall-2", "restroom_stall", "RESTROOM STALL", "lobby", (49_978_300, 50_001_600), "PRIVATE RESTROOM / RESTORE STAMINA"),
         OfficeObject("lobby-trash-can", "trash_can", "TRASH CAN", "lobby", (49_975_600, 50_002_300), "PICK UP TRASH"),
-        OfficeObject("recreation-elevator", "elevator", "PASSENGER ELEVATOR", "recreation", (11_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("recreation-elevator-1", "elevator", "PASSENGER ELEVATOR", "recreation", (9_300, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("recreation-elevator-2", "elevator", "PASSENGER ELEVATOR", "recreation", (10_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("recreation-elevator-4", "elevator", "PASSENGER ELEVATOR", "recreation", (12_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("recreation-service-elevator", "service_elevator", "SERVICE ELEVATOR", "recreation", (12_500, 1_500), "SERVICE ACCESS / ALL OPEN FLOORS", destination_floor=1),
-        OfficeObject("recreation-stairs", "stairs", "STAIRWELL 01", "recreation", (9_500, 12_500), "STAIRS / DOWN TO FLOOR 05", destination_floor=5, stairwell_number=1),
-        OfficeObject("recreation-stairwell-2", "stairs", "STAIRWELL 02", "recreation", (12_500, 12_500), "STAIRS / UP TO FLOOR 07", destination_floor=7, stairwell_number=2),
-        OfficeObject("floor07-elevator", "elevator", "PASSENGER ELEVATOR", "floor07_business", (11_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("floor07-elevator-1", "elevator", "PASSENGER ELEVATOR", "floor07_business", (9_300, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("floor07-elevator-2", "elevator", "PASSENGER ELEVATOR", "floor07_business", (10_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("floor07-elevator-4", "elevator", "PASSENGER ELEVATOR", "floor07_business", (12_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
-        OfficeObject("floor07-service-elevator", "service_elevator", "SERVICE ELEVATOR", "floor07_business", (12_500, 1_500), "SERVICE ACCESS / ALL OPEN FLOORS", destination_floor=1),
-        OfficeObject("floor07-stairs", "stairs", "STAIRWELL 01", "floor07_business", (9_500, 12_500), "STAIRS / DOWN TO FLOOR 06", destination_floor=6, stairwell_number=1),
-        OfficeObject("floor07-stairwell-2", "stairs", "STAIRWELL 02", "floor07_business", (12_500, 12_500), "STAIRS / UP TO FLOOR 08", destination_floor=8, stairwell_number=2),
-        OfficeObject("recreation-atm", "atm", "ATM", "recreation", (12_500, 5_000), "CHECK BANCO OMBRA"),
-        OfficeObject("recreation-vending", "vending_machine", "VENDING", "recreation", (12_500, 8_000), "BUY OFFICE ASSETS"),
-        OfficeObject("recreation-restroom-stall-1", "restroom_stall", "RESTROOM STALL", "recreation", (10_000, 18_000), "PRIVATE RESTROOM / RESTORE STAMINA"),
-        OfficeObject("recreation-restroom-stall-2", "restroom_stall", "RESTROOM STALL", "recreation", (10_000, 18_600), "PRIVATE RESTROOM / RESTORE STAMINA"),
-        OfficeObject("recreation-trash-can", "trash_can", "TRASH CAN", "recreation", (9_550, 9_000), "PICK UP TRASH"),
-        OfficeObject("hall-office-1-door", "door", "OFFICE 01", "recreation", (4_500, 11_000), "ENTER OFFICE 01", destination_room="executive"),
-        OfficeObject("hall-office-2-door", "door", "OFFICE 02", "recreation", (17_500, 11_000), "ENTER OFFICE 02", destination_room="public"),
-        OfficeObject("hall-office-3-door", "door", "OFFICE 03", "recreation", (4_500, 14_000), "ENTER OFFICE 03", destination_room="office_03"),
-        OfficeObject("hall-office-4-door", "door", "OFFICE 04", "recreation", (17_500, 14_000), "ENTER OFFICE 04", destination_room="office_04"),
-        OfficeObject("executive-exit-door", "door", "HALLWAY", "executive", (4_500, 11_000), "EXIT TO HALLWAY", destination_room="recreation"),
-        OfficeObject("public-exit-door", "door", "HALLWAY", "public", (17_500, 11_000), "EXIT TO HALLWAY", destination_room="recreation"),
-        OfficeObject("office_03-exit-door", "door", "HALLWAY", "office_03", (4_500, 14_000), "EXIT TO HALLWAY", destination_room="recreation"),
-        OfficeObject("office_04-exit-door", "door", "HALLWAY", "office_04", (17_500, 14_000), "EXIT TO HALLWAY", destination_room="recreation"),
-        OfficeObject("executive-suite-door", "door", "EXECUTIVE SUITE", "executive", (2_500, 4_600), "ENTER EXECUTIVE SUITE", destination_room="executive_suite"),
-        OfficeObject("executive-suite-exit", "door", "OFFICE 01", "executive_suite", (2_500, 4_600), "RETURN TO OFFICE", destination_room="executive"),
     ]
     for entry in entries:
         registry.add(entry)
+
+    base_layout = FLOOR_PLAN["baseLayout"]
+    passenger_positions = base_layout["passengerElevators"]["positions"]
+    service_position = tuple(base_layout["serviceElevator"]["position"])
+    stair_positions = base_layout["stairs"]["positions"]
+    lobby_data = base_layout["elevatorLobby"]
+    lobby_bounds = tuple(int(value) for value in lobby_data["bounds"])
+    lobby_hall = base_layout["hallways"][0]
+    lobby_opening_center = lobby_bounds[0] + int(FLOOR_PLAN["lobbyHallwayOpening"])
+    hallway_center = int(lobby_hall[0]) + int(lobby_hall[2]) // 2
+    lobby_elevator_y = lobby_bounds[1] + lobby_bounds[3] - 800
+    lobby_passenger_positions = [
+        (
+            lobby_opening_center + int(position[0]) - hallway_center,
+            lobby_elevator_y,
+        )
+        for position in passenger_positions
+    ]
+    lobby_passenger_ids = [
+        "lobby-elevator-1",
+        "lobby-elevator-2",
+        "lobby-elevator",
+        "lobby-elevator-4",
+    ]
+    for index, position in enumerate(lobby_passenger_positions):
+        registry.add(OfficeObject(
+            lobby_passenger_ids[index],
+            "elevator",
+            "PASSENGER ELEVATOR",
+            "lobby",
+            position,
+            "SELECT AN OPEN FLOOR",
+            destination_floor=6,
+        ), scale_legacy_coordinates=False)
+    lobby_service_y = lobby_bounds[1] + lobby_bounds[3] - 800
+    registry.add(OfficeObject(
+        "lobby-service-elevator",
+        "service_elevator",
+        "SERVICE ELEVATOR",
+        "lobby",
+        (
+            lobby_opening_center + int(service_position[0]) - hallway_center,
+            lobby_service_y,
+        ),
+        "B1–B6 / OPEN FLOORS",
+        destination_floor=6,
+    ), scale_legacy_coordinates=False)
+
+    def add_floor_transport(room: str, floor: int, prefix: str) -> None:
+        passenger_ids = (
+            ["recreation-elevator-1", "recreation-elevator-2", "recreation-elevator", "recreation-elevator-4"]
+            if prefix == "recreation"
+            else ["floor07-elevator-1", "floor07-elevator-2", "floor07-elevator", "floor07-elevator-4"]
+        )
+        for index, position in enumerate(passenger_positions):
+            registry.add(OfficeObject(
+                passenger_ids[index],
+                "elevator",
+                "PASSENGER ELEVATOR",
+                room,
+                tuple(int(value) for value in position),
+                "RETURN TO FLOOR 01 LOBBY",
+                destination_floor=1,
+            ), scale_legacy_coordinates=False)
+        registry.add(OfficeObject(
+            f"{prefix}-service-elevator",
+            "service_elevator",
+            "SERVICE ELEVATOR",
+            room,
+            service_position,
+            "SERVICE ACCESS / ALL OPEN FLOORS",
+            destination_floor=1,
+        ), scale_legacy_coordinates=False)
+        for index, position in enumerate(stair_positions, start=1):
+            destination = floor - 1 if index == 1 else floor + 1
+            if not 1 <= destination <= 12:
+                continue
+            stair_id = (
+                f"{prefix}-stairs"
+                if index == 1
+                else f"{prefix}-stairwell-2"
+            )
+            registry.add(OfficeObject(
+                stair_id,
+                "stairs",
+                f"STAIRWELL {index:02d}",
+                room,
+                tuple(int(value) for value in position),
+                f"STAIRS / TO FLOOR {destination:02d}",
+                destination_floor=destination,
+                stairwell_number=index,
+            ), scale_legacy_coordinates=False)
+
+    add_floor_transport("recreation", 6, "recreation")
+    add_floor_transport("floor07_business", 7, "floor07")
+
+    for office in base_layout["offices"]:
+        room = str(office["id"])
+        x, y, width, height = (int(value) for value in office["bounds"])
+        entrance = tuple(int(value) for value in office["entrance"])
+        index = int(office["unitNumber"])
+        registry.add(OfficeObject(
+            f"hall-office-{index}-door",
+            "door",
+            str(office["label"]),
+            "recreation",
+            entrance,
+            f"ENTER {str(office['label'])}",
+            destination_room=room,
+            display_position=entrance,
+        ), scale_legacy_coordinates=False)
+        registry.add(OfficeObject(
+            f"{room}-exit-door",
+            "door",
+            "HALLWAY",
+            room,
+            entrance,
+            "EXIT TO HALLWAY",
+            destination_room="recreation",
+            display_position=entrance,
+        ), scale_legacy_coordinates=False)
+
+    suite_door = tuple(int(value) for value in base_layout["executiveSuite"]["door"])
+    registry.add(OfficeObject(
+        "executive-suite-door",
+        "door",
+        "EXECUTIVE SUITE",
+        "executive",
+        suite_door,
+        "ENTER EXECUTIVE SUITE",
+        destination_room="executive_suite",
+        display_position=suite_door,
+    ), scale_legacy_coordinates=False)
+    registry.add(OfficeObject(
+        "executive-suite-exit",
+        "door",
+        "OFFICE 01",
+        "executive_suite",
+        suite_door,
+        "RETURN TO OFFICE",
+        destination_room="executive",
+        display_position=suite_door,
+    ), scale_legacy_coordinates=False)
+
+    for index, y in enumerate((31_350, 31_650), start=1):
+        registry.add(OfficeObject(
+            f"recreation-restroom-stall-{index}",
+            "restroom_stall",
+            "RESTROOM STALL",
+            "recreation",
+            (6_000 + (index - 1) * 1_000, y),
+            "PRIVATE RESTROOM / RESTORE STAMINA",
+        ), scale_legacy_coordinates=False)
     def add_wall(
         room: str,
         tag: str,
@@ -683,7 +854,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             "",
             interactive=False,
             solid_half_extents=half_extents,
-        ))
+        ), scale_legacy_coordinates=False)
 
     def add_suite(
         room: str,
@@ -709,12 +880,27 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             unit_number=unit_number,
             service_actions=actions_for_business(business_key),
             suite_bounds=bounds,
-        ))
+        ), scale_legacy_coordinates=False)
         if not build_walls:
             return
 
-        wall = 60
-        gap = 600
+        door_y = y + height if door_side == "south" else y
+        door_position = (
+            x + width // 2,
+            door_y + (150 if door_side == "south" else -150),
+        )
+        registry.add(OfficeObject(
+            f"{tag}-business-{unit_number:02d}-door",
+            "door",
+            f"{label} ENTRY",
+            room,
+            door_position,
+            "TOGGLE ENTRY DOOR",
+            display_position=(x + width // 2, door_y),
+        ), scale_legacy_coordinates=False)
+
+        wall = 30
+        gap = 180
         mid_x = x + width // 2
         north_y = y
         south_y = y + height
@@ -731,60 +917,59 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
 
     for floor in (*range(2, 6), *range(8, 13)):
         room = str(FLOOR_PLAN["playableFloors"][str(floor)]["room"])
-        for index, x in enumerate((9_300, 10_000, 11_000, 12_000), start=1):
+        for index, position in enumerate(passenger_positions, start=1):
             registry.add(OfficeObject(
                 f"floor-{floor:02d}-passenger-elevator-{index}",
                 "elevator",
                 "PASSENGER ELEVATOR",
                 room,
-                (x, 1_500),
+                tuple(int(value) for value in position),
                 "RETURN TO FLOOR 01 LOBBY",
                 destination_floor=1,
-            ))
+            ), scale_legacy_coordinates=False)
         registry.add(OfficeObject(
             f"floor-{floor:02d}-service-elevator",
             "service_elevator",
             "SERVICE ELEVATOR",
             room,
-            (12_500, 1_500),
+            service_position,
             "SERVICE ACCESS / ALL OPEN FLOORS",
             destination_floor=1,
-        ))
-        lower_floor = floor - 1
-        upper_floor = floor + 1
-        stairwells = [(1, 9_500, lower_floor)]
-        if upper_floor <= 12:
-            stairwells.append((2, 12_500, upper_floor))
-        for stairwell, x, destination in stairwells:
+        ), scale_legacy_coordinates=False)
+        for stairwell, position in enumerate(stair_positions, start=1):
+            destination = floor - 1 if stairwell == 1 else floor + 1
+            if not 1 <= destination <= 12:
+                continue
             registry.add(OfficeObject(
                 f"floor-{floor:02d}-stairwell-{stairwell}",
                 "stairs",
                 f"STAIRWELL {stairwell:02d}",
                 room,
-                (x, 12_500),
+                tuple(int(value) for value in position),
                 f"STAIRS / TO FLOOR {destination:02d}",
                 destination_floor=destination,
                 stairwell_number=stairwell,
-            ))
-    for floor in (2, 3, 4, 5, 7):
+            ), scale_legacy_coordinates=False)
+    for floor in range(2, 13):
         room = str(FLOOR_PLAN["playableFloors"][str(floor)]["room"])
-        registry.add(OfficeObject(
-            f"floor-{floor:02d}-shared-atm",
-            "atm",
-            "SHARED HALLWAY ATM",
-            room,
-            (12_790, 5_000),
-            "CHECK BANCO OMBRA",
-        ))
-        registry.add(OfficeObject(
-            f"floor-{floor:02d}-shared-vending",
-            "vending_machine",
-            "SHARED HALLWAY VENDING",
-            room,
-            (12_790, 8_000),
-            "" if floor == 7 else "BUY OFFICE ASSETS",
-            interactive=floor != 7,
-        ))
+        for shared in base_layout["sharedObjects"]:
+            shared_id = str(shared["id"])
+            suffix = shared_id.removeprefix("recreation-")
+            object_id = shared_id if floor == 6 else f"floor-{floor:02d}-{suffix}"
+            kind = str(shared["kind"])
+            position = tuple(int(value) for value in shared["position"])
+            interactive = kind != "fire_extinguisher" and not (
+                floor == 7 and kind == "vending_machine"
+            )
+            registry.add(OfficeObject(
+                object_id,
+                kind,  # type: ignore[arg-type]
+                kind.replace("_", " ").upper(),
+                room,
+                position,
+                "BUY OFFICE ASSETS" if kind == "vending_machine" and interactive else "",
+                interactive=interactive,
+            ), scale_legacy_coordinates=False)
 
     # The lobby kiosks are the only kiosk-style business locations.
     for kiosk in FLOOR_PLAN["businessSuiteLayout"]["lobbyKiosks"]:
@@ -800,7 +985,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             f"OPEN {label}",
             business_key=business_key,
             service_actions=actions_for_business(business_key),
-        ))
+        ), scale_legacy_coordinates=False)
     lobby_back_entry = FLOOR_PLAN["businessSuiteLayout"]["lobbyBackEntrance"]
     registry.add(OfficeObject(
         "lobby-back-entrance",
@@ -809,7 +994,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         "lobby",
         tuple(int(value) for value in lobby_back_entry),  # type: ignore[arg-type]
         "ENTER B1 LOADING YARD",
-    ))
+    ), scale_legacy_coordinates=False)
 
     # Standard lower floors use separate office suites, with one set of
     # partitions and a single shared ATM/vending pair along the east hallway wall.
@@ -863,7 +1048,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     for office_id, bounds in office_bounds.items():
         x, y, width, height = bounds
         divider_x = x + width // 2
-        gap = 2_000
+        gap = 180
         door_side = "south" if y == 0 else "north"
         if door_side == "south":
             add_wall(
@@ -873,7 +1058,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 divider_x,
                 y + (height - gap) // 2,
                 height - gap,
-                60,
+                30,
             )
         else:
             add_wall(
@@ -883,7 +1068,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 divider_x,
                 y + gap + (height - gap) // 2,
                 height - gap,
-                60,
+                30,
             )
     for level in range(1, 7):
         room = f"basement_b{level}"
@@ -941,8 +1126,6 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     str(unit["doorSide"]),
                     build_walls=True,
                 )
-            for y_center in (2_150, 7_850):
-                add_wall(room, "b1-yard-divider", "v", 10_000, y_center, 4_300, 60)
             yard_access = tuple(int(value) for value in b1_layout["yardAccess"])
             gate_position = tuple(int(value) for value in b1_layout["exteriorGate"])
             registry.add(OfficeObject(
@@ -952,7 +1135,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 room,
                 yard_access,  # type: ignore[arg-type]
                 "CROSS TO THE REAR LOADING YARD",
-            ))
+            ), scale_legacy_coordinates=False)
             registry.add(OfficeObject(
                 "basement-b1-back-entrance",
                 "yard_gate",
@@ -960,7 +1143,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 room,
                 gate_position,  # type: ignore[arg-type]
                 "ENTER THE TOWER THROUGH THE REAR LOBBY DOOR",
-            ))
+            ), scale_legacy_coordinates=False)
             for index, prop in enumerate(b1_layout["yardProps"], start=1):
                 kind = str(prop["kind"])
                 position = tuple(int(value) for value in prop["position"])
@@ -972,7 +1155,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     position,  # type: ignore[arg-type]
                     "",
                     interactive=False,
-                ))
+                ), scale_legacy_coordinates=False)
         elif level == 2:
             for office_index in range(6):
                 registry.add(OfficeObject(
@@ -1003,11 +1186,13 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             registry.add(OfficeObject("basement-b5-power", "utility_station", "POWER / GENERATORS", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"))
         elif level == 6:
             registry.add(OfficeObject("basement-b6-plumbing", "utility_station", "WATER / PLUMBING", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"))
-    cell_size = 1_000
     for room_data in FLOOR_PLAN["rooms"]:
         room = str(room_data.get("id", ""))
         raw_cells = room_data.get("mazeCells")
         if not room.startswith("basement_b") or not isinstance(raw_cells, list):
+            continue
+        cell_size = int(room_data.get("mazeCellUnits", 1_000))
+        if cell_size <= 0:
             continue
         level = int(room.rsplit("b", 1)[-1])
         walkable = {
@@ -1036,7 +1221,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                         position,
                         "",
                         interactive=False,
-                    )
+                    ),
+                    scale_legacy_coordinates=False,
                 )
 
     # Each playable-floor template represents one physical floor at a time.
@@ -1105,7 +1291,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 "",
                 interactive=bool(prop.get("interactive", False)),
                 solid_half_extents=extents,  # type: ignore[arg-type]
-            ))
+            ), scale_legacy_coordinates=False)
 
     basement_hallway_fixtures = {
         1: (
@@ -1153,4 +1339,5 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 "" if is_vending_fixture else prompt,
                 interactive=kind not in {"fire_extinguisher", "vending_machine"},
             ))
+    registry.auto_scale_legacy_coordinates = False
     return registry

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 
@@ -16,7 +17,8 @@ with FLOOR_PLAN_PATH.open(encoding="utf-8") as floor_plan_file:
     FLOOR_PLAN = json.load(floor_plan_file)
 
 
-ROOM_COORDINATE_SCALE = 5
+TOWER_LINEAR_SCALE = math.sqrt(8.0)
+LOBBY_COORDINATE_ANCHOR = (49_978_000, 50_000_000)
 
 # Fixed gameplay objects were authored against the original compact rooms.
 # Their room-relative positions are expanded into the new first-floor plan.
@@ -33,7 +35,7 @@ def map_legacy_room_position(
     room_id: str,
     position: tuple[int, int],
 ) -> tuple[int, int]:
-    """Expand an old room-local point without scaling the furniture itself."""
+    """Map a legacy room-local point into the expanded floor-plan envelope."""
     legacy = LEGACY_ROOM_BOUNDS.get(room_id)
     target = next(
         (
@@ -51,6 +53,18 @@ def map_legacy_room_position(
     offset_x = min(max(position[0] - old_x, 0), old_width)
     offset_y = min(max(position[1] - old_y, 0), old_height)
     return (
-        new_x + offset_x * ROOM_COORDINATE_SCALE,
-        new_y + offset_y * ROOM_COORDINATE_SCALE,
+        round(new_x + offset_x * TOWER_LINEAR_SCALE),
+        round(new_y + offset_y * TOWER_LINEAR_SCALE),
     )
+
+
+def scale_legacy_position(room_id: str, position: tuple[int, int]) -> tuple[int, int]:
+    """Scale an old point while leaving the physical size of its object unchanged."""
+    x, y = position
+    if room_id == "lobby":
+        anchor_x, anchor_y = LOBBY_COORDINATE_ANCHOR
+        return (
+            round(anchor_x + (x - anchor_x) * TOWER_LINEAR_SCALE),
+            round(anchor_y + (y - anchor_y) * TOWER_LINEAR_SCALE),
+        )
+    return round(x * TOWER_LINEAR_SCALE), round(y * TOWER_LINEAR_SCALE)
