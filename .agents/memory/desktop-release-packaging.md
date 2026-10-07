@@ -39,6 +39,20 @@ layout plus available system fonts differ from Linux.
 **How to apply:** Build and smoke-test macOS on macOS; the Linux environment can
 only validate the launcher template and shared source behavior.
 
+## Native CI source integrity
+
+Dispatch a native build only from a ref containing the exact workspace source.
+If the remote ref is stale or unrelated, do not use it as a substitute. Ask
+before uploading the current source to a public remote, even on a temporary
+branch.
+
+**Why:** A successful native build of a different revision is not a valid test
+package, and uploading a branch to a public repository exposes the source.
+
+**How to apply:** Compare the current revision and relevant source files with the
+CI ref, check repository visibility, and get explicit consent before a public
+upload.
+
 ## Supported-platform priorities
 
 macOS is the first user test target, while Windows remains required. Preserve

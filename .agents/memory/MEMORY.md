@@ -148,7 +148,7 @@
 - [Tower floor previews](tower-floor-previews.md) — use Godot-native 3D for B1–B6/F1–F12; do not show Pygame Tower art, and treat layout/door/object/control tests as gameplay checks.
 - [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
 - [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.
-- [Desktop release packaging](desktop-release-packaging.md) — macOS-first testing, Windows required; retain Linux unless its separate workload warrants discussing removal.
+- [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
 - [Tower building vitality](tower-building-vitality.md) — Pablo owns initial stores; AI-driven NPCs pursue creative work; repeat businesses require net worth above ƒ1B.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
