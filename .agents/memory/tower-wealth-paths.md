@@ -25,7 +25,20 @@ are not enough. Snitches may supply leads. Bounty hunting belongs outside
 workspaces, not inside them.
 Criminals may hide in an ordinary office environment; do not isolate them in a
 visibly criminal workspace. The product should include a background-check
-system for this workplace setting.
+system as part of applying for work.
+
+SALARYMAN is fictional, but real companies may use it to manage remote employees,
+so features need to work and be properly gated. Paid offices that are owned, not
+rented, carry higher harassment/security risk and need more security-department
+attention to protect their offices and floors from other players.
+
+**Why:** The user wants the fictional game systems to remain dependable and
+permission-gated for practical remote-work use, with stronger protection for
+paid, owned offices.
+
+**How to apply:** Put background checks in the job application flow. Enforce
+authorization on real operations, and give owned paid offices stronger
+anti-harassment controls and security coverage than rented space.
 NPC staffing should stay sparse and focused on building operations; NPCs can be
 targets for restraint, robbery, or sabotage. Pablo Corp can offer limited
 peacekeeping contracts, while money and net worth are the main sources of power,
