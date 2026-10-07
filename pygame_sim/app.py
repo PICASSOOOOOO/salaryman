@@ -120,7 +120,7 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "LINK A GAME ACCOUNT TO LOAD INVENTORY"
         elif page == "vending":
             state.vending_catalog = None
-            state.marketplace_catalog = None
+            state.business_stock_lines = None
             state.ghost_listing = None
             state.fiat_balance = None
             state.fiat_spendable = None
@@ -130,14 +130,12 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "LINK A GAME ACCOUNT TO USE VENDING"
             if building_sync.queue_game_request("bank"):
                 state.game_service_loading.add("bank")
-        elif page == "marketplace":
-            state.vending_catalog = None
-            state.marketplace_catalog = None
-            state.ghost_listing = None
-            if building_sync.queue_game_request("vending_catalog"):
-                state.game_service_loading.add("vending_catalog")
-            else:
-                state.notice = "LINK A GAME ACCOUNT TO LOAD BUSINESS STOCK"
+        elif page == "business_stock":
+            if state.business_stock_lines is None:
+                if building_sync.queue_game_request("vending_catalog"):
+                    state.game_service_loading.add("vending_catalog")
+                else:
+                    state.notice = "LINK A GAME ACCOUNT TO LOAD BUSINESS STOCK"
         elif page == "bank":
             state.fiat_balance = None
             state.fiat_spendable = None
@@ -250,6 +248,8 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "RECEPTION SERVICE NOT AVAILABLE"
                 return
             dispatch_game_command("reception_choice", {"choice": choice})
+        elif action == "vending:business-stock":
+            dispatch_game_command("toggle_business_stock")
         elif action.startswith("nav:"):
             open_player_page(action.split(":", 1)[1])
         elif action.startswith("action:"):
@@ -350,6 +350,12 @@ def run(argv: list[str] | None = None) -> int:
                 if item_id:
                     activate_game_page_action(f"buy:{item_id}")
                 return True
+            if key == pygame.K_b:
+                activate_game_page_action("vending:business-stock")
+                return True
+        elif page == "business_stock" and key == pygame.K_b:
+            activate_game_page_action("vending:business-stock")
+            return True
         elif page == "phone":
             if key == pygame.K_1:
                 activate_game_page_action("phone:call-home")
@@ -357,7 +363,7 @@ def run(argv: list[str] | None = None) -> int:
             if key == pygame.K_2:
                 activate_game_page_action("phone:comms")
                 return True
-        elif page == "reception" and pygame.K_1 <= key <= pygame.K_4:
+        elif page == "reception" and pygame.K_1 <= key <= pygame.K_3:
             activate_game_page_action(f"reception:{key - pygame.K_0}")
             return True
         elif page == "pest_jobs":
@@ -656,11 +662,11 @@ def run(argv: list[str] | None = None) -> int:
                     elif action == "vending_catalog":
                         items = payload.get("items", [])
                         state.vending_catalog = [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
-                        marketplace = payload.get("marketplace", {})
-                        listings = marketplace.get("listings", []) if isinstance(marketplace, dict) else []
-                        state.marketplace_catalog = (
-                            [listing for listing in listings if isinstance(listing, dict)]
-                            if isinstance(listings, list)
+                        stock = payload.get("businessStock", {})
+                        lines = stock.get("lines", []) if isinstance(stock, dict) else []
+                        state.business_stock_lines = (
+                            [line for line in lines if isinstance(line, dict)]
+                            if isinstance(lines, list)
                             else []
                         )
                         ghost = payload.get("ghost")
@@ -670,8 +676,8 @@ def run(argv: list[str] | None = None) -> int:
                             min(state.selected_vending_index, max(0, len(state.vending_catalog) - 1)),
                         )
                         state.notice = (
-                            f"BUSINESS DIRECTORY LOADED / {len(state.marketplace_catalog)} LINES"
-                            if state.active_page == "marketplace"
+                            f"BUSINESS STOCK LOADED / {len(state.business_stock_lines)} LINES"
+                            if state.active_page == "business_stock"
                             else f"VENDING STOCK LOADED / {len(state.vending_catalog)} ITEMS"
                         )
                     elif action == "bank":

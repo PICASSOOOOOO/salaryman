@@ -30,7 +30,7 @@ OverlayPage = Literal[
     "tools", "economy", "customize", "systems", "phone",
     "player", "settings", "inventory", "vending", "bank",
     "pest_jobs", "pest_uniform", "melee", "basement_stairs",
-    "utility_work", "company_relocation", "merchant", "reception", "marketplace",
+    "utility_work", "company_relocation", "merchant", "reception", "business_stock",
 ]
 PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone"})
 RECRUITMENT_REFRESH_COST = 50.0
@@ -120,7 +120,7 @@ class OfficeState:
     movement_speed_preset: int = 1
     game_inventory: list[dict[str, object]] | None = None
     vending_catalog: list[dict[str, object]] | None = None
-    marketplace_catalog: list[dict[str, object]] | None = None
+    business_stock_lines: list[dict[str, object]] | None = None
     ghost_listing: dict[str, object] | None = None
     fiat_balance: int | None = None
     fiat_spendable: int | None = None

@@ -32,7 +32,7 @@ PROTOCOL_VERSION = 1
 MAX_LINE_BYTES = 64 * 1024
 ALLOWED_ROOMS = {
     "lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite",
-    "floor07_marketplace",
+    "floor07_business",
     *(f"construction_f{floor:02d}" for floor in range(2, 6)),
 }
 ALLOWED_VENDING_ITEMS = {"coffee"}
@@ -56,6 +56,7 @@ COMMANDS = {
     "hire_candidate",
     "terminal_choice",
     "reception_choice",
+    "toggle_business_stock",
     "toggle_drawer",
     "close_page",
     "toggle_music",
@@ -67,10 +68,9 @@ COMMANDS = {
 }
 
 RECEPTION_SERVICE_ROUTES = {
-    1: ("FLOOR 07 BUSINESS MARKETPLACE", "/business/marketplace"),
-    2: ("JOB OPPORTUNITIES", "/business/jobs"),
-    3: ("BUSINESS CONTRACTS", "/business/contracts"),
-    4: ("REAL ESTATE / LEASING", "/store/realty"),
+    1: ("JOB OPPORTUNITIES", "/business/jobs"),
+    2: ("BUSINESS CONTRACTS", "/business/contracts"),
+    3: ("REAL ESTATE / LEASING", "/store/realty"),
 }
 
 
@@ -136,7 +136,7 @@ def validate_command(command: object) -> tuple[bool, str]:
     elif name == "reception_choice":
         choice = payload.get("choice")
         if not _is_int(choice) or choice not in RECEPTION_SERVICE_ROUTES:
-            return False, "RECEPTION SERVICE CHOICE MUST BE 1-4"
+            return False, "RECEPTION SERVICE CHOICE MUST BE 1-3"
     elif name == "buy_vending":
         item_id = payload.get("item_id")
         if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
@@ -657,6 +657,25 @@ def apply_command(
         state.game_service_loading.add("consume_supply")
         state.notice = "SUPPLY USE REQUESTED"
         return CommandResult(True, state.notice)
+    if name == "toggle_business_stock":
+        if state.active_page not in {"vending", "business_stock"}:
+            return CommandResult(False, "OPEN BUSINESS STOCK AT A TOWER VENDING MACHINE")
+        vending = scene.objects.get(state.active_object_id or "")
+        if vending is None or vending.kind != "vending_machine":
+            return CommandResult(False, "BUSINESS STOCK REQUIRES AN ACTIVE VENDING MACHINE")
+        page = "business_stock" if state.active_page == "vending" else "vending"
+        state.open_page(
+            page,
+            from_object=True,
+            source=state.page_source or "TOWER VENDING",
+            source_object_id=vending.id,
+        )
+        state.notice = (
+            "BUSINESS STOCK AND GHOST CONTACT"
+            if page == "business_stock"
+            else "TOWER VENDING / SERVER-PRICED STOCK"
+        )
+        return CommandResult(True, state.notice)
     if name == "reception_choice":
         receptionist = scene.objects.get("lobby-receptionist")
         if (
@@ -828,7 +847,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "pageSource": state.page_source,
             "activeObjectId": state.active_object_id,
             "vendingCatalog": state.vending_catalog,
-            "marketplaceListings": state.marketplace_catalog,
+            "businessStockLines": state.business_stock_lines,
             "ghostListing": state.ghost_listing,
             "pestUniformWorn": state.pest_uniform_worn,
             "pestStamina": state.pest_stamina,

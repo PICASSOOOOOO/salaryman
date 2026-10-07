@@ -283,17 +283,6 @@ class OfficeObjectRegistry:
             state.notice = message
             return InteractionResult(True, message, route="tower-vending")
 
-        if item.id == "floor07-marketplace-counter":
-            scene.focus_on_interaction(item)
-            if state.open_page(
-                "marketplace",
-                from_object=True,
-                source="FLOOR 07 BUSINESS MARKETPLACE",
-                source_object_id=item.id,
-            ):
-                return InteractionResult(True, "FLOOR 07 / BUSINESS DIRECTORY", route="tower-marketplace")
-            return InteractionResult(False, "MARKETPLACE DIRECTORY UNAVAILABLE")
-
         if item.kind == "crt_terminal":
             permission_message = scene.workstation_permission(item.parent_id)
             if permission_message is not None:
@@ -578,16 +567,15 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("recreation-service-elevator", "service_elevator", "SERVICE ELEVATOR", "recreation", (12_500, 1_500), "SERVICE ACCESS / ALL OPEN FLOORS", destination_floor=1),
         OfficeObject("recreation-stairs", "stairs", "STAIRWELL 01", "recreation", (9_500, 12_500), "STAIRS / DOWN TO FLOOR 05", destination_floor=5, stairwell_number=1),
         OfficeObject("recreation-stairwell-2", "stairs", "STAIRWELL 02", "recreation", (12_500, 12_500), "STAIRS / DOWN TO FLOOR 05", destination_floor=5, stairwell_number=2),
+        OfficeObject("floor07-elevator", "elevator", "PASSENGER ELEVATOR", "floor07_business", (11_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
+        OfficeObject("floor07-elevator-1", "elevator", "PASSENGER ELEVATOR", "floor07_business", (9_300, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
+        OfficeObject("floor07-elevator-2", "elevator", "PASSENGER ELEVATOR", "floor07_business", (10_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
+        OfficeObject("floor07-elevator-4", "elevator", "PASSENGER ELEVATOR", "floor07_business", (12_000, 1_500), "RETURN TO FLOOR 01 LOBBY", destination_floor=1),
+        OfficeObject("floor07-service-elevator", "service_elevator", "SERVICE ELEVATOR", "floor07_business", (12_500, 1_500), "SERVICE ACCESS / ALL OPEN FLOORS", destination_floor=1),
+        OfficeObject("floor07-stairs", "stairs", "STAIRWELL 01", "floor07_business", (9_500, 12_500), "STAIRS / DOWN TO FLOOR 06", destination_floor=6, stairwell_number=1),
+        OfficeObject("floor07-stairwell-2", "stairs", "STAIRWELL 02", "floor07_business", (12_500, 12_500), "STAIRS / DOWN TO FLOOR 06", destination_floor=6, stairwell_number=2),
         OfficeObject("recreation-atm", "atm", "ATM", "recreation", (12_500, 5_000), "CHECK BANCO OMBRA"),
         OfficeObject("recreation-vending", "vending_machine", "VENDING", "recreation", (12_500, 8_000), "BUY OFFICE ASSETS"),
-        OfficeObject(
-            "floor07-marketplace-counter",
-            "crt_terminal",
-            "BUSINESS MARKETPLACE",
-            "floor07_marketplace",
-            (11_000, 8_000),
-            "BROWSE FLOOR 07 BUSINESS STOCK",
-        ),
         OfficeObject("recreation-restroom-stall-1", "restroom_stall", "RESTROOM STALL", "recreation", (10_000, 18_000), "PRIVATE RESTROOM / RESTORE STAMINA"),
         OfficeObject("recreation-restroom-stall-2", "restroom_stall", "RESTROOM STALL", "recreation", (10_000, 18_600), "PRIVATE RESTROOM / RESTORE STAMINA"),
         OfficeObject("recreation-trash-can", "trash_can", "TRASH CAN", "recreation", (9_550, 9_000), "PICK UP TRASH"),

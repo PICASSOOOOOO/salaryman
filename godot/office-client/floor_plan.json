@@ -112,9 +112,11 @@
   },
   "businessOpportunityRules": {
     "defaultBusinessesPerFloor": 4,
-    "maximumBusinessesPerFloorBasedOnSizeAndLocation": 8,
+    "maximumBusinessesOnLowerFloors": 8,
+    "higherFloorCapacityDecreasesWithAvailableRoom": true,
+    "capacityDependsOnFloorSizeAndLocation": true,
     "minimumBusinessesWhenConsolidated": 1,
-    "consolidationAllowed": true
+    "businessAreasMayBeConsolidated": true
   },
   "publicOfficeSales": {
     "floorFrom": 5,
