@@ -2,14 +2,25 @@
 
 from __future__ import annotations
 
-import os
+from datetime import datetime
 import math
+import os
 from pathlib import Path
 
 import pygame
 
+from .animation import character_pose
+from .automation import AUTOMATION_CHARACTERS
+from .business_services import BUSINESS_ACTION_LABELS
+from .customization import (
+    DECOR_PRESETS,
+    WALL_FINISHES,
+    WALL_FINISH_BY_ID,
+    room_decor_placements,
+)
 from .models import Worker
-from .scene import TowerScene
+from .pest_work import MELEE_MOVES, PEST_JOBS, STAMINA_SUPPLY_ITEMS
+from .scene import FLOOR_PLAN, TowerScene
 from .state import OfficeState
 
 
@@ -64,22 +75,32 @@ class SolarPunkRenderer:
         self.record_rect = pygame.Rect(0, 0, 0, 0)
         self.record_close_rect = pygame.Rect(0, 0, 0, 0)
         self.overlay_close_rect = pygame.Rect(0, 0, 0, 0)
+        self.system_module_rects: dict[str, pygame.Rect] = {}
         self.repair_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_tools_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_economy_rect = pygame.Rect(0, 0, 0, 0)
         self.admin_maintenance_rect = pygame.Rect(0, 0, 0, 0)
+        self.customize_wall_rects: dict[str, pygame.Rect] = {}
+        self.customize_decor_rects: dict[str, pygame.Rect] = {}
         self.worker_rects: dict[int, pygame.Rect] = {}
         self.recruitment_rect = pygame.Rect(0, 0, 0, 0)
         self.refresh_rect = pygame.Rect(0, 0, 0, 0)
         self.candidate_rects: dict[int, pygame.Rect] = {}
         self._pixel_assets: dict[str, pygame.Surface] = {}
+        self._last_actor_positions: dict[str, tuple[int, int]] = {}
+        self._last_player_room: str | None = None
         self.pablo_status = "PABLO CORE / OFFLINE"
         self.pablo_status_color = Palette.MATRIX_DIM
         self._floor_tiles: tuple[pygame.Surface, ...] | None = None
         self._facing = "down"
         self._anim_tick = 0
-        self._motion_clock = 0.0
+        self._character_frame_cache: dict[tuple[str, str, int], pygame.Surface] = {}
         self._asset_root = self._find_pixel_assets()
+        self._camera_scale = 0.0
+        self._camera_x = 0.0
+        self._camera_y = 0.0
+        self._camera_room: tuple[int, str] | None = None
+        self.game_page_actions: dict[str, pygame.Rect] = {}
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
         model = str(status.get("model") or "offline").upper()
@@ -156,76 +177,166 @@ class SolarPunkRenderer:
         if state.drawer_open:
             self.draw_office_record(state)
 
-    def draw_tower(self, state: OfficeState, scene: TowerScene) -> None:
+    def draw_tower(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+        *,
+        delta_seconds: float = 1 / 60,
+    ) -> None:
         """Render the authoritative scene as a camera-following pixel-art room."""
         self.screen.fill((8, 43, 49))
         self.draw_tower_header(state, scene)
         viewport = pygame.Rect(18, 68, self.width - 36, 520)
-        self._draw_pixel_room(viewport, scene)
+        self._draw_pixel_room(viewport, scene, state, delta_seconds=delta_seconds)
 
         self.draw_tower_footer(state, scene)
         if state.active_page is not None:
-            self.draw_game_page(state, scene)
+            if state.active_page == "automation":
+                self.draw_automation_page(state, scene)
+            elif state.active_page == "customize":
+                self.draw_customization_page(state, scene)
+            elif state.active_page == "systems":
+                self.draw_device_page(state, scene)
+            elif state.active_page in {"player", "settings", "inventory", "vending", "bank", "phone", "reception"}:
+                self.draw_player_service_page(state, scene)
+            else:
+                self.draw_game_page(state, scene)
         elif state.tool_menu_open:
             self.draw_operator_menu(state)
 
-    def _draw_pixel_room(self, viewport: pygame.Rect, scene: TowerScene) -> None:
+    def _draw_pixel_room(
+        self,
+        viewport: pygame.Rect,
+        scene: TowerScene,
+        state: OfficeState,
+        *,
+        delta_seconds: float,
+    ) -> None:
         room_x, room_y, room_w, room_h = scene.room.bounds
-        scale = min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
-        # The room is still larger than the viewport, but the desktop capture
-        # must make the avatar readable.  Keep the camera close enough to show
-        # the character's walk cycle instead of presenting an editor overview.
-        # Show enough of the room to read its architecture. The previous
-        # close crop made desks and signs clip into the HUD and hid the
-        # hallway/office relationship.
-        scale = max(0.40, min(0.52, scale * 2.45))
+        # Keep the playable office readable at trailer scale. The prior broad
+        # framing left too much empty floor around the salaryman, making the
+        # real object prompts and NPC actions look static at a glance.
+        base_scale = max(
+            0.32,
+            min(
+                0.58,
+                min((viewport.width - 44) / room_w, (viewport.height - 44) / room_h)
+                * 2.0,
+            ),
+        )
+        focus_id = state.active_object_id
+        focus_object = scene.objects.get(focus_id) if focus_id else None
+        if focus_object is None and scene.camera_focus_seconds > 0:
+            focus_object = scene.objects.get(scene.camera_focus_object_id or "")
+        if (
+            focus_object is not None
+            and focus_object.room == scene.current_room
+            and focus_object.camera_focus_enabled
+        ):
+            target_scale = max(base_scale, 0.88)
+            target_center = focus_object.visual_position
+        else:
+            target_scale = base_scale
+            target_center = scene.player_position
+
+        room_key = (scene.current_floor, scene.current_room)
+        view_w = viewport.width / max(0.01, target_scale)
+        view_h = viewport.height / max(0.01, target_scale)
+
+        def camera_origin(center: float, size: float, origin: float, extent: float) -> float:
+            if size >= extent:
+                return origin + (extent - size) / 2
+            return max(origin, min(center - size / 2, origin + extent - size))
+
+        target_x = camera_origin(target_center[0], view_w, room_x, room_w)
+        target_y = camera_origin(target_center[1], view_h, room_y, room_h)
+        if self._camera_room != room_key or self._camera_scale <= 0:
+            self._camera_room = room_key
+            self._camera_scale = base_scale
+            base_view_w = viewport.width / base_scale
+            base_view_h = viewport.height / base_scale
+            self._camera_x = camera_origin(
+                scene.player_position[0], base_view_w, room_x, room_w
+            )
+            self._camera_y = camera_origin(
+                scene.player_position[1], base_view_h, room_y, room_h
+            )
+        blend = 1.0 - math.exp(-7.0 * max(0.0, delta_seconds))
+        self._camera_scale += (target_scale - self._camera_scale) * blend
+        view_w = viewport.width / max(0.01, self._camera_scale)
+        view_h = viewport.height / max(0.01, self._camera_scale)
+        target_x = camera_origin(target_center[0], view_w, room_x, room_w)
+        target_y = camera_origin(target_center[1], view_h, room_y, room_h)
+        self._camera_x += (target_x - self._camera_x) * blend
+        self._camera_y += (target_y - self._camera_y) * blend
+        scale = self._camera_scale
+        camera_x, camera_y = self._camera_x, self._camera_y
         view_w, view_h = viewport.width / scale, viewport.height / scale
-        camera_x = max(room_x, min(scene.player_position[0] - view_w / 2, room_x + room_w - view_w))
-        camera_y = max(room_y, min(scene.player_position[1] - view_h / 2, room_y + room_h - view_h))
         pygame.draw.rect(self.screen, (23, 31, 35), viewport)
-        self._draw_perspective_floor(viewport)
+        appearance = state.get_room_customization(scene.current_room)
+        wall_finish = WALL_FINISH_BY_ID[appearance["wall_style"]]
+        self._draw_square_office_floor(
+            viewport,
+            scene.room.bounds,
+            camera_x,
+            camera_y,
+            scale,
+            floor_number=scene.current_floor,
+        )
         def point(position: tuple[int, int]) -> tuple[int, int]:
-            return (viewport.x + int((position[0] - camera_x) * scale),
-                    viewport.y + int((position[1] - camera_y) * scale))
+            return (
+                viewport.x + int((position[0] - camera_x) * scale),
+                viewport.y + int((position[1] - camera_y) * scale),
+            )
         # Keep the architecture legible at close camera distances. Repeating
         # the tiny source wall tile becomes visual noise and collides with the
         # room label, so use a clean structural beam instead.
         beam = pygame.Rect(viewport.x + 8, viewport.y, viewport.width - 16, 42)
-        pygame.draw.rect(self.screen, (29, 52, 54), beam)
-        pygame.draw.line(self.screen, (164, 201, 158), beam.topleft, beam.topright, 2)
-        pygame.draw.line(self.screen, (74, 112, 100), beam.bottomleft, beam.bottomright, 2)
+        pygame.draw.rect(self.screen, wall_finish.beam, beam)
+        pygame.draw.line(self.screen, wall_finish.edge, beam.topleft, beam.topright, 2)
+        pygame.draw.line(self.screen, wall_finish.detail, beam.bottomleft, beam.bottomright, 2)
         for x in range(beam.left + 10, beam.right, 34):
-            pygame.draw.line(self.screen, (55, 87, 82), (x, beam.top + 6), (x, beam.bottom - 5), 1)
+            pygame.draw.line(
+                self.screen,
+                wall_finish.detail,
+                (x, beam.top + 6),
+                (x, beam.bottom - 5),
+                1,
+            )
         lower_beam = pygame.Rect(viewport.x + 8, viewport.bottom - 13, viewport.width - 16, 13)
-        pygame.draw.rect(self.screen, (48, 67, 62), lower_beam)
-        pygame.draw.line(self.screen, (164, 201, 158), lower_beam.topleft, lower_beam.topright, 2)
-        self.text(scene.room.label, (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
-        self.text("WASD / ARROWS  MOVE   E  INTERACT", (viewport.right - 290, viewport.y + 19), self.font_mono, (180, 220, 178))
+        pygame.draw.rect(self.screen, wall_finish.lower_beam, lower_beam)
+        pygame.draw.line(
+            self.screen,
+            wall_finish.edge,
+            lower_beam.topleft,
+            lower_beam.topright,
+            2,
+        )
+        location_label = (
+            f"BASEMENT B{scene.basement_level}"
+            if scene.is_basement
+            else f"FLOOR {scene.current_floor:02d} / BASE"
+        )
+        self.text(location_label, (viewport.x + 18, viewport.y + 14), self.font_lg, Palette.GLASS_BRIGHT)
 
-        # Decorative room composition uses real furniture sprites, while the
-        # interaction registry remains the sole authority for object behavior.
-        placements = {
-            "lobby": [("furniture/BOOKSHELF/BOOKSHELF.png", (900, 1850)),
-                      ("furniture/LARGE_PLANT/LARGE_PLANT.png", (2500, 1850)),
-                      ("furniture/SOFA/SOFA_FRONT.png", (1650, 2450)),
-                      ("furniture/WHITEBOARD/WHITEBOARD.png", (2250, 2200))],
-            "recreation": [("furniture/SOFA/SOFA_FRONT.png", (1200, 4200)),
-                           ("furniture/PLANT/PLANT.png", (8500, 4200)),
-                           ("furniture/BOOKSHELF/BOOKSHELF.png", (4600, 4300))],
-            "executive": [("furniture/BOOKSHELF/BOOKSHELF.png", (2450, 6400)),
-                          ("furniture/PLANT/PLANT.png", (2450, 7000)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (1100, 6400))],
-            "public": [("furniture/BOOKSHELF/BOOKSHELF.png", (4550, 6400)),
-                       ("furniture/PLANT/PLANT.png", (4550, 7000)),
-                       ("furniture/WHITEBOARD/WHITEBOARD.png", (3200, 6400))],
-            "office_03": [("furniture/BOOKSHELF/BOOKSHELF.png", (6650, 6400)),
-                          ("furniture/PLANT/PLANT.png", (6650, 7000)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (5300, 6400))],
-            "office_04": [("furniture/BOOKSHELF/BOOKSHELF.png", (8750, 6400)),
-                          ("furniture/PLANT/PLANT.png", (8750, 7000)),
-                          ("furniture/WHITEBOARD/WHITEBOARD.png", (7400, 6400))],
-        }
-        for asset, position in placements.get(scene.current_room, []):
+        content_clip = pygame.Rect(
+            viewport.x,
+            viewport.y + 43,
+            viewport.width,
+            viewport.height - 56,
+        )
+        previous_clip = self.screen.get_clip()
+        self.screen.set_clip(content_clip)
+
+        # Personal decor is visual-only. The scene's object registry remains
+        # the authority for interaction and collision.
+        placements = room_decor_placements(
+            scene.current_room,
+            scene.room.bounds,
+            appearance["decor_style"],
+        )
+        for asset, position in placements:
             screen_position = point(position)
             depth = max(0.72, min(1.28, 0.72 + (screen_position[1] - viewport.top) / max(1, viewport.height) * 0.56))
             self._draw_sprite_shadow(screen_position, depth)
@@ -233,57 +344,473 @@ class SolarPunkRenderer:
         for item in scene.objects.objects:
             if item.room != scene.current_room:
                 continue
-            ix, iy = point(item.position)
+            ix, iy = point(item.visual_position)
             depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
             self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale, depth)
+            if item.kind in {"business_suite", "business_kiosk"}:
+                label = item.label.upper()[:27]
+                label_surface = self.font_sm.render(label, True, Palette.INK)
+                tag = pygame.Rect(ix - label_surface.get_width() // 2 - 5, iy - 40, label_surface.get_width() + 10, 18)
+                pygame.draw.rect(self.screen, (228, 234, 211), tag, border_radius=3)
+                pygame.draw.rect(self.screen, (73, 109, 94), tag, 1, border_radius=3)
+                self.screen.blit(label_surface, (tag.x + 5, tag.y + 2))
             if item == scene.nearby_object:
                 pygame.draw.circle(self.screen, (255, 224, 112), (ix, iy), 20, 2)
                 self.text("[E] " + item.label, (ix + 18, iy - 24), self.font_sm, Palette.SUN)
+        self._draw_office_workstations(point, scene, scale)
+        self._draw_office_npcs(point, scene, state, scale)
+        self._draw_automation_npcs(point, scene, scale)
+        self._draw_basement_actors(point, scene)
         if scene.velocity != (0.0, 0.0):
             vx, vy = scene.velocity
             self._facing = "right" if abs(vx) > abs(vy) and vx > 0 else "left" if abs(vx) > abs(vy) else "down" if vy > 0 else "up"
+        player_position = scene.player_position
+        player_moving = self._actor_is_moving("player", player_position)
+        player_moving = player_moving and self._last_player_room == scene.current_room
+        self._last_player_room = scene.current_room
+        if player_moving:
             self._anim_tick += 1
-            self._motion_clock += 0.12
-        else:
-            self._motion_clock += 0.035
         self._draw_player(
-            *point(scene.player_position),
+            *point(player_position),
             scale=scale,
-            moving=scene.velocity != (0.0, 0.0),
+            moving=player_moving,
+            action=scene.player_action,
+            action_elapsed=scene.player_action_elapsed,
         )
+        self.screen.set_clip(previous_clip)
 
-    def _draw_perspective_floor(self, viewport: pygame.Rect) -> None:
-        """Draw a warm pseudo-3D floor plane with a real vanishing point."""
-        floor = viewport.inflate(-18, -28)
-        horizon_y = floor.top + int(floor.height * 0.16)
-        vanishing_point = (floor.centerx, horizon_y)
-        bands = 15
-        for index in range(bands):
-            start = index / bands
-            end = (index + 1) / bands
-            y0 = horizon_y + int((floor.bottom - horizon_y) * (start ** 1.65))
-            y1 = horizon_y + int((floor.bottom - horizon_y) * (end ** 1.65))
-            color = ((194, 160, 108), (208, 176, 120), (184, 149, 100))[index % 3]
-            pygame.draw.rect(self.screen, color, (floor.left, y0, floor.width, max(2, y1 - y0)))
-            pygame.draw.line(self.screen, (151, 116, 78), (floor.left, y1), (floor.right, y1), 1)
+    def _draw_office_npcs(
+        self,
+        point: object,
+        scene: TowerScene,
+        state: OfficeState,
+        scale: float,
+    ) -> None:
+        """Place the office roster into the active room as visible NPCs."""
+        character_assets = (
+            "characters/char_1.png",
+            "characters/char_2.png",
+            "characters/char_3.png",
+            "characters/char_4.png",
+            "characters/char_5.png",
+        )
+        for index, worker in enumerate(state.roster.workers[: len(character_assets)]):
+            pose = scene.npc_pose(scene.current_room, index)
+            if pose is None:
+                continue
+            (npc_x, npc_y), facing = pose
+            screen_x, screen_y = point((npc_x, npc_y))
+            character_variant = index % 7
+            moving = self._actor_is_moving(f"worker:{index}:{worker.name}", (npc_x, npc_y))
+            self._draw_npc(
+                screen_x,
+                screen_y,
+                worker.name,
+                worker.accent,
+                scale,
+                facing=facing,
+                character_variant=character_variant,
+                animation_tick=int(scene.npc_motion_seconds * 60),
+                moving=moving,
+                character_asset=character_assets[index],
+            )
 
-        for ratio in (0.04, 0.18, 0.34, 0.50, 0.66, 0.82, 0.96):
-            bottom_x = floor.left + int(floor.width * ratio)
-            pygame.draw.line(self.screen, (165, 128, 84), vanishing_point, (bottom_x, floor.bottom), 1)
+    def _draw_automation_npcs(
+        self,
+        point: object,
+        scene: TowerScene,
+        scale: float,
+    ) -> None:
+        """Render linked automation roles as inspectable, moving coworkers."""
+        nearby = scene.nearby_automation_character
+        for index, agent in enumerate(scene.automation_character_states()):
+            world_position = (int(agent["x"]), int(agent["y"]))
+            screen_x, screen_y = point(world_position)
+            raw_accent = agent.get("accent")
+            accent = (
+                tuple(int(channel) for channel in raw_accent)
+                if isinstance(raw_accent, (list, tuple))
+                else (146, 175, 161)
+            )
+            if len(accent) != 3:
+                accent = (146, 175, 161)
+            enabled = agent.get("enabled")
+            sync_state = agent.get("syncState")
+            if enabled is True:
+                label, label_color = "ENABLED", accent
+            elif enabled is False:
+                label, label_color = "PAUSED", (193, 197, 174)
+            elif sync_state == "connecting":
+                label, label_color = "SYNCING", (205, 173, 113)
+            elif sync_state == "unlinked":
+                label, label_color = "UNLINKED", (173, 184, 166)
+            else:
+                label, label_color = "UNAVAILABLE", (196, 150, 125)
+            character_variant = index % 7
+            moving = self._actor_is_moving(
+                f"automation:{agent.get('domain', index)}",
+                world_position,
+            )
+            self._draw_npc(
+                screen_x,
+                screen_y,
+                str(agent.get("name", "AUTO")),
+                accent,
+                scale,
+                facing=str(agent.get("facing", "down")),
+                character_variant=character_variant,
+                animation_tick=int(scene.npc_motion_seconds * 60),
+                moving=moving,
+                character_asset=str(agent.get("sprite", "characters/char_1.png")),
+            )
+            self.text(label, (screen_x - 40, screen_y + 12), self.font_sm, label_color)
+            if nearby is not None and nearby.domain == agent.get("domain"):
+                pygame.draw.circle(self.screen, (255, 224, 112), (screen_x, screen_y), 22, 2)
+                self.text(
+                    f"[E] INSPECT {agent.get('name', 'AUTO')}",
+                    (screen_x + 18, screen_y - 25),
+                    self.font_sm,
+                    Palette.SUN,
+                )
 
-        # Soft daylight pools keep the starting state optimistic and alive.
-        glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        pygame.draw.circle(glow, (255, 226, 150, 30), (floor.left + 130, horizon_y + 80), 110)
-        pygame.draw.circle(glow, (115, 220, 205, 24), (floor.right - 150, horizon_y + 105), 145)
-        self.screen.blit(glow, (0, 0))
+    def _actor_is_moving(self, actor_id: str, position: tuple[int, int]) -> bool:
+        previous = self._last_actor_positions.get(actor_id)
+        self._last_actor_positions[actor_id] = position
+        return previous is not None and previous != position
 
-        pygame.draw.rect(self.screen, (52, 65, 58), viewport, width=max(8, int(28 * 0.34)))
+    def _draw_npc(
+        self,
+        x: int,
+        y: int,
+        name: str,
+        accent: tuple[int, int, int],
+        scale: float,
+        *,
+        facing: str,
+        character_variant: int,
+        animation_tick: int,
+        moving: bool,
+        character_asset: str,
+    ) -> None:
+        """Draw a moving teammate with the same stable sprite path as the player."""
+        variant, offset_x, offset_y = character_pose(
+            character_variant,
+            animation_tick,
+            moving=moving,
+        )
+        rendered, bounds, sprite_scale = self._character_sprite(
+            facing,
+            variant,
+            scale,
+            npc=True,
+            character_asset=character_asset,
+        )
+        if rendered is not None and bounds is not None:
+            self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
+            self.screen.blit(
+                rendered,
+                (
+                    round(x - (bounds.left + bounds.width / 2.0)) + offset_x,
+                    y + 7 - bounds.bottom + offset_y,
+                ),
+            )
+            label_y = y + 7 - bounds.bottom - 15
+        else:
+            label_y = y - 52
+        pygame.draw.circle(self.screen, accent, (x, label_y + 5), 4)
+        self.text(name.upper()[:14], (x - 34, label_y - 8), self.font_mono, accent)
+
+    def _draw_basement_actors(self, point: object, scene: TowerScene) -> None:
+        if not scene.is_basement or scene.basement_snapshot is None:
+            return
+        snapshot = scene.basement_snapshot
+        building = snapshot.get("building")
+        if isinstance(building, dict):
+            vitals = (
+                f"POWER {building.get('powerCondition', 0)}%"
+                f"  WATER {building.get('plumbingCondition', 0)}%"
+                f"  UPKEEP {building.get('upkeepCondition', 0)}%"
+            )
+            self.text(vitals, (28, 122), self.font_mono, Palette.MATRIX_GREEN)
+
+        operations = snapshot.get("towerOperations")
+        if isinstance(operations, dict):
+            player = snapshot.get("player")
+            carried = player.get("carriedTrash", 0) if isinstance(player, dict) else 0
+            status = (
+                f"TRASH {operations.get('accumulatedTrash', 0)}"
+                f"  LOADING {operations.get('incomingSupplyCrates', 0)}"
+                f"  B4 STOCK {operations.get('storedSupplyCrates', 0)}"
+                f"  CARRY {carried}"
+            )
+            self.text(status, (28, 146), self.font_mono, Palette.MATRIX_DIM)
+
+        crew = snapshot.get("npcCrew", [])
+        if isinstance(crew, list):
+            for member in crew:
+                if not isinstance(member, dict):
+                    continue
+                x, y = point((int(member["x"]), int(member["y"])))
+                pygame.draw.ellipse(self.screen, (17, 22, 20), (x - 10, y + 6, 20, 7))
+                pygame.draw.circle(self.screen, (217, 176, 130), (x, y - 7), 5)
+                pygame.draw.rect(self.screen, (82, 145, 112), (x - 6, y - 2, 12, 14), border_radius=3)
+                label = str(member.get("label", "STAFF")).split(" / ", 1)[0][:14].upper()
+                self.text(label, (x - 34, y - 25), self.font_mono, Palette.MATRIX_DIM)
+
+        pests = snapshot.get("pests", [])
+        if isinstance(pests, list):
+            for pest in pests:
+                if not isinstance(pest, dict) or pest.get("status") == "sold":
+                    continue
+                x, y = point((int(pest["x"]), int(pest["y"])))
+                active = pest.get("status") == "active"
+                claimed = pest.get("claimedByYou") is True
+                color = Palette.CORAL if active else (
+                    Palette.MATRIX_GREEN if claimed else (132, 143, 137)
+                )
+                width = max(12, int(22 * max(0.5, min(1.5, self._camera_scale))))
+                pygame.draw.ellipse(
+                    self.screen,
+                    (15, 18, 17),
+                    (x - width // 2, y + 3, width, max(6, width // 3)),
+                )
+                pygame.draw.ellipse(
+                    self.screen,
+                    color,
+                    (x - width // 2, y - width // 3, width, max(8, width // 2)),
+                )
+                label = (
+                    f"{str(pest.get('kind', 'pest')).upper()} "
+                    f"{pest.get('health', 0)}/{pest.get('maxHealth', 0)}"
+                    if active
+                    else ("CARRY" if claimed else "CARCASS")
+                )
+                self.text(label, (x - 42, y - width // 2 - 20), self.font_mono, color)
+
+    def _draw_office_workstations(
+        self,
+        point: object,
+        scene: TowerScene,
+        scale: float,
+    ) -> None:
+        """Build the office around real desk, chair, and PC assets."""
+        layouts = {
+            "executive": (
+                # Executive workstations are registry-owned composite objects.
+            ),
+            "public": (
+                ((3_260, 5_950), (3_260, 6_210), (3_260, 5_850), "cushioned"),
+                ((4_440, 5_950), (4_440, 6_210), (4_440, 5_850), "wooden"),
+                ((3_260, 7_020), (3_260, 6_760), (3_260, 7_110), "wooden"),
+                ((4_440, 7_020), (4_440, 6_760), (4_440, 7_110), "cushioned"),
+            ),
+            "office_03": (
+                ((5_360, 5_950), (5_360, 6_210), (5_360, 5_850), "cushioned"),
+                ((6_540, 5_950), (6_540, 6_210), (6_540, 5_850), "wooden"),
+                ((5_360, 7_020), (5_360, 6_760), (5_360, 7_110), "wooden"),
+                ((6_540, 7_020), (6_540, 6_760), (6_540, 7_110), "cushioned"),
+            ),
+            "office_04": (
+                ((7_460, 5_950), (7_460, 6_210), (7_460, 5_850), "cushioned"),
+                ((8_640, 5_950), (8_640, 6_210), (8_640, 5_850), "wooden"),
+                ((7_460, 7_020), (7_460, 6_760), (7_460, 7_110), "wooden"),
+                ((8_640, 7_020), (8_640, 6_760), (8_640, 7_110), "cushioned"),
+            ),
+        }
+        layout = layouts.get(scene.current_room)
+        if layout is None:
+            return
+
+        def screen_position(position: tuple[int, int]) -> tuple[int, int]:
+            return point(position)
+
+        # Low panels make the repeated desk clusters read as cubicles without
+        # inventing a non-existent cubicle sprite. The executive room stays a
+        # single private office and uses its live desk object instead.
+
+        for desk_position, chair_position, _pc_position, chair_style in layout:
+            desk_screen = screen_position(desk_position)
+            chair_screen = screen_position(chair_position)
+            # PC_FRONT_ON is a tabletop asset. Anchor it to the desk rather
+            # than treating it as a floor prop; the previous -100 world-unit
+            # offset left the monitor visibly floating above the workstation.
+            pc_screen = screen_position((desk_position[0], desk_position[1] - 30))
+            depth = max(0.72, min(1.28, 0.72 + (desk_screen[1] - 68) / 520 * 0.56))
+            chair_asset = (
+                "furniture/CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png"
+                if chair_style == "cushioned"
+                else "furniture/WOODEN_CHAIR/WOODEN_CHAIR_FRONT.png"
+            )
+            self._draw_sprite_shadow(chair_screen, depth)
+            self._blit_furniture(chair_asset, chair_screen, scale, depth_scale=depth)
+            self._draw_sprite_shadow(desk_screen, depth)
+            self._blit_furniture("furniture/DESK/DESK_FRONT.png", desk_screen, scale, depth_scale=depth)
+            self._blit_furniture("furniture/PC/PC_FRONT_ON_1.png", pc_screen, scale, depth_scale=depth)
+            lamp_screen = screen_position(
+                (desk_position[0] - 100, desk_position[1] - 58)
+            )
+            self._draw_tower_object(
+                "desk_lamp",
+                lamp_screen[0],
+                lamp_screen[1],
+                False,
+                scale,
+                depth,
+            )
+
+    def _draw_square_office_floor(
+        self,
+        viewport: pygame.Rect,
+        world_bounds: tuple[int, int, int, int],
+        camera_x: float,
+        camera_y: float,
+        scale: float,
+        *,
+        floor_number: int = 1,
+    ) -> None:
+        """Draw a massive world-anchored floor through a straight top-down camera."""
+        world_x, world_y, world_w, world_h = world_bounds
+        is_lobby = floor_number == 1
+        is_premium = floor_number >= 63
         pygame.draw.rect(
             self.screen,
-            (151, 194, 143),
-            viewport.inflate(-max(8, int(28 * 0.34)), -max(8, int(28 * 0.34))),
-            width=2,
+            (188, 194, 188) if is_lobby else (27, 38, 42) if is_premium else (174, 179, 175),
+            viewport,
         )
+        old_clip = self.screen.get_clip()
+        self.screen.set_clip(viewport)
+
+        def world_rect(rect: tuple[int, int, int, int]) -> pygame.Rect:
+            x, y, width, height = rect
+            return pygame.Rect(
+                viewport.x + int((x - camera_x) * scale),
+                viewport.y + int((y - camera_y) * scale),
+                max(1, int(width * scale)),
+                max(1, int(height * scale)),
+            )
+
+        center_x = world_x + world_w // 2
+        center_y = world_y + world_h // 2
+
+        base_layout = FLOOR_PLAN["baseLayout"]
+        if is_lobby:
+            # The lobby is a separate arrival scene: one broad reception
+            # chamber, lounge seating, and the lift core instead of office
+            # rectangles.
+            lobby = world_rect((center_x - 9_000, center_y - 7_000, 18_000, 14_000))
+            pygame.draw.rect(self.screen, (204, 207, 194), lobby)
+            pygame.draw.rect(self.screen, (80, 101, 92), lobby, max(1, int(34 * scale)))
+            reception = world_rect((center_x - 2_600, center_y - 2_000, 5_200, 1_000))
+            pygame.draw.rect(self.screen, (91, 116, 101), reception)
+            pygame.draw.rect(self.screen, (205, 183, 117), reception, max(1, int(12 * scale)))
+            for seat_x in (center_x - 5_200, center_x - 3_200, center_x + 3_200, center_x + 5_200):
+                lounge = world_rect((seat_x - 550, center_y + 2_000 - 300, 1_100, 600))
+                pygame.draw.rect(self.screen, (111, 133, 120), lounge)
+                pygame.draw.rect(self.screen, (69, 89, 82), lounge, max(1, int(8 * scale)))
+        else:
+            office_fill = (46, 61, 70) if is_premium else (179, 184, 179)
+            office_stroke = (202, 170, 92) if is_premium else (100, 111, 107)
+            hallway_fill = (47, 61, 67) if is_premium else (126, 134, 131)
+            hallway_stroke = (225, 203, 139) if is_premium else (207, 212, 207)
+            # Four individual office rectangles sit around the horizontal and
+            # vertical hallway. The hall stays continuous from the lift core
+            # to every office entrance.
+            for office in base_layout["offices"]:
+                bay = world_rect(tuple(office["bounds"]))
+                pygame.draw.rect(self.screen, office_fill, bay)
+                pygame.draw.rect(self.screen, office_stroke, bay, max(1, int(24 * scale)))
+
+            for hallway_data in base_layout["hallways"]:
+                hallway = world_rect(tuple(hallway_data))
+                pygame.draw.rect(self.screen, hallway_fill, hallway)
+                pygame.draw.rect(self.screen, hallway_stroke, hallway, 2)
+
+        def draw_persian_rug(rug_data: tuple[int, int, int, int]) -> None:
+            rug = world_rect(rug_data)
+            if not rug.colliderect(viewport):
+                return
+            pygame.draw.rect(self.screen, (86, 27, 38), rug)
+            border_1 = rug.inflate(-max(2, int(80 * scale)), -max(2, int(80 * scale)))
+            pygame.draw.rect(self.screen, (207, 154, 67), border_1, max(1, int(34 * scale)))
+            border_2 = border_1.inflate(-max(2, int(120 * scale)), -max(2, int(120 * scale)))
+            pygame.draw.rect(self.screen, (28, 58, 77), border_2)
+            center = border_2.inflate(-max(2, int(150 * scale)), -max(2, int(150 * scale)))
+            pygame.draw.rect(self.screen, (177, 57, 52), center)
+            motif_w = max(5, int(min(180, rug_data[2] // 5) * scale))
+            motif_h = max(5, int(min(180, rug_data[3] // 5) * scale))
+            motif = pygame.Rect(0, 0, motif_w, motif_h)
+            motif.center = rug.center
+            pygame.draw.rect(self.screen, (187, 126, 72), motif)
+            pygame.draw.rect(self.screen, (47, 67, 76), motif.inflate(-2, -2))
+
+            # Quiet woven repeats: low-contrast blocks and border ticks rather
+            # than loud geometric emblems.
+            accent = (157, 91, 68)
+            tick = max(2, int(22 * scale))
+            for x_ratio in (0.25, 0.75):
+                for y_ratio in (0.32, 0.68):
+                    x = border_2.left + int(border_2.width * x_ratio)
+                    y = border_2.top + int(border_2.height * y_ratio)
+                    pygame.draw.rect(
+                        self.screen,
+                        accent,
+                        pygame.Rect(x - tick, y - tick, tick * 2, tick * 2),
+                    )
+            pygame.draw.line(
+                self.screen,
+                (116, 73, 66),
+                (center.left + tick, center.centery),
+                (center.right - tick, center.centery),
+                1,
+            )
+
+        # Persian-inspired runners soften the concrete circulation network.
+        # They are finite floor objects, not a texture repeated across the
+        # entire 100-million-pixel world.
+        horizontal_y = center_y - 350
+        for rug_x in range(center_x - 20_000, center_x + 20_001, 1_800):
+            draw_persian_rug((rug_x - 600, horizontal_y, 1_200, 700))
+        vertical_x = center_x - 350
+        for rug_y in range(center_y - 20_000, center_y + 20_001, 1_800):
+            if abs(rug_y - center_y) < 1_000:
+                continue
+            draw_persian_rug((vertical_x, rug_y - 600, 700, 1_200))
+
+        if is_lobby:
+            elevator_lobby_bounds = tuple(base_layout["elevatorLobby"]["bounds"])
+            elevator_x, elevator_y = center_x, center_y
+        else:
+            elevator_x, elevator_y = tuple(base_layout["elevator"]["position"])
+            elevator_lobby_bounds = (
+                elevator_x - 1_800,
+                elevator_y - 2_200,
+                3_600,
+                4_400,
+            )
+        elevator_lobby = world_rect(elevator_lobby_bounds)
+        pygame.draw.rect(self.screen, (145, 153, 149), elevator_lobby)
+        pygame.draw.rect(self.screen, (92, 104, 100), elevator_lobby, max(1, int(20 * scale)))
+
+        elevator = world_rect((elevator_x - 650, elevator_y - 700, 1_300, 1_400))
+        pygame.draw.rect(self.screen, (48, 63, 62), elevator)
+        pygame.draw.rect(self.screen, (202, 211, 202), elevator, max(1, int(18 * scale)))
+        door_split = elevator.centerx
+        pygame.draw.line(
+            self.screen,
+            (117, 137, 130),
+            (door_split, elevator.top),
+            (door_split, elevator.bottom),
+            max(1, int(8 * scale)),
+        )
+
+        for office in base_layout["offices"]:
+            entrance_x, entrance_y = office["entrance"]
+            entrance = world_rect((entrance_x - 300, entrance_y - 300, 600, 600))
+            pygame.draw.rect(self.screen, (95, 107, 103), entrance)
+
+        self.screen.set_clip(old_clip)
+        pygame.draw.rect(self.screen, (52, 65, 58), viewport, width=9)
+        pygame.draw.rect(self.screen, (151, 194, 143), viewport, width=2)
 
     def _build_floor_tiles(self) -> tuple[pygame.Surface, ...]:
         """Build a small hand-authored tile set around the imported art scale."""
@@ -345,9 +872,9 @@ class SolarPunkRenderer:
                 pygame.draw.circle(self.screen, (226, 170, 91), (x, rect.y + 28), 8)
                 pygame.draw.circle(self.screen, (255, 239, 181), (x - 2, rect.y + 26), 3)
         elif room_id == "executive":
-            pygame.draw.rect(self.screen, (150, 207, 220), (rect.x + 12, rect.y + 29, rect.width - 24, 12), border_radius=4)
-            self._draw_planter(rect.x + 25, rect.bottom - 25)
-            self._draw_planter(rect.right - 25, rect.bottom - 25)
+            # The executive trailer is intentionally reduced to the four
+            # workstations; furniture is the visual focus of this room.
+            return
 
     def _draw_planter(self, x: int, y: int) -> None:
         pygame.draw.ellipse(self.screen, (185, 154, 104), (x - 10, y - 4, 20, 9))
@@ -369,10 +896,8 @@ class SolarPunkRenderer:
             "desk": "furniture/DESK/DESK_FRONT.png",
             "chair": "furniture/CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png",
             "tv": "furniture/PC/PC_FRONT_ON_1.png",
-            "window": "furniture/WHITEBOARD/WHITEBOARD.png",
             "arcade": "furniture/PC/PC_FRONT_ON_2.png",
             "vending_machine": "furniture/PC/PC_FRONT_ON_3.png",
-            "crt_terminal": "furniture/PC/PC_FRONT_ON_1.png",
             "telephone": "furniture/COFFEE/COFFEE.png",
         }
         if kind == "desk_lamp":
@@ -392,8 +917,262 @@ class SolarPunkRenderer:
         if nearby:
             pygame.draw.circle(self.screen, (255, 229, 132), (x, y), 17)
         if kind == "window":
-            pygame.draw.rect(self.screen, (91, 181, 209), (x - 12, y - 6, 24, 12), border_radius=2)
-            pygame.draw.line(self.screen, (230, 249, 244), (x, y - 5), (x, y + 5), 1)
+            width = max(48, int(280 * scale))
+            height = max(24, int(120 * scale))
+            window = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (55, 107, 122), window, border_radius=3)
+            pygame.draw.rect(self.screen, (154, 218, 222), window.inflate(-6, -6), border_radius=2)
+            pygame.draw.rect(self.screen, (43, 73, 77), window, width=max(2, int(8 * scale)), border_radius=3)
+            pygame.draw.line(self.screen, (43, 89, 96), window.midtop, window.midbottom, max(2, int(4 * scale)))
+            pygame.draw.line(self.screen, (43, 89, 96), window.midleft, window.midright, max(2, int(4 * scale)))
+            pygame.draw.line(
+                self.screen,
+                (224, 245, 224),
+                (window.left + 8, window.top + 8),
+                (window.right - 10, window.top + 8),
+                max(1, int(2 * scale)),
+            )
+        elif kind == "trash_can":
+            width = max(12, int(360 * scale))
+            height = max(16, int(480 * scale))
+            body = pygame.Rect(
+                x - width // 2,
+                y - height // 2 + 3,
+                width,
+                height - 5,
+            )
+            pygame.draw.ellipse(
+                self.screen,
+                (38, 49, 44),
+                (body.left - 1, body.bottom - 5, width + 2, 9),
+            )
+            pygame.draw.rect(
+                self.screen,
+                (71, 96, 81),
+                body,
+                border_radius=max(2, int(5 * scale)),
+            )
+            pygame.draw.rect(
+                self.screen,
+                (42, 62, 53),
+                body,
+                width=1,
+                border_radius=max(2, int(5 * scale)),
+            )
+            lid = pygame.Rect(body.left - 2, body.top - 2, width + 4, max(6, int(8 * scale)))
+            pygame.draw.ellipse(self.screen, (166, 151, 113), lid)
+            pygame.draw.ellipse(
+                self.screen,
+                (42, 53, 48),
+                lid.inflate(-max(4, int(8 * scale)), -max(3, int(5 * scale))),
+            )
+            pygame.draw.line(
+                self.screen,
+                (173, 158, 120),
+                (body.left + 3, body.top + 5),
+                (body.left + 3, body.bottom - 4),
+                1,
+            )
+        elif kind == "fire_extinguisher":
+            width = max(7, int(170 * scale))
+            height = max(12, int(310 * scale))
+            body = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (122, 39, 33), (body.left, body.bottom - 5, width, 10))
+            pygame.draw.rect(self.screen, (181, 54, 45), body, border_radius=max(2, int(5 * scale)))
+            pygame.draw.rect(self.screen, (227, 216, 190), body.inflate(-max(4, width // 3), -max(4, height // 2)))
+            pygame.draw.rect(self.screen, (71, 73, 61), (x - width // 4, body.top - 5, width // 2, 6))
+            pygame.draw.line(self.screen, (47, 51, 44), (body.right, body.top + 5), (body.right + 5, y), 2)
+        elif kind == "temple_tree":
+            planter_radius = max(8, int(180 * scale))
+            pygame.draw.ellipse(
+                self.screen,
+                (91, 67, 48),
+                (x - planter_radius, y + planter_radius // 2, planter_radius * 2, planter_radius // 2),
+            )
+            pygame.draw.line(self.screen, (126, 91, 59), (x, y + 4), (x, y - planter_radius), max(3, int(18 * scale)))
+            canopy = max(14, int(290 * scale))
+            for dx, dy, radius in ((0, -canopy, canopy), (-canopy // 2, -canopy // 2, canopy * 3 // 4), (canopy // 2, -canopy // 2, canopy * 3 // 4), (0, -canopy * 3 // 2, canopy * 2 // 3)):
+                pygame.draw.circle(self.screen, (71, 104, 72), (x + dx, y + dy), radius)
+                pygame.draw.circle(self.screen, (101, 133, 90), (x + dx - radius // 4, y + dy - radius // 4), max(2, radius // 3))
+        elif kind == "reflection_screen":
+            width = max(28, int(760 * scale))
+            height = max(16, int(310 * scale))
+            screen = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (81, 104, 89), screen, border_radius=3)
+            pygame.draw.rect(self.screen, (164, 153, 121), screen, max(2, int(12 * scale)), border_radius=3)
+            pygame.draw.line(self.screen, (189, 192, 165), screen.midtop, screen.midbottom, max(1, int(3 * scale)))
+        elif kind == "meditation_cushion":
+            radius = max(8, int(270 * scale))
+            pygame.draw.ellipse(self.screen, (79, 68, 59), (x - radius, y - radius // 2, radius * 2, radius))
+            pygame.draw.ellipse(self.screen, (147, 128, 100), (x - radius + 2, y - radius // 2, radius * 2 - 4, radius - 5), max(1, int(5 * scale)))
+        elif kind == "temple_audio_control":
+            panel = pygame.Rect(x - max(10, int(170 * scale)), y - max(8, int(110 * scale)), max(20, int(340 * scale)), max(16, int(220 * scale)))
+            pygame.draw.rect(self.screen, (66, 83, 70), panel, border_radius=2)
+            pygame.draw.rect(self.screen, (196, 180, 139), panel, max(1, int(5 * scale)), border_radius=2)
+            pygame.draw.circle(self.screen, (171, 137, 78), (panel.centerx - panel.width // 5, panel.centery), max(2, panel.width // 10))
+            pygame.draw.circle(self.screen, (50, 59, 51), (panel.centerx + panel.width // 5, panel.centery), max(2, panel.width // 10))
+        elif kind == "chapel_pew":
+            width = max(30, int(520 * scale))
+            height = max(12, int(150 * scale))
+            bench = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (114, 78, 51), bench, border_radius=3)
+            pygame.draw.rect(self.screen, (162, 119, 75), (bench.left, bench.top - max(7, height // 2), width, max(8, height // 3)), border_radius=2)
+            for leg_x in (bench.left + width // 6, bench.right - width // 6):
+                pygame.draw.line(self.screen, (80, 57, 42), (leg_x, bench.bottom - 1), (leg_x, bench.bottom + height // 2), max(2, int(8 * scale)))
+        elif kind == "chapel_altar":
+            width = max(40, int(640 * scale))
+            top = pygame.Rect(x - width // 2, y - max(10, int(100 * scale)), width, max(12, int(120 * scale)))
+            pygame.draw.rect(self.screen, (117, 81, 52), top, border_radius=2)
+            pygame.draw.rect(self.screen, (188, 156, 101), top.inflate(5, 3), max(1, int(5 * scale)))
+            pygame.draw.line(self.screen, (224, 211, 177), (top.left + width // 5, top.bottom), (top.right - width // 5, top.bottom), max(2, int(18 * scale)))
+        elif kind == "library_shelf":
+            width = max(30, int(540 * scale))
+            height = max(38, int(520 * scale))
+            shelf = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (105, 73, 49), shelf)
+            colors = ((113, 131, 103), (155, 101, 73), (81, 116, 130))
+            for row in range(4):
+                row_y = shelf.top + 8 + row * (height - 16) // 4
+                pygame.draw.line(self.screen, (188, 153, 102), (shelf.left, row_y), (shelf.right, row_y), max(2, int(8 * scale)))
+                for column in range(6):
+                    book_x = shelf.left + 10 + column * max(3, (width - 20) // 6)
+                    book_height = max(8, int((105 + (row + column) % 3 * 22) * scale))
+                    pygame.draw.rect(self.screen, colors[(row + column) % len(colors)], (book_x, row_y - book_height, max(3, int(42 * scale)), book_height))
+        elif kind == "reading_table":
+            radius = max(18, int(320 * scale))
+            pygame.draw.ellipse(self.screen, (106, 74, 49), (x - radius, y - radius // 2, radius * 2, radius))
+            pygame.draw.ellipse(self.screen, (172, 137, 90), (x - radius + 4, y - radius // 2 + 2, radius * 2 - 8, radius - 8), max(2, int(8 * scale)))
+            pygame.draw.rect(self.screen, (224, 211, 176), (x - radius // 4, y - radius // 5, radius // 2, max(3, int(28 * scale))), border_radius=2)
+        elif kind == "museum_case":
+            width = max(35, int(390 * scale))
+            height = max(24, int(250 * scale))
+            case = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (116, 91, 63), case.inflate(0, max(4, height // 4)), border_radius=2)
+            pygame.draw.rect(self.screen, (153, 184, 173), case, max(1, int(5 * scale)), border_radius=2)
+            pygame.draw.rect(self.screen, (208, 191, 148), (x - width // 8, y - height // 5, width // 4, max(4, height // 3)), border_radius=2)
+        elif kind == "restroom_stall":
+            width = max(34, int(420 * scale))
+            height = max(38, int(520 * scale))
+            stall = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (115, 118, 98), stall, border_radius=3)
+            pygame.draw.rect(self.screen, (42, 57, 49), stall, 2, border_radius=3)
+            door = pygame.Rect(stall.x + 4, stall.y + 5, width - 8, height - 10)
+            pygame.draw.rect(self.screen, (154, 144, 111), door, border_radius=2)
+            pygame.draw.rect(self.screen, (63, 76, 62), door, 1, border_radius=2)
+            pygame.draw.line(
+                self.screen,
+                (204, 193, 153),
+                (door.x + 5, door.y + 4),
+                (door.right - 5, door.y + 4),
+                1,
+            )
+            pygame.draw.circle(self.screen, (54, 72, 56), (door.right - 5, door.centery), 2)
+            pygame.draw.rect(
+                self.screen,
+                (96, 124, 92) if not nearby else Palette.SUN,
+                (stall.left + 4, stall.top - 5, max(8, width - 8), 3),
+            )
+        elif kind == "shipping_station":
+            width = max(38, int(520 * scale))
+            height = max(30, int(380 * scale))
+            pallet = pygame.Rect(x - width // 2, y + height // 5, width, max(5, int(12 * scale)))
+            pygame.draw.rect(self.screen, (104, 76, 53), pallet, border_radius=2)
+            for offset in (-0.3, 0.0, 0.3):
+                crate_width = max(12, int(width * 0.31))
+                crate_height = max(18, int(height * 0.7))
+                crate_x = int(x + width * offset - crate_width / 2)
+                crate_y = pallet.top - crate_height
+                crate = pygame.Rect(crate_x, crate_y, crate_width, crate_height)
+                pygame.draw.rect(self.screen, (157, 113, 70), crate, border_radius=2)
+                pygame.draw.rect(self.screen, (74, 64, 48), crate, 1, border_radius=2)
+                pygame.draw.line(
+                    self.screen,
+                    (198, 157, 96),
+                    (crate.centerx, crate.top + 2),
+                    (crate.centerx, crate.bottom - 2),
+                    1,
+                )
+        elif kind == "loading_gate":
+            width = max(40, int(600 * scale))
+            height = max(34, int(460 * scale))
+            gate = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (49, 65, 59), gate, border_radius=2)
+            pygame.draw.rect(self.screen, (143, 149, 125), gate, 2, border_radius=2)
+            for offset in range(8, width - 3, max(8, int(22 * scale))):
+                pygame.draw.line(
+                    self.screen,
+                    (117, 130, 111),
+                    (gate.x + offset, gate.y + 4),
+                    (gate.x + offset, gate.bottom - 4),
+                    1,
+                )
+            pygame.draw.rect(
+                self.screen,
+                (194, 147, 69) if not nearby else Palette.SUN,
+                (gate.left, gate.bottom - max(6, int(13 * scale)), width, max(3, int(6 * scale))),
+            )
+        elif kind == "business_suite":
+            width = max(38, int(520 * scale))
+            height = max(24, int(300 * scale))
+            desk = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (66, 79, 62), (desk.x - 2, desk.bottom - 3, desk.width + 4, 9))
+            pygame.draw.rect(self.screen, (150, 116, 76), desk, border_radius=3)
+            pygame.draw.rect(self.screen, (74, 66, 51), desk, 2, border_radius=3)
+            sign = pygame.Rect(desk.x + 5, desk.y - max(12, int(20 * scale)), max(18, width - 10), max(12, int(17 * scale)))
+            pygame.draw.rect(self.screen, (47, 94, 81), sign, border_radius=2)
+            pygame.draw.rect(self.screen, (197, 179, 124) if not nearby else Palette.SUN, sign, 1, border_radius=2)
+        elif kind == "business_kiosk":
+            width = max(18, int(250 * scale))
+            height = max(32, int(470 * scale))
+            kiosk = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (68, 78, 64), (kiosk.x - 4, kiosk.bottom - 5, kiosk.width + 8, 10))
+            pygame.draw.rect(self.screen, (71, 108, 91), kiosk, border_radius=4)
+            pygame.draw.rect(self.screen, (33, 60, 55), kiosk, 2, border_radius=4)
+            screen = pygame.Rect(kiosk.x + 4, kiosk.y + 5, kiosk.width - 8, max(10, int(175 * scale)))
+            pygame.draw.rect(self.screen, (175, 206, 172), screen, border_radius=2)
+            pygame.draw.rect(self.screen, (46, 80, 67), screen, 1, border_radius=2)
+            pygame.draw.circle(self.screen, Palette.SUN if nearby else (198, 185, 134), (kiosk.centerx, kiosk.bottom - 9), 3)
+        elif kind == "yard_gate":
+            width = max(40, int(800 * scale))
+            height = max(20, int(260 * scale))
+            gate = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (120, 137, 114), gate, border_radius=2)
+            pygame.draw.rect(self.screen, (50, 77, 64), gate, 2, border_radius=2)
+            for offset in range(8, width - 3, max(10, int(75 * scale))):
+                pygame.draw.line(self.screen, (54, 82, 68), (gate.x + offset, gate.y + 3), (gate.x + offset, gate.bottom - 3), 1)
+            pygame.draw.line(self.screen, Palette.SUN if nearby else (193, 161, 91), gate.midleft, gate.midright, 2)
+        elif kind == "delivery_truck":
+            width = max(42, int(1_050 * scale))
+            height = max(58, int(1_750 * scale))
+            truck = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (44, 58, 48), (truck.x - 5, truck.bottom - 8, truck.width + 10, 16))
+            pygame.draw.rect(self.screen, (66, 107, 84), truck, border_radius=7)
+            cargo = pygame.Rect(truck.x + 5, truck.y + 7, truck.width - 10, int(truck.height * 0.65))
+            pygame.draw.rect(self.screen, (166, 151, 112), cargo, border_radius=4)
+            pygame.draw.rect(self.screen, (60, 75, 59), cargo, 2, border_radius=4)
+            pygame.draw.rect(self.screen, (117, 162, 171), (truck.x + 6, cargo.bottom + 4, truck.width - 12, truck.height - cargo.height - 12), border_radius=3)
+            for wheel_y in (truck.y + 18, truck.bottom - 18):
+                pygame.draw.rect(self.screen, (35, 42, 36), (truck.left - 4, wheel_y, 7, 16), border_radius=2)
+                pygame.draw.rect(self.screen, (35, 42, 36), (truck.right - 3, wheel_y, 7, 16), border_radius=2)
+        elif kind == "forklift":
+            width = max(30, int(470 * scale))
+            height = max(38, int(680 * scale))
+            body = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.ellipse(self.screen, (43, 54, 45), (body.x - 3, body.bottom - 5, body.width + 6, 10))
+            pygame.draw.rect(self.screen, (215, 169, 73), body, border_radius=5)
+            pygame.draw.rect(self.screen, (55, 68, 52), body, 2, border_radius=5)
+            pygame.draw.rect(self.screen, (62, 86, 74), (body.x + 7, body.y + 8, body.width - 14, int(body.height * 0.43)), border_radius=3)
+            pygame.draw.line(self.screen, (66, 72, 55), (body.left - 7, body.bottom - 7), (body.left - 7, body.bottom + 22), 3)
+            pygame.draw.line(self.screen, (66, 72, 55), (body.left - 7, body.bottom + 20), (body.centerx + 8, body.bottom + 20), 3)
+        elif kind in {"pallet", "supply_crate"}:
+            size = max(18, int(440 * scale))
+            height = max(14, int((260 if kind == "pallet" else 400) * scale))
+            box = pygame.Rect(x - size // 2, y - height // 2, size, height)
+            fill = (127, 92, 58) if kind == "pallet" else (171, 126, 75)
+            pygame.draw.ellipse(self.screen, (51, 56, 43), (box.x - 3, box.bottom - 4, box.width + 6, 9))
+            pygame.draw.rect(self.screen, fill, box, border_radius=2)
+            pygame.draw.rect(self.screen, (66, 59, 43), box, 1, border_radius=2)
+            pygame.draw.line(self.screen, (206, 169, 106), box.midleft, box.midright, 1)
         elif kind in ("elevator", "stairs"):
             pygame.draw.rect(self.screen, (121, 150, 151), (x - 10, y - 12, 20, 24), border_radius=2)
             if kind == "elevator":
@@ -401,7 +1180,51 @@ class SolarPunkRenderer:
             else:
                 for dy in range(-7, 9, 5):
                     pygame.draw.line(self.screen, (239, 236, 214), (x - 6, y + dy), (x + 6, y + dy), 1)
-        elif kind in ("arcade", "vending_machine", "atm", "crt_terminal"):
+        elif kind == "crt_terminal":
+            width = max(46, int(94 * scale))
+            height = max(34, int(68 * scale))
+            case = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (161, 143, 104), case, border_radius=4)
+            pygame.draw.rect(self.screen, (88, 78, 57), case, 2, border_radius=4)
+            bezel = pygame.Rect(case.x + 4, case.y + 3, width - 8, max(17, int(height * 0.57)))
+            pygame.draw.rect(self.screen, (83, 76, 59), bezel, border_radius=3)
+            screen = bezel.inflate(-7, -6)
+            pygame.draw.rect(self.screen, (129, 153, 104), screen, border_radius=2)
+            pygame.draw.line(
+                self.screen,
+                (179, 194, 136),
+                (screen.x + 3, screen.y + 4),
+                (screen.right - 4, screen.y + 4),
+                1,
+            )
+            keyboard = pygame.Rect(case.x + 7, bezel.bottom + 3, width - 14, max(5, height - bezel.height - 9))
+            pygame.draw.rect(self.screen, (103, 91, 68), keyboard, border_radius=2)
+            key_count = 6
+            for key in range(key_count):
+                key_x = keyboard.x + 3 + key * max(3, (keyboard.width - 6) // key_count)
+                pygame.draw.line(self.screen, (190, 176, 137), (key_x, keyboard.y + 2), (key_x, keyboard.bottom - 2), 1)
+            pygame.draw.circle(self.screen, (223, 174, 88), (case.right - 7, case.bottom - 6), 2)
+            pygame.draw.line(self.screen, (119, 103, 73), (case.left + 5, case.bottom + 2), (case.right - 5, case.bottom + 2), 2)
+        elif kind == "pay_phone":
+            width = max(30, int(62 * scale))
+            height = max(60, int(122 * scale))
+            cabinet = pygame.Rect(x - width // 2, y - height // 2, width, height)
+            pygame.draw.rect(self.screen, (190, 160, 115), cabinet, border_radius=4)
+            pygame.draw.rect(self.screen, (69, 84, 74), cabinet, 2, border_radius=4)
+            hood = pygame.Rect(cabinet.x - 2, cabinet.y - 3, width + 4, max(9, int(height * 0.16)))
+            pygame.draw.rect(self.screen, (169, 84, 57), hood, border_radius=3)
+            label = pygame.Rect(cabinet.x + 5, hood.bottom + 4, width - 10, max(8, int(height * 0.16)))
+            pygame.draw.rect(self.screen, (218, 202, 157), label, border_radius=2)
+            pygame.draw.line(self.screen, (74, 82, 66), (label.x + 2, label.centery), (label.right - 2, label.centery), 1)
+            dial = (cabinet.centerx, label.bottom + max(7, int(height * 0.2)))
+            pygame.draw.circle(self.screen, (83, 88, 71), dial, max(4, width // 5))
+            pygame.draw.circle(self.screen, (218, 202, 157), dial, max(2, width // 9), 1)
+            handset_x = cabinet.right - max(5, width // 5)
+            pygame.draw.line(self.screen, (51, 65, 58), (handset_x, cabinet.y + 10), (handset_x, cabinet.y + int(height * 0.39)), max(2, width // 12))
+            pygame.draw.circle(self.screen, (51, 65, 58), (handset_x, cabinet.y + 11), max(3, width // 9))
+            pygame.draw.circle(self.screen, (51, 65, 58), (handset_x, cabinet.y + int(height * 0.39)), max(3, width // 9))
+            pygame.draw.rect(self.screen, (213, 192, 147), (cabinet.x + 4, cabinet.bottom - 13, width - 8, 5), border_radius=1)
+        elif kind in ("arcade", "vending_machine", "atm"):
             pygame.draw.rect(self.screen, (57, 101, 105), (x - 9, y - 13, 18, 25), border_radius=3)
             pygame.draw.rect(self.screen, (117, 205, 210) if kind != "vending_machine" else (238, 185, 89), (x - 6, y - 9, 12, 8), border_radius=1)
             pygame.draw.circle(self.screen, (238, 244, 215), (x, y + 6), 2)
@@ -417,8 +1240,8 @@ class SolarPunkRenderer:
             else:
                 pygame.draw.circle(self.screen, (83, 136, 146), (x, y - 3), 8)
                 pygame.draw.line(self.screen, (52, 89, 91), (x, y + 4), (x, y + 11), 3)
-        elif kind in ("telephone", "pay_phone"):
-            pygame.draw.rect(self.screen, (224, 117, 87) if kind == "pay_phone" else (67, 126, 113), (x - 9, y - 7, 18, 14), border_radius=4)
+        elif kind == "telephone":
+            pygame.draw.rect(self.screen, (67, 126, 113), (x - 9, y - 7, 18, 14), border_radius=4)
             pygame.draw.arc(self.screen, (246, 239, 207), (x - 7, y - 10, 14, 10), 3.3, 6.1, 2)
         elif kind == "tv":
             pygame.draw.rect(self.screen, (60, 88, 86), (x - 12, y - 8, 24, 16), border_radius=3)
@@ -433,27 +1256,99 @@ class SolarPunkRenderer:
         scale: float = 1.0,
         *,
         moving: bool = False,
+        action: str = "stand",
+        action_elapsed: float = 0.0,
     ) -> None:
-        """Draw a real 16-bit character frame, facing the scene's movement."""
-        sheet = self._asset("characters/char_0.png")
-        if sheet:
-            # Character sheets are 7 columns x 4 cardinal rows, 16x24 each.
-            rows = {"down": 0, "left": 1, "right": 2, "up": 3}
-            frame = (self._anim_tick // 3) % 7 if moving else 0
-            crop = sheet.subsurface(pygame.Rect(frame * 16, rows[self._facing] * 24, 16, 24))
-            sprite_scale = min(5.4, max(2.8, scale * 12))
-            size = (max(16, int(16 * sprite_scale)), max(24, int(24 * sprite_scale)))
-            bob = int(math.sin(self._motion_clock * 3.0) * (3 if moving else 1))
+        """Draw one fixed avatar variant with a separate low-amplitude walk pose."""
+        character_variant, step_x, step_y = character_pose(
+            0,
+            self._anim_tick,
+            moving=moving and action == "stand",
+        )
+        rendered, rendered_bounds, sprite_scale = self._character_sprite(
+            self._facing,
+            character_variant,
+            scale,
+            character_asset="characters/char_0.png",
+        )
+        if rendered is not None and rendered_bounds is not None:
+            jump_offset = 0
+            seated_offset_x = 0
+            seated_offset_y = 0
+            if action == "jump":
+                jump_phase = min(1.0, action_elapsed / 0.8)
+                jump_offset = round(-48 * (4 * jump_phase * (1 - jump_phase)))
+            displayed = rendered
+            if action == "sit":
+                displayed = pygame.transform.scale(
+                    rendered,
+                    (rendered.get_width(), max(32, int(rendered.get_height() * 0.72))),
+                )
+                # A seated character should not look like a frozen cropped
+                # sprite. Keep the motion deliberately small so the chair
+                # remains the visual anchor while the player breathes.
+                seated_offset_x = round(math.sin(action_elapsed * 1.1) * 1.0)
+                seated_offset_y = round(math.sin(action_elapsed * 1.8) * 1.2)
+                displayed = pygame.transform.rotate(
+                    displayed,
+                    math.sin(action_elapsed * 0.9) * 1.4,
+                )
+            elif action == "sleep":
+                displayed = pygame.transform.rotate(rendered, 90)
+            displayed_bounds = displayed.get_bounding_rect(min_alpha=1)
             self._draw_sprite_shadow((x, y), sprite_scale / 3.0)
+            rendered_center_x = displayed_bounds.left + displayed_bounds.width / 2.0
+            rendered_bottom = displayed_bounds.bottom
             self.screen.blit(
-                pygame.transform.scale(crop, size),
-                (x - size[0] // 2, y - size[1] + 7 - bob),
+                displayed,
+                (
+                    round(x - rendered_center_x + seated_offset_x + step_x),
+                    y + 7 - rendered_bottom + jump_offset + seated_offset_y + step_y,
+                ),
             )
+            if action == "sleep":
+                self.text("Z", (x + 24, y - 66), self.font_lg, Palette.MATRIX_BRIGHT)
+                self.text("Z", (x + 43, y - 88), self.font_md, Palette.MATRIX_DIM)
             return
         pygame.draw.ellipse(self.screen, (139, 177, 160), (x - 11, y + 8, 22, 7))
         pygame.draw.circle(self.screen, (77, 76, 70), (x, y - 4), 9)
         pygame.draw.circle(self.screen, (216, 151, 107), (x, y - 2), 7)
         pygame.draw.rect(self.screen, Palette.CORAL, (x - 7, y + 5, 14, 12), border_radius=5)
+
+    def _character_sprite(
+        self,
+        facing: str,
+        character_variant: int,
+        scale: float,
+        *,
+        npc: bool = False,
+        character_asset: str = "characters/char_0.png",
+    ) -> tuple[pygame.Surface | None, pygame.Rect | None, float]:
+        """Extract one 16x32 avatar cell; sheet columns identify looks, not walk frames."""
+        sheet = self._asset(character_asset)
+        if sheet is None:
+            return None, None, 0.0
+        # Character sheets are 7 identity variants x 3 facing rows.
+        character_variant = max(0, min(6, int(character_variant)))
+        row_by_facing = {"down": 0, "up": 1, "left": 2, "right": 2}
+        row = row_by_facing.get(facing, 0)
+        cache_key = (character_asset, facing, character_variant)
+        crop = self._character_frame_cache.get(cache_key)
+        if crop is None:
+            source = sheet.subsurface(
+                pygame.Rect(character_variant * 16, row * 32, 16, 32)
+            )
+            if facing == "left":
+                source = pygame.transform.flip(source, True, False)
+            crop = pygame.Surface((16, 32), pygame.SRCALPHA)
+            bounds = source.get_bounding_rect(min_alpha=1)
+            centered_left = (16 - bounds.width) // 2
+            crop.blit(source, (centered_left - bounds.left, 32 - bounds.bottom))
+            self._character_frame_cache[cache_key] = crop
+        sprite_scale = min(5.0, max(2.8, scale * 11))
+        size = (max(16, int(16 * sprite_scale)), max(32, int(32 * sprite_scale)))
+        rendered = pygame.transform.scale(crop, size)
+        return rendered, rendered.get_bounding_rect(min_alpha=1), sprite_scale
 
     def draw_tower_header(self, state: OfficeState, scene: TowerScene) -> None:
         # This rail is intentionally always at y=0. World panels and page
@@ -462,7 +1357,8 @@ class SolarPunkRenderer:
         pygame.draw.rect(self.screen, Palette.MATRIX_BG, header)
         pygame.draw.line(self.screen, Palette.MATRIX_GREEN, (0, header.bottom - 1), (self.width, header.bottom - 1), 2)
         self.text("SALARYMAN", (18, 10), self.font_lg, Palette.MATRIX_BRIGHT)
-        self.text(f"FLOOR {scene.current_floor:02d}", (19, 35), self.font_mono, Palette.MATRIX_DIM)
+        floor_label = "LOBBY" if scene.current_floor == 1 else "PREMIUM" if scene.current_floor >= 63 else "OFFICE"
+        self.text(f"FLOOR {scene.current_floor:02d} · {floor_label}", (19, 35), self.font_mono, Palette.MATRIX_DIM)
         self.text(self.pablo_status, (805, 35), self.font_mono, self.pablo_status_color)
 
         self.text("CAPITAL", (180, 9), self.font_mono, Palette.MATRIX_DIM)
@@ -496,11 +1392,24 @@ class SolarPunkRenderer:
         if nearby:
             prompt = pygame.Rect(270, 620, min(430, self.width - 600), 30)
             self.panel(prompt, Palette.MATRIX_PANEL_2, Palette.MATRIX_AMBER, radius=3, width=1)
-            self.text(f"[E] {nearby.prompt}", (282, 629), self.font_md, Palette.MATRIX_BRIGHT)
-            self.text(f"ROOM  {scene.room.label}  /  OBJECT  {nearby.label}", (274, 661), self.font_mono, Palette.MATRIX_DIM)
+            prompt_text = nearby.prompt
+            if nearby.kind == "crt_terminal" and scene.is_seated_at_workstation(nearby.parent_id):
+                prompt_text = "USE COMPUTER"
+            self.text(f"[E] {prompt_text}", (282, 629), self.font_md, Palette.MATRIX_BRIGHT)
+            self.text(
+                f"ROOM  {scene.room.label}  ·  [B] CUSTOMIZE",
+                (274, 661),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
         else:
             self.text("WALK CLOSER TO A LIVE OBJECT", (274, 628), self.font_md, Palette.MATRIX_BRIGHT)
-            self.text(f"ROOM  {scene.room.label}", (274, 661), self.font_mono, Palette.MATRIX_DIM)
+            self.text(
+                f"ROOM  {scene.room.label}  ·  [B] CUSTOMIZE",
+                (274, 661),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
         self.text(state.notice, (720, 625), self.font_mono, Palette.MATRIX_GREEN)
         self.draw_tool_inventory(state, pygame.Rect(self.width - 286, 616, 256, 76))
 
@@ -573,15 +1482,504 @@ class SolarPunkRenderer:
             self.panel(rect, Palette.MATRIX_PANEL_2, Palette.MATRIX_DIM, radius=2, width=1)
             self.text(label, (rect.x + 10, rect.y + 7), self.font_mono, Palette.MATRIX_GREEN)
 
+    def draw_automation_page(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+    ) -> None:
+        """Show live read-only status in the native game interface."""
+        dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        dim.fill((4, 17, 20, 205))
+        self.screen.blit(dim, (0, 0))
+
+        panel = pygame.Rect(170, 112, self.width - 340, 480)
+        pygame.draw.rect(self.screen, (20, 43, 43), panel, border_radius=12)
+        pygame.draw.rect(self.screen, (114, 179, 139), panel, 2, border_radius=12)
+        self.text("AUTOMATION / READ ONLY", (panel.x + 30, panel.y + 24), self.font_mono, (147, 214, 168))
+        self.overlay_close_rect = pygame.Rect(panel.right - 94, panel.y + 18, 68, 32)
+        pygame.draw.rect(self.screen, (42, 67, 62), self.overlay_close_rect, border_radius=6)
+        self.text("CLOSE", (self.overlay_close_rect.x + 12, self.overlay_close_rect.y + 8), self.font_sm, (227, 232, 215))
+
+        profile = next(
+            (candidate for candidate in AUTOMATION_CHARACTERS if candidate.domain == scene.selected_automation_domain),
+            None,
+        )
+        if profile is None:
+            self.text("AUTOMATION NOT FOUND", (panel.x + 30, panel.y + 100), self.font_lg, (237, 210, 144))
+            return
+
+        self.text(f"{profile.name} / {profile.role}", (panel.x + 30, panel.y + 91), self.font_lg, profile.accent)
+        self.text(profile.domain.replace("_", " ").upper(), (panel.x + 30, panel.y + 132), self.font_mono, (222, 228, 211))
+        status = scene.automation_domain_status(profile)
+        if status is not None:
+            status_label = "ENABLED · ROUTINE PREVIEW" if status.enabled else "PAUSED · AT WORKSTATION"
+            status_color = (133, 224, 166) if status.enabled else (223, 194, 127)
+            _, _, activity = scene.automation_pose(profile)
+            last_run = "NO RUN RECORDED"
+            if status.last_run_at:
+                try:
+                    last_run = datetime.fromisoformat(
+                        status.last_run_at.replace("Z", "+00:00")
+                    ).astimezone().strftime("%Y-%m-%d  %H:%M")
+                except ValueError:
+                    last_run = status.last_run_at[:19]
+        else:
+            status_label = scene.autopilot_snapshot.message or "STATUS NOT AVAILABLE"
+            status_color = (223, 194, 127)
+            activity = "WAITING FOR A VALID STATUS SYNC"
+            last_run = "HIDDEN OR NOT CONNECTED"
+
+        self.text(status_label, (panel.x + 30, panel.y + 196), self.font_lg, status_color)
+        self.text(f"ROUTE PREVIEW  /  {activity}", (panel.x + 30, panel.y + 244), self.font_mono, (227, 232, 215))
+        self.text(f"LAST SERVER RUN  /  {last_run}", (panel.x + 30, panel.y + 284), self.font_mono, (177, 195, 177))
+        self.text(
+            f"NATIVE GAME MODULE  /  {profile.app_label}",
+            (panel.x + 30, panel.y + 334),
+            self.font_md,
+            profile.accent,
+        )
+        self.text(
+            "Read-only status from SALARYMAN. No external action starts here.",
+            (panel.x + 30, panel.y + 382),
+            self.font_sm,
+            (186, 204, 187),
+        )
+        if scene.autopilot_snapshot.state != "connected":
+            self.text(scene.autopilot_snapshot.message or "STATUS SYNC UNAVAILABLE", (panel.x + 30, panel.y + 438), self.font_sm, (236, 203, 135))
+
+    def draw_device_page(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+    ) -> None:
+        """Render game-native, read-only screens for physical Tower devices."""
+        self.system_module_rects = {}
+        dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        dim.fill((3, 9, 13, 224))
+        self.screen.blit(dim, (0, 0))
+
+        panel_width = min(self.width - 48, 760)
+        panel_height = 326 if state.active_page == "phone" else 416
+        panel = pygame.Rect(0, 0, panel_width, panel_height)
+        panel.center = (self.width // 2, self.height // 2 + 18)
+        self.panel(panel, Palette.MATRIX_BG, Palette.MATRIX_GREEN, radius=8, width=2)
+        pygame.draw.rect(
+            self.screen,
+            Palette.MATRIX_AMBER,
+            pygame.Rect(panel.x + 2, panel.y + 2, panel.width - 4, 4),
+        )
+        self.overlay_close_rect = pygame.Rect(panel.right - 94, panel.y + 18, 68, 30)
+        self.panel(
+            self.overlay_close_rect,
+            Palette.MATRIX_PANEL_2,
+            Palette.MATRIX_DIM,
+            radius=4,
+            width=1,
+        )
+        self.text(
+            "CLOSE",
+            (self.overlay_close_rect.x + 13, self.overlay_close_rect.y + 8),
+            self.font_sm,
+            Palette.MATRIX_BRIGHT,
+        )
+
+        if state.active_page == "phone":
+            self.text(
+                "PAY PHONE",
+                (panel.x + 30, panel.y + 28),
+                self.font_xl,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                "TOWER LINE  /  TWO APPROVED SERVICES",
+                (panel.x + 32, panel.y + 70),
+                self.font_mono,
+                Palette.MATRIX_AMBER,
+            )
+            gap = 16
+            tile_width = (panel.width - 64 - gap) // 2
+            tile_y = panel.y + 128
+            for index, (heading, detail) in enumerate(
+                (
+                    ("CALLL HOME", "VOICE SYSTEM"),
+                    ("COMMS", "TEAM MESSAGES"),
+                )
+            ):
+                rect = pygame.Rect(
+                    panel.x + 32 + index * (tile_width + gap),
+                    tile_y,
+                    tile_width,
+                    96,
+                )
+                self.panel(
+                    rect,
+                    Palette.MATRIX_PANEL,
+                    Palette.MATRIX_DIM,
+                    radius=6,
+                    width=1,
+                )
+                self.text(
+                    f"0{index + 1}",
+                    (rect.x + 15, rect.y + 13),
+                    self.font_sm,
+                    Palette.MATRIX_AMBER,
+                )
+                self.text(
+                    heading,
+                    (rect.x + 15, rect.y + 37),
+                    self.font_lg,
+                    Palette.MATRIX_BRIGHT,
+                )
+                self.text(
+                    detail,
+                    (rect.x + 15, rect.y + 68),
+                    self.font_sm,
+                    Palette.MATRIX_GREEN,
+                )
+            self.text(
+                "READ-ONLY CONNECTION PASS  /  ESC TO RETURN",
+                (panel.x + 32, panel.bottom - 35),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            return
+
+        self.text(
+            "SALARYMAN OS",
+            (panel.x + 30, panel.y + 28),
+            self.font_xl,
+            Palette.MATRIX_BRIGHT,
+        )
+        self.text(
+            "SYSTEMS TERMINAL  /  NATIVE GAME INTERFACE",
+            (panel.x + 32, panel.y + 70),
+            self.font_mono,
+            Palette.MATRIX_AMBER,
+        )
+        metric_y = panel.y + 108
+        metrics = (
+            ("LOCATION", f"FLOOR {scene.current_floor:02d} / {scene.room.label.upper()}"),
+            ("TEAM", f"{len(state.roster.workers)} OFFICE STAFF"),
+            ("GAME FIAT", f"ƒ{state.funds:,.2f}"),
+        )
+        metric_gap = 10
+        metric_width = (panel.width - 64 - metric_gap * 2) // 3
+        for index, (label, value) in enumerate(metrics):
+            metric_rect = pygame.Rect(
+                panel.x + 32 + index * (metric_width + metric_gap),
+                metric_y,
+                metric_width,
+                52,
+            )
+            self.panel(
+                metric_rect,
+                Palette.MATRIX_PANEL,
+                Palette.MATRIX_GRID,
+                radius=4,
+                width=1,
+            )
+            self.text(
+                label,
+                (metric_rect.x + 10, metric_rect.y + 7),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            self.text(
+                value[:25],
+                (metric_rect.x + 10, metric_rect.y + 28),
+                self.font_sm,
+                Palette.MATRIX_BRIGHT,
+            )
+
+        self.text(
+            "CONNECTED GAME MODULES",
+            (panel.x + 32, panel.y + 174),
+            self.font_md,
+            Palette.MATRIX_GREEN,
+        )
+        gap_x, gap_y = 10, 9
+        tile_width = (panel.width - 64 - gap_x * 2) // 3
+        tile_height = 72
+        for index, profile in enumerate(AUTOMATION_CHARACTERS):
+            column = index % 3
+            row = index // 3
+            rect = pygame.Rect(
+                panel.x + 32 + column * (tile_width + gap_x),
+                panel.y + 200 + row * (tile_height + gap_y),
+                tile_width,
+                tile_height,
+            )
+            self.system_module_rects[profile.domain] = rect
+            status = scene.automation_domain_status(profile)
+            status_text = (
+                "ACTIVE"
+                if status is not None and status.enabled
+                else "PAUSED"
+                if status is not None
+                else "STATUS NOT SYNCED"
+            )
+            self.panel(
+                rect,
+                Palette.MATRIX_PANEL,
+                profile.accent if status and status.enabled else Palette.MATRIX_GRID,
+                radius=4,
+                width=1,
+            )
+            self.text(
+                profile.app_label,
+                (rect.x + 12, rect.y + 12),
+                self.font_md,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                status_text,
+                (rect.x + 12, rect.y + 43),
+                self.font_sm,
+                profile.accent if status and status.enabled else Palette.MATRIX_DIM,
+            )
+
+    def draw_player_service_page(self, state: OfficeState, scene: TowerScene) -> None:
+        """Draw account/game controls on a neutral surface, separate from terminals."""
+        self.game_page_actions = {}
+        dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        dim.fill((4, 12, 14, 150))
+        self.screen.blit(dim, (0, 0))
+
+        panel_width = min(self.width - 48, 760)
+        panel_height = min(self.height - 48, 520)
+        panel = pygame.Rect(0, 0, panel_width, panel_height)
+        panel.center = (self.width // 2, self.height // 2)
+        pygame.draw.rect(self.screen, (239, 241, 234), panel, border_radius=10)
+        pygame.draw.rect(self.screen, (73, 109, 94), panel, 2, border_radius=10)
+        pygame.draw.rect(self.screen, (83, 143, 113), pygame.Rect(panel.x + 2, panel.y + 2, panel.width - 4, 5))
+
+        titles = {
+            "player": ("PLAYER MENU", "Character actions, inventory, and local game settings"),
+            "settings": ("GAME SETTINGS", "Saved on this device"),
+            "inventory": ("CHARACTER INVENTORY", "Primary character / live account inventory"),
+            "vending": ("TOWER VENDING", "Server-priced stock / purchases debit shared FIAT"),
+            "bank": ("BANCO OMBRA", "Shared FIAT wallet / read only"),
+            "phone": ("PAY PHONE", "CALLL HOME and COMMS entry points"),
+            "reception": ("MILA / RECEPTION", "Jobs, contracts, and real-estate services"),
+            "business_stock": ("BUSINESS STOCK / CONTACT", "Read-only stock information / visit the listed business to ask"),
+        }
+        title, subtitle = titles[state.active_page]
+        self.text(title, (panel.x + 26, panel.y + 20), self.font_xl, (27, 47, 41))
+        self.text(subtitle, (panel.x + 28, panel.y + 57), self.font_sm, (85, 103, 94))
+        self.overlay_close_rect = pygame.Rect(panel.right - 88, panel.y + 18, 62, 30)
+        pygame.draw.rect(self.screen, (222, 229, 218), self.overlay_close_rect, border_radius=5)
+        self.text("CLOSE", (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8), self.font_sm, (40, 69, 56))
+
+        def button(key: str, label: str, rect: pygame.Rect, *, active: bool = False) -> None:
+            self.game_page_actions[key] = rect
+            fill = (210, 229, 214) if active else (229, 234, 224)
+            pygame.draw.rect(self.screen, fill, rect, border_radius=6)
+            pygame.draw.rect(self.screen, (170, 190, 175), rect, 1, border_radius=6)
+            self.text(label, (rect.x + 13, rect.y + (rect.height - self.font_md.get_height()) // 2), self.font_md, (34, 62, 49))
+
+        content_y = panel.y + 102
+        if state.active_page == "player":
+            nav = (
+                ("nav:inventory", "INVENTORY"),
+                ("nav:settings", "SETTINGS"),
+                ("nav:bank", "BANK BALANCE"),
+                ("nav:phone", "PHONE / COMMS"),
+            )
+            button_width = (panel.width - 68) // 2
+            for index, (key, label) in enumerate(nav):
+                rect = pygame.Rect(
+                    panel.x + 26 + (index % 2) * (button_width + 16),
+                    content_y + (index // 2) * 54,
+                    button_width,
+                    42,
+                )
+                button(key, label, rect)
+            self.text("CHARACTER ACTIONS", (panel.x + 28, content_y + 124), self.font_md, (70, 100, 82))
+            action_specs = (("jump", "JUMP"), ("sit", "SIT"), ("fight", "FIGHT"), ("sweep", "SWEEP"))
+            action_width = (panel.width - 68) // 4
+            for index, (action, label) in enumerate(action_specs):
+                button(
+                    f"action:{action}",
+                    label,
+                    pygame.Rect(panel.x + 26 + index * (action_width + 4), content_y + 151, action_width, 38),
+                )
+            if state.show_control_hints:
+                sprint_hint = "SHIFT TOGGLE SPRINT" if state.sprint_toggle_mode else "SHIFT HOLD SPRINT"
+                self.text(
+                    f"WASD MOVE  ·  {sprint_hint}  ·  E INTERACT  ·  SPACE JUMP",
+                    (panel.x + 28, panel.bottom - 52),
+                    self.font_sm,
+                    (85, 103, 94),
+                )
+                self.text(
+                    "F FIGHT  ·  G SWEEP  ·  H CLEAN  ·  J REPAIR",
+                    (panel.x + 28, panel.bottom - 32),
+                    self.font_sm,
+                    (85, 103, 94),
+                )
+        elif state.active_page == "settings":
+            speed_names = ("RELAXED", "STANDARD", "QUICK")
+            rows = (
+                ("setting:sprint", f"SPRINT / {'TOGGLE' if state.sprint_toggle_mode else 'HOLD'}"),
+                ("setting:speed", f"MOVEMENT / {speed_names[state.movement_speed_preset]}"),
+                ("setting:hints", f"CONTROL HINTS / {'ON' if state.show_control_hints else 'OFF'}"),
+                ("setting:music", f"MUSIC / {'ON' if state.music_enabled else 'OFF'}"),
+            )
+            for index, (key, label) in enumerate(rows):
+                button(key, label, pygame.Rect(panel.x + 26, content_y + index * 62, panel.width - 52, 46))
+            self.text("MUSIC is opt-in; nearby pests trigger a quiet cue when enabled.", (panel.x + 28, panel.bottom - 47), self.font_sm, (85, 103, 94))
+        elif state.active_page == "inventory":
+            entries = state.game_inventory
+            if entries is None:
+                message = "LOADING INVENTORY…" if "inventory" in state.game_service_loading else "CONNECT A LINKED GAME ACCOUNT TO LOAD INVENTORY"
+                self.text(message, (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            elif not entries:
+                self.text("NO ITEMS IN THIS CHARACTER SLOT", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            else:
+                for index, entry in enumerate(entries[:8]):
+                    raw_item_id = str(entry.get("itemId", "unknown"))
+                    item_id = raw_item_id.replace("_", " ").upper()
+                    quantity = max(1, int(entry.get("quantity", 1) or 1))
+                    row = pygame.Rect(panel.x + 26, content_y + index * 39, panel.width - 52, 32)
+                    pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=4)
+                    if raw_item_id in STAMINA_SUPPLY_ITEMS:
+                        self.text(item_id[:32], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
+                        self.text(f"×{quantity}", (row.right - 128, row.y + 9), self.font_sm, (61, 100, 74))
+                        button(
+                            f"supply:{raw_item_id}",
+                            "USE",
+                            pygame.Rect(row.right - 82, row.y + 3, 70, 26),
+                        )
+                    else:
+                        self.text(item_id[:54], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
+                        self.text(f"×{quantity}", (row.right - 42, row.y + 9), self.font_sm, (61, 100, 74))
+        elif state.active_page == "vending":
+            entries = state.vending_catalog
+            if entries is None:
+                message = "LOADING LIVE VENDING STOCK…" if "vending_catalog" in state.game_service_loading else "LINK A GAME ACCOUNT TO LOAD STOCK"
+                self.text(message, (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            elif not entries:
+                self.text("NO VENDING STOCK AVAILABLE", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            else:
+                for index, entry in enumerate(entries[:5]):
+                    y = content_y + index * 51
+                    row = pygame.Rect(panel.x + 24, y, panel.width - 48, 44)
+                    pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=5)
+                    name = str(entry.get("name", entry.get("id", "Item")))
+                    description = str(entry.get("blurb", ""))
+                    price = int(entry.get("priceFiat", 0) or 0)
+                    self.text(name[:31], (row.x + 10, row.y + 5), self.font_md, (39, 64, 51))
+                    self.text(description[:58], (row.x + 10, row.y + 25), self.font_sm, (91, 107, 97))
+                    buy_rect = pygame.Rect(row.right - 126, row.y + 6, 116, 32)
+                    button(f"buy:{entry.get('id', '')}", f"BUY ƒ{price:,}", buy_rect)
+            button(
+                "vending:business-stock",
+                "B  BUSINESS STOCK + GHOST CONTACT",
+                pygame.Rect(panel.x + 26, panel.bottom - 70, panel.width - 52, 38),
+            )
+        elif state.active_page == "business_stock":
+            listings = state.business_stock_lines
+            if listings is None:
+                message = "LOADING BUSINESS STOCK…" if "vending_catalog" in state.game_service_loading else "OPEN THIS SCREEN AT A TOWER VENDING MACHINE"
+                self.text(message, (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            elif not listings:
+                self.text("NO BUSINESS STOCK INFORMATION AVAILABLE", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
+            else:
+                for index, listing in enumerate(listings[:10]):
+                    y = content_y + index * 32
+                    seller = str(listing.get("sellerName") or listing.get("specialty", "SPECIALTY").replace("-", " ")).upper()
+                    location = str(listing.get("sellerLocationLabel") or "LOCATION NOT ASSIGNED").upper()
+                    items = listing.get("items", [])
+                    if isinstance(items, list) and items:
+                        details = ", ".join(
+                            f"{item.get('name', item.get('id', 'Item'))} ƒ{int(item.get('priceFiat', 0) or 0):,}"
+                            for item in items[:2]
+                            if isinstance(item, dict)
+                        )
+                    else:
+                        categories = listing.get("quoteCategories", [])
+                        details = ", ".join(str(value) for value in categories) if isinstance(categories, list) and categories else "QUOTE REQUIRED"
+                    row = pygame.Rect(panel.x + 26, y, panel.width - 52, 28)
+                    pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=4)
+                    self.text(f"{seller} · {location} / {details}"[:96], (row.x + 10, row.y + 7), self.font_sm, (39, 64, 51))
+            ghost = state.ghost_listing or {}
+            self.text(
+                str(ghost.get("notice", "THE GHOST / DIRECT INTERACTION ONLY")).upper()[:90],
+                (panel.x + 28, panel.bottom - 54),
+                self.font_sm,
+                (85, 103, 94),
+            )
+            self.text(
+                "GHOST CONTACT AND TRADE REQUIRE DIRECT, PROXIMITY-VERIFIED INTERACTION",
+                (panel.x + 28, panel.bottom - 34),
+                self.font_sm,
+                (85, 103, 94),
+            )
+            button(
+                "vending:business-stock",
+                "B  RETURN TO VENDING",
+                pygame.Rect(panel.x + 26, panel.bottom - 91, panel.width - 52, 32),
+            )
+        elif state.active_page == "bank":
+            if state.fiat_balance is None or state.fiat_spendable is None:
+                value = "LOADING…" if "bank" in state.game_service_loading else "ACCOUNT LINK REQUIRED"
+                self.text(value, (panel.x + 28, content_y + 14), self.font_lg, (43, 75, 54))
+            else:
+                self.text("TOTAL FIAT", (panel.x + 28, content_y + 14), self.font_sm, (85, 103, 94))
+                self.text(f"ƒ{state.fiat_balance:,.0f}", (panel.x + 28, content_y + 43), self.font_xl, (35, 83, 58))
+                self.text("SPENDABLE", (panel.x + 28, content_y + 111), self.font_sm, (85, 103, 94))
+                self.text(f"ƒ{state.fiat_spendable:,.0f}", (panel.x + 28, content_y + 140), self.font_lg, (35, 83, 58))
+            self.text("View only. Transfers and cash-out are not available here.", (panel.x + 28, panel.bottom - 47), self.font_sm, (85, 103, 94))
+        elif state.active_page == "phone":
+            button("phone:call-home", "CALLL HOME / VOICE", pygame.Rect(panel.x + 26, content_y, panel.width - 52, 56))
+            button("phone:comms", "COMMS / TEAM MESSAGES", pygame.Rect(panel.x + 26, content_y + 70, panel.width - 52, 56))
+            self.text(
+                "Select a service to open its connected SALARYMAN screen.",
+                (panel.x + 28, content_y + 152),
+                self.font_sm,
+                (85, 103, 94),
+            )
+        elif state.active_page == "reception":
+            services = (
+                ("reception:1", "1  JOB OPPORTUNITIES"),
+                ("reception:2", "2  BUSINESS CONTRACTS"),
+                ("reception:3", "3  REAL ESTATE / LEASING"),
+            )
+            for index, (key, label) in enumerate(services):
+                button(
+                    key,
+                    label,
+                    pygame.Rect(panel.x + 26, content_y + index * 57, panel.width - 52, 45),
+                )
+            self.text(
+                "Choose a service to open its existing SALARYMAN screen.",
+                (panel.x + 28, panel.bottom - 44),
+                self.font_sm,
+                (85, 103, 94),
+            )
+
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
+        self.game_page_actions = {}
         veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        pygame.draw.rect(veil, (2, 8, 10, 218), pygame.Rect(0, 58, self.width, self.height - 58))
+        pygame.draw.rect(veil, (2, 8, 10, 255), pygame.Rect(0, 58, self.width, self.height - 58))
         self.screen.blit(veil, (0, 0))
         page = pygame.Rect(42, 76, self.width - 84, 514)
-        accent = Palette.MATRIX_AMBER if state.active_page == "economy" else Palette.MATRIX_GREEN
+        accent = Palette.MATRIX_AMBER if state.active_page in {
+            "economy", "company_relocation"
+        } else Palette.MATRIX_GREEN
         self.matrix_panel(page, accent)
+        custom_titles = {
+            "pest_jobs": "LOCAL PEST WORK ORDERS",
+            "pest_uniform": "PEST RESPONSE UNIFORM",
+            "melee": "NON-GRAPHIC MELEE",
+            "utility_work": "TOWER UTILITY WORK",
+            "company_relocation": "COMPANY GROWTH",
+            "business": "TOWER BUSINESS OFFICE",
+        }
         self.text(
-            "ECONOMIC CONTROL" if state.active_page == "economy" else "TOOLS / MAINTENANCE",
+            "ECONOMIC CONTROL" if state.active_page == "economy" else custom_titles.get(
+                state.active_page or "", "TOOLS / MAINTENANCE"
+            ),
             (page.x + 24, page.y + 18),
             self.font_xl,
             Palette.MATRIX_BRIGHT,
@@ -591,10 +1989,505 @@ class SolarPunkRenderer:
         self.overlay_close_rect = pygame.Rect(page.right - 108, page.y + 18, 82, 28)
         self.panel(self.overlay_close_rect, Palette.MATRIX_PANEL_2, accent, radius=2, width=1)
         self.text("CLOSE  ESC", (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8), self.font_mono, accent)
-        if state.active_page == "economy":
+        if state.active_page == "business":
+            self._draw_business_page(state, scene, page)
+        elif state.active_page in custom_titles:
+            self._draw_basement_page(state, scene, page)
+        elif state.active_page == "economy":
             self.draw_economy_page(state, page)
         else:
             self.draw_tools_page(state, page)
+
+    def _draw_business_page(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+        page: pygame.Rect,
+    ) -> None:
+        item = scene.objects.get(state.active_object_id or "")
+        if item is None:
+            item = scene.nearby_object
+        business_name = item.label if item is not None else "BUSINESS OFFICE"
+        self.text(
+            business_name.upper()[:62],
+            (page.x + 26, page.y + 103),
+            self.font_lg,
+            Palette.MATRIX_BRIGHT,
+        )
+        self.text(
+            f"FLOOR {scene.current_floor:02d} / UNIT {item.unit_number:02d}" if item and item.unit_number else f"FLOOR {scene.current_floor:02d} / PUBLIC LOBBY KIOSK",
+            (page.x + 26, page.y + 137),
+            self.font_mono,
+            Palette.MATRIX_DIM,
+        )
+        actions = item.service_actions if item is not None else ()
+        if not actions:
+            self.text(
+                "NO CONNECTED SERVICE SCREEN",
+                (page.x + 26, page.y + 193),
+                self.font_lg,
+                Palette.MATRIX_AMBER,
+            )
+            self.text(
+                "This location has no live stock or purchase flow. No sale was recorded.",
+                (page.x + 26, page.y + 230),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            return
+        for index, action in enumerate(actions):
+            y = page.y + 180 + index * 54
+            button = pygame.Rect(page.x + 26, y, min(page.width - 52, 590), 42)
+            self.game_page_actions[f"business:{action}"] = button
+            self.panel(button, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
+            label = BUSINESS_ACTION_LABELS.get(action, action.replace("_", " ").upper())
+            self.text(label, (button.x + 14, button.y + 13), self.font_md, Palette.MATRIX_BRIGHT)
+        self.text(
+            "Existing SALARYMAN screens only. FIAT, GOLD, and inventory rules are unchanged.",
+            (page.x + 26, page.bottom - 36),
+            self.font_sm,
+            Palette.MATRIX_DIM,
+        )
+
+    def _draw_basement_page(
+        self,
+        state: OfficeState,
+        scene: TowerScene,
+        page: pygame.Rect,
+    ) -> None:
+        content = page.y + 92
+        if state.active_page == "pest_jobs":
+            for index, job in enumerate(PEST_JOBS):
+                x = page.x + 24 + index * ((page.width - 60) // 2 + 12)
+                card = pygame.Rect(x, content, (page.width - 60) // 2, 250)
+                self.panel(card, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=4, width=1)
+                order = state.pest_work_orders[job["id"]]
+                self.text(job["label"], (card.x + 16, card.y + 14), self.font_lg, Palette.MATRIX_BRIGHT)
+                self.text(job["description"], (card.x + 16, card.y + 51), self.font_sm, Palette.MATRIX_DIM)
+                progress = int(order["progress"])
+                self.text(
+                    f"{job['progressLabel']} / {progress} OF {job['goal']}",
+                    (card.x + 16, card.y + 100),
+                    self.font_mono,
+                    Palette.MATRIX_GREEN,
+                )
+                bar = pygame.Rect(card.x + 16, card.y + 133, card.width - 32, 12)
+                pygame.draw.rect(self.screen, (20, 34, 30), bar)
+                filled = int(bar.width * progress / max(1, int(job["goal"])))
+                pygame.draw.rect(self.screen, Palette.MATRIX_GREEN, (bar.x, bar.y, filled, bar.height))
+                label = "COMPLETE" if order["complete"] else (
+                    "CONTINUE ORDER" if state.active_pest_job == job["id"] else "START ORDER"
+                )
+                button = pygame.Rect(card.x + 16, card.y + 177, card.width - 32, 46)
+                self._draw_basement_action(
+                    f"pest_job:{job['id']}",
+                    label,
+                    button,
+                    disabled=bool(order["complete"]) or not state.pest_uniform_worn,
+                )
+            warning = (
+                "Equip the uniform at the lobby or B1 station before starting."
+                if not state.pest_uniform_worn
+                else "Progress is saved on this computer. Orders grant no separate payout."
+            )
+            self.text(warning, (page.x + 28, page.bottom - 42), self.font_sm, Palette.MATRIX_AMBER)
+            return
+
+        if state.active_page == "pest_uniform":
+            worn = state.pest_uniform_worn
+            self.text(
+                "UNIFORM STATUS / " + ("WORN" if worn else "NOT WORN"),
+                (page.x + 28, content + 12),
+                self.font_lg,
+                Palette.MATRIX_GREEN if worn else Palette.MATRIX_AMBER,
+            )
+            self.text(
+                "The uniform is required for Tower utility shifts. Its saved state is account-wide.",
+                (page.x + 28, content + 58),
+                self.font_md,
+                Palette.MATRIX_DIM,
+            )
+            self._draw_basement_action(
+                "pest_uniform:toggle",
+                "REMOVE UNIFORM" if worn else "EQUIP UNIFORM",
+                pygame.Rect(page.x + 28, content + 112, page.width - 56, 54),
+            )
+            return
+
+        if state.active_page == "melee":
+            snapshot = scene.basement_snapshot or {}
+            pests = snapshot.get("pests", [])
+            active_count = sum(
+                1 for pest in pests
+                if isinstance(pest, dict) and pest.get("status") == "active"
+            ) if isinstance(pests, list) else 0
+            stamina = int(snapshot.get("player", {}).get("stamina", state.pest_stamina)) \
+                if isinstance(snapshot.get("player"), dict) else state.pest_stamina
+            self.text(
+                f"SERVER STAMINA / {stamina}%    ACTIVE PESTS / {active_count}",
+                (page.x + 28, content + 2),
+                self.font_mono,
+                Palette.MATRIX_GREEN,
+            )
+            self.text(
+                "Humanoid targets are not spawned. Any future humanoid moves stay nonlethal; stabbing is pest-only.",
+                (page.x + 28, content + 27),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            cols = 3
+            gap = 12
+            button_w = (page.width - 56 - gap * (cols - 1)) // cols
+            for index, move in enumerate(MELEE_MOVES):
+                row, col = divmod(index, cols)
+                rect = pygame.Rect(
+                    page.x + 28 + col * (button_w + gap),
+                    content + 66 + row * 72,
+                    button_w,
+                    58,
+                )
+                suffix = " / TOOL" if move.get("toolRequired") else ""
+                label = f"{index + 1}. {move['label']} / {move['stamina']} STA{suffix}"
+                self._draw_basement_action(
+                    f"pest_move:{move['id']}",
+                    label,
+                    rect,
+                    disabled=active_count == 0 or stamina < move["stamina"],
+                )
+            return
+
+        if state.active_page == "utility_work":
+            elapsed = max(0.0, __import__("time").monotonic() - state.utility_work_started_at)
+            progress = min(1.0, elapsed / 8.0)
+            label = (state.utility_work_target or "TOWER").replace("_", " ").upper()
+            self.text(
+                f"{label} / SHARED TOWER MAINTENANCE",
+                (page.x + 28, content + 10),
+                self.font_lg,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                "The server settles the repair. Use this wall-cavity chart to trace the affected system.",
+                (page.x + 28, content + 54),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            bar = pygame.Rect(page.x + 28, content + 106, page.width - 56, 22)
+            pygame.draw.rect(self.screen, Palette.MATRIX_PANEL_2, bar)
+            pygame.draw.rect(
+                self.screen,
+                Palette.MATRIX_GREEN,
+                (bar.x, bar.y, int(bar.width * progress), bar.height),
+            )
+            self.text(
+                "WAITING FOR SERVER CONFIRMATION" if state.utility_work_active else "WORK COMPLETE",
+                (page.x + 28, content + 146),
+                self.font_mono,
+                Palette.MATRIX_AMBER if state.utility_work_active else Palette.MATRIX_GREEN,
+            )
+            infra = FLOOR_PLAN.get("infrastructureMap", {})
+            standard = infra.get("standardFloor", {}) if isinstance(infra, dict) else {}
+            wall_routes = standard.get("wallRoutes", []) if isinstance(standard, dict) else []
+            systems = infra.get("systems", []) if isinstance(infra, dict) else []
+            diagram_top = content + 184
+            diagram = pygame.Rect(
+                page.x + 28,
+                diagram_top,
+                page.width - 56,
+                max(118, page.bottom - diagram_top - 18),
+            )
+            self.panel(diagram, Palette.MATRIX_PANEL_2, Palette.MATRIX_GRID, radius=3, width=1)
+            self.text(
+                "TOWER UTILITY ROUTE / SEPARATE LANES IN THE SHARED WALL CAVITY",
+                (diagram.x + 10, diagram.y + 8),
+                self.font_sm,
+                Palette.MATRIX_BRIGHT,
+            )
+
+            colors = {
+                "electrical": Palette.MATRIX_AMBER,
+                "water": (89, 174, 231),
+                "fire_alarm": (241, 106, 93),
+                "fire_suppression": (247, 145, 89),
+            }
+            map_height = max(76, diagram.height - 48)
+            floor_map = pygame.Rect(diagram.x + 12, diagram.y + 34, 180, map_height)
+            pygame.draw.rect(self.screen, Palette.MATRIX_PANEL, floor_map, border_radius=2)
+            envelope = standard.get("clearEnvelopeUnits", [22_000, 25_000])
+            envelope_w = max(1, int(envelope[0]))
+            envelope_h = max(1, int(envelope[1]))
+            scale = min((floor_map.width - 12) / envelope_w, (floor_map.height - 12) / envelope_h)
+            route_w = max(1, int(envelope_w * scale))
+            route_h = max(1, int(envelope_h * scale))
+            route_x = floor_map.x + (floor_map.width - route_w) // 2
+            route_y = floor_map.y + (floor_map.height - route_h) // 2
+            floor_rect = pygame.Rect(route_x, route_y, route_w, route_h)
+            pygame.draw.rect(self.screen, Palette.MATRIX_GRID, floor_rect, width=1)
+
+            if isinstance(systems, list) and isinstance(wall_routes, list):
+                for system_index, system in enumerate(systems):
+                    if not isinstance(system, dict):
+                        continue
+                    color = colors.get(str(system.get("id")), Palette.MATRIX_GREEN)
+                    route_ids = set(system.get("wallRouteIds", []))
+                    lane_offset = system_index - (len(systems) - 1) / 2
+                    for route in wall_routes:
+                        if not isinstance(route, dict) or route.get("id") not in route_ids:
+                            continue
+                        raw_points = route.get("points", [])
+                        if not isinstance(raw_points, list) or len(raw_points) < 2:
+                            continue
+                        points = [
+                            (
+                                route_x + int(float(point[0]) / envelope_w * route_w),
+                                route_y + int(float(point[1]) / envelope_h * route_h + lane_offset),
+                            )
+                            for point in raw_points
+                            if isinstance(point, list) and len(point) == 2
+                        ]
+                        if len(points) >= 2:
+                            pygame.draw.lines(self.screen, color, False, points, 2)
+
+            offices = FLOOR_PLAN.get("baseLayout", {}).get("offices", [])
+            if isinstance(offices, list):
+                for office in offices:
+                    entrance = office.get("entrance") if isinstance(office, dict) else None
+                    if not isinstance(entrance, list) or len(entrance) != 2:
+                        continue
+                    marker = (
+                        route_x + int(float(entrance[0]) / envelope_w * route_w),
+                        route_y + int(float(entrance[1]) / envelope_h * route_h),
+                    )
+                    pygame.draw.circle(self.screen, Palette.MATRIX_BRIGHT, marker, 3)
+
+            riser_x = floor_map.right + 26
+            riser_top = diagram.y + 47
+            riser_bottom = diagram.bottom - 26
+            for system_index, (system_id, color) in enumerate(colors.items()):
+                x = riser_x + system_index * 4
+                pygame.draw.line(self.screen, color, (x, riser_top), (x, riser_bottom), 2)
+            levels = [
+                ("67", 0.0),
+                ("07", 0.20),
+                ("06", 0.29),
+                ("01", 0.40),
+                ("B1", 0.52),
+                ("B3", 0.67),
+                ("B5", 0.82),
+                ("B6", 0.95),
+            ]
+            for level, ratio in levels:
+                y = riser_top + int((riser_bottom - riser_top) * ratio)
+                pygame.draw.circle(self.screen, Palette.MATRIX_BRIGHT, (riser_x + 6, y), 3)
+                self.text(level, (riser_x + 16, y - 6), self.font_sm, Palette.MATRIX_DIM)
+            legend_x = riser_x + 58
+            legend_y = diagram.y + 43
+            labels = (
+                ("POWER / B5", colors["electrical"]),
+                ("WATER / B6", colors["water"]),
+                ("FIRE ALARM / B3", colors["fire_alarm"]),
+                ("FIRE PIPE / B6", colors["fire_suppression"]),
+            )
+            for index, (legend, color) in enumerate(labels):
+                y = legend_y + index * 22
+                pygame.draw.line(self.screen, color, (legend_x, y + 6), (legend_x + 16, y + 6), 3)
+                self.text(legend, (legend_x + 22, y), self.font_sm, Palette.MATRIX_DIM)
+            self.text(
+                "STANDARD FLOOR 220 × 250 M / LOBBY + B1–B6 USE THEIR OWN FOOTPRINTS",
+                (diagram.x + 202, diagram.bottom - 19),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            return
+
+        if state.active_page == "company_relocation":
+            elapsed = state.relocation_cutscene_elapsed
+            beats = (
+                (1.2, "THE CREW FINISHES ITS TOWER SERVICE ORDERS."),
+                (2.6, "A COMPANY RELOCATION IS APPROVED."),
+                (4.3, "THE NEW ADDRESS IS SEALED."),
+                (6.0, "DESTINATION WITHHELD / NO NEW AREA UNLOCKED."),
+            )
+            message = next((text for end, text in beats if elapsed < end), beats[-1][1])
+            frame = pygame.Rect(page.x + 74, content + 32, page.width - 148, 230)
+            self.panel(frame, Palette.MATRIX_PANEL_2, Palette.MATRIX_AMBER, radius=3, width=2)
+            self.text(
+                "OPERATIONS MOVE / APPROVED",
+                (frame.x + 24, frame.y + 34),
+                self.font_lg,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                message,
+                (frame.x + 24, frame.y + 96),
+                self.font_md,
+                Palette.MATRIX_AMBER,
+            )
+            pygame.draw.rect(
+                self.screen,
+                Palette.MATRIX_DIM,
+                pygame.Rect(frame.x + 24, frame.y + 147, frame.width - 48, 4),
+            )
+            fill = int((frame.width - 48) * min(1.0, elapsed / 6.0))
+            pygame.draw.rect(
+                self.screen,
+                Palette.MATRIX_AMBER,
+                pygame.Rect(frame.x + 24, frame.y + 147, fill, 4),
+            )
+            if state.relocation_cutscene_pending:
+                self.text(
+                    "CUTSCENE / DESTINATION NOT SHOWN",
+                    (page.x + 28, page.bottom - 40),
+                    self.font_mono,
+                    Palette.MATRIX_DIM,
+                )
+            return
+
+    def _draw_basement_action(
+        self,
+        key: str,
+        label: str,
+        rect: pygame.Rect,
+        *,
+        disabled: bool = False,
+    ) -> None:
+        self.game_page_actions[key] = rect
+        color = Palette.MATRIX_DIM if disabled else Palette.MATRIX_GREEN
+        self.panel(rect, Palette.MATRIX_PANEL_2, color, radius=3, width=1)
+        self.text(
+            label,
+            (rect.x + 10, rect.y + (rect.height - self.font_mono.get_height()) // 2),
+            self.font_mono,
+            color,
+        )
+
+    def draw_customization_page(self, state: OfficeState, scene: TowerScene) -> None:
+        """Present saved, non-interactive wall and decor choices for this room."""
+        veil = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        pygame.draw.rect(
+            veil,
+            (2, 8, 10, 210),
+            pygame.Rect(0, 58, self.width, self.height - 58),
+        )
+        self.screen.blit(veil, (0, 0))
+
+        page_width = max(360, self.width - 84)
+        page_height = min(514, max(360, self.height - 106))
+        page = pygame.Rect(0, 0, page_width, page_height)
+        page.center = (self.width // 2, self.height // 2 + 18)
+        self.matrix_panel(page, Palette.SEAFOAM)
+        self.text(
+            "ROOM PERSONALIZATION",
+            (page.x + 24, page.y + 18),
+            self.font_xl,
+            Palette.MATRIX_BRIGHT,
+        )
+        self.text(
+            f"{scene.room.label}  /  VISUAL CHOICES ONLY",
+            (page.x + 26, page.y + 54),
+            self.font_mono,
+            Palette.MATRIX_DIM,
+        )
+
+        self.overlay_close_rect = pygame.Rect(page.right - 108, page.y + 18, 82, 28)
+        self.panel(
+            self.overlay_close_rect,
+            Palette.MATRIX_PANEL_2,
+            Palette.SEAFOAM,
+            radius=2,
+            width=1,
+        )
+        self.text(
+            "CLOSE  ESC",
+            (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8),
+            self.font_mono,
+            Palette.SEAFOAM,
+        )
+
+        customization = state.get_room_customization(scene.current_room)
+        self.customize_wall_rects = {}
+        self.customize_decor_rects = {}
+        left = page.x + 24
+        available_width = page.width - 48
+
+        self.text("WALL FINISH", (left, page.y + 96), self.font_md, Palette.MATRIX_BRIGHT)
+        wall_gap = 10
+        wall_width = (
+            available_width - wall_gap * (len(WALL_FINISHES) - 1)
+        ) // len(WALL_FINISHES)
+        for index, finish in enumerate(WALL_FINISHES):
+            rect = pygame.Rect(
+                left + index * (wall_width + wall_gap),
+                page.y + 122,
+                wall_width,
+                54,
+            )
+            selected = customization["wall_style"] == finish.id
+            self.customize_wall_rects[finish.id] = rect
+            self.panel(
+                rect,
+                finish.beam,
+                finish.edge if selected else finish.detail,
+                radius=5,
+                width=3 if selected else 1,
+            )
+            pygame.draw.rect(
+                self.screen,
+                finish.edge,
+                pygame.Rect(rect.x + 10, rect.y + 10, 18, 18),
+            )
+            self.text(
+                finish.label,
+                (rect.x + 36, rect.y + 14),
+                self.font_sm,
+                Palette.GLASS_BRIGHT,
+            )
+            self.text(
+                "SELECTED" if selected else "WALL",
+                (rect.x + 10, rect.y + 34),
+                self.font_mono,
+                finish.edge,
+            )
+
+        self.text("DECOR SET", (left, page.y + 202), self.font_md, Palette.MATRIX_BRIGHT)
+        decor_gap = 12
+        decor_width = (available_width - decor_gap) // 2
+        for index, preset in enumerate(DECOR_PRESETS):
+            rect = pygame.Rect(
+                left + (index % 2) * (decor_width + decor_gap),
+                page.y + 228 + (index // 2) * 62,
+                decor_width,
+                52,
+            )
+            selected = customization["decor_style"] == preset.id
+            self.customize_decor_rects[preset.id] = rect
+            self.panel(
+                rect,
+                Palette.MATRIX_PANEL_2,
+                Palette.MATRIX_AMBER if selected else Palette.MATRIX_GRID,
+                radius=4,
+                width=2 if selected else 1,
+            )
+            self.text(
+                preset.label,
+                (rect.x + 14, rect.y + 10),
+                self.font_md,
+                Palette.MATRIX_BRIGHT,
+            )
+            detail = "CURRENT ROOM" if selected else "WALL ART  ·  PLANTS  ·  SHELVING"
+            self.text(
+                detail,
+                (rect.x + 14, rect.y + 32),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
+
+        self.text(
+            "Saved to this game profile. Furniture stays decorative; live objects and collision are unchanged.",
+            (left, page.bottom - 42),
+            self.font_sm,
+            (186, 204, 187),
+        )
 
     def draw_economy_page(self, state: OfficeState, page: pygame.Rect) -> None:
         cards = (
