@@ -134,7 +134,6 @@ def _stage_godot_runtime(staging: Path, system_name: str, machine: str) -> Path:
     runtime_target = staging / "godot-runtime"
     runtime_target.mkdir(parents=True, exist_ok=True)
     engine_path = runtime_target / executable_relative
-    engine_path.parent.mkdir(parents=True, exist_ok=True)
     if system_name == "Darwin":
         shutil.copytree(
             extracted / "Godot.app",
@@ -142,6 +141,7 @@ def _stage_godot_runtime(staging: Path, system_name: str, machine: str) -> Path:
             symlinks=True,
         )
     else:
+        engine_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(extracted / executable_relative, engine_path)
         if system_name != "Windows":
             engine_path.chmod(engine_path.stat().st_mode | 0o111)
