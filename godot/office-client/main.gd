@@ -160,6 +160,10 @@ func _build_materials() -> void:
 	materials["door"] = _material(Color("#e8b45d"), 0.66)
 	materials["door_glass"] = _material(Color(0.63, 0.72, 0.66, 0.50), 0.58, true)
 	materials["glass"] = _material(Color("#8ed6d2"), 0.18, true)
+	# Facade shells for many Tower floors share one render elevation, so their
+	# transparent panes overlap. Keep each pane lightly tinted to avoid hiding
+	# the exterior through stacked windows.
+	materials["window_glass"] = _material(Color(0.55, 0.83, 0.80, 0.025), 0.18, true)
 	materials["metal"] = _material(Color("#52676d"), 0.36, false, 0.28)
 	materials["marker"] = _material(Color("#f8b957"), 0.34, true, 0.0, Color("#f8b957"))
 	materials["signal"] = _material(Color("#71e0c0"), 0.3, true, 0.0, Color("#71e0c0"))
@@ -401,7 +405,13 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 		var outer_right := right + wall_half
 		var outer_top := top - wall_half
 		var outer_bottom := bottom + wall_half
-		_add_vertical_opening_wall("%sOutsideWall" % room_id, outer_left, top, bottom, [{"center": float(outside_window[1]) * WORLD_SCALE, "kind": "window"}])
+		var outside_openings := _shared_exterior_window_openings(
+			floor_plan,
+			top,
+			bottom,
+			[{"center": float(outside_window[1]) * WORLD_SCALE, "kind": "window"}],
+		)
+		_add_vertical_opening_wall("%sOutsideWall" % room_id, outer_left, top, bottom, outside_openings)
 		_add_vertical_opening_wall("%sOfficeWall" % room_id, outer_right, top, bottom, [
 			{"center": float(door[1]) * WORLD_SCALE, "kind": "door"},
 			{"center": float(office_window[1]) * WORLD_SCALE, "kind": "window"},
@@ -436,7 +446,12 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 		var outer_top := top - wall_half
 		var outer_bottom := bottom + wall_half
 		var wall_length_z := bottom - top + structural_wall_thickness
-		var window_opening := [{"center": (top + bottom) / 2.0, "kind": "window"}]
+		var window_opening := _shared_exterior_window_openings(
+			floor_plan,
+			top,
+			bottom,
+			[{"center": (top + bottom) / 2.0, "kind": "window"}],
+		)
 		if room_id in ["executive", "office_03"]:
 			_add_vertical_opening_wall("%sWallLeft" % room_id, outer_left, top, bottom, window_opening)
 			_add_structural_wall("%sWallRight" % room_id, Vector3(outer_right, WALL_HEIGHT / 2.0, (top + bottom) / 2.0), wall_length_z, false)
@@ -466,10 +481,76 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 					"center": lerpf(top, bottom, float(index) / 8.0),
 					"kind": "window",
 				})
+			window_openings = _shared_exterior_window_openings(
+				floor_plan,
+				top,
+				bottom,
+				window_openings,
+			)
 			_add_vertical_opening_wall("%sWallLeft" % room_id, outer_left, top, bottom, window_openings)
 			_add_vertical_opening_wall("%sWallRight" % room_id, outer_right, top, bottom, window_openings)
 		_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
 		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
+
+
+func _shared_exterior_window_openings(
+	floor_plan: Dictionary,
+	top: float,
+	bottom: float,
+	existing: Array,
+) -> Array:
+	# Tower floors and perimeter business-suite partitions share one render
+	# elevation. Align their facade apertures so one shell cannot wall off
+	# another floor's view through the same exterior window.
+	var centers: Array[float] = []
+	for opening_value in existing:
+		if opening_value is Dictionary:
+			_add_unique_window_center(centers, float(opening_value.get("center", 0.0)))
+
+	var full_facade_bounds: Array = []
+	var quadrant_room_ids := ["executive", "public", "office_03", "office_04"]
+	for room_value in floor_plan.get("rooms", []):
+		if not room_value is Dictionary:
+			continue
+		var room: Dictionary = room_value
+		if str(room.get("id", "")) == "commercial_floor":
+			full_facade_bounds = room.get("bounds", [])
+		elif str(room.get("id", "")) in quadrant_room_ids:
+			var room_bounds: Array = room.get("bounds", [])
+			if room_bounds.size() >= 4:
+				_add_unique_window_center(
+					centers,
+					(float(room_bounds[1]) + float(room_bounds[3]) / 2.0) * WORLD_SCALE,
+				)
+
+	if full_facade_bounds.size() >= 4:
+		var facade_top := float(full_facade_bounds[1]) * WORLD_SCALE
+		var facade_bottom := (
+			float(full_facade_bounds[1]) + float(full_facade_bounds[3])
+		) * WORLD_SCALE
+		for index in range(1, 8):
+			_add_unique_window_center(
+				centers,
+				lerpf(facade_top, facade_bottom, float(index) / 8.0),
+			)
+
+	var suite: Dictionary = floor_plan.get("baseLayout", {}).get("executiveSuite", {})
+	var suite_window: Array = suite.get("outsideWindow", [])
+	if suite_window.size() >= 2:
+		_add_unique_window_center(centers, float(suite_window[1]) * WORLD_SCALE)
+
+	var openings: Array = []
+	for center in centers:
+		if center >= top + 0.75 and center <= bottom - 0.75:
+			openings.append({"center": center, "kind": "window"})
+	return openings
+
+
+func _add_unique_window_center(centers: Array[float], center: float) -> void:
+	for existing_center in centers:
+		if absf(existing_center - center) < 1.5:
+			return
+	centers.append(center)
 
 
 func _build_business_suite_layout(floor_plan: Dictionary) -> void:
@@ -639,8 +720,59 @@ func _add_business_suite_walls(
 		_add_business_wall(room, "%sNorthL" % tag, true, left_center, y, left_width, wall_keys)
 		_add_business_wall(room, "%sNorthR" % tag, true, right_center, y, left_width, wall_keys)
 		_add_business_wall(room, "%sSouth" % tag, true, x + int(width / 2.0), y + height, width, wall_keys)
-	_add_business_wall(room, "%sWest" % tag, false, x, y + int(height / 2.0), height, wall_keys)
-	_add_business_wall(room, "%sEast" % tag, false, x + width, y + int(height / 2.0), height, wall_keys)
+	_add_business_suite_side_wall(room, "%sWest" % tag, x, y, height, wall_keys)
+	_add_business_suite_side_wall(room, "%sEast" % tag, x + width, y, height, wall_keys)
+
+
+func _add_business_suite_side_wall(
+	room: String,
+	tag: String,
+	x: int,
+	top_px: int,
+	height_px: int,
+	wall_keys: Dictionary,
+) -> void:
+	var center_px := top_px + int(height_px / 2.0)
+	var key := "%s|v|%d|%d|%d" % [room, x, center_px, height_px]
+	if not _is_business_suite_facade_x(room, x):
+		_add_business_wall(room, tag, false, x, center_px, height_px, wall_keys)
+		return
+	if wall_keys.has(key):
+		return
+	wall_keys[key] = true
+
+	var start := _pygame_to_world(x, top_px, room)
+	var finish := _pygame_to_world(x, top_px + height_px, room)
+	var wall_top := minf(start.z, finish.z)
+	var wall_bottom := maxf(start.z, finish.z)
+	var openings := _shared_exterior_window_openings(
+		floor_plan_data,
+		wall_top,
+		wall_bottom,
+		[],
+	)
+	_add_vertical_opening_wall(tag, start.x, wall_top, wall_bottom, openings)
+
+
+func _is_business_suite_facade_x(room: String, x: int) -> bool:
+	if room.begins_with("basement_"):
+		return false
+	for room_value in floor_plan_data.get("rooms", []):
+		if not room_value is Dictionary:
+			continue
+		var room_data: Dictionary = room_value
+		if str(room_data.get("id", "")) != room:
+			continue
+		var bounds: Array = room_data.get("bounds", [])
+		if bounds.size() < 4:
+			return false
+		var render_offset: Array = room_data.get("renderOffset", [0, 0])
+		var left := int(bounds[0])
+		if render_offset.size() >= 2:
+			left += int(render_offset[0])
+		var right := left + int(bounds[2])
+		return x == left or x == right
+	return false
 
 
 func _add_business_wall(
@@ -841,7 +973,7 @@ func _add_vertical_opening_wall(node_name: String, x: float, top: float, bottom:
 				false,
 			)
 		if opening["kind"] == "window":
-			_add_box("%sGlass%d" % [node_name, index], Vector3(x, 1.55, float(opening["center"])), Vector3(structural_wall_thickness, 0.92, width), materials["glass"])
+			_add_box("%sGlass%d" % [node_name, index], Vector3(x, 1.55, float(opening["center"])), Vector3(structural_wall_thickness, 0.92, width), materials["window_glass"])
 			_add_box("%sWindowTop%d" % [node_name, index], Vector3(x, 2.08, float(opening["center"])), Vector3(structural_wall_thickness + 0.12, 0.12, width + 0.12), materials["wall_trim"])
 			_add_box("%sWindowBottom%d" % [node_name, index], Vector3(x, 1.02, float(opening["center"])), Vector3(structural_wall_thickness + 0.12, 0.12, width + 0.12), materials["wall_trim"])
 		cursor = opening_bottom

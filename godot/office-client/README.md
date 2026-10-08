@@ -61,13 +61,13 @@ experience.
 - Small Ambitions is GPL-3.0 and is used only as a visual reference; no code or
   assets from it are included.
 
-The B1 loading-yard gate opens onto a small Godot-generated exterior district.
-Its editable `tower_exterior_plan.json` describes terrain, the approach, street,
-planting, a transit shelter, and nearby building instances. The implementation
-adapts WorldClaw's coarse-to-fine planning concept; the linked research repository
-does not provide a runtime generator that this game installs. Exterior meshes are
-visual scenery only: they add no collision, navigation, audio, or authority over
-the Python simulation.
+The Godot client generates a landscape beyond the Tower's west and east exterior
+walls, so players can see trees, terrain, and nearby buildings through the windows
+while walking and zooming. `tower_exterior_plan.json` controls the deterministic
+scenery rows. This adapts WorldClaw's coarse-to-fine planning concept; the linked
+research repository does not provide a runtime generator that this game installs.
+The landscape is a view-only backdrop, not an outdoor area: it has no entrance,
+collision, navigation, audio, or authority over the Python simulation.
 
 ## Native office prop review
 
@@ -93,11 +93,11 @@ godot --path godot/office-client --resolution 1600x1000 \
   --script res://review/office_props_review.gd -- /absolute/path/office-props.png
 ```
 
-Render the Tower's generated exterior with the same review setup:
+Render the view through the actual west-side office window:
 
 ```bash
 godot --path godot/office-client --resolution 1600x1000 \
-  --script res://review/tower_exterior_review.gd -- /absolute/path/tower-exterior.png
+  --script res://review/tower_exterior_review.gd -- /absolute/path/tower-window-view.png
 ```
 
 The review scene is not gameplay footage or a published desktop build. Release

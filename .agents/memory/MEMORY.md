@@ -123,7 +123,7 @@
 - [Astra model rollout](astra-model-rollout.md) — GPT-6 Astra is preferred for text assistants, with controlled GPT/Claude fallback when unavailable.
 - [Godot and Unreal art development](godot-art-dev.md) — Godot supports world-building contributions from external developers; preserve the shared art pipeline and in-game paid gates.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
-- [Outside-world reset](outside-world-reset.md) — legacy browser exterior stays retired; a scoped Godot-native Tower exterior is approved at B1, with world ambience still disabled.
+- [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
 - [NPC economic agents](npc-economic-agents.md) — purposeful NPCs extend narrowly scoped API automations; each has a job and route, with small-cast economic growth.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — keep reset-independent balance/ownership snapshots and purchase events outside wipe tables; restore monotonically under identity-safe email locking.
