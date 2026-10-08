@@ -1,6 +1,7 @@
 extends SceneTree
 
 const TowerExteriorWorld = preload("res://exterior_world.gd")
+const OfficeClient = preload("res://main.gd")
 
 
 func _initialize() -> void:
@@ -33,4 +34,12 @@ func _run_tests() -> void:
 
 	print("Tower exterior generation tests passed (", generated_meshes.size(), " visual meshes)")
 	exterior.free()
+
+	var client = OfficeClient.new()
+	client._build_materials()
+	client._build_building_shell()
+	var integrated_world = client.world_root.get_node_or_null("TowerExteriorWorld")
+	assert(integrated_world is Node3D)
+	assert(integrated_world.get_node_or_null("TerrainFoundation") is MeshInstance3D)
+	client.free()
 	quit()

@@ -2167,3 +2167,17 @@ mtime_ms = 1791396987778
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/4027636f-eb59-42e4-aabf-084ab356e166/16b187ee-dbca-482d-8e5f-3ec04441b165"
 storage_version_token = "1791397300465530"
 content_type = "image/png"
+
+[[outputs]]
+id = "ACunN8dvJG0O690PvnTjL"
+uri = "file://screenshots/tower-exterior-world.png"
+type = "image"
+title = "Tower exterior preview"
+description = "A real Godot render of the generated district beyond the B1 loading-yard gate. This is visual scenery, not gameplay footage."
+logical_id = "49780001-aa3b-4961-a09b-89038d105124"
+content_hash = "sha256:b472baa57c8ac72b97841d16fa2a7a5f6f6067226ebc04cf2259d4f92fbf3578"
+size = 58087
+mtime_ms = 1791429218616
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/49780001-aa3b-4961-a09b-89038d105124/3d86d232-db22-4623-b8e6-22a7568c2401"
+storage_version_token = "1791429420443311"
+content_type = "image/png"

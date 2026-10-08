@@ -93,6 +93,13 @@ godot --path godot/office-client --resolution 1600x1000 \
   --script res://review/office_props_review.gd -- /absolute/path/office-props.png
 ```
 
+Render the Tower's generated exterior with the same review setup:
+
+```bash
+godot --path godot/office-client --resolution 1600x1000 \
+  --script res://review/tower_exterior_review.gd -- /absolute/path/tower-exterior.png
+```
+
 The review scene is not gameplay footage or a published desktop build. Release
 packages include the matching Godot runtime and launch it with the Python
 simulation as one coordinated app.
