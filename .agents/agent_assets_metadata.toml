@@ -2223,3 +2223,45 @@ mtime_ms = 1791435603649
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/27ad743c-2f98-46d7-9c97-0fa10572d308/47c7e0b9-9d9b-4895-a903-2b073ae24d51"
 storage_version_token = "1791435661396019"
 content_type = "image/png"
+
+[[outputs]]
+id = "7sNah7MGwVRVPQjIeW7dM"
+uri = "file://release-media/salaryman-office-4k-demo.mp4"
+type = "video"
+title = "SALARYMAN Office — 4K gameplay"
+description = "Captured from the packaged Python + Godot game at native 3840×2160, 15 fps, 6 seconds; the bridge is live."
+logical_id = "e0cddbaf-a734-412b-acb4-2aeb725f43a6"
+content_hash = "sha256:b403f726940c478a0ab92c962c17cfb544d3d35f687dc4b87d09d81efe1a9086"
+size = 945231
+mtime_ms = 1791449999954
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/e0cddbaf-a734-412b-acb4-2aeb725f43a6/b5fb8632-7797-422e-a647-c402f8117df0"
+storage_version_token = "1791450097276816"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "aUWXgiYO2K6dG437W32-x"
+uri = "file://release-media/salaryman-office-4k-frame-02.png"
+type = "image"
+title = "SALARYMAN Office — 4K screenshot"
+description = "Native 3840×2160 frame from the packaged game, with the Python simulation connected."
+logical_id = "0e6990ae-dfaa-48fc-9710-e2389d0ec3e3"
+content_hash = "sha256:1d6a8f9bd10b62c7bfb1c4d646ecb000ac5a477376c79082eb25e4fb98de8c2a"
+size = 751980
+mtime_ms = 1791450001262
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0e6990ae-dfaa-48fc-9710-e2389d0ec3e3/dd24f15f-1ec1-48f2-86ca-93ace520b104"
+storage_version_token = "1791450098317920"
+content_type = "image/png"
+
+[[outputs]]
+id = "J6KDjUjE8frxVkANCZLzb"
+uri = "file://release-media/salaryman-office-4k-zoomed-out.png"
+type = "image"
+title = "SALARYMAN Office — zoomed-out 4K screenshot"
+description = "Native 3840×2160 frame from the packaged game after camera zoom-out and movement input."
+logical_id = "a45ad654-ff16-4060-8969-b1ce5323d213"
+content_hash = "sha256:5efbcdad623bb4ba4306447d29684ae9dab7178c0b8285ef1c8f3e00c2ed189e"
+size = 829869
+mtime_ms = 1791450001822
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a45ad654-ff16-4060-8969-b1ce5323d213/2d6149a1-09ef-43e3-a71b-48ae7b364357"
+storage_version_token = "1791450099440007"
+content_type = "image/png"

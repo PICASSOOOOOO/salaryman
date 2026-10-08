@@ -57,6 +57,39 @@ class PygameBridgeTests(unittest.TestCase):
             client.close()
             bridge.close()
 
+    def test_slow_client_keeps_only_the_latest_unsent_snapshot(self):
+        class BlockedClient:
+            def send(self, _data):
+                raise BlockingIOError
+
+            def close(self):
+                pass
+
+        class CollectingClient:
+            def __init__(self):
+                self.received = bytearray()
+
+            def send(self, data):
+                self.received.extend(data)
+                return len(data)
+
+            def close(self):
+                pass
+
+        bridge = OfficeBridge()
+        bridge.client = BlockedClient()
+        for _ in range(6):
+            bridge.send_snapshot(self.state, self.scene)
+            bridge.flush()
+
+        collector = CollectingClient()
+        bridge.client = collector
+        bridge.flush()
+        payload = json.loads(collector.received)
+        self.assertEqual(payload["sequence"], 6)
+        self.assertEqual(payload["scene"]["navigation"]["room"], "lobby")
+        bridge.close()
+
     def test_oversized_outbound_message_fails_instead_of_being_silently_dropped(self):
         bridge = OfficeBridge()
         with self.assertRaisesRegex(ValueError, "outbound limit"):

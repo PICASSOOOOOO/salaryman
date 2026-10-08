@@ -914,6 +914,10 @@ class OfficeBridge:
         self.client: socket.socket | None = None
         self.inbound = bytearray()
         self.outbound = bytearray()
+        self.latest_snapshot: bytes | None = None
+        self.current_frame: bytes | None = None
+        self.current_frame_offset = 0
+        self.current_frame_is_snapshot = False
         self.sequence = 0
         self.status = "BRIDGE OFFLINE"
 
@@ -976,12 +980,18 @@ class OfficeBridge:
         self.flush()
         return commands
 
-    def queue(self, message: dict[str, Any]) -> None:
+    def queue(self, message: dict[str, Any], *, replaceable: bool = False) -> None:
         encoded = (json.dumps(message, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
         if len(encoded) > MAX_OUTBOUND_LINE_BYTES:
             raise ValueError(
                 f"Bridge message exceeds the {MAX_OUTBOUND_LINE_BYTES}-byte outbound limit."
             )
+        if replaceable:
+            if self.current_frame_is_snapshot and self.current_frame_offset == 0:
+                self.current_frame = None
+                self.current_frame_is_snapshot = False
+            self.latest_snapshot = encoded
+            return
         if len(self.outbound) + len(encoded) > MAX_OUTBOUND_BUFFER_BYTES:
             raise BufferError(
                 f"Bridge outbound queue exceeds the {MAX_OUTBOUND_BUFFER_BYTES}-byte limit."
@@ -990,7 +1000,7 @@ class OfficeBridge:
 
     def send_snapshot(self, state: OfficeState, scene: TowerScene) -> None:
         self.sequence += 1
-        self.queue(build_snapshot(state, scene, self.sequence))
+        self.queue(build_snapshot(state, scene, self.sequence), replaceable=True)
 
     def send_result(self, command: dict[str, Any], result: CommandResult) -> None:
         self.queue(
@@ -1008,9 +1018,23 @@ class OfficeBridge:
     def flush(self) -> None:
         if self.client is None:
             return
-        while self.outbound:
+        while True:
+            if self.current_frame is None:
+                if self.outbound:
+                    line_end = self.outbound.find(b"\n")
+                    if line_end < 0:
+                        raise RuntimeError("Bridge outbound control message is incomplete.")
+                    self.current_frame = bytes(self.outbound[: line_end + 1])
+                    del self.outbound[: line_end + 1]
+                    self.current_frame_is_snapshot = False
+                elif self.latest_snapshot is not None:
+                    self.current_frame = self.latest_snapshot
+                    self.latest_snapshot = None
+                    self.current_frame_is_snapshot = True
+                else:
+                    return
             try:
-                sent = self.client.send(self.outbound)
+                sent = self.client.send(self.current_frame[self.current_frame_offset :])
             except BlockingIOError:
                 return
             except OSError:
@@ -1019,7 +1043,12 @@ class OfficeBridge:
             if sent <= 0:
                 self._drop_client()
                 return
-            del self.outbound[:sent]
+            self.current_frame_offset += sent
+            if self.current_frame_offset < len(self.current_frame):
+                return
+            self.current_frame = None
+            self.current_frame_offset = 0
+            self.current_frame_is_snapshot = False
 
     def close(self) -> None:
         self._drop_client()
@@ -1054,5 +1083,9 @@ class OfficeBridge:
         self.client = None
         self.inbound.clear()
         self.outbound.clear()
+        self.latest_snapshot = None
+        self.current_frame = None
+        self.current_frame_offset = 0
+        self.current_frame_is_snapshot = False
         if self.listener is not None:
             self.status = f"BRIDGE LISTENING / {self.host}:{self.port}"
