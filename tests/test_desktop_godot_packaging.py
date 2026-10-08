@@ -6,6 +6,7 @@ from pathlib import Path
 
 from scripts.build_desktop import (
     GODOT_VERSION,
+    REQUIRED_GODOT_FILES,
     _extract_zip_safely,
     _godot_archive_for_platform,
     write_release_launchers,
@@ -13,6 +14,10 @@ from scripts.build_desktop import (
 
 
 class DesktopGodotPackagingTests(unittest.TestCase):
+    def test_requires_integrated_exterior_assets_in_release_package(self) -> None:
+        self.assertIn("exterior_world.gd", REQUIRED_GODOT_FILES)
+        self.assertIn("tower_exterior_plan.json", REQUIRED_GODOT_FILES)
+
     def test_selects_the_pinned_native_godot_archive(self) -> None:
         cases = [
         (

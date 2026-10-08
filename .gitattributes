@@ -7,3 +7,6 @@ exports/salaryman-1999-music-transfer.zip filter=lfs diff=lfs merge=lfs -text
 exports/salaryman-callhome-audio-01-15.zip filter=lfs diff=lfs merge=lfs -text
 exports/salaryman-callhome-audio-16-31.zip filter=lfs diff=lfs merge=lfs -text
 attached_assets/0_salaryman-office-macos_1788878418924.zip filter=lfs diff=lfs merge=lfs -text
+build/godot-release-cache/4.4.1/Linux/Godot_v4.4.1-stable_linux.x86_64.zip filter=lfs diff=lfs merge=lfs -text
+build/godot-release-cache/4.4.1/Linux/extracted/Godot_v4.4.1-stable_linux.x86_64 filter=lfs diff=lfs merge=lfs -text
+build/release/salaryman-office-linux-x86_64/godot-runtime/Godot_v4.4.1-stable_linux.x86_64 filter=lfs diff=lfs merge=lfs -text

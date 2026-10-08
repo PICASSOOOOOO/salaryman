@@ -2181,3 +2181,45 @@ mtime_ms = 1791429218616
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/49780001-aa3b-4961-a09b-89038d105124/3d86d232-db22-4623-b8e6-22a7568c2401"
 storage_version_token = "1791429420443311"
 content_type = "image/png"
+
+[[outputs]]
+id = "UFMWnjzG5HEX__W-zjnNF"
+uri = "file://release-media/salaryman-office-package-capture.mp4"
+type = "video"
+title = "SALARYMAN Office — packaged game capture"
+description = "12-second 1080p capture from the packaged Linux client with the Python bridge connected. This is an idle Floor 01 view; it does not claim to show movement."
+logical_id = "f32182ec-2e13-4ec4-b0d3-3ac2acf20896"
+content_hash = "sha256:a0ecce795b1a644c70e52ac05e0daafe009e95bdc374b5012601f1055949202c"
+size = 711082
+mtime_ms = 1791435550133
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f32182ec-2e13-4ec4-b0d3-3ac2acf20896/8e610dad-cf0f-4f4a-900a-90e1958a71e0"
+storage_version_token = "1791435659623069"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "f03KSj831y-40YYCUQMYR"
+uri = "file://release-media/salaryman-office-package-screenshot.png"
+type = "image"
+title = "SALARYMAN Office — packaged game screenshot"
+description = "1920×1080 still extracted from the same packaged-client capture."
+logical_id = "0dbeb4e7-0fbf-4c13-8e6f-d5ab17874f05"
+content_hash = "sha256:89a119408d3c509d9889e3f3462512adda85881d21c18140944fc3788f322b61"
+size = 824417
+mtime_ms = 1791435550404
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0dbeb4e7-0fbf-4c13-8e6f-d5ab17874f05/4a5a8e4c-bcfc-4deb-8d4f-f8805f3c6717"
+storage_version_token = "1791435660649430"
+content_type = "image/png"
+
+[[outputs]]
+id = "Y6l7hRa2lGAnN1daYmkYu"
+uri = "file://release-media/tower-landscape-review.png"
+type = "image"
+title = "Tower exterior — review render"
+description = "Still rendered with the bundled Godot runtime from the integrated through-window review scene. This is a review render, not gameplay footage."
+logical_id = "27ad743c-2f98-46d7-9c97-0fa10572d308"
+content_hash = "sha256:dc864349aee1a8f60eb0cd9e0e5a912553ab5ad36e7d23f61ee437ba16387f60"
+size = 16425
+mtime_ms = 1791435603649
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/27ad743c-2f98-46d7-9c97-0fa10572d308/47c7e0b9-9d9b-4895-a903-2b073ae24d51"
+storage_version_token = "1791435661396019"
+content_type = "image/png"

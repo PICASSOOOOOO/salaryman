@@ -156,27 +156,26 @@ def _stage_godot_runtime(staging: Path, system_name: str, machine: str) -> Path:
 
 
 def _smoke_test_godot(engine: Path, project: Path) -> None:
-    """Verify clean import and a live Python ↔ Godot session."""
+    """Import assets into the release project, then verify the paired runtime."""
     with tempfile.TemporaryDirectory(prefix="salaryman-godot-smoke-") as temp:
-        clean_project = Path(temp) / "godot-office-client"
-        shutil.copytree(
-            project,
-            clean_project,
-            ignore=shutil.ignore_patterns(".godot", "*.uid"),
-        )
         subprocess.run(
-            [str(engine), "--headless", "--editor", "--path", str(clean_project), "--quit"],
-            cwd=clean_project,
+            [str(engine), "--headless", "--editor", "--path", str(project), "--quit"],
+            cwd=project,
             check=True,
             timeout=240,
         )
+        imported_assets = project / ".godot" / "imported"
+        if not imported_assets.is_dir() or not any(imported_assets.iterdir()):
+            raise RuntimeError(
+                "Godot did not create the imported asset cache required by the release."
+            )
         subprocess.run(
-            [str(engine), "--headless", "--path", str(clean_project), "--quit-after", "8"],
-            cwd=clean_project,
+            [str(engine), "--headless", "--path", str(project), "--quit-after", "8"],
+            cwd=project,
             check=True,
             timeout=120,
         )
-        subprocess.run(
+        paired_smoke = subprocess.run(
             [
                 sys.executable,
                 str(ROOT / "main.py"),
@@ -187,14 +186,37 @@ def _smoke_test_godot(engine: Path, project: Path) -> None:
                 "--godot-executable",
                 str(engine),
                 "--godot-project",
-                str(clean_project),
+                str(project),
                 "--save-file",
                 str(Path(temp) / "office-save.json"),
             ],
             cwd=ROOT,
-            check=True,
+            check=False,
             timeout=120,
+            capture_output=True,
+            text=True,
         )
+        if paired_smoke.returncode != 0:
+            raise RuntimeError(
+                "The packaged Python/Godot smoke test failed:\n"
+                + "\n".join((paired_smoke.stdout + paired_smoke.stderr).splitlines()[-80:])
+            )
+        critical_markers = (
+            "SCRIPT ERROR:",
+            "Parse Error:",
+            "ERROR: Failed loading resource",
+            "ERROR: Cannot open file",
+        )
+        critical_errors = [
+            line
+            for line in (paired_smoke.stdout + paired_smoke.stderr).splitlines()
+            if any(marker in line for marker in critical_markers)
+        ]
+        if critical_errors:
+            raise RuntimeError(
+                "The packaged Python/Godot smoke test logged runtime errors:\n"
+                + "\n".join(critical_errors[-80:])
+            )
 
 
 def write_release_launchers(staging: Path, system_name: str) -> None:

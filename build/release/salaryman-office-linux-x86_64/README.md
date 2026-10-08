@@ -12,7 +12,10 @@ You can also launch it from a terminal opened in this directory:
 ./launch-salaryman-office.sh
 ```
 
-The Pygame office simulation is authoritative and works without Godot.
+SALARYMAN OS opens the Godot game as its player-facing window and runs the
+Python simulation as its hidden, authoritative companion for finance, workers,
+interactions, and persistent state. Both runtimes are bundled and shut down
+together; no separate Godot installation is required.
 
 ## Add a branded desktop launcher (Linux)
 
@@ -27,15 +30,11 @@ user-local desktop applications folder. Keep this extracted directory in place
 after installing the shortcut.
 
 
-## Optional Godot renderer
+## Runtime layout
 
-Start the Pygame app with its bridge enabled, then open
-`godot-office-client` in Godot 4:
+`pygame/` contains the launcher and simulation, `godot-runtime/` contains the
+matching Godot engine, and `godot-office-client/` contains the game client. Start
+SALARYMAN OS using the launcher above; it opens both components and shuts down
+the pair together.
 
-```bash
-./launch-salaryman-office.sh --bridge-port 4242
-godot --path godot-office-client
-```
-
-The Godot client is an optional renderer and input surface. It does not own
-FIAT, workers, persistence, or office rules.
+Godot is distributed under the MIT license; see `godot-runtime/LICENSE.txt`.
