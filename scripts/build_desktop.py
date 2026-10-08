@@ -34,6 +34,19 @@ GODOT_RELEASE_URL = (
     "https://github.com/godotengine/godot/releases/download/"
     f"{GODOT_VERSION}-stable"
 )
+REQUIRED_GODOT_FILES = (
+    "project.godot",
+    "Main.tscn",
+    "main.gd",
+    "floor_plan.json",
+    "tower_exterior_plan.json",
+    "exterior_world.gd",
+    "agentshire-assets/characters/character-male-a.glb",
+    "agentshire-assets/furniture/couch.gltf",
+    "pixel-agents/assets/characters/char_0.png",
+    "callhome/track-11.mp3",
+    "callhome/track-17.mp3",
+)
 
 
 def _godot_archive_for_platform(system_name: str, machine: str) -> tuple[str, str]:
@@ -345,19 +358,8 @@ def main() -> int:
         if not track_source.is_file():
             raise RuntimeError(f"Desktop release is missing soundtrack asset {track_name}.")
         shutil.copy2(track_source, packaged_callhome / track_name)
-    required_godot_files = (
-        "project.godot",
-        "Main.tscn",
-        "main.gd",
-        "floor_plan.json",
-        "agentshire-assets/characters/character-male-a.glb",
-        "agentshire-assets/furniture/couch.gltf",
-        "pixel-agents/assets/characters/char_0.png",
-        "callhome/track-11.mp3",
-        "callhome/track-17.mp3",
-    )
     missing_godot_files = [
-        path for path in required_godot_files if not (godot_bundle / path).exists()
+        path for path in REQUIRED_GODOT_FILES if not (godot_bundle / path).exists()
     ]
     if missing_godot_files:
         raise RuntimeError(
