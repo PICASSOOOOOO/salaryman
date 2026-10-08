@@ -1267,12 +1267,7 @@ func _sync_automation_characters(characters: Array) -> void:
 			var model := packed.instantiate() as Node3D
 			model.name = "CharacterModel"
 			actor_root.add_child(model)
-			var actor_appearance := PlayerController.appearance_for_role(domain)
-			var actor_animation := PlayerController.configure_character_model(
-				model,
-				PlayerController.MODEL_SCALE,
-				actor_appearance,
-			)
+			var actor_animation := PlayerController.configure_character_model(model)
 			if actor_animation != null:
 				actor_animation.play("idle")
 			_add_character_shadow(actor_root, 0.34)
@@ -1282,7 +1277,7 @@ func _sync_automation_characters(characters: Array) -> void:
 			name_tag.text = str(character.get("name", domain)).to_upper()
 			name_tag.font_size = 24
 			name_tag.pixel_size = 0.006
-			name_tag.position = Vector3(0.0, 1.82, 0.0)
+			name_tag.position = Vector3(0.0, 1.72, 0.0)
 			name_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			name_tag.outline_size = 7
 			name_tag.outline_modulate = Color("#14211e")
@@ -2158,12 +2153,9 @@ func _build_receptionist(position: Vector3, object_id: String) -> Node3D:
 	var receptionist := packed.instantiate() as Node3D
 	receptionist.name = object_id
 	receptionist.position = position
+	receptionist.scale = Vector3.ONE * 0.72
 	dynamic_root.add_child(receptionist)
-	var receptionist_animation := PlayerController.configure_character_model(
-		receptionist,
-		PlayerController.MODEL_SCALE * 0.92,
-		"reception",
-	)
+	var receptionist_animation := PlayerController.configure_character_model(receptionist)
 	if receptionist_animation != null and receptionist_animation.has_animation("idle"):
 		receptionist_animation.play("idle")
 	return receptionist

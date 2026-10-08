@@ -18,6 +18,12 @@ office prop render and said, “Looks good.”
 **How to apply:** Extend this material language consistently to the remaining
 Tower props; do not replace it with a different visual direction without asking.
 
+Godot character art should read as realistic Japanese 1980s salaryman business-office simulation, blending solarpunk and cyberpunk; avoid cartoon styling and do not use Pygame art.
+
+**Why:** The user explicitly requested realistic characters for this setting, said they do not want cartoons, and prohibited using Pygame art for the Godot character redesign.
+
+**How to apply:** Use Godot-native 3D characters and preserve gameplay movement. If the available rig or model cannot meet the realism requirement, ask before accepting a visibly stylized fallback or replacing the rig.
+
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 
 **Why:** The user explicitly said the camera zoom at transitions is important for making travel feel like a game, and requested sound effects for zooming in and out.
