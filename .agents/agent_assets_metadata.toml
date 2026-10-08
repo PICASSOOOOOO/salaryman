@@ -2279,3 +2279,31 @@ mtime_ms = 1791463299855
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f411e456-5200-4c75-ae7f-69b552f114a0/ba81d8da-eae2-49b6-90fb-a02f5f7a3c63"
 storage_version_token = "1791463522922968"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "f0N7xqritM14S2JjRkD8V"
+uri = "file://deliverables/salaryman-overhead-review.png"
+type = "image"
+title = "Overhead Salaryman — Godot Preview"
+description = "Pixel-treated 1980s salaryman in the isolated overhead preview scene."
+logical_id = "db44e66c-5ee6-413e-a263-14067054d33d"
+content_hash = "sha256:ed0054a41a16f4bb7c53979d3b3d650c820c4465fbd076487ec2c573aa7e2605"
+size = 143155
+mtime_ms = 1791470633956
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/db44e66c-5ee6-413e-a263-14067054d33d/0cd8dbfd-1d82-4e7d-b522-6e29b1d7a666"
+storage_version_token = "1791470690364161"
+content_type = "image/png"
+
+[[outputs]]
+id = "g16SWRNrH9aqDKrZVdN0W"
+uri = "file://deliverables/salaryman-overhead-walk.mp4"
+type = "video"
+title = "Salaryman Walk Preview"
+description = "Eight-second Godot capture showing the character walking in four directions."
+logical_id = "f4670a46-9565-4f43-ae95-ea5f861800af"
+content_hash = "sha256:18e93d353163746ed846483c99baa9b8e31d6637934ed5e39a3f766364e4b49a"
+size = 4680664
+mtime_ms = 1791470633968
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f4670a46-9565-4f43-ae95-ea5f861800af/8f1b07ae-0156-411e-a71b-aa5d50306a88"
+storage_version_token = "1791470692561814"
+content_type = "video/mp4"

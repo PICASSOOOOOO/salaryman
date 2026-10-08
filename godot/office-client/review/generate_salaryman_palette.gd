@@ -25,6 +25,13 @@ const BURGUNDY := [
 	Color("#983a40"),
 	Color("#b45758"),
 ]
+const SKIN := [
+	Color("#704b39"),
+	Color("#956548"),
+	Color("#b98261"),
+	Color("#d09a77"),
+	Color("#e1b28f"),
+]
 const CREAM := [
 	Color("#8d806b"),
 	Color("#b2a58a"),
@@ -61,7 +68,7 @@ func _generate() -> void:
 
 	for y in range(image.get_height()):
 		for x in range(image.get_width()):
-			var palette := _palette_for_pixel(x, y)
+			var palette: Array = _palette_for_pixel(x, y)
 			if palette.is_empty():
 				continue
 			var source_color := image.get_pixel(x, y)
@@ -71,7 +78,7 @@ func _generate() -> void:
 			var shade := clampi(roundi(brightness * float(palette.size() - 1)), 0, palette.size() - 1)
 			if x < 128 and y >= 320 and y < 448 and (x + y * 3) % 17 == 0:
 				shade = mini(shade + 1, palette.size() - 1)
-			var result := palette[shade]
+			var result: Color = palette[shade]
 			result.a = source_color.a
 			image.set_pixel(x, y, result)
 
@@ -82,12 +89,14 @@ func _generate() -> void:
 
 
 func _palette_for_pixel(x: int, y: int) -> Array:
-	if y >= 224 and y < 320:
+	if y >= 192 and y < 320:
 		if x >= 64 and x < 128:
 			return SUIT
 		if x >= 128 and x < 192:
 			return TROUSER
-		if x >= 192 and x < 320:
+		if x >= 192 and x < 256:
+			return SKIN
+		if x >= 256 and x < 320:
 			return BURGUNDY
 		if x >= 320 and x < 384:
 			return SUIT
@@ -101,5 +110,5 @@ func _palette_for_pixel(x: int, y: int) -> Array:
 		if x >= 128 and x < 192:
 			return CREAM
 		if x >= 192 and x < 320:
-			return SUIT
+			return SKIN
 	return []

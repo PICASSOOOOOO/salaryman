@@ -18,11 +18,11 @@ office prop render and said, “Looks good.”
 **How to apply:** Extend this material language consistently to the remaining
 Tower props; do not replace it with a different visual direction without asking.
 
-Godot character art should read as realistic Japanese 1980s salaryman business-office simulation, blending solarpunk and cyberpunk; avoid cartoon styling and do not use Pygame art.
+For this mid-50s Japanese 1980s office character, the user's latest direction is a pixel-styled presentation optimized for the angled overhead game view. Keep the existing Godot rig and its locomotion animations, do not use Pygame art, and keep the character in an isolated preview until review.
 
-**Why:** The user explicitly requested realistic characters for this setting, said they do not want cartoons, and prohibited using Pygame art for the Godot character redesign.
+**Why:** The user redirected this character from an earlier realistic redesign toward an overhead-ready pixel look; this is a character-specific update, not a general visual change for the Godot cast.
 
-**How to apply:** Use Godot-native 3D characters and preserve gameplay movement. If the available rig or model cannot meet the realism requirement, ask before accepting a visibly stylized fallback or replacing the rig.
+**How to apply:** Preserve the existing rig, movement, and animation. Keep the shared player, automation, and receptionist actors unchanged until the new appearance is reviewed.
 
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 
