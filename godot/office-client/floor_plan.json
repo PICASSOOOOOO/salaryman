@@ -1,58 +1,1245 @@
 {
-  "world": {
-    "width": 10000,
-    "height": 10000
+  "world": {"width": 100000000, "height": 100000000},
+  "floorCount": 67,
+  "officeCapacityDesks": 200,
+  "officesPerFloor": 4,
+  "floorBuildStatus": {"1": "open", "basement": "open", "2-5": "construction_open", "6": "open", "7": "open", "8-12": "open", "13-67": "under_construction"},
+  "playableFloors": {
+    "1": {"room": "lobby", "label": "TOWER LOBBY", "initialBusinessOperator": "PABLO CORP"},
+    "2": {
+      "room": "construction_f02",
+      "label": "FLOOR 02 / BUSINESS SUITES + CONSTRUCTION",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "shadow_cafeteria", "label": "COMMON TABLE 67 / CAFETERIA", "unitNumber": 1},
+        {"businessKey": "tower_clinic", "label": "LUMEN CARE CLINIC", "unitNumber": 2},
+        {"businessKey": "tower_pharmacy", "label": "THIRD SHIFT PHARMACY", "unitNumber": 3},
+        {"businessKey": "banco_ombra", "label": "BANCO OMBRA / CURRENCY + GOLD EXCHANGE", "unitNumber": 4},
+        {"businessKey": "tower_realty", "label": "PABLO CORP REAL ESTATE", "unitNumber": 5},
+        {"businessKey": "fish-store", "label": "FISH STORE", "unitNumber": 6},
+        {"businessKey": "furniture-store", "label": "FURNITURE STORE", "unitNumber": 7},
+        {"businessKey": "tower_terminal_repair", "label": "MENDER-9 TERMINAL WORKS", "unitNumber": 8}
+      ]
+    },
+    "3": {
+      "room": "construction_f03",
+      "label": "FLOOR 03 / BUSINESS SUITES + CONSTRUCTION",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "phone_store_f03", "label": "PHONE STORE", "unitNumber": 1},
+        {"businessKey": "liquor_store", "label": "LIQUOR STORE / ALCOHOL + CIGARETTES", "unitNumber": 2},
+        {"businessKey": "office_equipment_store", "label": "OFFICE EQUIPMENT STORE", "unitNumber": 3},
+        {"businessKey": "tool_store", "label": "TOOL STORE", "unitNumber": 4},
+        {"businessKey": "jewelry_store", "label": "JEWELRY / WATCHES + GOLD EXCHANGE", "unitNumber": 5},
+        {"businessKey": "tea_shop", "label": "TEA SHOP", "unitNumber": 6},
+        {"businessKey": "formal_clothing_store", "label": "FORMAL CLOTHING / SUITS + DRESSES", "unitNumber": 7},
+        {"businessKey": "shoe_store", "label": "SHOE STORE", "unitNumber": 8}
+      ]
+    },
+    "4": {
+      "room": "construction_f04",
+      "label": "FLOOR 04 / BUSINESS SUITES + CONSTRUCTION",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "music_shop", "label": "MUSIC SHOP", "unitNumber": 1},
+        {"businessKey": "mirror_shop", "label": "MIRROR SHOP", "unitNumber": 2},
+        {"businessKey": "lighting_store", "label": "LIGHTING STORE", "unitNumber": 3},
+        {"businessKey": "cafe_f04", "label": "CAFE", "unitNumber": 4},
+        {"businessKey": "antique_shop_f04", "label": "ANTIQUE SHOP", "unitNumber": 5},
+        {"businessKey": "record_store", "label": "RECORD STORE", "unitNumber": 6},
+        {"businessKey": "book_store", "label": "BOOK STORE", "unitNumber": 7}
+      ]
+    },
+    "5": {
+      "room": "construction_f05",
+      "label": "FLOOR 05 / BUSINESS SUITES + CONSTRUCTION",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "restaurant", "label": "RESTAURANT", "unitNumber": 1},
+        {"businessKey": "antique_shop_f05", "label": "ANTIQUE STORE", "unitNumber": 2},
+        {"businessKey": "phone_store_f05", "label": "PHONE STORE", "unitNumber": 3},
+        {"businessKey": "tv_store", "label": "TV STORE", "unitNumber": 4},
+        {"businessKey": "mattress_store", "label": "MATTRESS STORE", "unitNumber": 5},
+        {"businessKey": "hostel", "label": "HOSTEL", "unitNumber": 6},
+        {"businessKey": "salon", "label": "SALON", "unitNumber": 7},
+        {"businessKey": "barber", "label": "BARBER", "unitNumber": 8}
+      ]
+    },
+    "6": {
+      "room": "recreation",
+      "label": "FLOOR 06 / OFFICE CONCOURSE",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "radio_station", "label": "RADIO STATION", "unitNumber": 1, "officeRoom": "executive", "officeHalf": "west"},
+        {"businessKey": "music_studio", "label": "MUSIC STUDIO", "unitNumber": 2, "officeRoom": "executive", "officeHalf": "east"},
+        {"businessKey": "school", "label": "SCHOOL", "unitNumber": 3, "officeRoom": "public", "officeHalf": "west"},
+        {"businessKey": "art_supply_store", "label": "ART SUPPLY STORE", "unitNumber": 4, "officeRoom": "public", "officeHalf": "east"},
+        {"businessKey": "meeting_room", "label": "MEETING ROOM", "unitNumber": 5, "officeRoom": "office_03", "officeHalf": "west"},
+        {"businessKey": "public_workspace", "label": "PUBLIC WORKSPACE", "unitNumber": 6, "officeRoom": "office_03", "officeHalf": "east"},
+        {"businessKey": "study_hall", "label": "STUDY HALL", "unitNumber": 7, "officeRoom": "office_04", "officeHalf": "west"},
+        {"businessKey": "flower_shop", "label": "FLOWER SHOP", "unitNumber": 8, "officeRoom": "office_04", "officeHalf": "east"}
+      ]
+    },
+    "7": {
+      "room": "floor07_business",
+      "label": "FLOOR 07 / MEDITATION TEMPLE",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [],
+      "interiorProps": [
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [8485, 21213], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [19799, 37335], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [42426, 21213], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [53740, 37335], "interactive": false},
+        {"kind": "temple_tree", "label": "INDOOR TREE", "position": [31113, 62225], "interactive": false},
+        {
+          "kind": "reflection_screen",
+          "label": "REFLECTION ALCOVE SCREEN",
+          "position": [7071, 48932],
+          "collisionHalfExtents": [450, 80],
+          "interactive": false
+        },
+        {
+          "kind": "reflection_screen",
+          "label": "REFLECTION ALCOVE SCREEN",
+          "position": [12728, 48932],
+          "collisionHalfExtents": [450, 80],
+          "interactive": false
+        },
+        {
+          "kind": "reflection_screen",
+          "label": "REFLECTION ALCOVE SCREEN",
+          "position": [26870, 48932],
+          "collisionHalfExtents": [450, 80],
+          "interactive": false
+        },
+        {
+          "kind": "reflection_screen",
+          "label": "REFLECTION ALCOVE SCREEN",
+          "position": [32527, 48932],
+          "collisionHalfExtents": [450, 80],
+          "interactive": false
+        },
+        {
+          "kind": "reflection_screen",
+          "label": "REFLECTION ALCOVE SCREEN",
+          "position": [46669, 48932],
+          "collisionHalfExtents": [450, 80],
+          "interactive": false
+        },
+        {
+          "kind": "reflection_screen",
+          "label": "REFLECTION ALCOVE SCREEN",
+          "position": [52326, 48932],
+          "collisionHalfExtents": [450, 80],
+          "interactive": false
+        },
+        {"kind": "meditation_cushion", "label": "MEDITATION CUSHION", "position": [9899, 53740], "interactive": false},
+        {"kind": "meditation_cushion", "label": "MEDITATION CUSHION", "position": [29698, 53740], "interactive": false},
+        {"kind": "meditation_cushion", "label": "MEDITATION CUSHION", "position": [49497, 53740], "interactive": false},
+        {"kind": "temple_audio_control", "label": "MEDITATION MUSIC / SILENCE · PRESS M", "position": [31113, 18385], "interactive": false}
+      ]
+    },
+    "8": {
+      "room": "floor08_business",
+      "label": "FLOOR 08 / BUSINESS SUITES",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "landscaping_company", "label": "LANDSCAPING COMPANY", "unitNumber": 1},
+        {"businessKey": "interior_design", "label": "INTERIOR DESIGN", "unitNumber": 2},
+        {"businessKey": "rug_store", "label": "RUG STORE", "unitNumber": 3},
+        {"businessKey": "android_replicant_repair", "label": "ANDROID / REPLICANT REPAIR · SUPPLIES + BATTERIES", "unitNumber": 4},
+        {"businessKey": "glasses_shop", "label": "GLASSES SHOP", "unitNumber": 5},
+        {"businessKey": "glass_installation", "label": "GLASS INSTALLATION", "unitNumber": 6},
+        {"businessKey": "plumber", "label": "PLUMBER", "unitNumber": 7},
+        {"businessKey": "electrician", "label": "ELECTRICIAN", "unitNumber": 8}
+      ]
+    },
+    "9": {
+      "room": "floor09_business",
+      "label": "FLOOR 09 / BUSINESS SUITES",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "karaoke", "label": "KARAOKE", "unitNumber": 1},
+        {"businessKey": "arcade", "label": "ARCADE", "unitNumber": 2},
+        {"businessKey": "plant_store", "label": "PLANT STORE", "unitNumber": 3},
+        {"businessKey": "vespa_shop", "label": "VESPA SHOP", "unitNumber": 4},
+        {"businessKey": "juice_bar", "label": "JUICE BAR", "unitNumber": 5},
+        {"businessKey": "magazine_store", "label": "MAGAZINE STORE", "unitNumber": 6},
+        {"businessKey": "soap_store", "label": "SOAP STORE", "unitNumber": 7},
+        {"businessKey": "janitorial_services", "label": "JANITORIAL SERVICES", "unitNumber": 8}
+      ]
+    },
+    "10": {
+      "room": "floor10_business",
+      "label": "FLOOR 10 / FOUR BUSINESS SUITES",
+      "initialBusinessOperator": "PABLO CORP",
+      "suiteLayout": "fourUnitFloorUnits",
+      "businesses": [
+        {"businessKey": "gym", "label": "GYM", "unitNumber": 1},
+        {"businessKey": "security_station_2", "label": "SECURITY STATION #2", "unitNumber": 2},
+        {"businessKey": "fire_station_2", "label": "FIRE STATION #2", "unitNumber": 3},
+        {"businessKey": "admin_office_2", "label": "ADMIN OFFICE #2", "unitNumber": 4}
+      ]
+    },
+    "11": {
+      "room": "floor11_business",
+      "label": "FLOOR 11 / BUSINESS SUITES",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "apartments_8_unit", "label": "8-UNIT APARTMENTS", "unitNumber": 1},
+        {"businessKey": "hotel_f11", "label": "HOTEL", "unitNumber": 2},
+        {"businessKey": "hostel_f11", "label": "HOSTEL", "unitNumber": 3},
+        {"businessKey": "public_workspace_f11", "label": "PUBLIC WORKSPACE", "unitNumber": 4},
+        {"businessKey": "moving_company", "label": "MOVING COMPANY", "unitNumber": 5},
+        {"businessKey": "grocery_store", "label": "GROCERY STORE", "unitNumber": 6},
+        {"businessKey": "kitchen_appliance_store", "label": "KITCHEN APPLIANCE STORE", "unitNumber": 7},
+        {"businessKey": "paint_store", "label": "PAINT STORE", "unitNumber": 8}
+      ]
+    },
+    "12": {
+      "room": "floor12_business",
+      "label": "FLOOR 12 / BUSINESS SUITES",
+      "initialBusinessOperator": "PABLO CORP",
+      "businesses": [
+        {"businessKey": "printer_shop", "label": "PRINTER SHOP", "unitNumber": 1},
+        {"businessKey": "soda_candy_shop", "label": "SODA AND CANDY SHOP", "unitNumber": 2},
+        {"businessKey": "hotel_f12", "label": "HOTEL", "unitNumber": 3},
+        {"businessKey": "bar_f12", "label": "BAR", "unitNumber": 4},
+        {"businessKey": "chapel", "label": "CHAPEL", "unitNumber": 5},
+        {"businessKey": "library", "label": "LIBRARY", "unitNumber": 6},
+        {"businessKey": "pawn_shop", "label": "PAWN SHOP", "unitNumber": 7},
+        {"businessKey": "museum", "label": "MUSEUM", "unitNumber": 8}
+      ],
+      "interiorProps": [
+        {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [2828, 48083], "interactive": false},
+        {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [6223, 48083], "interactive": false},
+        {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [9617, 48083], "interactive": false},
+        {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [2828, 55154], "interactive": false},
+        {"kind": "chapel_pew", "label": "CHAPEL PEW", "position": [6223, 55154], "interactive": false},
+        {"kind": "chapel_altar", "label": "CHAPEL ALTAR", "position": [6223, 66468], "interactive": false},
+        {"kind": "library_shelf", "label": "LIBRARY BOOKSHELF", "position": [14142, 45255], "interactive": false},
+        {"kind": "library_shelf", "label": "LIBRARY BOOKSHELF", "position": [18385, 45255], "interactive": false},
+        {"kind": "library_shelf", "label": "LIBRARY BOOKSHELF", "position": [22627, 45255], "interactive": false},
+        {"kind": "reading_table", "label": "READING TABLE", "position": [16971, 57983], "interactive": false},
+        {"kind": "reading_table", "label": "READING TABLE", "position": [22627, 57983], "interactive": false},
+        {"kind": "museum_case", "label": "MUSEUM DISPLAY CASE", "position": [50912, 48083], "interactive": false},
+        {"kind": "museum_case", "label": "MUSEUM DISPLAY CASE", "position": [55861, 48083], "interactive": false},
+        {"kind": "museum_case", "label": "MUSEUM DISPLAY CASE", "position": [60811, 48083], "interactive": false}
+      ]
+    },
+    "13": {"room": "commercial_floor", "label": "FLOOR 13 / COMMERCIAL OFFICES"},
+    "14": {"room": "commercial_floor", "label": "FLOOR 14 / COMMERCIAL OFFICES"},
+    "15": {"room": "commercial_floor", "label": "FLOOR 15 / COMMERCIAL OFFICES"},
+    "16": {"room": "commercial_floor", "label": "FLOOR 16 / COMMERCIAL OFFICES"},
+    "17": {"room": "commercial_floor", "label": "FLOOR 17 / COMMERCIAL OFFICES"},
+    "18": {"room": "commercial_floor", "label": "FLOOR 18 / COMMERCIAL OFFICES"},
+    "19": {"room": "commercial_floor", "label": "FLOOR 19 / COMMERCIAL OFFICES"},
+    "20": {"room": "commercial_floor", "label": "FLOOR 20 / COMMERCIAL OFFICES"},
+    "21": {"room": "commercial_floor", "label": "FLOOR 21 / COMMERCIAL OFFICES"},
+    "22": {"room": "commercial_floor", "label": "FLOOR 22 / COMMERCIAL OFFICES"},
+    "23": {"room": "commercial_floor", "label": "FLOOR 23 / COMMERCIAL OFFICES"},
+    "24": {"room": "commercial_floor", "label": "FLOOR 24 / COMMERCIAL OFFICES"},
+    "25": {"room": "commercial_floor", "label": "FLOOR 25 / COMMERCIAL OFFICES"},
+    "26": {"room": "commercial_floor", "label": "FLOOR 26 / COMMERCIAL OFFICES"},
+    "27": {"room": "commercial_floor", "label": "FLOOR 27 / COMMERCIAL OFFICES"},
+    "28": {"room": "commercial_floor", "label": "FLOOR 28 / COMMERCIAL OFFICES"},
+    "29": {"room": "commercial_floor", "label": "FLOOR 29 / COMMERCIAL OFFICES"},
+    "30": {"room": "commercial_floor", "label": "FLOOR 30 / COMMERCIAL OFFICES"},
+    "31": {"room": "commercial_floor", "label": "FLOOR 31 / COMMERCIAL OFFICES"},
+    "32": {"room": "commercial_floor", "label": "FLOOR 32 / COMMERCIAL OFFICES"},
+    "33": {"room": "commercial_floor", "label": "FLOOR 33 / COMMERCIAL OFFICES"},
+    "34": {"room": "commercial_floor", "label": "FLOOR 34 / COMMERCIAL OFFICES"},
+    "35": {"room": "commercial_floor", "label": "FLOOR 35 / COMMERCIAL OFFICES"},
+    "36": {"room": "commercial_floor", "label": "FLOOR 36 / COMMERCIAL OFFICES"},
+    "37": {"room": "commercial_floor", "label": "FLOOR 37 / COMMERCIAL OFFICES"},
+    "38": {"room": "commercial_floor", "label": "FLOOR 38 / COMMERCIAL OFFICES"},
+    "39": {"room": "commercial_floor", "label": "FLOOR 39 / COMMERCIAL OFFICES"},
+    "40": {"room": "commercial_floor", "label": "FLOOR 40 / COMMERCIAL OFFICES"},
+    "41": {"room": "commercial_floor", "label": "FLOOR 41 / COMMERCIAL OFFICES"},
+    "42": {"room": "commercial_floor", "label": "FLOOR 42 / COMMERCIAL OFFICES"},
+    "43": {"room": "commercial_floor", "label": "FLOOR 43 / COMMERCIAL OFFICES"},
+    "44": {"room": "commercial_floor", "label": "FLOOR 44 / COMMERCIAL OFFICES"},
+    "45": {"room": "commercial_floor", "label": "FLOOR 45 / COMMERCIAL OFFICES"},
+    "46": {"room": "commercial_floor", "label": "FLOOR 46 / COMMERCIAL OFFICES"},
+    "47": {"room": "commercial_floor", "label": "FLOOR 47 / COMMERCIAL OFFICES"},
+    "48": {"room": "commercial_floor", "label": "FLOOR 48 / COMMERCIAL OFFICES"},
+    "49": {"room": "commercial_floor", "label": "FLOOR 49 / COMMERCIAL OFFICES"},
+    "50": {"room": "commercial_floor", "label": "FLOOR 50 / COMMERCIAL OFFICES"},
+    "51": {"room": "commercial_floor", "label": "FLOOR 51 / COMMERCIAL OFFICES"},
+    "52": {"room": "commercial_floor", "label": "FLOOR 52 / COMMERCIAL OFFICES"},
+    "53": {"room": "commercial_floor", "label": "FLOOR 53 / COMMERCIAL OFFICES"},
+    "54": {"room": "commercial_floor", "label": "FLOOR 54 / COMMERCIAL OFFICES"},
+    "55": {"room": "commercial_floor", "label": "FLOOR 55 / COMMERCIAL OFFICES"},
+    "56": {"room": "commercial_floor", "label": "FLOOR 56 / COMMERCIAL OFFICES"},
+    "57": {"room": "commercial_floor", "label": "FLOOR 57 / COMMERCIAL OFFICES"},
+    "58": {"room": "commercial_floor", "label": "FLOOR 58 / COMMERCIAL OFFICES"},
+    "59": {"room": "commercial_floor", "label": "FLOOR 59 / COMMERCIAL OFFICES"},
+    "60": {"room": "commercial_floor", "label": "FLOOR 60 / COMMERCIAL OFFICES"},
+    "61": {"room": "commercial_floor", "label": "FLOOR 61 / COMMERCIAL OFFICES"},
+    "62": {"room": "commercial_floor", "label": "FLOOR 62 / COMMERCIAL OFFICES"},
+    "63": {"room": "pablo_operations", "label": "FLOOR 63 / PABLO CORP"},
+    "64": {"room": "pablo_operations", "label": "FLOOR 64 / MEDICARE CLUB"},
+    "65": {"room": "pablo_operations", "label": "FLOOR 65 / PABLO CORP"},
+    "66": {"room": "penthouse", "label": "FLOOR 66 / PENTHOUSE"},
+    "67": {"room": "rooftop_restaurant", "label": "FLOOR 67 / ROOFTOP RESTAURANT"}
+  },
+  "floorProgram": {
+    "lobby": 1,
+    "constructionSites": [2, 3, 4, 5],
+    "firstOfficeFloor": 6,
+    "publicSale": {"from": 5, "to": 62, "count": 58},
+    "picassoOnly": [63, 64, 65],
+    "medicareClub": 64,
+    "penthouse": 66,
+    "rooftopRestaurant": 67,
+    "hallways": {"from": 3, "to": 65, "count": 63},
+    "pabloCorpBusinessArea": {
+      "initialOperator": "PABLO CORP",
+      "floors": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "basementFloors": ["B1", "B2", "B3", "B4", "B5", "B6"],
+      "b1Businesses": [
+        {"businessKey": "tower_admin", "label": "ADMIN OFFICE", "unitNumber": 1},
+        {"businessKey": "tower_shipping", "label": "SHIPPING COMPANY", "unitNumber": 2},
+        {"businessKey": "tower_trash", "label": "TRASH COMPANY", "unitNumber": 3},
+        {"businessKey": "tower_food_supply", "label": "FOOD SUPPLIER", "unitNumber": 4},
+        {"businessKey": "tower_construction", "label": "CONSTRUCTION COMPANY", "unitNumber": 5},
+        {"businessKey": "tower_materials_supply", "label": "MATERIALS SUPPLIES COMPANY", "unitNumber": 6},
+        {"businessKey": "tower_power", "label": "POWER COMPANY", "unitNumber": 7},
+        {"businessKey": "tower_water", "label": "WATER COMPANY", "unitNumber": 8}
+      ],
+      "rearShipping": {"floor": "B1", "room": "basement_b1", "objectIds": ["basement-b1-shipping-waste", "basement-b1-loading-gate"]}
+    }
+  },
+  "businessOpportunityRules": {
+    "defaultBusinessesPerFloor": 4,
+    "maximumBusinessesOnLowerFloors": 8,
+    "higherFloorCapacityDecreasesWithAvailableRoom": true,
+    "capacityDependsOnFloorSizeAndLocation": true,
+    "minimumBusinessesWhenConsolidated": 1,
+    "businessAreasMayBeConsolidated": true
+  },
+  "businessSuiteLayout": {
+    "maxUnitsPerFloor": 8,
+    "standardFloorUnits": [
+      {"unitNumber": 1, "bounds": [0, 0, 15256, 31113], "doorSide": "south"},
+      {"unitNumber": 2, "bounds": [15256, 0, 15257, 31113], "doorSide": "south"},
+      {"unitNumber": 3, "bounds": [31713, 0, 15256, 31113], "doorSide": "south"},
+      {"unitNumber": 4, "bounds": [46969, 0, 15256, 31113], "doorSide": "south"},
+      {"unitNumber": 5, "bounds": [0, 31913, 15256, 31113], "doorSide": "north"},
+      {"unitNumber": 6, "bounds": [15256, 31913, 15257, 31113], "doorSide": "north"},
+      {"unitNumber": 7, "bounds": [31713, 31913, 15256, 31113], "doorSide": "north"},
+      {"unitNumber": 8, "bounds": [46969, 31913, 15256, 31113], "doorSide": "north"}
+    ],
+    "fourUnitFloorUnits": [
+      {"unitNumber": 1, "bounds": [0, 0, 30513, 31113], "doorSide": "south"},
+      {"unitNumber": 2, "bounds": [31713, 0, 30512, 31113], "doorSide": "south"},
+      {"unitNumber": 3, "bounds": [0, 31913, 30513, 31113], "doorSide": "north"},
+      {"unitNumber": 4, "bounds": [31713, 31913, 30512, 31113], "doorSide": "north"}
+    ],
+    "b1": {
+      "bounds": [0, 0, 56569, 28284],
+      "interiorBusinessHalf": [0, 0, 28284, 28284],
+      "exteriorLoadingYardHalf": [28284, 0, 28285, 28284],
+      "yardAccess": [28284, 14142],
+      "exteriorGate": [56569, 19799],
+      "businessUnits": [
+        {"unitNumber": 1, "bounds": [0, 0, 7071, 12728], "doorSide": "south"},
+        {"unitNumber": 2, "bounds": [7071, 0, 7071, 12728], "doorSide": "south"},
+        {"unitNumber": 3, "bounds": [14142, 0, 7071, 12728], "doorSide": "south"},
+        {"unitNumber": 4, "bounds": [21213, 0, 7071, 12728], "doorSide": "south"},
+        {"unitNumber": 5, "bounds": [0, 15556, 7071, 12728], "doorSide": "north"},
+        {"unitNumber": 6, "bounds": [7071, 15556, 7071, 12728], "doorSide": "north"},
+        {"unitNumber": 7, "bounds": [14142, 15556, 7071, 12728], "doorSide": "north"},
+        {"unitNumber": 8, "bounds": [21213, 15556, 7071, 12728], "doorSide": "north"}
+      ],
+      "yardProps": [
+        {"kind": "delivery_truck", "label": "DELIVERY TRUCK", "position": [41012, 6223]},
+        {"kind": "forklift", "label": "FORKLIFT", "position": [35355, 18385]},
+        {"kind": "pallet", "label": "PALLET", "position": [35355, 8485]},
+        {"kind": "pallet", "label": "PALLET", "position": [37335, 8485]},
+        {"kind": "pallet", "label": "PALLET", "position": [39315, 8485]},
+        {"kind": "supply_crate", "label": "SUPPLY BOXES", "position": [48083, 9334]},
+        {"kind": "supply_crate", "label": "SUPPLIES", "position": [49497, 11879]},
+        {"kind": "trash_can", "label": "GARBAGE CANS", "position": [50346, 24042]},
+        {"kind": "trash_can", "label": "GARBAGE CANS", "position": [52326, 24042]}
+      ]
+    },
+    "lobbyBackEntrance": [49970222, 50002263],
+    "lobbyKiosks": [
+      {"businessKey": "tower_reception_kiosk", "label": "RECEPTION KIOSK", "position": [49976586, 50006505]},
+      {"businessKey": "vehicle_dealership", "label": "VEHICLE DEALERSHIP", "position": [49979414, 50006505]}
+    ]
+  },
+  "publicOfficeSales": {
+    "floorFrom": 5,
+    "floorTo": 62,
+    "floorCount": 58,
+    "officesPerFloor": 4,
+    "totalOffices": 232,
+    "pricePerPixelFiat": 8080.808080808081,
+    "officeAreaPixels": 99000000,
+    "startingOfficePriceFiat": 800000000000
+  },
+  "baseLayout": {
+    "unitsPerMeter": 100,
+    "officeDimensionsMeters": [305.13, 311.13],
+    "clearEnvelopeMeters": [622.25, 707.11],
+    "outerBounds": [-85, -85, 62395, 70881],
+    "structure": {
+      "wallThicknessMeters": 0.3,
+      "wallServiceCavityMeters": 0.12,
+      "crawlSpaceClearHeightMeters": 1.0,
+      "foundationBeamWidthMeters": 0.5,
+      "foundationBeamDepthMeters": 0.6,
+      "foundationBeamSpacingMeters": 15.0
+    },
+    "elevator": {"position": [30893, 0], "doorSide": "south"},
+    "passengerElevators": {
+      "count": 4,
+      "positions": [
+        [30673, 0],
+        [30893, 0],
+        [31113, 0],
+        [31333, 0]
+      ]
+    },
+    "serviceElevator": {
+      "position": [31553, 0],
+      "stops": [
+        "B6",
+        "B5",
+        "B4",
+        "B3",
+        "B2",
+        "B1",
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "highestOpenFloor": 12
+    },
+    "elevatorLobby": {"bounds": [49969515, 49991515, 11314, 16971], "spawn": [49978000, 50000000]},
+    "hallways": [
+      [30513, 0, 1200, 70711],
+      [0, 31113, 30513, 800],
+      [31713, 31113, 30512, 800]
+    ],
+    "offices": [
+      {
+        "id": "executive",
+        "unitNumber": 1,
+        "bounds": [0, 0, 30513, 31113],
+        "capacityDesks": 200,
+        "entrance": [15256, 31113],
+        "doorSide": "south",
+        "label": "OFFICE 01",
+        "spawn": [15256, 15556]
+      },
+      {
+        "id": "public",
+        "unitNumber": 2,
+        "bounds": [31713, 0, 30512, 31113],
+        "capacityDesks": 200,
+        "entrance": [46969, 31113],
+        "doorSide": "south",
+        "label": "OFFICE 02",
+        "spawn": [46969, 15556]
+      },
+      {
+        "id": "office_03",
+        "unitNumber": 3,
+        "bounds": [0, 31913, 30513, 31113],
+        "capacityDesks": 200,
+        "entrance": [15256, 31913],
+        "doorSide": "north",
+        "label": "OFFICE 03",
+        "spawn": [15256, 47469]
+      },
+      {
+        "id": "office_04",
+        "unitNumber": 4,
+        "bounds": [31713, 31913, 30512, 31113],
+        "capacityDesks": 200,
+        "entrance": [46969, 31913],
+        "doorSide": "north",
+        "label": "OFFICE 04",
+        "spawn": [46969, 47469]
+      }
+    ],
+    "executiveSuite": {
+      "id": "executive_suite",
+      "officeId": "executive",
+      "bounds": [0, 11314, 7071, 8485],
+      "spawn": [5091, 15556],
+      "door": [7071, 13011],
+      "outsideWindow": [0, 15556],
+      "officeWindow": [7071, 18102]
+    },
+    "sharedObjects": [
+      {"id": "recreation-atm", "kind": "atm", "position": [30713, 600]},
+      {"id": "recreation-vending", "kind": "vending_machine", "position": [30713, 1050]},
+      {"id": "recreation-pay-phone", "kind": "pay_phone", "position": [30713, 1500]},
+      {"id": "recreation-trash-can", "kind": "trash_can", "position": [30713, 1950]},
+      {"id": "recreation-fire-extinguisher", "kind": "fire_extinguisher", "position": [30713, 2400]}
+    ],
+    "stairs": {
+      "positions": [
+        [30733, 31513],
+        [31493, 31513]
+      ],
+      "lobbyNextFloor": 2,
+      "basement": "B1-B6",
+      "highestOpenFloor": 12,
+      "restrictedLandings": []
+    },
+    "basementEntryStairs": {"room": "lobby", "position": [49979838, 50002263], "destination": "basement_b1"},
+    "walkableHallways": [
+      [30513, 0, 1200, 70711],
+      [0, 31113, 30513, 800],
+      [31713, 31113, 30512, 800]
+    ],
+    "clearEnvelopeUnits": [62225, 70711]
+  },
+  "infrastructureMap": {
+    "unitsPerMeter": 100,
+    "wallServiceCavityMeters": 0.12,
+    "routingRule": "Water pipes, electrical conduits, and fire-safety runs follow the mapped wall cavities in separate service lanes.",
+    "verticalRiser": {
+      "wallReference": "SERVICE ELEVATOR WALL",
+      "basementPosition": [14142, 11314],
+      "standardFloorPosition": [31553, 150],
+      "lobbyPosition": [49976869, 49997454],
+      "levels": [
+        "B6",
+        "B5",
+        "B4",
+        "B3",
+        "B2",
+        "B1",
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ]
+    },
+    "systems": [
+      {
+        "id": "electrical",
+        "label": "POWER / ELECTRICAL CONDUIT",
+        "source": {"level": "B5", "room": "basement_b5", "objectId": "basement-b5-power", "position": [21213, 5657]},
+        "wallRouteIds": ["service-riser-wall", "west-cross-hall-north-wall", "east-cross-hall-north-wall", "west-cross-hall-south-wall", "east-cross-hall-south-wall"],
+        "repairStation": {"level": "B5", "objectId": "basement-b5-power"}
+      },
+      {
+        "id": "water",
+        "label": "WATER / PLUMBING PIPE",
+        "source": {"level": "B6", "room": "basement_b6", "objectId": "basement-b6-plumbing", "position": [7071, 21213]},
+        "wallRouteIds": ["service-riser-wall", "west-cross-hall-north-wall", "east-cross-hall-north-wall", "west-cross-hall-south-wall", "east-cross-hall-south-wall"],
+        "repairStation": {"level": "B6", "objectId": "basement-b6-plumbing"}
+      },
+      {
+        "id": "fire_alarm",
+        "label": "FIRE ALARM / SIGNAL CONDUIT",
+        "source": {"level": "B3", "room": "basement_b3", "objectId": "basement-b3-fire-station", "position": [5657, 11314]},
+        "wallRouteIds": ["service-riser-wall", "west-cross-hall-north-wall", "east-cross-hall-north-wall", "west-cross-hall-south-wall", "east-cross-hall-south-wall"],
+        "repairStation": {"level": "B3", "objectId": "basement-b3-fire-station"}
+      },
+      {
+        "id": "fire_suppression",
+        "label": "FIRE-SUPPRESSION WATER PIPE",
+        "source": {"level": "B6", "room": "basement_b6", "objectId": "basement-b6-plumbing", "position": [7071, 21213]},
+        "wallRouteIds": ["service-riser-wall", "west-cross-hall-north-wall", "east-cross-hall-north-wall", "west-cross-hall-south-wall", "east-cross-hall-south-wall"],
+        "repairStation": {"level": "B6", "objectId": "basement-b6-plumbing"}
+      }
+    ],
+    "basementServiceRoutes": [
+      {
+        "id": "b5-power-to-riser",
+        "level": "B5",
+        "system": "electrical",
+        "points": [
+          [21213, 5657],
+          [14142, 5657],
+          [14142, 11314]
+        ]
+      },
+      {
+        "id": "b6-water-to-riser",
+        "level": "B6",
+        "system": "water",
+        "points": [
+          [7071, 21213],
+          [7071, 11314],
+          [14142, 11314]
+        ]
+      },
+      {
+        "id": "b6-fire-suppression-to-riser",
+        "level": "B6",
+        "system": "fire_suppression",
+        "points": [
+          [7071, 21213],
+          [7071, 11314],
+          [14142, 11314]
+        ]
+      },
+      {
+        "id": "b3-fire-alarm-to-riser",
+        "level": "B3",
+        "system": "fire_alarm",
+        "points": [
+          [5657, 11314],
+          [14142, 11314]
+        ]
+      }
+    ],
+    "standardFloor": {
+      "clearEnvelopeMeters": [622.25, 707.11],
+      "clearEnvelopeUnits": [62225, 70711],
+      "wallRoutes": [
+        {
+          "id": "service-riser-wall",
+          "points": [
+            [31553, 150],
+            [31713, 150],
+            [31713, 31113],
+            [31713, 31913],
+            [31713, 63026]
+          ]
+        },
+        {
+          "id": "west-cross-hall-north-wall",
+          "points": [
+            [31713, 31113],
+            [30513, 31113],
+            [0, 31113]
+          ]
+        },
+        {
+          "id": "east-cross-hall-north-wall",
+          "points": [
+            [31713, 31113],
+            [62225, 31113]
+          ]
+        },
+        {
+          "id": "west-cross-hall-south-wall",
+          "points": [
+            [31713, 31913],
+            [30513, 31913],
+            [0, 31913]
+          ]
+        },
+        {
+          "id": "east-cross-hall-south-wall",
+          "points": [
+            [31713, 31913],
+            [62225, 31913]
+          ]
+        }
+      ],
+      "officeBranchAccess": [
+        {"room": "executive", "officeNumber": 1, "accessReference": "SOUTH WALL / OFFICE ENTRANCE"},
+        {"room": "public", "officeNumber": 2, "accessReference": "SOUTH WALL / OFFICE ENTRANCE"},
+        {"room": "office_03", "officeNumber": 3, "accessReference": "NORTH WALL / OFFICE ENTRANCE"},
+        {"room": "office_04", "officeNumber": 4, "accessReference": "NORTH WALL / OFFICE ENTRANCE"}
+      ],
+      "repairAccess": {"reference": "SERVICE ELEVATOR WALL PANEL", "position": [31553, 150]}
+    },
+    "lobby": {
+      "bounds": [49969515, 49991515, 11314, 16971],
+      "clearEnvelopeMeters": [113, 170],
+      "clearEnvelopeUnits": [11314, 16971],
+      "wallRoutes": [
+        {
+          "id": "lobby-perimeter-wall",
+          "points": [
+            [49969515, 49991515],
+            [49980828, 49991515],
+            [49980828, 50008485],
+            [49969515, 50008485],
+            [49969515, 49991515]
+          ]
+        }
+      ],
+      "branchAccessObjectIds": ["lobby-reception-desk", "lobby-atm", "lobby-vending", "lobby-restroom-stall-1", "lobby-restroom-stall-2"],
+      "repairAccess": {"reference": "SERVICE ELEVATOR WALL PANEL", "position": [49976869, 49997454]}
+    },
+    "basements": {
+      "clearEnvelopeMeters": [283, 283],
+      "clearEnvelopeUnits": [28284, 28284],
+      "wallRoutes": [
+        {
+          "id": "basement-perimeter-wall",
+          "points": [
+            [0, 0],
+            [28284, 0],
+            [28284, 28284],
+            [0, 28284],
+            [0, 0]
+          ]
+        }
+      ],
+      "repairAccess": {"reference": "SERVICE ELEVATOR WALL PANEL", "position": [14142, 11314]}
+    },
+    "b1LoadingYard": {
+      "clearEnvelopeMeters": [566, 283],
+      "clearEnvelopeUnits": [56569, 28284],
+      "interiorBusinessHalf": [0, 0, 28284, 28284],
+      "exteriorLoadingYardHalf": [28284, 0, 28285, 28284],
+      "wallRoutes": [
+        {
+          "id": "b1-perimeter-north",
+          "points": [
+            [0, 0],
+            [56569, 0]
+          ]
+        },
+        {
+          "id": "b1-perimeter-east-north",
+          "points": [
+            [56569, 0],
+            [56569, 18385]
+          ]
+        },
+        {
+          "id": "b1-perimeter-east-south",
+          "points": [
+            [56569, 21213],
+            [56569, 28284]
+          ]
+        },
+        {
+          "id": "b1-perimeter-south",
+          "points": [
+            [56569, 28284],
+            [0, 28284]
+          ]
+        },
+        {
+          "id": "b1-perimeter-west",
+          "points": [
+            [0, 28284],
+            [0, 0]
+          ]
+        },
+        {
+          "id": "b1-yard-divider-north",
+          "points": [
+            [28284, 0],
+            [28284, 12162]
+          ]
+        },
+        {
+          "id": "b1-yard-divider-south",
+          "points": [
+            [28284, 16122],
+            [28284, 28284]
+          ]
+        }
+      ]
+    }
   },
   "rooms": [
     {
       "id": "lobby",
       "label": "TOWER LOBBY",
-      "bounds": [700, 1000, 2200, 2400],
+      "bounds": [49969515, 49991515, 11314, 16971],
       "accent": [27, 112, 110],
       "material": "lobby_floor",
-      "spawn": [1800, 2100]
+      "spawn": [49978000, 50000000]
     },
     {
       "id": "recreation",
-      "label": "FLOOR 01 HALLWAY",
-      "bounds": [700, 3400, 8300, 1800],
+      "label": "FLOOR 06 OFFICE CONCOURSE",
+      "bounds": [0, 0, 62225, 70711],
       "accent": [72, 94, 130],
       "material": "hall_floor",
-      "spawn": [4800, 4550]
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "commercial_floor",
+      "label": "COMMERCIAL OFFICE FLOOR",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [68, 88, 103],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "floor07_business",
+      "label": "FLOOR 07 / MEDITATION TEMPLE",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [99, 132, 105],
+      "material": "temple_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "floor08_business",
+      "label": "FLOOR 08 / BUSINESS SUITES",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [84, 111, 103],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "floor09_business",
+      "label": "FLOOR 09 / BUSINESS SUITES",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [90, 103, 119],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "floor10_business",
+      "label": "FLOOR 10 / FOUR BUSINESS SUITES",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [122, 96, 73],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "floor11_business",
+      "label": "FLOOR 11 / BUSINESS SUITES",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [84, 110, 119],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "floor12_business",
+      "label": "FLOOR 12 / BUSINESS SUITES",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [113, 91, 104],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "pablo_operations",
+      "label": "PABLO CORP OPERATIONS",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [76, 66, 76],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "penthouse",
+      "label": "PENTHOUSE",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [115, 94, 65],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "rooftop_restaurant",
+      "label": "ROOFTOP RESTAURANT",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [79, 110, 93],
+      "material": "hall_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "construction_f02",
+      "label": "FLOOR 02 / UNFINISHED SITE",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [126, 104, 78],
+      "material": "construction_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "construction_f03",
+      "label": "FLOOR 03 / UNFINISHED SITE",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [126, 104, 78],
+      "material": "construction_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "construction_f04",
+      "label": "FLOOR 04 / UNFINISHED SITE",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [126, 104, 78],
+      "material": "construction_floor",
+      "spawn": [31113, 4243]
+    },
+    {
+      "id": "construction_f05",
+      "label": "FLOOR 05 / UNFINISHED SITE",
+      "bounds": [0, 0, 62225, 70711],
+      "accent": [126, 104, 78],
+      "material": "construction_floor",
+      "spawn": [31113, 4243]
     },
     {
       "id": "executive",
       "label": "OFFICE 01",
-      "bounds": [900, 5200, 1800, 2200],
+      "bounds": [0, 0, 30513, 31113],
       "accent": [112, 83, 115],
       "material": "office_1",
-      "spawn": [1800, 6650]
+      "spawn": [15256, 15556],
+      "doorSide": "south",
+      "entrance": [12728, 31113],
+      "capacityDesks": 200
     },
     {
       "id": "public",
       "label": "OFFICE 02",
-      "bounds": [3000, 5200, 1800, 2200],
+      "bounds": [31713, 0, 30512, 31113],
       "accent": [38, 87, 94],
       "material": "office_2",
-      "spawn": [3900, 6650]
+      "spawn": [46969, 15556],
+      "doorSide": "south",
+      "entrance": [49497, 31113],
+      "capacityDesks": 200
     },
     {
       "id": "office_03",
       "label": "OFFICE 03",
-      "bounds": [5100, 5200, 1800, 2200],
+      "bounds": [0, 31913, 30513, 31113],
       "accent": [86, 98, 133],
       "material": "office_3",
-      "spawn": [6000, 6650]
+      "spawn": [15256, 47469],
+      "doorSide": "north",
+      "entrance": [12728, 39598],
+      "capacityDesks": 200
     },
     {
       "id": "office_04",
       "label": "OFFICE 04",
-      "bounds": [7200, 5200, 1800, 2200],
+      "bounds": [31713, 31913, 30512, 31113],
       "accent": [122, 88, 106],
       "material": "office_4",
-      "spawn": [8100, 6650]
+      "spawn": [46969, 47469],
+      "doorSide": "north",
+      "entrance": [49497, 39598],
+      "capacityDesks": 200
+    },
+    {
+      "id": "executive_suite",
+      "label": "EXECUTIVE SUITE",
+      "bounds": [0, 11314, 7071, 8485],
+      "accent": [117, 101, 71],
+      "material": "office_1",
+      "spawn": [5091, 15556],
+      "doorSide": "east",
+      "isLockable": true,
+      "outsideWindow": [0, 15556],
+      "officeWindow": [7071, 18102]
+    },
+    {
+      "id": "basement_b1",
+      "label": "B1 BUSINESS OPERATIONS / LOADING YARD",
+      "bounds": [0, 0, 56569, 28284],
+      "renderOffset": [0, 84853],
+      "accent": [89, 108, 95],
+      "material": "hall_floor",
+      "spawn": [14142, 14142],
+      "hallwayFixtures": [
+        [19233, 14142],
+        [21496, 14142],
+        [23759, 14142],
+        [26022, 14142],
+        [27153, 14849]
+      ]
+    },
+    {
+      "id": "basement_b2",
+      "label": "B2 COLLECTIONS / CORPORATE SECURITY",
+      "bounds": [0, 0, 28284, 28284],
+      "renderOffset": [0, 115966],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "spawn": [14142, 14142],
+      "hallwayFixtures": [
+        [24324, 11314],
+        [24324, 14142],
+        [24324, 16971],
+        [24324, 19799],
+        [24324, 22627]
+      ]
+    },
+    {
+      "id": "basement_b3",
+      "label": "B3 DISASTER RESPONSE / FIRE / MAINTENANCE",
+      "bounds": [0, 0, 28284, 28284],
+      "renderOffset": [0, 147078],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "spawn": [14142, 14142],
+      "hallwayFixtures": [
+        [24042, 5657],
+        [24042, 8485],
+        [24042, 11314],
+        [24042, 14142],
+        [24042, 16971]
+      ]
+    },
+    {
+      "id": "basement_b4",
+      "label": "B4 VITAL SUPPLIES",
+      "bounds": [0, 0, 28284, 28284],
+      "renderOffset": [0, 178191],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "mazeCells": [
+        [1, 2],
+        [1, 3],
+        [1, 4],
+        [1, 5],
+        [1, 6],
+        [2, 2],
+        [2, 3],
+        [2, 4],
+        [2, 5],
+        [2, 6],
+        [3, 4],
+        [3, 5],
+        [3, 6],
+        [4, 4],
+        [4, 5],
+        [4, 6],
+        [5, 3],
+        [5, 4],
+        [5, 5],
+        [5, 6],
+        [5, 7],
+        [6, 3],
+        [6, 5],
+        [7, 3],
+        [7, 4],
+        [7, 5]
+      ],
+      "spawn": [14142, 14142],
+      "hallwayFixtures": [
+        [4243, 12728],
+        [7071, 12728],
+        [9899, 12728],
+        [12728, 12728],
+        [15556, 15556]
+      ],
+      "mazeCellUnits": 2828
+    },
+    {
+      "id": "basement_b5",
+      "label": "B5 POWER / GENERATORS",
+      "bounds": [0, 0, 28284, 28284],
+      "renderOffset": [0, 209304],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "mazeCells": [
+        [2, 3],
+        [2, 4],
+        [2, 5],
+        [2, 6],
+        [3, 3],
+        [3, 5],
+        [3, 6],
+        [4, 3],
+        [4, 4],
+        [4, 5],
+        [4, 6],
+        [5, 2],
+        [5, 3],
+        [5, 4],
+        [5, 5],
+        [5, 6],
+        [6, 2],
+        [6, 3],
+        [6, 5],
+        [6, 6],
+        [7, 2],
+        [7, 3],
+        [7, 6],
+        [8, 3],
+        [8, 4],
+        [8, 5],
+        [8, 6],
+        [8, 7]
+      ],
+      "spawn": [14142, 14142],
+      "hallwayFixtures": [
+        [7071, 18385],
+        [9899, 18385],
+        [12728, 18385],
+        [15556, 18385],
+        [18385, 18385]
+      ],
+      "mazeCellUnits": 2828
+    },
+    {
+      "id": "basement_b6",
+      "label": "B6 PUMPING / PLUMBING",
+      "bounds": [0, 0, 28284, 28284],
+      "renderOffset": [0, 240416],
+      "accent": [78, 105, 91],
+      "material": "hall_floor",
+      "mazeCells": [
+        [2, 3],
+        [2, 4],
+        [2, 5],
+        [2, 6],
+        [2, 7],
+        [3, 3],
+        [3, 5],
+        [3, 7],
+        [4, 3],
+        [4, 4],
+        [4, 5],
+        [4, 7],
+        [5, 3],
+        [5, 4],
+        [5, 5],
+        [5, 7],
+        [6, 3],
+        [6, 5],
+        [6, 6],
+        [6, 7],
+        [7, 2],
+        [7, 3],
+        [7, 4],
+        [7, 5],
+        [8, 3],
+        [8, 4],
+        [8, 5]
+      ],
+      "spawn": [14142, 14142],
+      "hallwayFixtures": [
+        [9899, 21213],
+        [12728, 21213],
+        [15556, 21213],
+        [18385, 21213],
+        [21213, 9899]
+      ],
+      "mazeCellUnits": 2828
     }
   ],
-  "lobbyHallwayOpening": 1800,
-  "officeDoorCenters": [1800, 3900, 6000, 8100]
+  "lobbyHallwayOpening": 5091,
+  "officeDoorCenters": [15256, 46969, 15256, 46969],
+  "towerLayoutScale": {"areaMultiplier": 8, "linearMultiplier": 2.828427125, "unitsPerMeter": 100, "wallThicknessMeters": 0.3, "wallServiceCavityMeters": 0.12}
 }
