@@ -9,6 +9,7 @@ from scripts.build_desktop import (
     REQUIRED_GODOT_FILES,
     _extract_zip_safely,
     _godot_archive_for_platform,
+    _stage_godot_runtime,
     write_release_launchers,
 )
 
@@ -49,6 +50,38 @@ class DesktopGodotPackagingTests(unittest.TestCase):
     def test_refuses_unconfigured_platform_instead_of_building_pygame_only(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "Do not produce a Python-only game release"):
             _godot_archive_for_platform("FreeBSD", "x86_64")
+
+    def test_macos_runtime_bundle_is_not_precreated_before_copy(self) -> None:
+        import tempfile
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            extracted = root / "download"
+            executable = extracted / "Godot.app" / "Contents" / "MacOS" / "Godot"
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"Godot runtime")
+            staging = root / "staging"
+            staging.mkdir()
+
+            with (
+                patch(
+                    "scripts.build_desktop._download_godot_release",
+                    return_value=(
+                        extracted,
+                        "Godot.app/Contents/MacOS/Godot",
+                    ),
+                ),
+                patch("scripts.build_desktop.urllib.request.urlopen") as urlopen,
+            ):
+                urlopen.return_value.__enter__.return_value.read.return_value = b"license"
+                staged_engine = _stage_godot_runtime(staging, "Darwin", "arm64")
+
+            self.assertEqual(staged_engine.read_bytes(), b"Godot runtime")
+            self.assertEqual(
+                (staging / "godot-runtime" / "LICENSE.txt").read_text(),
+                "license",
+            )
 
     def test_rejects_archive_path_escape(self) -> None:
         import tempfile
