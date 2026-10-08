@@ -2265,3 +2265,17 @@ mtime_ms = 1791450001822
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a45ad654-ff16-4060-8969-b1ce5323d213/2d6149a1-09ef-43e3-a71b-48ae7b364357"
 storage_version_token = "1791450099440007"
 content_type = "image/png"
+
+[[outputs]]
+id = "ZPCGAli6yeifzkgZ_Wosu"
+uri = "file://deliverables/salaryman-1980s-japanese-office-character-approval.mp4"
+type = "video"
+title = "Japanese 1980s Office Character — Approval Video"
+description = "18-second Godot-rendered candidate preview, 1280×720 at 24 fps. Shows full-body, portrait, and walk views; the candidate remains isolated pending approval."
+logical_id = "f411e456-5200-4c75-ae7f-69b552f114a0"
+content_hash = "sha256:423e6b6f09f8ed26b5a00713d18943717cac2e12c2aa7b59e60d8c9ef0eb6c3d"
+size = 5004645
+mtime_ms = 1791463299855
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f411e456-5200-4c75-ae7f-69b552f114a0/ba81d8da-eae2-49b6-90fb-a02f5f7a3c63"
+storage_version_token = "1791463522922968"
+content_type = "video/mp4"
