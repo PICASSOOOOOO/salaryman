@@ -61,6 +61,14 @@ experience.
 - Small Ambitions is GPL-3.0 and is used only as a visual reference; no code or
   assets from it are included.
 
+The B1 loading-yard gate opens onto a small Godot-generated exterior district.
+Its editable `tower_exterior_plan.json` describes terrain, the approach, street,
+planting, a transit shelter, and nearby building instances. The implementation
+adapts WorldClaw's coarse-to-fine planning concept; the linked research repository
+does not provide a runtime generator that this game installs. Exterior meshes are
+visual scenery only: they add no collision, navigation, audio, or authority over
+the Python simulation.
+
 ## Native office prop review
 
 `office_prop.gd` authors the desk, reception counter, rotary telephone, pedestal

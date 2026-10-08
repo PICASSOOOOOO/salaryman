@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "seed": 1999,
+  "terrain": {
+    "center": [38, 0],
+    "size": [88, 76],
+    "segments": [28, 24],
+    "heightAmplitude": 0.045
+  },
+  "regions": [
+    {
+      "id": "tower-approach",
+      "kind": "path",
+      "center": [12, 0],
+      "size": [26, 3.2]
+    },
+    {
+      "id": "solar-street",
+      "kind": "street",
+      "center": [30, 0],
+      "size": [8, 58]
+    },
+    {
+      "id": "tram-platform",
+      "kind": "platform",
+      "center": [43, 0],
+      "size": [13, 7]
+    },
+    {
+      "id": "north-pollinator-garden",
+      "kind": "garden",
+      "center": [11, -10],
+      "size": [9, 6]
+    },
+    {
+      "id": "south-pollinator-garden",
+      "kind": "garden",
+      "center": [11, 10],
+      "size": [9, 6]
+    },
+    {
+      "id": "crosswalk",
+      "kind": "crosswalk",
+      "center": [30, 0],
+      "size": [8, 3.2]
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "north-garden-canopy",
+      "kind": "tree",
+      "position": [10, -10],
+      "height": 4.3,
+      "foliage": "#557b54"
+    },
+    {
+      "id": "south-garden-canopy",
+      "kind": "tree",
+      "position": [10, 10],
+      "height": 4.6,
+      "foliage": "#68855a"
+    },
+    {
+      "id": "north-walk-canopy",
+      "kind": "tree",
+      "position": [20, -16],
+      "height": 4.1,
+      "foliage": "#718c5c"
+    },
+    {
+      "id": "south-walk-canopy",
+      "kind": "tree",
+      "position": [20, 16],
+      "height": 4.4,
+      "foliage": "#597951"
+    },
+    {
+      "id": "tram-stop",
+      "kind": "solar-shelter",
+      "position": [44, 0],
+      "size": [11, 6]
+    },
+    {
+      "id": "north-street-tree",
+      "kind": "tree",
+      "position": [42, -19],
+      "height": 4.5,
+      "foliage": "#70855a"
+    },
+    {
+      "id": "south-street-tree",
+      "kind": "tree",
+      "position": [42, 19],
+      "height": 4.3,
+      "foliage": "#5d8057"
+    },
+    {
+      "id": "north-lamp",
+      "kind": "street-light",
+      "position": [24, -12]
+    },
+    {
+      "id": "south-lamp",
+      "kind": "street-light",
+      "position": [24, 12]
+    },
+    {
+      "id": "district-west",
+      "kind": "city-block",
+      "position": [68, -25],
+      "size": [11, 15],
+      "height": 12,
+      "facade": "#9e987c"
+    },
+    {
+      "id": "district-center",
+      "kind": "city-block",
+      "position": [74, 0],
+      "size": [13, 17],
+      "height": 18,
+      "facade": "#788579"
+    },
+    {
+      "id": "district-east",
+      "kind": "city-block",
+      "position": [68, 25],
+      "size": [11, 15],
+      "height": 10,
+      "facade": "#a78d70"
+    }
+  ]
+}

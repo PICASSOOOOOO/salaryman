@@ -9,6 +9,7 @@ const PROTOCOL_VERSION := 1
 const PlayerController = preload("res://player_controller.gd")
 const OfficeProp = preload("res://office_prop.gd")
 const ServiceProp = preload("res://office_service_prop.gd")
+const TowerExteriorWorld = preload("res://exterior_world.gd")
 const HOST := "127.0.0.1"
 const PORT := 4242
 const WORLD_SCALE := 0.01
@@ -291,6 +292,9 @@ func _build_building_shell() -> void:
 	_build_underfloor_structure(base_layout)
 	_build_room_lighting(floor_plan)
 	_build_lobby_building_services()
+	var exterior_world := TowerExteriorWorld.build(floor_plan)
+	if exterior_world != null:
+		world_root.add_child(exterior_world)
 
 
 func _load_floor_plan() -> Dictionary:
