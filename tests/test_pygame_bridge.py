@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from pygame_sim.bridge import (
+    MAX_OUTBOUND_LINE_BYTES,
     OfficeBridge,
     PROTOCOL_VERSION,
     apply_command,
@@ -32,6 +33,34 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertIn("mission", decoded["scene"]["navigation"])
         self.assertIsInstance(decoded["scene"]["navigation"]["exits"], list)
         self.assertFalse(decoded["office"]["musicEnabled"])
+        self.assertLessEqual(len(encoded.encode("utf-8")), MAX_OUTBOUND_LINE_BYTES)
+
+    def test_full_default_snapshot_is_delivered_to_connected_client(self):
+        bridge = OfficeBridge(port=0)
+        self.assertTrue(bridge.start())
+        client = socket.create_connection((bridge.host, bridge.port), timeout=1)
+        try:
+            bridge.poll_commands()
+            bridge.send_snapshot(self.state, self.scene)
+            bridge.flush()
+
+            client.settimeout(2)
+            received = bytearray()
+            while b"\n" not in received:
+                received.extend(client.recv(64 * 1024))
+            payload = json.loads(received.partition(b"\n")[0])
+            self.assertEqual(payload["type"], "snapshot")
+            self.assertEqual(payload["sequence"], 1)
+            self.assertEqual(payload["scene"]["navigation"]["room"], "lobby")
+            self.assertIn("mission", payload["scene"]["navigation"])
+        finally:
+            client.close()
+            bridge.close()
+
+    def test_oversized_outbound_message_fails_instead_of_being_silently_dropped(self):
+        bridge = OfficeBridge()
+        with self.assertRaisesRegex(ValueError, "outbound limit"):
+            bridge.queue({"payload": "x" * MAX_OUTBOUND_LINE_BYTES})
 
     def test_basement_cannot_be_left_by_room_or_floor_selection(self):
         self.assertTrue(self.scene.select_basement_level(1))

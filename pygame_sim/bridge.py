@@ -29,7 +29,9 @@ from .state import OfficeState
 
 
 PROTOCOL_VERSION = 1
-MAX_LINE_BYTES = 64 * 1024
+MAX_INBOUND_LINE_BYTES = 64 * 1024
+MAX_OUTBOUND_LINE_BYTES = 2 * 1024 * 1024
+MAX_OUTBOUND_BUFFER_BYTES = 8 * 1024 * 1024
 ALLOWED_ROOMS = {
     "lobby", "recreation", "executive", "public", "office_03", "office_04", "executive_suite",
     "floor07_business",
@@ -952,7 +954,7 @@ class OfficeBridge:
                 self._drop_client()
                 break
             self.inbound.extend(chunk)
-            if len(self.inbound) > MAX_LINE_BYTES * 2:
+            if len(self.inbound) > MAX_INBOUND_LINE_BYTES * 2:
                 self._drop_client()
                 break
 
@@ -960,7 +962,7 @@ class OfficeBridge:
         while b"\n" in self.inbound:
             raw, _, remainder = self.inbound.partition(b"\n")
             self.inbound = bytearray(remainder)
-            if len(raw) > MAX_LINE_BYTES:
+            if len(raw) > MAX_INBOUND_LINE_BYTES:
                 continue
             try:
                 parsed = json.loads(raw.decode("utf-8"))
@@ -975,12 +977,16 @@ class OfficeBridge:
         return commands
 
     def queue(self, message: dict[str, Any]) -> None:
-        try:
-            encoded = (json.dumps(message, separators=(",", ":")) + "\n").encode("utf-8")
-        except (TypeError, ValueError):
-            return
-        if len(self.outbound) + len(encoded) <= MAX_LINE_BYTES * 4:
-            self.outbound.extend(encoded)
+        encoded = (json.dumps(message, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
+        if len(encoded) > MAX_OUTBOUND_LINE_BYTES:
+            raise ValueError(
+                f"Bridge message exceeds the {MAX_OUTBOUND_LINE_BYTES}-byte outbound limit."
+            )
+        if len(self.outbound) + len(encoded) > MAX_OUTBOUND_BUFFER_BYTES:
+            raise BufferError(
+                f"Bridge outbound queue exceeds the {MAX_OUTBOUND_BUFFER_BYTES}-byte limit."
+            )
+        self.outbound.extend(encoded)
 
     def send_snapshot(self, state: OfficeState, scene: TowerScene) -> None:
         self.sequence += 1
