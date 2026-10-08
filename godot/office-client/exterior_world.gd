@@ -10,80 +10,219 @@ const FLOOR_TOP_Y := 0.16
 
 
 static func build(floor_plan: Dictionary) -> Node3D:
-	var layout_value: Variant = floor_plan.get("businessSuiteLayout", {})
-	if not layout_value is Dictionary:
-		push_error("Tower exterior cannot find businessSuiteLayout in floor_plan.json")
+	var base_layout_value: Variant = floor_plan.get("baseLayout", {})
+	if not base_layout_value is Dictionary:
+		push_error("Tower landscape cannot find baseLayout in floor_plan.json")
 		return null
-	var b1_value: Variant = layout_value.get("b1", {})
-	if not b1_value is Dictionary:
-		push_error("Tower exterior cannot find the B1 layout")
-		return null
-
-	var bounds: Array = b1_value.get("bounds", [])
-	var gate: Array = b1_value.get("exteriorGate", [])
-	var b1_room: Dictionary = {}
-	for room_value in floor_plan.get("rooms", []):
-		if room_value is Dictionary and str(room_value.get("id", "")) == "basement_b1":
-			b1_room = room_value
-			break
-	var room_offset: Array = b1_room.get("renderOffset", [0, 0])
-	if bounds.size() < 4 or gate.size() < 2 or room_offset.size() < 2:
-		push_error("Tower exterior needs B1 bounds, render offset, and exterior gate coordinates")
+	var bounds_value: Variant = base_layout_value.get("outerBounds", [])
+	if not bounds_value is Array or bounds_value.size() < 4:
+		push_error("Tower landscape needs the building's outer bounds")
 		return null
 
-	var plan_value = JSON.parse_string(FileAccess.get_file_as_string(PLAN_PATH))
-	if not plan_value is Dictionary:
+	var plan_value: Variant = JSON.parse_string(FileAccess.get_file_as_string(PLAN_PATH))
+	if not plan_value is Dictionary or not plan_value.has("facades"):
 		push_error("Tower exterior plan is missing or invalid: " + PLAN_PATH)
 		return null
 
 	var root := Node3D.new()
-	root.name = "TowerExteriorWorld"
-	root.position = Vector3(
-		float(int(bounds[0]) + int(bounds[2])) * WORLD_SCALE,
-		0.0,
-		float(int(bounds[1]) + int(room_offset[1]) + int(gate[1])) * WORLD_SCALE,
-	)
-	_build_from_plan(root, plan_value)
+	root.name = "TowerExteriorBackdrop"
+	_build_from_plan(root, plan_value, bounds_value)
 	return root
 
 
-static func _build_from_plan(root: Node3D, plan: Dictionary) -> void:
+static func _build_from_plan(root: Node3D, plan: Dictionary, bounds: Array) -> void:
 	var materials := _make_materials()
-	var terrain: Dictionary = plan.get("terrain", {})
-	var terrain_center: Array = terrain.get("center", [38, 0])
-	var terrain_size: Array = terrain.get("size", [88, 76])
-	var terrain_segments: Array = terrain.get("segments", [28, 24])
-	if terrain_center.size() < 2 or terrain_size.size() < 2 or terrain_segments.size() < 2:
-		push_error("Tower exterior terrain specification is incomplete")
+	var bounds_x := float(bounds[0]) * WORLD_SCALE
+	var bounds_z := float(bounds[1]) * WORLD_SCALE
+	var bounds_width := float(bounds[2]) * WORLD_SCALE
+	var bounds_depth := float(bounds[3]) * WORLD_SCALE
+	var seed_value := int(plan.get("seed", 1999))
+	var facades: Array = plan.get("facades", [])
+	for facade_index in range(facades.size()):
+		var facade_value: Variant = facades[facade_index]
+		if not facade_value is Dictionary:
+			continue
+		_build_facade_backdrop(
+			root,
+			facade_value,
+			facade_index,
+			Rect2(bounds_x, bounds_z, bounds_width, bounds_depth),
+			plan,
+			materials,
+			seed_value,
+		)
+
+
+static func _build_facade_backdrop(
+	parent: Node3D,
+	facade: Dictionary,
+	facade_index: int,
+	building_bounds: Rect2,
+	plan: Dictionary,
+	materials: Dictionary,
+	seed_value: int,
+) -> void:
+	var side := str(facade.get("side", ""))
+	if side not in ["west", "east"]:
+		push_error("Tower landscape facade must face west or east")
 		return
 
-	var seed_value := int(plan.get("seed", 1999))
-	var terrain_node := _add_terrain(
-		root,
-		Vector2(float(terrain_center[0]), float(terrain_center[1])),
-		Vector2(float(terrain_size[0]), float(terrain_size[1])),
-		Vector2i(maxi(int(terrain_segments[0]), 2), maxi(int(terrain_segments[1]), 2)),
-		float(terrain.get("heightAmplitude", 0.045)),
-		seed_value,
+	var outward := -1.0 if side == "west" else 1.0
+	var edge_x := building_bounds.position.x
+	if side == "east":
+		edge_x += building_bounds.size.x
+	var depth := maxf(float(facade.get("depth", 72.0)), 12.0)
+	var setback := clampf(float(facade.get("setback", 1.25)), 0.5, depth - 1.0)
+	var ground_depth := depth - setback
+	var ground_center_x := edge_x + outward * (setback + ground_depth / 2.0)
+	var ground_center_z := building_bounds.position.y + building_bounds.size.y / 2.0
+	var facade_root := Node3D.new()
+	facade_root.name = side.capitalize() + "Landscape"
+	parent.add_child(facade_root)
+
+	var terrain := _add_terrain(
+		facade_root,
+		Vector2(ground_center_x, ground_center_z),
+		Vector2(ground_depth, building_bounds.size.y),
+		Vector2i(10, maxi(int(building_bounds.size.y / 10.0), 2)),
+		float(plan.get("heightAmplitude", 0.12)),
+		seed_value + facade_index * 7919,
 		materials["terrain"],
 	)
-	terrain_node.name = "TerrainFoundation"
+	terrain.name = "TerrainFoundation"
 
-	var regions_root := Node3D.new()
-	regions_root.name = "SemanticRegions"
-	root.add_child(regions_root)
-	for region_value in plan.get("regions", []):
-		if not region_value is Dictionary:
-			continue
-		_add_region(regions_root, region_value, materials)
+	_add_tree_rows(
+		facade_root,
+		side,
+		edge_x,
+		outward,
+		building_bounds.position.y,
+		building_bounds.position.y + building_bounds.size.y,
+		facade.get("treeRows", []),
+		seed_value + facade_index * 104729,
+		materials,
+	)
+	_add_building_rows(
+		facade_root,
+		side,
+		edge_x,
+		outward,
+		building_bounds.position.y,
+		building_bounds.position.y + building_bounds.size.y,
+		facade.get("buildingRows", []),
+		seed_value + facade_index * 130363,
+		materials,
+	)
 
-	var landmarks_root := Node3D.new()
-	landmarks_root.name = "EditableLandmarks"
-	root.add_child(landmarks_root)
-	for landmark_value in plan.get("landmarks", []):
-		if not landmark_value is Dictionary:
+
+static func _add_tree_rows(
+	parent: Node3D,
+	side: String,
+	edge_x: float,
+	outward: float,
+	start_z: float,
+	end_z: float,
+	rows: Array,
+	seed_value: int,
+	materials: Dictionary,
+) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var foliage_colors: Array[Color] = [
+		Color("#557b54"),
+		Color("#68855a"),
+		Color("#718c5c"),
+		Color("#597951"),
+	]
+	for row_index in range(rows.size()):
+		var row_value: Variant = rows[row_index]
+		if not row_value is Dictionary:
 			continue
-		_add_landmark(landmarks_root, landmark_value, materials, seed_value)
+		var row: Dictionary = row_value
+		var spacing := maxf(float(row.get("spacing", 32.0)), 8.0)
+		var z := start_z + spacing * 0.42
+		var tree_index := 0
+		while z < end_z:
+			var jitter := rng.randf_range(-spacing * 0.12, spacing * 0.12)
+			var tree_x := edge_x + outward * (
+				float(row.get("depth", 8.0)) + rng.randf_range(-0.8, 0.8)
+			)
+			var tree_z := clampf(z + jitter, start_z + 1.0, end_z - 1.0)
+			var height := rng.randf_range(3.6, 5.4)
+			var tree_root := Node3D.new()
+			tree_root.name = "%s_tree_%02d_%02d" % [side, row_index, tree_index]
+			tree_root.position = Vector3(
+				tree_x,
+				_terrain_height(tree_x, tree_z, float(0.12), seed_value),
+				tree_z,
+			)
+			parent.add_child(tree_root)
+			_add_tree(tree_root, height, foliage_colors[rng.randi_range(0, foliage_colors.size() - 1)], materials)
+			z += spacing
+			tree_index += 1
+
+
+static func _add_building_rows(
+	parent: Node3D,
+	side: String,
+	edge_x: float,
+	outward: float,
+	start_z: float,
+	end_z: float,
+	rows: Array,
+	seed_value: int,
+	materials: Dictionary,
+) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var facade_colors: Array[Color] = [Color("#9e987c"), Color("#788579"), Color("#a78d70")]
+	for row_index in range(rows.size()):
+		var row_value: Variant = rows[row_index]
+		if not row_value is Dictionary:
+			continue
+		var row: Dictionary = row_value
+		var row_id := str(row.get("id", "skyline"))
+		var spacing := maxf(float(row.get("spacing", 56.0)), 28.0)
+		var z := start_z + spacing * 0.5
+		var building_index := 0
+		while z < end_z:
+			if rng.randf() <= clampf(float(row.get("density", 0.9)), 0.0, 1.0):
+				var height_range: Array = row.get("heightRange", [10.0, 24.0])
+				var depth_range: Array = row.get("depthRange", [11.0, 17.0])
+				var frontage_range: Array = row.get("frontageRange", [15.0, 24.0])
+				if height_range.size() >= 2 and depth_range.size() >= 2 and frontage_range.size() >= 2:
+					var block_depth := rng.randf_range(float(depth_range[0]), float(depth_range[1]))
+					var block_frontage := rng.randf_range(
+						float(frontage_range[0]), float(frontage_range[1])
+					)
+					var center_z := clampf(
+						z + rng.randf_range(-spacing * 0.12, spacing * 0.12),
+						start_z + block_frontage / 2.0,
+						end_z - block_frontage / 2.0,
+					)
+					var center_x := edge_x + outward * (
+						float(row.get("depth", 22.0)) + rng.randf_range(-1.2, 1.2)
+					)
+					var height := rng.randf_range(float(height_range[0]), float(height_range[1]))
+					var block := Node3D.new()
+					block.name = "%s_%s_%02d" % [side, row_id, building_index]
+					block.position = Vector3(
+						center_x,
+						_terrain_height(center_x, center_z, float(0.12), seed_value),
+						center_z,
+					)
+					if side == "west":
+						block.rotation.y = PI
+					parent.add_child(block)
+					_add_city_block(
+						block,
+						Vector2(block_depth, block_frontage),
+						height,
+						facade_colors[rng.randi_range(0, facade_colors.size() - 1)],
+						materials,
+					)
+			z += spacing
+			building_index += 1
 
 
 static func _make_materials() -> Dictionary:
