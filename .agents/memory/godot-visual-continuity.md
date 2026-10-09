@@ -35,3 +35,9 @@ Keep the player's current room completely clear. Place fog only beyond its bound
 **Why:** The user requested fog around rooms for privacy and to focus attention on the player's location.
 
 **How to apply:** Keep the active room legible and do not rely on fog to protect room or player data.
+
+Character-review and Tower gameplay cameras should use the elevated overhead 3D view, not a close perspective chase angle.
+
+**Why:** The user explicitly corrected the review camera: the view should be overhead while remaining 3D.
+
+**How to apply:** Match the main Godot game's overhead camera when building character-review scenes and previews.

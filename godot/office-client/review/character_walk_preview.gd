@@ -10,6 +10,8 @@ const MODEL_SCALE := 2.15
 const WALK_SPEED := 3.0
 const SPRINT_SPEED := 5.0
 const PIXEL_VIEW_SIZE := Vector2i(320, 180)
+const CAMERA_DISTANCE := 13.0
+const CAMERA_ORTHO_SIZE := 13.0
 
 var _actor: CharacterBody3D
 var _model: Node3D
@@ -102,11 +104,10 @@ func _build_preview() -> void:
 
 	_camera = Camera3D.new()
 	_camera.name = "FollowCamera"
-	_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-	_camera.fov = 44.0
+	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_camera.size = CAMERA_ORTHO_SIZE
 	_camera.near = 0.1
 	_camera.far = 60.0
-	_camera.position = Vector3(8.0, 11.0, 8.0)
 	_stage.add_child(_camera)
 	_camera.current = true
 	_update_camera()
@@ -372,7 +373,13 @@ func _update_camera() -> void:
 	if _camera == null:
 		return
 	var target := _actor.global_position + Vector3(0.0, 0.72, -0.55)
-	_camera.position = target + Vector3(2.2, 2.15, 4.1)
+	# Match the game's elevated overhead 3D camera instead of a near-character
+	# perspective chase view.
+	_camera.position = target + Vector3(
+		CAMERA_DISTANCE * 0.72,
+		CAMERA_DISTANCE * 1.02,
+		CAMERA_DISTANCE * 0.72,
+	)
 	_camera.look_at(target, Vector3.UP)
 
 

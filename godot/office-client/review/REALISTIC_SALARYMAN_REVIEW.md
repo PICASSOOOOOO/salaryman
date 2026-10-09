@@ -7,7 +7,8 @@ godot --path godot/office-client res://review/character_walk_preview.tscn
 ```
 
 Use WASD or the arrow keys to move, Shift to sprint, and Escape to exit. The
-scene uses the native Godot office props and two review-only coworkers.
+scene uses the native Godot office props, two review-only coworkers, and the
+game's elevated overhead 3D camera.
 
 The review GLB keeps the existing seven-bone rig and all 32 named animation
 clips. It is not wired into the shared player/NPC roster; do not promote it
