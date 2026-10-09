@@ -2307,3 +2307,31 @@ mtime_ms = 1791470633968
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f4670a46-9565-4f43-ae95-ea5f861800af/8f1b07ae-0156-411e-a71b-aa5d50306a88"
 storage_version_token = "1791470692561814"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "dqsEgeOSGjUJDcGxJAgDu"
+uri = "file://godot/office-client/review/realistic_salaryman_idle_preview.png"
+type = "image"
+title = "Salaryman review — idle"
+description = "Latest Godot capture of the review-only salaryman in the native Floor 06 office scene."
+logical_id = "7e3f74d3-ebf1-4e5d-8686-30d40cb49f0f"
+content_hash = "sha256:34fc73b8d06ae41907371c0508d2d0f47fc5fe9a1f42da6ed2d25238689db999"
+size = 364467
+mtime_ms = 1791543725724
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7e3f74d3-ebf1-4e5d-8686-30d40cb49f0f/b9bc990f-eade-4926-9455-4d85f23a247e"
+storage_version_token = "1791544152961606"
+content_type = "image/png"
+
+[[outputs]]
+id = "BKxb7uxOQBh-ChFCn5Ajf"
+uri = "file://godot/office-client/review/realistic_salaryman_walk_preview.png"
+type = "image"
+title = "Salaryman review — walk"
+description = "Latest Godot movement capture of the review-only salaryman in the native Floor 06 office scene."
+logical_id = "0d3a042f-ee09-4489-8732-678c21fa7ef2"
+content_hash = "sha256:316f72bf2af2908cb5e615e3a7a4e4af5219b10c532aa5dbf71fffe28b734670"
+size = 275617
+mtime_ms = 1791543725736
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0d3a042f-ee09-4489-8732-678c21fa7ef2/020208e6-6794-4905-a179-7f9ea589dcd1"
+storage_version_token = "1791544154115504"
+content_type = "image/png"
