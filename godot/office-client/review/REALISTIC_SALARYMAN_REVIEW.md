@@ -1,4 +1,4 @@
-# Realistic salaryman review
+# Stylized salaryman review
 
 Run the isolated scene with:
 
@@ -11,8 +11,11 @@ scene uses the native Godot office props, two review-only coworkers, and the
 game's elevated overhead 3D camera.
 
 The review GLB keeps the existing seven-bone rig and all 32 named animation
-clips. It is not wired into the shared player/NPC roster; do not promote it
-until the appearance is explicitly approved.
+clips. The review scene uses a broader adult silhouette, a slightly larger
+head, and an in-memory walk override with a slower stride and softer arm swing.
+The source GLB and its animations remain unchanged. This character is not wired into the
+shared player/NPC roster; do not promote it until the appearance is explicitly
+approved.
 
 ## Asset sources
 

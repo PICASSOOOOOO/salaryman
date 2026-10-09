@@ -2335,3 +2335,17 @@ mtime_ms = 1791549511548
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0d3a042f-ee09-4489-8732-678c21fa7ef2/1b305958-a238-4dfa-baca-55f70187f352"
 storage_version_token = "1791549529187620"
 content_type = "image/png"
+
+[[outputs]]
+id = "yQ9m8noetbq2NLNHg9XqF"
+uri = "file://godot/office-client/review/salaryman_stylized_review_walk.png"
+type = "image"
+title = "Stylized salaryman — overhead walk review"
+description = "Review-only Godot capture of the revised proportions and softened walk cycle."
+logical_id = "aa15c91d-9137-401e-ba02-4b7aa3ea2479"
+content_hash = "sha256:422e58a3cd0f92d982a10b274ed4663db350592184c1834c2118fd323bfb6d1a"
+size = 219392
+mtime_ms = 1791567808147
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/aa15c91d-9137-401e-ba02-4b7aa3ea2479/f8cf1951-dbc2-4e3f-81ff-6813f9adc3e0"
+storage_version_token = "1791567831562668"
+content_type = "image/png"

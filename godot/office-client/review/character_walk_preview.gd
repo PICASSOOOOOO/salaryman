@@ -1,5 +1,5 @@
 extends Node3D
-## Isolated, walkable review scene for the realistic salaryman character.
+## Isolated, walkable review scene for the stylized salaryman character.
 ## Run with: godot --path godot/office-client res://review/character_walk_preview.tscn
 
 const CHARACTER_SCENE := preload("res://review/realistic_salaryman_preview.glb")
@@ -7,11 +7,12 @@ const Prop := preload("res://office_prop.gd")
 const Service := preload("res://office_service_prop.gd")
 
 const MODEL_SCALE := 2.15
-const WALK_SPEED := 3.0
+const WALK_SPEED := 2.2
 const SPRINT_SPEED := 5.0
-const PIXEL_VIEW_SIZE := Vector2i(320, 180)
-const CAMERA_DISTANCE := 13.0
-const CAMERA_ORTHO_SIZE := 13.0
+const REVIEW_WALK_DURATION := 0.9
+const PIXEL_VIEW_SIZE := Vector2i(640, 360)
+const CAMERA_DISTANCE := 8.5
+const CAMERA_ORTHO_SIZE := 8.5
 
 var _actor: CharacterBody3D
 var _model: Node3D
@@ -95,6 +96,7 @@ func _build_preview() -> void:
 		or not _animation_player.has_animation("idle")
 		or not _animation_player.has_animation("walk")
 		or _animation_player.get_animation_list().size() != 32
+	or not is_equal_approx(_animation_player.get_animation("walk").length, REVIEW_WALK_DURATION)
 	):
 		push_error("The realistic salaryman preview requires all 32 source animations, including idle and walk.")
 	else:
@@ -251,7 +253,8 @@ func _add_crt_terminal(parent: Node3D, desk_position: Vector3) -> void:
 
 
 func _configure_character(model: Node3D, suit_color: Color) -> AnimationPlayer:
-	model.scale = Vector3.ONE * MODEL_SCALE
+	# Broaden the game character slightly without changing his adult height.
+	model.scale = Vector3(MODEL_SCALE * 1.16, MODEL_SCALE, MODEL_SCALE * 1.08)
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var mesh_instance := node as MeshInstance3D
 		if mesh_instance.mesh == null or not mesh_instance.name.to_lower().contains("jacket"):
@@ -266,10 +269,54 @@ func _configure_character(model: Node3D, suit_color: Color) -> AnimationPlayer:
 	if animation_nodes.is_empty():
 		push_error("Salaryman review model has no AnimationPlayer.")
 		return null
+	var skeleton_nodes := model.find_children("*", "Skeleton3D", true, false)
+	if not skeleton_nodes.is_empty():
+		var skeleton := skeleton_nodes[0] as Skeleton3D
+		var head_index := skeleton.find_bone("head")
+		if head_index >= 0:
+			skeleton.set_bone_pose_scale(head_index, Vector3.ONE * 1.12)
 	var player := animation_nodes[0] as AnimationPlayer
+	_install_review_walk(player)
 	if player.has_animation("idle"):
 		player.play("idle")
 	return player
+
+
+func _install_review_walk(player: AnimationPlayer) -> void:
+	var original_library := player.get_animation_library("")
+	if original_library == null or not original_library.has_animation("walk"):
+		return
+	# Work on a private in-memory copy. The imported GLB and its 32 source clips
+	# remain unchanged outside this isolated review scene.
+	var review_library := original_library.duplicate(true) as AnimationLibrary
+	var walk := review_library.get_animation("walk").duplicate(true) as Animation
+	var time_scale := REVIEW_WALK_DURATION / walk.length
+	for track_index in range(walk.get_track_count()):
+		var track_path := str(walk.track_get_path(track_index)).to_lower()
+		var rotation_blend := 1.0
+		if track_path.contains("leg-"):
+			rotation_blend = 0.72
+		elif track_path.contains("arm-"):
+			rotation_blend = 0.22
+		elif track_path.contains("torso"):
+			rotation_blend = 0.35
+		elif track_path.contains("head"):
+			rotation_blend = 0.5
+		for key_index in range(walk.track_get_key_count(track_index)):
+			var key_time := walk.track_get_key_time(track_index, key_index)
+			walk.track_set_key_time(track_index, key_index, key_time * time_scale)
+			if (
+				rotation_blend < 1.0
+				and walk.track_get_type(track_index) == Animation.TYPE_ROTATION_3D
+			):
+				var source_rotation := walk.track_get_key_value(track_index, key_index) as Quaternion
+				var softened_rotation := Quaternion.IDENTITY.slerp(source_rotation, rotation_blend).normalized()
+				walk.track_set_key_value(track_index, key_index, softened_rotation)
+	walk.length = REVIEW_WALK_DURATION
+	review_library.remove_animation("walk")
+	review_library.add_animation("walk", walk)
+	player.remove_animation_library("")
+	player.add_animation_library("", review_library)
 
 
 func _add_review_npcs(parent: Node3D) -> void:
