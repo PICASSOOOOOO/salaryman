@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.blender
     pkgs.xorg.libXcursor
     pkgs.godot_4
     pkgs.xorg.libxshmfence

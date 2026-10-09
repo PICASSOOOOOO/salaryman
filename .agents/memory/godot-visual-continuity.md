@@ -18,11 +18,11 @@ office prop render and said, “Looks good.”
 **How to apply:** Extend this material language consistently to the remaining
 Tower props; do not replace it with a different visual direction without asking.
 
-For this mid-50s Japanese 1980s office character, the user's latest direction is a pixel-styled presentation optimized for the angled overhead game view. Keep the existing Godot rig and its locomotion animations, do not use Pygame art, and keep the character in an isolated preview until review.
+For this mid-50s Japanese 1980s office character, the approved direction is realistically proportioned and animated, shown inside the populated Godot game world with NPCs, furniture, doors, terminals, and other objects. Keep the existing animation set, do not use Pygame art, and treat the replacement as review-only until approved.
 
-**Why:** The user redirected this character from an earlier realistic redesign toward an overhead-ready pixel look; this is a character-specific update, not a general visual change for the Godot cast.
+**Why:** The user explicitly rejected the toy-like pixel preview and empty test floor, then asked to return to the realistic mature salaryman direction first approved and to see him within the actual game.
 
-**How to apply:** Preserve the existing rig, movement, and animation. Keep the shared player, automation, and receptionist actors unchanged until the new appearance is reviewed.
+**How to apply:** Preserve movement and the full animation library. Stage the realistic character in a populated in-game review scene, while keeping the shared player and NPC roster unchanged until visual approval.
 
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 
