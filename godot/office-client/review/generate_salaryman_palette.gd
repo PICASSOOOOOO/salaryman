@@ -2,7 +2,7 @@ extends SceneTree
 ## Recolors the existing Godot character atlas for the isolated salaryman preview.
 
 const SOURCE := "res://agentshire-assets/characters/Textures/colormap.png"
-const OUTPUT := "res://agentshire-assets/characters/Textures/colormap-salaryman-1980s.png"
+const OUTPUT := "res://review/colormap-salaryman-tour-review.png"
 
 const SUIT := [
 	Color("#192431"),
@@ -89,7 +89,10 @@ func _generate() -> void:
 
 
 func _palette_for_pixel(x: int, y: int) -> Array:
-	if y >= 192 and y < 320:
+	# The source atlas' seven garment swatches occupy the complete y=256..384
+	# band. Recolor both halves; leaving the lower half untouched exposes the
+	# original bright green/orange palette through the clothes.
+	if y >= 256 and y < 384:
 		if x >= 64 and x < 128:
 			return SUIT
 		if x >= 128 and x < 192:
@@ -104,7 +107,7 @@ func _palette_for_pixel(x: int, y: int) -> Array:
 			return CREAM
 		if x >= 448:
 			return LEATHER
-	if y >= 320 and y < 448:
+	if y >= 384 and y < 512:
 		if x < 128:
 			return HAIR
 		if x >= 128 and x < 192:

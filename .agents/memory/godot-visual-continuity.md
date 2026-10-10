@@ -18,11 +18,11 @@ office prop render and said, “Looks good.”
 **How to apply:** Extend this material language consistently to the remaining
 Tower props; do not replace it with a different visual direction without asking.
 
-For this mid-50s Japanese 1980s office character, use a stylized adult 3D game look rather than hyperreal proportions, with a natural walk and the game's elevated overhead view. Keep the full source animation library, do not use Pygame art, and treat the replacement as review-only until approved.
+For this mid-50s Japanese salaryman, use a stylized adult 3D game look rather than hyperreal proportions, with a natural walk and the game's elevated isometric three-quarter view. The old spring teaser may guide suit, shirt, and tie choices, but its footage is reference only. Keep the full source animation library and treat appearance changes as review-only until approved.
 
-**Why:** The user rejected the hyperreal proportions and current walk, then clarified that the still-3D view must be overhead.
+**Why:** The user rejected hyperreal proportions and corrected a near-vertical overhead review angle to the established isometric view; they also asked for a whole-building tour rather than another character close-up.
 
-**How to apply:** Preserve movement and all source clips; override only the review walk as needed. Stage the stylized adult character in a populated Godot review scene, and keep the shared player/NPC roster unchanged until visual approval.
+**How to apply:** Preserve movement and all source clips; override only the review character as needed. Keep the shared player/NPC roster unchanged until approval, and prioritize a floor-by-floor Tower tour over isolated idle/walk footage.
 
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 
@@ -36,8 +36,8 @@ Keep the player's current room completely clear. Place fog only beyond its bound
 
 **How to apply:** Keep the active room legible and do not rely on fog to protect room or player data.
 
-Character-review and Tower gameplay cameras should use the elevated overhead 3D view, not a close perspective chase angle.
+Character-review and Tower-tour cameras should use the elevated isometric three-quarter 3D view, not a near-vertical overhead or close perspective chase angle.
 
-**Why:** The user explicitly corrected the review camera: the view should be overhead while remaining 3D.
+**Why:** The user explicitly corrected the review camera to “isometric view like before” and rejected another close-up in place of the full building tour.
 
-**How to apply:** Match the main Godot game's overhead camera when building character-review scenes and previews.
+**How to apply:** Match the established isometric Tower framing when building character-review scenes and previews.

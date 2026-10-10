@@ -2405,3 +2405,31 @@ mtime_ms = 1791632268946
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/023bcf91-5c5a-4067-89ee-f2b0e2b17326/75da9c90-d374-4d0b-ad59-9051fe34f750"
 storage_version_token = "1791632316938981"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "n6FYbB01rb0c45K5zCjZx"
+uri = "file://generated-artifacts/tower-tour/whole-tower-tour.mp4"
+type = "video"
+title = "Shadow Tower — isometric floor tour preview"
+description = "44-second Godot 3D review sequence, 1280×720 at 24 fps. Covers B1–B6 and F1–F12, including B1 loading-yard/gate and the F2 exterior window. Review dioramas use compressed coordinates; this is not gameplay footage."
+logical_id = "7a3667d3-b417-4b28-b922-6d2f72abfd9c"
+content_hash = "sha256:31f38eda0e253424c487024018560baee9df68b45d38d08a25eadaa5aceb0968"
+size = 920350
+mtime_ms = 1791653796040
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7a3667d3-b417-4b28-b922-6d2f72abfd9c/64ee51f7-5168-4ef1-9ad2-d60a173e4ce3"
+storage_version_token = "1791653844113983"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "4UBAFmxt3rPpQiUwkOR-r"
+uri = "file://generated-artifacts/tower-tour/salaryman-review-final.png"
+type = "image"
+title = "Japanese salaryman — character review image"
+description = "Navy suit, burgundy tie, and briefcase in the isometric lobby. Review-only and not yet approved; the production roster and 32 source animation clips remain unchanged."
+logical_id = "80f56f35-8a64-4956-ac41-48aad5e52dee"
+content_hash = "sha256:df08b30df31aa8ea029c54acdb6c92745180b3adde279cbdeb0bf5c20f9dff27"
+size = 300809
+mtime_ms = 1791653171920
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/80f56f35-8a64-4956-ac41-48aad5e52dee/fa8f8088-8c9d-43cd-afb2-3c73fdf4bead"
+storage_version_token = "1791653845011630"
+content_type = "image/png"

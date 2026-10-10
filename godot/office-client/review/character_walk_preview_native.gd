@@ -2,6 +2,7 @@ extends "res://main.gd"
 ## Review-only player walkthrough inside the production Tower shell.
 
 const REVIEW_CAMERA_DISTANCE := 13.0
+const SALARYMAN_REVIEW_TEXTURE := preload("res://review/colormap-salaryman-tour-review.png")
 
 var _actor: PlayerController
 var _review_camera: Camera3D
@@ -40,6 +41,8 @@ func _build_preview() -> void:
 	):
 		push_error("The production character must retain all 32 source animation clips.")
 		return
+	_apply_salaryman_review_texture()
+	_actor.visual_root.scale = Vector3.ONE * 3.0
 	# Start near reception in the real first-floor lobby, rather than at an
 	# unrelated F06 business-suite entrance.
 	_actor.global_position = _pygame_to_world(2700, 2200, "lobby")
@@ -80,6 +83,68 @@ func _add_lobby_reception_desk() -> void:
 	reception.name = "ReviewLobbyReceptionDesk"
 	reception.position = _pygame_to_world(1900, 2200, "lobby")
 	world_root.add_child(reception)
+
+
+func _apply_salaryman_review_texture() -> void:
+	# This atlas override belongs only to the review actor. The production player
+	# and NPC roster continue to use the approved source texture until the user
+	# approves the appearance.
+	if _actor.visual_root == null:
+		return
+	for node in _actor.visual_root.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := node as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		if mesh_instance.name == "body-mesh":
+			var suit := StandardMaterial3D.new()
+			suit.albedo_color = Color("#26384e")
+			suit.roughness = 0.88
+			for surface_index in range(mesh_instance.mesh.get_surface_count()):
+				mesh_instance.set_surface_override_material(surface_index, suit)
+			continue
+		for surface_index in range(mesh_instance.mesh.get_surface_count()):
+			var source := mesh_instance.get_active_material(surface_index)
+			var material := source.duplicate() as StandardMaterial3D if source is StandardMaterial3D else StandardMaterial3D.new()
+			material.albedo_texture = SALARYMAN_REVIEW_TEXTURE
+			material.albedo_color = Color.WHITE
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			mesh_instance.set_surface_override_material(surface_index, material)
+	_add_review_salaryman_details()
+
+
+func _add_review_salaryman_details() -> void:
+	var tie := MeshInstance3D.new()
+	tie.name = "ReviewBurgundyTie"
+	var tie_shape := BoxMesh.new()
+	tie_shape.size = Vector3(0.045, 0.15, 0.012)
+	tie.mesh = tie_shape
+	var tie_material := StandardMaterial3D.new()
+	tie_material.albedo_color = Color("#963942")
+	tie_material.roughness = 0.72
+	tie.material_override = tie_material
+	tie.position = Vector3(0.0, 0.27, 0.16)
+	_actor.visual_root.add_child(tie)
+
+	var case := MeshInstance3D.new()
+	case.name = "ReviewLeatherBriefcase"
+	var case_shape := BoxMesh.new()
+	case_shape.size = Vector3(0.16, 0.12, 0.055)
+	case.mesh = case_shape
+	var leather := StandardMaterial3D.new()
+	leather.albedo_color = Color("#473629")
+	leather.roughness = 0.76
+	case.material_override = leather
+	case.position = Vector3(-0.41, 0.12, 0.0)
+	_actor.visual_root.add_child(case)
+
+	var handle := MeshInstance3D.new()
+	handle.name = "ReviewBriefcaseHandle"
+	var handle_shape := BoxMesh.new()
+	handle_shape.size = Vector3(0.075, 0.018, 0.014)
+	handle.mesh = handle_shape
+	handle.material_override = leather
+	handle.position = Vector3(-0.41, 0.19, 0.0)
+	_actor.visual_root.add_child(handle)
 
 
 func _add_review_labels() -> void:
@@ -149,8 +214,9 @@ func _update_review_camera() -> void:
 		return
 	var target := _actor.global_position + Vector3(0.0, 0.2, 0.0)
 	var distance := REVIEW_CAMERA_DISTANCE
-	_review_camera.position = target + Vector3(0.0, distance, 0.0)
-	_review_camera.look_at(target, Vector3.FORWARD)
+	_review_camera.size = 12.0
+	_review_camera.position = target + Vector3(0.72, 0.95, 0.72).normalized() * distance
+	_review_camera.look_at(target, Vector3.UP)
 
 
 func _physics_process(_delta: float) -> void:
