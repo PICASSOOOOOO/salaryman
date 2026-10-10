@@ -7,12 +7,16 @@ var _actor: PlayerController
 var _review_camera: Camera3D
 var _frame_count := 0
 var _capture_path := ""
+var _clip_mode := "interactive"
+var _walk_key_down := false
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture="):
 			_capture_path = arg.trim_prefix("--capture=")
+		elif arg.begins_with("--clip="):
+			_clip_mode = arg.trim_prefix("--clip=")
 	call_deferred("_build_preview")
 
 
@@ -100,6 +104,16 @@ func _add_review_labels() -> void:
 	title.add_theme_color_override("font_color", Color("#f0e3c7"))
 	layer.add_child(title)
 
+	if _clip_mode in ["idle", "walk"]:
+		var clip_label := Label.new()
+		clip_label.text = (
+			"PRODUCTION MODEL  ·  %s CLIP" % _clip_mode.to_upper()
+		)
+		clip_label.position = Vector2(28.0, 48.0)
+		clip_label.add_theme_font_size_override("font_size", 16)
+		clip_label.add_theme_color_override("font_color", Color("#f0e3c7"))
+		layer.add_child(clip_label)
+
 	var controls := Label.new()
 	controls.text = "WASD MOVE   ·   SHIFT SPRINT   ·   ESC EXIT"
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
@@ -113,11 +127,31 @@ func _process(delta: float) -> void:
 	if _actor == null or not is_instance_valid(_actor):
 		return
 	_frame_count += 1
+	if _clip_mode == "walk":
+		_update_walk_clip_input()
 	if Input.is_key_pressed(KEY_ESCAPE):
 		get_tree().quit()
 		return
 	if not _capture_path.is_empty() and _frame_count == 18:
 		call_deferred("_capture_frame")
+
+
+func _update_walk_clip_input() -> void:
+	# At 24 fps, begin walking after a short idle lead-in and release before
+	# the clip ends so both locomotion and the return to idle are visible.
+	if _frame_count == 24:
+		_set_review_key(KEY_D, true)
+	elif _frame_count == 78:
+		_set_review_key(KEY_D, false)
+
+
+func _set_review_key(key: Key, pressed: bool) -> void:
+	var event := InputEventKey.new()
+	event.keycode = key
+	event.physical_keycode = key
+	event.pressed = pressed
+	Input.parse_input_event(event)
+	_walk_key_down = pressed
 
 
 func _update_review_camera() -> void:

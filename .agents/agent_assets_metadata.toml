@@ -2349,3 +2349,31 @@ mtime_ms = 1791567808147
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/aa15c91d-9137-401e-ba02-4b7aa3ea2479/f8cf1951-dbc2-4e3f-81ff-6813f9adc3e0"
 storage_version_token = "1791567831562668"
 content_type = "image/png"
+
+[[outputs]]
+id = "V_T8C3UiZfy-7cTvUc9y_"
+uri = "file://generated-artifacts/character-review/salaryman-idle-f06.mp4"
+type = "video"
+title = "F06 character review — idle example"
+description = "5-second, 1080p capture in the production F06 Tower scene. Uses the current production player model at its game scale; appearance is not an approval candidate."
+logical_id = "a41665c8-3b0f-4045-ba58-af27b821cc17"
+content_hash = "sha256:a04abeb9b5e6390da8ce94f135fa8d8c74accaff3e935eec72cdcaeb661e06b4"
+size = 189092
+mtime_ms = 1791625158309
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a41665c8-3b0f-4045-ba58-af27b821cc17/2db278b8-ea15-4d6e-9f54-cea85badeedc"
+storage_version_token = "1791625192087608"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "nj1ir_2TGozrHR6cbHJc8"
+uri = "file://generated-artifacts/character-review/salaryman-walk-f06.mp4"
+type = "video"
+title = "F06 character review — walk example"
+description = "5-second, 1080p capture in the production F06 Tower scene. Uses the original player controller and walk animation; the model and walk remain review-only, not approved."
+logical_id = "9152b658-429a-482d-a5aa-d81fe1acef10"
+content_hash = "sha256:aa6826eab2e5ffc36d11f13e784a5eb71b9cfa44df1a980ac55e59ed6a7b048f"
+size = 486920
+mtime_ms = 1791625160907
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/9152b658-429a-482d-a5aa-d81fe1acef10/39308d19-cad7-4114-823f-f07dd7193902"
+storage_version_token = "1791625193181752"
+content_type = "video/mp4"
