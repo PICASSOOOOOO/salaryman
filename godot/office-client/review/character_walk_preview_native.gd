@@ -42,7 +42,7 @@ func _build_preview() -> void:
 		return
 	# Start near reception in the real first-floor lobby, rather than at an
 	# unrelated F06 business-suite entrance.
-	_actor.global_position = _pygame_to_world(1900, 2700, "lobby")
+	_actor.global_position = _pygame_to_world(2700, 2200, "lobby")
 	player_shadow = _add_character_shadow(_actor, 0.38)
 
 	_review_camera = Camera3D.new()
@@ -97,7 +97,7 @@ func _add_review_labels() -> void:
 
 	if _clip_mode in ["idle", "walk"]:
 		var clip_label := Label.new()
-		clip_label.text = "TOWER F06  ·  %s REVIEW" % _clip_mode.to_upper()
+		clip_label.text = "LOBBY / %s  ·  APPEARANCE NOT APPROVED" % _clip_mode.to_upper()
 		clip_label.position = Vector2(28.0, 48.0)
 		clip_label.add_theme_font_size_override("font_size", 16)
 		clip_label.add_theme_color_override("font_color", Color("#f0e3c7"))
@@ -127,11 +127,12 @@ func _process(delta: float) -> void:
 
 func _update_walk_clip_input() -> void:
 	# At 24 fps, begin walking after a short idle lead-in and release before
-	# the clip ends so both locomotion and the return to idle are visible.
+	# the clip ends so both locomotion and the return to idle are visible. Walk
+	# south into the clear lobby floor, away from the reception lamp.
 	if _frame_count == 24:
-		_set_review_key(KEY_W, true)
-	elif _frame_count == 78:
-		_set_review_key(KEY_W, false)
+		_set_review_key(KEY_S, true)
+	elif _frame_count == 48:
+		_set_review_key(KEY_S, false)
 
 
 func _set_review_key(key: Key, pressed: bool) -> void:
@@ -148,8 +149,8 @@ func _update_review_camera() -> void:
 		return
 	var target := _actor.global_position + Vector3(0.0, 0.2, 0.0)
 	var distance := REVIEW_CAMERA_DISTANCE
-	_review_camera.position = target + Vector3(-3.5, distance + 2.0, 4.5)
-	_review_camera.look_at(target, Vector3.UP)
+	_review_camera.position = target + Vector3(0.0, distance, 0.0)
+	_review_camera.look_at(target, Vector3.FORWARD)
 
 
 func _physics_process(_delta: float) -> void:

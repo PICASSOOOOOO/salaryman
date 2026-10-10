@@ -113,6 +113,7 @@
 - [VendKing utility rule](vendking-utility-rule.md) — Decorative goods are valid stock; price stronger supported benefits higher.
 - [Shadow Tower floor rules](shadow-tower-rules.md) — Align geometry, access, services, and prices; keep shells on restricted floors.
 - [Godot visual pipeline](godot-visual-continuity.md) — Preserve native 3D and character continuity; see [procedural attachments](godot-review-model-attachments.md).
+- [Godot movie capture paths](godot-movie-capture-paths.md) — `--write-movie` output resolves under the selected Godot project root, not the shell working directory.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
 - [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
 - [NPC economic agents](npc-economic-agents.md) — purposeful NPCs extend narrowly scoped API automations; each has a job and route, with small-cast economic growth.

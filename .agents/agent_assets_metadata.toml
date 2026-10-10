@@ -2377,3 +2377,31 @@ mtime_ms = 1791625160907
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/9152b658-429a-482d-a5aa-d81fe1acef10/39308d19-cad7-4114-823f-f07dd7193902"
 storage_version_token = "1791625193181752"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "NXj70Io0aIK5-ET8IgQYF"
+uri = "file://generated-artifacts/salaryman-reviews/f1-lobby-idle.mp4"
+type = "video"
+title = "Floor 1 lobby — idle review"
+description = "4-second, 1600×900 top-down idle clip. The on-screen notice identifies the character appearance as unapproved."
+logical_id = "f34c348d-6664-4f4f-827c-e55cd3acc69f"
+content_hash = "sha256:7f011923c913791abe6d1d13880b1f27e672666923c2d90c595b65704659e62d"
+size = 59898
+mtime_ms = 1791632156291
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f34c348d-6664-4f4f-827c-e55cd3acc69f/a7f72080-ba9e-419c-b1ba-2ac5be0512ac"
+storage_version_token = "1791632316105097"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "AbP1LMMGF_owzXYXA_bVC"
+uri = "file://generated-artifacts/salaryman-reviews/f1-lobby-walk.mp4"
+type = "video"
+title = "Floor 1 lobby — walk review"
+description = "3-second, 1600×900 top-down walk clip through the open lobby floor. The on-screen notice identifies the character appearance as unapproved."
+logical_id = "023bcf91-5c5a-4067-89ee-f2b0e2b17326"
+content_hash = "sha256:99bb78e806f5cce36e1adae7719de69a3215ffc22f9f41a9c430a642245447de"
+size = 126115
+mtime_ms = 1791632268946
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/023bcf91-5c5a-4067-89ee-f2b0e2b17326/75da9c90-d374-4d0b-ad59-9051fe34f750"
+storage_version_token = "1791632316938981"
+content_type = "video/mp4"
