@@ -21,6 +21,7 @@ func _build_preview() -> void:
 	_build_materials()
 	_build_lighting()
 	_build_building_shell()
+	_keep_only_f06_office_area()
 
 	var radio_station: Dictionary = floor_plan_data.get("playableFloors", {}).get("6", {})
 	var radio_business: Dictionary = {}
@@ -54,7 +55,7 @@ func _build_preview() -> void:
 		return
 	var door_x := float(entrance[0]) * WORLD_SCALE
 	var door_z := float(entrance[1]) * WORLD_SCALE
-	_actor.global_position = Vector3(door_x, PLAYER_GROUND_Y, door_z - 1.6)
+	_actor.global_position = Vector3(door_x, PLAYER_GROUND_Y, door_z - 4.2)
 	player_shadow = _add_character_shadow(_actor, 0.38)
 
 	_review_camera = Camera3D.new()
@@ -67,6 +68,23 @@ func _build_preview() -> void:
 	_review_camera.current = true
 	_update_review_camera()
 	_add_review_labels()
+
+
+func _keep_only_f06_office_area() -> void:
+	# The production builder creates all Tower floors together in shared world
+	# coordinates. A character review should show the actual F06 office/concourse,
+	# not overlaid geometry from unrelated floors.
+	for child in world_root.get_children():
+		var node_name := str(child.name)
+		if (
+			node_name.begins_with("executive")
+			or node_name.begins_with("recreation")
+			or node_name.begins_with("Floor06")
+			or node_name == "BusinessSign_radio_station"
+		):
+			continue
+		world_root.remove_child(child)
+		child.queue_free()
 
 
 func _add_review_labels() -> void:
