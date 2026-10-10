@@ -274,6 +274,18 @@ func _build_building_shell() -> void:
 			main_hall,
 			int(floor_plan.get("lobbyHallwayOpening", 0)),
 		)
+		if lobby_light != null:
+			lobby_light.position = Vector3(
+				(
+					float(lobby_bounds[0]) + float(lobby_bounds[2]) / 2.0
+					- float(lobby_render_origin_px.x)
+				) * WORLD_SCALE,
+				lobby_light.position.y,
+				(
+					float(lobby_bounds[1]) + float(lobby_bounds[3]) / 2.0
+					- float(lobby_render_origin_px.y)
+				) * WORLD_SCALE,
+			)
 	var room_specs: Array = []
 	for room_data in floor_plan["rooms"]:
 		var bounds: Array = room_data["bounds"]
@@ -1021,21 +1033,35 @@ func _build_static_furniture() -> void:
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
 	imported_scenes["character"] = load("res://agentshire-assets/characters/character-male-a.glb")
 
-	_add_lobby_rug()
-	_add_imported("LobbyCouch", "couch", Vector3(18.0, 0.0, 24.5), 1.25)
-	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 18.5), 1.1)
+	var lobby_offset := _lobby_local_world_offset()
+	_add_lobby_rug(lobby_offset)
+	_add_imported("LobbyCouch", "couch", Vector3(18.0, 0.0, 24.5) + lobby_offset, 1.25)
+	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 18.5) + lobby_offset, 1.1)
+	if warm_lamp_light != null:
+		warm_lamp_light.position += lobby_offset
 
 
-func _add_lobby_rug() -> void:
+func _lobby_local_world_offset() -> Vector3:
+	var lobby_bounds: Array = floor_plan_data.get("baseLayout", {}).get("elevatorLobby", {}).get("bounds", [])
+	if lobby_bounds.size() < 4:
+		return Vector3.ZERO
+	return Vector3(
+		(float(lobby_bounds[0]) - float(lobby_render_origin_px.x)) * WORLD_SCALE,
+		0.0,
+		(float(lobby_bounds[1]) - float(lobby_render_origin_px.y)) * WORLD_SCALE,
+	)
+
+
+func _add_lobby_rug(offset: Vector3 = Vector3.ZERO) -> void:
 	# Renderer-only lounge detail. Pygame still owns all collisions and objects.
-	_add_box("LobbyRug", Vector3(22.5, 0.164, 22.0), Vector3(12.0, 0.008, 10.0), materials["lobby_rug"])
-	_add_box("LobbyRugInset", Vector3(22.5, 0.169, 22.0), Vector3(11.65, 0.003, 9.65), materials["lobby_rug_field"])
+	_add_box("LobbyRug", Vector3(22.5, 0.164, 22.0) + offset, Vector3(12.0, 0.008, 10.0), materials["lobby_rug"])
+	_add_box("LobbyRugInset", Vector3(22.5, 0.169, 22.0) + offset, Vector3(11.65, 0.003, 9.65), materials["lobby_rug_field"])
 	var trim_y := 0.171
 	var trim_height := 0.003
-	_add_box("LobbyRugTrimNorth", Vector3(22.5, trim_y, 17.18), Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
-	_add_box("LobbyRugTrimSouth", Vector3(22.5, trim_y, 26.82), Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
-	_add_box("LobbyRugTrimWest", Vector3(16.68, trim_y, 22.0), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
-	_add_box("LobbyRugTrimEast", Vector3(28.32, trim_y, 22.0), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimNorth", Vector3(22.5, trim_y, 17.18) + offset, Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimSouth", Vector3(22.5, trim_y, 26.82) + offset, Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimWest", Vector3(16.68, trim_y, 22.0) + offset, Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimEast", Vector3(28.32, trim_y, 22.0) + offset, Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
 
 
 func _add_hallway_runner_rug() -> void:
@@ -1091,6 +1117,7 @@ func _build_room_lighting(floor_plan: Dictionary) -> void:
 func _build_lobby_building_services() -> void:
 	# Exposed service runs follow the lobby wall lines instead of floating in
 	# the room. They are visual building infrastructure, not walkable props.
+	var lobby_offset := _lobby_local_world_offset()
 	var lobby_left := -7.3
 	var lobby_right := 32.3
 	var lobby_back := -7.8
@@ -1098,29 +1125,29 @@ func _build_lobby_building_services() -> void:
 	var pipe_height := 2.35
 	_add_service_pipe(
 		"LobbyWaterMain",
-		Vector3(lobby_left, pipe_height, lobby_back),
-		Vector3(lobby_right, pipe_height, lobby_back),
+		Vector3(lobby_left, pipe_height, lobby_back) + lobby_offset,
+		Vector3(lobby_right, pipe_height, lobby_back) + lobby_offset,
 		0.075,
 		materials["metal"],
 	)
 	_add_service_pipe(
 		"LobbyWaterBranch",
-		Vector3(lobby_right, pipe_height, lobby_back),
-		Vector3(lobby_right, pipe_height, lobby_front),
+		Vector3(lobby_right, pipe_height, lobby_back) + lobby_offset,
+		Vector3(lobby_right, pipe_height, lobby_front) + lobby_offset,
 		0.075,
 		materials["metal"],
 	)
 	_add_service_pipe(
 		"LobbyElectricalConduit",
-		Vector3(lobby_left, 2.12, lobby_back + 0.24),
-		Vector3(lobby_right, 2.12, lobby_back + 0.24),
+		Vector3(lobby_left, 2.12, lobby_back + 0.24) + lobby_offset,
+		Vector3(lobby_right, 2.12, lobby_back + 0.24) + lobby_offset,
 		0.035,
 		materials["wall_trim"],
 	)
 	_add_service_pipe(
 		"LobbyElevatorRiser",
-		Vector3(7.0, 0.34, 21.0),
-		Vector3(7.0, 2.55, 21.0),
+		Vector3(7.0, 0.34, 21.0) + lobby_offset,
+		Vector3(7.0, 2.55, 21.0) + lobby_offset,
 		0.055,
 		materials["metal"],
 	)
@@ -1128,7 +1155,7 @@ func _build_lobby_building_services() -> void:
 		var bracket_x := lobby_left + 4.0 + float(bracket_index) * 4.5
 		_add_box(
 			"LobbyPipeBracket%d" % bracket_index,
-			Vector3(bracket_x, pipe_height, lobby_back + 0.08),
+			Vector3(bracket_x, pipe_height, lobby_back + 0.08) + lobby_offset,
 			Vector3(0.12, 0.2, 0.32),
 			materials["wall_trim"],
 		)
@@ -1726,6 +1753,10 @@ func _pygame_to_world(x: float, y: float, room_id: String = "") -> Vector3:
 			if render_offset.size() >= 2:
 				render_position_px += Vector2i(int(render_offset[0]), int(render_offset[1]))
 			break
+	elif resolved_room_id == "lobby" and maxf(absf(x), absf(y)) < WORLD_ORIGIN_REBASE_THRESHOLD:
+		var lobby_bounds: Array = floor_plan_data.get("baseLayout", {}).get("elevatorLobby", {}).get("bounds", [])
+		if lobby_bounds.size() >= 4:
+			render_position_px = lobby_local_render_position(render_position_px, lobby_bounds, lobby_render_origin_px)
 	elif maxf(absf(x), absf(y)) >= WORLD_ORIGIN_REBASE_THRESHOLD:
 		# The lobby uses large Pygame world coordinates. Rebase only the view;
 		# snapshots and all commands remain in Pygame's authoritative space.
@@ -2663,6 +2694,15 @@ static func lobby_render_origin_from_plan(
 	return Vector2i(
 		opening_center_x - hallway_center_x,
 		int(lobby_bounds[1]) + int(lobby_bounds[3]),
+	)
+
+
+static func lobby_local_render_position(local_px: Vector2i, lobby_bounds: Array, render_origin: Vector2i) -> Vector2i:
+	if lobby_bounds.size() < 4:
+		return local_px - render_origin
+	return Vector2i(
+		int(lobby_bounds[0]) + local_px.x - render_origin.x,
+		int(lobby_bounds[1]) + local_px.y - render_origin.y,
 	)
 
 

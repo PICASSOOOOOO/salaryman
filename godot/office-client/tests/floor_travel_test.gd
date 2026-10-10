@@ -25,6 +25,17 @@ func _run_tests() -> void:
 	)
 	assert(lobby_bounds[0] + int(floor_plan["lobbyHallwayOpening"]) - lobby_origin.x == main_hall[0] + main_hall[2] / 2)
 	assert(lobby_bounds[1] + lobby_bounds[3] - lobby_origin.y == 0)
+	var reception_render_px: Vector2i = OfficeClient.lobby_local_render_position(
+		Vector2i(1900, 2200),
+		lobby_bounds,
+		lobby_origin,
+	)
+	var lobby_render_left := int(lobby_bounds[0]) - lobby_origin.x
+	var lobby_render_top := int(lobby_bounds[1]) - lobby_origin.y
+	assert(reception_render_px.x >= lobby_render_left)
+	assert(reception_render_px.x <= lobby_render_left + int(lobby_bounds[2]))
+	assert(reception_render_px.y >= lobby_render_top)
+	assert(reception_render_px.y <= lobby_render_top + int(lobby_bounds[3]))
 	assert(int(base_layout["clearEnvelopeUnits"][0]) == 62_225)
 	assert(int(base_layout["clearEnvelopeUnits"][1]) == 70_711)
 	assert(is_equal_approx(float(base_layout["structure"]["wallThicknessMeters"]), 0.3))

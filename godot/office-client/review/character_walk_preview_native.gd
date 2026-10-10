@@ -25,26 +25,9 @@ func _build_preview() -> void:
 	_build_materials()
 	_build_lighting()
 	_build_building_shell()
-	_keep_only_f06_office_area()
-
-	var radio_station: Dictionary = floor_plan_data.get("playableFloors", {}).get("6", {})
-	var radio_business: Dictionary = {}
-	for business_value in radio_station.get("businesses", []):
-		var business: Dictionary = business_value
-		if str(business.get("businessKey", "")) == "radio_station":
-			radio_business = business
-			break
-	var room_id := str(radio_business.get("officeRoom", ""))
-	var office: Dictionary = {}
-	for office_value in floor_plan_data.get("baseLayout", {}).get("offices", []):
-		var office_data: Dictionary = office_value
-		if str(office_data.get("id", "")) == room_id:
-			office = office_data
-			break
-	var entrance: Array = office.get("entrance", [])
-	if entrance.size() < 2:
-		push_error("F06 radio station entrance is missing from floor_plan.json.")
-		return
+	_build_static_furniture()
+	_keep_only_lobby_area()
+	_add_lobby_reception_desk()
 
 	_actor = PlayerController.new()
 	_actor.name = "ReviewSalaryman"
@@ -57,11 +40,9 @@ func _build_preview() -> void:
 	):
 		push_error("The production character must retain all 32 source animation clips.")
 		return
-	var door_x := float(entrance[0]) * WORLD_SCALE
-	var door_z := float(entrance[1]) * WORLD_SCALE
-	# Radio Station is the west half of this office; keep the player clear of
-	# the production divider while preserving the real south doorway.
-	_actor.global_position = Vector3(door_x - 0.7, PLAYER_GROUND_Y, door_z - 4.2)
+	# Start near reception in the real first-floor lobby, rather than at an
+	# unrelated F06 business-suite entrance.
+	_actor.global_position = _pygame_to_world(1900, 2700, "lobby")
 	player_shadow = _add_character_shadow(_actor, 0.38)
 
 	_review_camera = Camera3D.new()
@@ -76,21 +57,29 @@ func _build_preview() -> void:
 	_add_review_labels()
 
 
-func _keep_only_f06_office_area() -> void:
-	# The production builder creates all Tower floors together in shared world
-	# coordinates. A character review should show the actual F06 office/concourse,
-	# not overlaid geometry from unrelated floors.
+func _keep_only_lobby_area() -> void:
+	# Keep the actual first-floor lobby, its approved furniture, and the adjacent
+	# hallway floor; discard unrelated Tower floors from the shared builder.
 	for child in world_root.get_children():
 		var node_name := str(child.name)
 		if (
-			node_name.begins_with("executive")
-			or node_name.begins_with("recreation")
-			or node_name.begins_with("Floor06")
-			or node_name == "BusinessSign_radio_station"
+			node_name.begins_with("lobby")
+			or node_name.begins_with("Lobby")
+			or node_name == "recreationHallwayFloor0"
+			or node_name in ["BridgeObjects", "AutomationCharacters", "BasementPestsAndCrew"]
 		):
 			continue
 		world_root.remove_child(child)
 		child.queue_free()
+
+
+func _add_lobby_reception_desk() -> void:
+	# Match the established lobby reception position used by the service-object
+	# tests; the live bridge normally supplies this object at runtime.
+	var reception := OfficeProp.create("desk", true)
+	reception.name = "ReviewLobbyReceptionDesk"
+	reception.position = _pygame_to_world(1900, 2200, "lobby")
+	world_root.add_child(reception)
 
 
 func _add_review_labels() -> void:
@@ -100,7 +89,7 @@ func _add_review_labels() -> void:
 	add_child(layer)
 
 	var title := Label.new()
-	title.text = "TOWER F06  /  RADIO STATION  /  OFFICE 01"
+	title.text = "SHADOW TOWER  /  FLOOR 01 LOBBY"
 	title.position = Vector2(28.0, 18.0)
 	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color("#f0e3c7"))
