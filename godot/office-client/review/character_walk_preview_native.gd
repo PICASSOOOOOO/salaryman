@@ -2,7 +2,6 @@ extends "res://main.gd"
 ## Review-only player walkthrough inside the production Tower shell.
 
 const REVIEW_CAMERA_DISTANCE := 13.0
-const SALARYMAN_REVIEW_TEXTURE := "res://agentshire-assets/characters/Textures/colormap-salaryman-1980s.png"
 
 var _actor: PlayerController
 var _review_camera: Camera3D
@@ -52,7 +51,6 @@ func _build_preview() -> void:
 	_actor.configure_character(load("res://agentshire-assets/characters/character-male-a.glb"))
 	_actor.set_bridge_connected(true)
 	world_root.add_child(_actor)
-	_apply_review_salaryman_texture(_actor.visual_root)
 	if (
 		_actor.animation_player == null
 		or _actor.animation_player.get_animation_list().size() != 32
@@ -61,9 +59,10 @@ func _build_preview() -> void:
 		return
 	var door_x := float(entrance[0]) * WORLD_SCALE
 	var door_z := float(entrance[1]) * WORLD_SCALE
-	_actor.global_position = Vector3(door_x - 0.55, PLAYER_GROUND_Y, door_z - 4.2)
+	# Radio Station is the west half of this office; keep the player clear of
+	# the production divider while preserving the real south doorway.
+	_actor.global_position = Vector3(door_x - 0.7, PLAYER_GROUND_Y, door_z - 4.2)
 	player_shadow = _add_character_shadow(_actor, 0.38)
-	_add_neglected_radio_desk(door_x, door_z)
 
 	_review_camera = Camera3D.new()
 	_review_camera.name = "FollowCamera"
@@ -75,42 +74,6 @@ func _build_preview() -> void:
 	_review_camera.current = true
 	_update_review_camera()
 	_add_review_labels()
-
-
-func _apply_review_salaryman_texture(model: Node3D) -> void:
-	var texture := load(SALARYMAN_REVIEW_TEXTURE) as Texture2D
-	if texture == null:
-		push_error("The 1980s salaryman review texture could not be loaded.")
-		return
-	for node in model.find_children("*", "MeshInstance3D", true, false):
-		var mesh_instance := node as MeshInstance3D
-		if mesh_instance.mesh == null:
-			continue
-		for surface_index in range(mesh_instance.mesh.get_surface_count()):
-			var source := mesh_instance.get_active_material(surface_index)
-			var material := (
-				source.duplicate() as StandardMaterial3D
-				if source is StandardMaterial3D
-				else StandardMaterial3D.new()
-			)
-			material.albedo_texture = texture
-			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			mesh_instance.set_surface_override_material(surface_index, material)
-
-
-func _add_neglected_radio_desk(door_x: float, door_z: float) -> void:
-	# Use the game's native furniture asset and wear response in the review only.
-	var desk := OfficeProp.create("desk")
-	desk.name = "ReviewWornRadioDesk"
-	desk.position = Vector3(door_x - 3.7, PLAYER_GROUND_Y, door_z - 7.0)
-	desk.set_surface_state(18, 14)
-	world_root.add_child(desk)
-
-	var telephone := OfficeProp.create("telephone")
-	telephone.name = "ReviewWornDeskTelephone"
-	telephone.position = desk.position + Vector3(-0.9, 0.0, 0.28)
-	telephone.set_surface_state(18, 14)
-	world_root.add_child(telephone)
 
 
 func _keep_only_f06_office_area() -> void:
@@ -145,7 +108,7 @@ func _add_review_labels() -> void:
 
 	if _clip_mode in ["idle", "walk"]:
 		var clip_label := Label.new()
-		clip_label.text = "1980s SALARYMAN  ·  %s  ·  LONG-TERM NEGLECT REFERENCE" % _clip_mode.to_upper()
+		clip_label.text = "TOWER F06  ·  %s REVIEW" % _clip_mode.to_upper()
 		clip_label.position = Vector2(28.0, 48.0)
 		clip_label.add_theme_font_size_override("font_size", 16)
 		clip_label.add_theme_color_override("font_color", Color("#f0e3c7"))
@@ -196,7 +159,7 @@ func _update_review_camera() -> void:
 		return
 	var target := _actor.global_position + Vector3(0.0, 0.2, 0.0)
 	var distance := REVIEW_CAMERA_DISTANCE
-	_review_camera.position = target + Vector3(-1.3, distance, 5.2)
+	_review_camera.position = target + Vector3(-3.5, distance + 2.0, 4.5)
 	_review_camera.look_at(target, Vector3.UP)
 
 
