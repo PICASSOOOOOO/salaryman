@@ -60,6 +60,11 @@ func _run_tests() -> void:
 	assert(b1_routes["exteriorLoadingYardHalf"] == b1_yard)
 
 	assert(OfficeClient.CAMERA_DISTANCE_LEVELS.size() == 3)
+	assert(OfficeClient.CAMERA_DEFAULT_ZOOM_INDEX == 0)
+	assert(is_equal_approx(
+		OfficeClient.camera_distance_for_level(OfficeClient.CAMERA_DEFAULT_ZOOM_INDEX),
+		8.0,
+	))
 	assert(is_equal_approx(OfficeClient.camera_distance_for_level(0), 8.0))
 	assert(is_equal_approx(OfficeClient.camera_distance_for_level(1), 13.0))
 	assert(is_equal_approx(OfficeClient.camera_distance_for_level(2), 21.0))

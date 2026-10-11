@@ -20,6 +20,7 @@ const CAMERA_DISTANCE_MIN := 8.0
 const CAMERA_DISTANCE_MAX := 22.0
 const DANGER_AUDIO_TRACK_IDS: Array[int] = [11, 17]
 const CAMERA_DISTANCE_LEVELS := [8.0, 13.0, 21.0]
+const CAMERA_DEFAULT_ZOOM_INDEX := 0
 const CAMERA_ORTHO_SIZE_MIN := 9.0
 const CAMERA_ORTHO_SIZE_MAX := 18.0
 const CAMERA_ORTHO_SIZE_BASE := 13.0
@@ -42,8 +43,8 @@ var visual_player_ready := false
 var target_player_world := Vector3.ZERO
 var visual_player_velocity := Vector3.ZERO
 var animation_clock := 0.0
-var camera_distance := 13.0
-var camera_zoom_index := 1
+var camera_distance := CAMERA_DISTANCE_LEVELS[CAMERA_DEFAULT_ZOOM_INDEX]
+var camera_zoom_index := CAMERA_DEFAULT_ZOOM_INDEX
 var camera_sfx: Node
 var last_room_id := ""
 var last_floor_number := -1
@@ -1033,12 +1034,33 @@ func _build_static_furniture() -> void:
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
 	imported_scenes["character"] = load("res://agentshire-assets/characters/character-male-a.glb")
 
-	var lobby_offset := _lobby_local_world_offset()
-	_add_lobby_rug(lobby_offset)
-	_add_imported("LobbyCouch", "couch", Vector3(18.0, 0.0, 24.5) + lobby_offset, 1.25)
-	_add_imported("LobbyLamp", "lamp", Vector3(27.0, 0.0, 18.5) + lobby_offset, 1.1)
+	var spawn_data: Array = floor_plan_data.get("baseLayout", {}).get("elevatorLobby", {}).get("spawn", [])
+	var lobby_spawn := _pygame_to_world(
+		float(spawn_data[0]) if spawn_data.size() >= 2 else 0.0,
+		float(spawn_data[1]) if spawn_data.size() >= 2 else 0.0,
+		"lobby",
+	)
+	lobby_spawn.y = 0.0
+	var lounge_center := lobby_spawn + Vector3(-5.5, 0.0, 5.5)
+	var lamp_position := lounge_center + Vector3(3.7, 0.0, -1.7)
+	_add_lobby_rug(lounge_center)
+	_add_imported("LobbyCouch", "couch", lounge_center + Vector3(1.2, 0.0, -1.2), 1.25)
+	_add_imported("LobbyLamp", "lamp", lamp_position, 1.1)
 	if warm_lamp_light != null:
-		warm_lamp_light.position += lobby_offset
+		warm_lamp_light.position = lamp_position + Vector3(0.0, 2.25, 0.0)
+
+
+func _add_lobby_rug(center: Vector3) -> void:
+	# Renderer-only lounge detail. Pygame still owns all collisions and objects.
+	var rug_center := Vector3(center.x, 0.164, center.z)
+	_add_box("LobbyRug", rug_center, Vector3(12.0, 0.008, 10.0), materials["lobby_rug"])
+	_add_box("LobbyRugInset", rug_center + Vector3(0.0, 0.005, 0.0), Vector3(11.65, 0.003, 9.65), materials["lobby_rug_field"])
+	var trim_y := 0.171
+	var trim_height := 0.003
+	_add_box("LobbyRugTrimNorth", Vector3(center.x, trim_y, center.z - 4.82), Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimSouth", Vector3(center.x, trim_y, center.z + 4.82), Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimWest", Vector3(center.x - 5.82, trim_y, center.z), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
+	_add_box("LobbyRugTrimEast", Vector3(center.x + 5.82, trim_y, center.z), Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
 
 
 func _lobby_local_world_offset() -> Vector3:
@@ -1050,18 +1072,6 @@ func _lobby_local_world_offset() -> Vector3:
 		0.0,
 		(float(lobby_bounds[1]) - float(lobby_render_origin_px.y)) * WORLD_SCALE,
 	)
-
-
-func _add_lobby_rug(offset: Vector3 = Vector3.ZERO) -> void:
-	# Renderer-only lounge detail. Pygame still owns all collisions and objects.
-	_add_box("LobbyRug", Vector3(22.5, 0.164, 22.0) + offset, Vector3(12.0, 0.008, 10.0), materials["lobby_rug"])
-	_add_box("LobbyRugInset", Vector3(22.5, 0.169, 22.0) + offset, Vector3(11.65, 0.003, 9.65), materials["lobby_rug_field"])
-	var trim_y := 0.171
-	var trim_height := 0.003
-	_add_box("LobbyRugTrimNorth", Vector3(22.5, trim_y, 17.18) + offset, Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
-	_add_box("LobbyRugTrimSouth", Vector3(22.5, trim_y, 26.82) + offset, Vector3(11.7, trim_height, 0.10), materials["lobby_rug_trim"])
-	_add_box("LobbyRugTrimWest", Vector3(16.68, trim_y, 22.0) + offset, Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
-	_add_box("LobbyRugTrimEast", Vector3(28.32, trim_y, 22.0) + offset, Vector3(0.10, trim_height, 9.55), materials["lobby_rug_trim"])
 
 
 func _add_hallway_runner_rug() -> void:
