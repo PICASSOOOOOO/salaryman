@@ -211,6 +211,7 @@ func _fire_extinguisher(brass: Material, dark: Material) -> void:
 	_box("SafetyPin", Vector3(-0.08, 1.08, 0), Vector3(0.06, 0.10, 0.025), brass)
 	_box("Label", Vector3(0, 0.60, 0.151), Vector3(0.12, 0.20, 0.008), _finish("#e7dfc6"))
 	_box("Hose", Vector3(0.20, 0.74, 0.02), Vector3(0.045, 0.42, 0.045), dark)
+	_wear_detail(Vector3(0, 0.50, 0.153), Vector3(0.075, 0.003, 0.006), brass)
 
 
 func _temple_tree(wood: Material, brass: Material) -> void:
@@ -229,6 +230,7 @@ func _temple_tree(wood: Material, brass: Material) -> void:
 			sin(float(index) * TAU / 4.0) * 0.48,
 		)
 		_mesh("Canopy", Vector3(at.x, 2.35 + at.y, at.z), canopy, self)
+	_wear_detail(Vector3(0, 0.28, 0.58), Vector3(0.18, 0.004, 0.012), brass)
 
 
 func _reflection_screen(wood: Material, brass: Material) -> void:
@@ -238,6 +240,7 @@ func _reflection_screen(wood: Material, brass: Material) -> void:
 	for side in [-1.0, 1.0]:
 		_box("ScreenPost", Vector3(side * 1.94, 1.05, 0), Vector3(0.12, 2.0, 0.18), wood)
 		_box("ScreenFoot", Vector3(side * 1.94, 0.06, 0), Vector3(0.50, 0.10, 0.38), brass)
+	_wear_detail(Vector3(0, 0.30, 0.071), Vector3(0.20, 0.004, 0.006), brass)
 
 
 func _meditation_cushion(wood: Material, brass: Material) -> void:
@@ -253,6 +256,7 @@ func _temple_audio_control(brass: Material, cream: Material, dark: Material) -> 
 	_box("PlaqueInset", Vector3(0, 1.32, 0.071), Vector3(0.91, 0.43, 0.02), cream)
 	_box("MusicSwitch", Vector3(-0.22, 1.30, 0.093), Vector3(0.18, 0.12, 0.03), brass)
 	_box("SilenceSwitch", Vector3(0.22, 1.30, 0.093), Vector3(0.18, 0.12, 0.03), dark)
+	_wear_detail(Vector3(0, 1.08, 0.083), Vector3(0.16, 0.004, 0.006), brass)
 
 
 func _chapel_pew(wood: Material, brass: Material) -> void:
@@ -262,6 +266,7 @@ func _chapel_pew(wood: Material, brass: Material) -> void:
 	for side in [-1.0, 1.0]:
 		_box("Support", Vector3(side * 1.08, 0.27, 0), Vector3(0.12, 0.50, 0.48), brass)
 		_box("EndCap", Vector3(side * 1.20, 0.72, 0.02), Vector3(0.16, 0.38, 0.54), wood)
+	_wear_detail(Vector3(0, 0.56, 0.306), Vector3(0.18, 0.004, 0.008), brass)
 
 
 func _chapel_altar(wood: Material, brass: Material, cream: Material) -> void:
@@ -269,6 +274,7 @@ func _chapel_altar(wood: Material, brass: Material, cream: Material) -> void:
 	_box("AltarBase", Vector3(0, 0.48, 0), Vector3(2.8, 0.88, 1.2), finish)
 	_box("AltarTop", Vector3(0, 0.96, 0), Vector3(3.1, 0.12, 1.4), brass)
 	_box("AltarCloth", Vector3(0, 0.89, 0.62), Vector3(2.5, 0.18, 0.025), cream)
+	_wear_detail(Vector3(0, 0.48, 0.604), Vector3(0.20, 0.004, 0.008), brass)
 
 
 func _library_shelf(wood: Material, brass: Material) -> void:
@@ -286,6 +292,7 @@ func _library_shelf(wood: Material, brass: Material) -> void:
 				Vector3(0.20, height, 0.30),
 				cover,
 			)
+	_wear_detail(Vector3(-0.80, 0.30, 0.285), Vector3(0.16, 0.004, 0.008), brass)
 
 
 func _reading_table(wood: Material, brass: Material, cream: Material) -> void:
@@ -294,6 +301,7 @@ func _reading_table(wood: Material, brass: Material, cream: Material) -> void:
 	_cylinder("TableBase", Vector3(0, 0.38, 0), 0.12, 0.68, brass)
 	_cylinder("TableFoot", Vector3(0, 0.06, 0), 0.48, 0.10, brass)
 	_box("OpenBook", Vector3(0.16, 0.86, 0), Vector3(0.48, 0.02, 0.34), cream)
+	_wear_detail(Vector3(0, 0.844, 0.68), Vector3(0.18, 0.004, 0.008), brass)
 
 
 func _museum_case(wood: Material, brass: Material, cream: Material) -> void:
@@ -302,6 +310,7 @@ func _museum_case(wood: Material, brass: Material, cream: Material) -> void:
 	_box("GlassTop", Vector3(0, 0.90, 0), Vector3(1.52, 0.62, 0.77), _finish("#a9c6b8"))
 	_box("DisplayArtifact", Vector3(0, 0.74, 0), Vector3(0.34, 0.20, 0.28), cream)
 	_box("BrassEdge", Vector3(0, 0.60, 0.43), Vector3(1.62, 0.06, 0.04), brass)
+	_wear_detail(Vector3(0, 0.34, 0.428), Vector3(0.18, 0.004, 0.008), brass)
 
 
 func _wear_detail(at: Vector3, size: Vector3, material: Material) -> void:
