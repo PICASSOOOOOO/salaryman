@@ -127,6 +127,16 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(result.route, "/arcade/cyber_serpent")
         self.assertEqual(state.last_arcade_game, "cyber_serpent")
 
+    def test_lobby_spawn_can_interact_with_reception_desk(self):
+        state = OfficeState.with_default_roster()
+        scene = build_tower_scene()
+
+        self.assertEqual(scene.nearby_object.id, "lobby-reception-desk")
+        result = scene.interact(state)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.message, "RECEPTION / TOWER INFORMATION READY")
+
     def test_movement_inside_office_does_not_snap_back_to_lobby(self):
         scene = build_tower_scene()
         scene.select_room("executive")

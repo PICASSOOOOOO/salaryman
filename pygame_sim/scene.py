@@ -27,6 +27,7 @@ _FLOOR_PLAN_PATH = Path(__file__).resolve().parent.parent / "godot" / "office-cl
 with _FLOOR_PLAN_PATH.open(encoding="utf-8") as _floor_plan_file:
     FLOOR_PLAN = json.load(_floor_plan_file)
 FLOOR_COUNT = int(FLOOR_PLAN["floorCount"])
+OBJECT_INTERACTION_RADIUS = 1_400
 
 
 NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {}
@@ -455,7 +456,11 @@ class TowerScene:
             )
             if terminal is not None:
                 return terminal
-        return self.objects.nearby(self.player_position, room=self.current_room)
+        return self.objects.nearby(
+            self.player_position,
+            room=self.current_room,
+            radius=OBJECT_INTERACTION_RADIUS,
+        )
 
     @property
     def seated_workstation_id(self) -> str | None:
