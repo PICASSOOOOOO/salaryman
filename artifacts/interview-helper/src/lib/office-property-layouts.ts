@@ -94,6 +94,7 @@ export function officePropertyLayoutFromPlan(
      doorSpan: object.door?.span ?? 2,
      locked: lockOfficeEntrances && object.door != null,
      access: object.door?.access,
+      privacy: object.kind === "office_unit" || object.kind === "executive_room" ? "private" : "public",
     accent: object.kind === "office_unit" ? tenant?.business.color ?? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][unitNumber - 1] : undefined,
   };
   });

@@ -48,6 +48,12 @@ describe("Shadow Tower office projection", () => {
     expect(new Set(suites.map((suite) => suite.footprint.x))).toHaveProperty("size", 2);
   });
 
+  it("marks private suites for discovery fog while leaving shared circulation public", () => {
+    const layout = officePropertyLayoutFromPlan(getShadowTowerPlan("minx_city", 17, "company", [], 4));
+    expect(layout.rooms.filter((room) => room.id.startsWith("office-address-")).every((room) => room.privacy === "private")).toBe(true);
+    expect(layout.rooms.find((room) => room.id === "elevator-hall")?.privacy).toBe("public");
+  });
+
   it("blocks a locked suite doorway until the server-backed room access is granted", () => {
     const plan = getShadowTowerPlan("minx_city", 17, "founder_team");
     const locked = officePropertyLayoutFromPlan(plan, "minx_city:17", [], true);

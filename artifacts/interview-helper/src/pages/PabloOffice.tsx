@@ -915,6 +915,7 @@ export default function PabloOffice() {
             <IsoOffice
               key={`${slot}:${officeLayout.propertyKey}`}
               layout={officeLayout}
+              privacyScope={`${slot}:${officeLayout.propertyKey}`}
               scale={officeScale}
               viewportWidth={viewportW}
               viewportHeight={viewportH}

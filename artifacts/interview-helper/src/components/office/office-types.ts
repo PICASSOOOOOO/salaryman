@@ -84,6 +84,8 @@ export interface OfficeRoom {
   access?: 'password' | 'organization';
   /** Hue seed for the occupant sprite. Omit for an empty (vacant) office. */
   occupantSeed?: number;
+  /** Private rooms are fogged until physically discovered; public rooms are live. */
+  privacy?: 'public' | 'private';
 }
 
 /** A bot occupant placed on the office floor (desk or storage capsule). */
