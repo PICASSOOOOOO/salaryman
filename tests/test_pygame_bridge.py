@@ -125,6 +125,12 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(advice_queue.requests, 1)
         self.assertTrue(self.state.tower_work_advice.startswith("Checking"))
+        self.state.tower_work_advice = "The generator is the top approved maintenance priority."
+        snapshot = build_snapshot(self.state, self.scene, sequence=2)
+        self.assertEqual(
+            snapshot["office"]["towerWorkAdvice"],
+            "The generator is the top approved maintenance priority.",
+        )
 
         lobby_scene = build_tower_scene()
         denied = apply_command(command, self.state, lobby_scene, basement_sync=advice_queue)
