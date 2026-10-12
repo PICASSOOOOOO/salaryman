@@ -14,6 +14,48 @@ def maze_cells(level: int) -> set[tuple[int, int]]:
 
 
 class BasementMazeTests(unittest.TestCase):
+    def test_basement_snapshot_keeps_only_advisory_only_allowlisted_work_suggestions(self) -> None:
+        scene = TowerScene()
+        self.assertTrue(scene.select_basement_level(4))
+        scene.set_basement_snapshot({
+            "level": 4,
+            "towerOperations": {
+                "workSuggestions": [
+                    {
+                        "id": "generator",
+                        "title": "Inspect generator",
+                        "reason": "Power condition is low.",
+                        "floorNumber": 5,
+                        "advisoryOnly": True,
+                    },
+                    {
+                        "id": "issue_refund",
+                        "title": "Refund credits",
+                        "reason": "Unapproved action.",
+                        "floorNumber": 5,
+                        "advisoryOnly": True,
+                    },
+                    {
+                        "id": "waste",
+                        "title": "Haul waste",
+                        "reason": "Waste is waiting.",
+                        "floorNumber": 1,
+                        "advisoryOnly": False,
+                    },
+                ],
+            },
+        })
+        self.assertEqual(
+            scene.basement_snapshot["towerOperations"]["workSuggestions"],
+            [{
+                "id": "generator",
+                "title": "Inspect generator",
+                "reason": "Power condition is low.",
+                "floorNumber": 5,
+                "advisoryOnly": True,
+            }],
+        )
+
     def test_tunnel_routes_are_connected_and_have_dead_ends(self) -> None:
         for level in (4, 5, 6):
             cells = maze_cells(level)

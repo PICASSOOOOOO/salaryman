@@ -715,6 +715,7 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
         incomingSupplyCrates: operations.state.incomingSupplyCrates,
         storedSupplyCrates: operations.state.storedSupplyCrates,
         processedTrash: operations.state.processedTrash,
+        workSuggestions: operations.workSuggestions,
         operatingBalanceFiat: operations.finance.operatingBalanceFiat,
         powerBillDueFiat: operations.finance.powerBillDueFiat,
         waterBillDueFiat: operations.finance.waterBillDueFiat,

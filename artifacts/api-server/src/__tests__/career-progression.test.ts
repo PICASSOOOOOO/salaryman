@@ -3,7 +3,11 @@ import {
   calculateCareerPerformance,
   nextRandomTurnoverAt,
 } from "../lib/career-progression";
-import { utilityNpcLocation, wasteNpcLocation } from "../lib/tower-operations";
+import {
+  prioritizeApprovedTowerWork,
+  utilityNpcLocation,
+  wasteNpcLocation,
+} from "../lib/tower-operations";
 
 describe("fictional career progression", () => {
   it("schedules turnover independently with a 20% chance each game month", () => {
@@ -65,5 +69,20 @@ describe("fictional career progression", () => {
       action: "hauling_trash",
       route: "waste_station",
     });
+  });
+
+  it("ranks only approved Tower work and returns advice without execution authority", () => {
+    const suggestions = prioritizeApprovedTowerWork({
+      powerCondition: 20,
+      plumbingCondition: 55,
+      accumulatedTrash: 2,
+    });
+    expect(suggestions.map(({ id }) => id)).toEqual(["generator", "pumping", "waste"]);
+    expect(suggestions.every(({ advisoryOnly }) => advisoryOnly)).toBe(true);
+    expect(prioritizeApprovedTowerWork({
+      powerCondition: 100,
+      plumbingCondition: 100,
+      accumulatedTrash: 0,
+    })).toEqual([]);
   });
 });

@@ -187,7 +187,7 @@ class TowerScene:
                 if isinstance(carried_trash, int) and not isinstance(carried_trash, bool)
                 else 0
             )
-        safe_operations: dict[str, int] | None = None
+        safe_operations: dict[str, object] | None = None
         if isinstance(operations, dict):
             safe_operations = {
                 key: max(0, min(1_000_000, int(operations[key])))
@@ -199,6 +199,34 @@ class TowerScene:
                 )
                 if isinstance(operations.get(key), int) and not isinstance(operations.get(key), bool)
             }
+            allowed_suggestion_ids = {"generator", "pumping", "waste"}
+            normalized_suggestions: list[dict[str, object]] = []
+            raw_suggestions = operations.get("workSuggestions")
+            if isinstance(raw_suggestions, list):
+                for suggestion in raw_suggestions[:3]:
+                    if not isinstance(suggestion, dict):
+                        continue
+                    suggestion_id = suggestion.get("id")
+                    floor_number = suggestion.get("floorNumber")
+                    if (
+                        not isinstance(suggestion_id, str)
+                        or suggestion_id not in allowed_suggestion_ids
+                        or not isinstance(floor_number, int)
+                        or isinstance(floor_number, bool)
+                        or floor_number not in (1, 5, 6)
+                        or suggestion.get("advisoryOnly") is not True
+                        or not isinstance(suggestion.get("title"), str)
+                        or not isinstance(suggestion.get("reason"), str)
+                    ):
+                        continue
+                    normalized_suggestions.append({
+                        "id": suggestion_id,
+                        "title": suggestion["title"][:48],
+                        "reason": suggestion["reason"][:96],
+                        "floorNumber": floor_number,
+                        "advisoryOnly": True,
+                    })
+            safe_operations["workSuggestions"] = normalized_suggestions
         drop_point = snapshot.get("carcassDropPoint")
         raw_ghost = snapshot.get("ghost")
         normalized_ghost: dict[str, object] | None = None

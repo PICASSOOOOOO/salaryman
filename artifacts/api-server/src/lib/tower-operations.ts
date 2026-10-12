@@ -23,6 +23,56 @@ const NPC_TRASH_HAUL_PER_DAY = 1;
 const SUPPLY_CRATES_PER_DELIVERY = 1;
 const TOWER_B1_WASTE_STATION = { x: 9_000, y: 9_000 };
 
+export type TowerWorkSuggestion = {
+  id: "generator" | "pumping" | "waste";
+  title: string;
+  reason: string;
+  floorNumber: 1 | 5 | 6;
+  advisoryOnly: true;
+};
+
+export function prioritizeApprovedTowerWork(input: {
+  powerCondition: number;
+  plumbingCondition: number;
+  accumulatedTrash: number;
+}): TowerWorkSuggestion[] {
+  const suggestions: Array<TowerWorkSuggestion & { priority: number }> = [];
+  if (input.powerCondition < 70) {
+    suggestions.push({
+      id: "generator",
+      title: "Inspect generator",
+      reason: `Tower power condition is ${input.powerCondition}%.`,
+      floorNumber: 5,
+      advisoryOnly: true,
+      priority: 100 - input.powerCondition,
+    });
+  }
+  if (input.plumbingCondition < 70) {
+    suggestions.push({
+      id: "pumping",
+      title: "Check water pumps",
+      reason: `Tower plumbing condition is ${input.plumbingCondition}%.`,
+      floorNumber: 6,
+      advisoryOnly: true,
+      priority: 100 - input.plumbingCondition,
+    });
+  }
+  if (input.accumulatedTrash > 0) {
+    suggestions.push({
+      id: "waste",
+      title: "Haul accumulated waste",
+      reason: `${input.accumulatedTrash} waste unit${input.accumulatedTrash === 1 ? "" : "s"} await hauling.`,
+      floorNumber: 1,
+      advisoryOnly: true,
+      priority: Math.min(100, 30 + input.accumulatedTrash),
+    });
+  }
+  return suggestions
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 3)
+    .map(({ priority: _priority, ...suggestion }) => suggestion);
+}
+
 function wholeIntervals(now: Date, last: Date, intervalMs: number): number {
   return Math.max(0, Math.floor((now.getTime() - last.getTime()) / intervalMs));
 }
@@ -262,6 +312,11 @@ export async function towerOperationsSnapshot(tx: DbTx, now = new Date(), curren
       generator: advanced.state.lastGeneratorWorkAt.toISOString(),
       pump: advanced.state.lastPumpWorkAt.toISOString(),
     },
+    workSuggestions: prioritizeApprovedTowerWork({
+      powerCondition: advanced.vitals?.powerCondition ?? 100,
+      plumbingCondition: advanced.vitals?.plumbingCondition ?? 100,
+      accumulatedTrash: advanced.state.accumulatedTrash,
+    }),
     maintenanceNpc: maintenancePosition?.incumbentName ?? null,
     npcs: advanced.npcs,
   };
