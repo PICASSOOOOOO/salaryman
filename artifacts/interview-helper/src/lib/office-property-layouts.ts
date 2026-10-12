@@ -68,6 +68,7 @@ export function officePropertyLayoutFromPlan(
   propertyKey = `${plan.city}:${plan.floorNumber}`,
   tenants: readonly ShadowTowerCommercialTenant[] = [],
   lockOfficeEntrances = true,
+  openUnitNumbers: readonly number[] = [],
 ): OfficePropertyLayout {
   const projectedPlan = withShadowTowerTenantFitout(plan, tenants.map((tenant) => tenant.businessKey));
   const objects = projectedPlan.objects;
@@ -92,7 +93,8 @@ export function officePropertyLayoutFromPlan(
      doorSide: object.door?.side ?? "bottom",
      doorAt: object.door?.at,
      doorSpan: object.door?.span ?? 2,
-     locked: lockOfficeEntrances && object.door != null,
+      locked: lockOfficeEntrances && object.door != null
+        && !(object.kind === "office_unit" && openUnitNumbers.includes(unitNumber)),
      access: object.door?.access,
       privacy: object.kind === "office_unit" || object.kind === "executive_room" ? "private" : "public",
     accent: object.kind === "office_unit" ? tenant?.business.color ?? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][unitNumber - 1] : undefined,
@@ -131,9 +133,9 @@ export function officePropertyLayoutFromPlan(
     footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
   };
    }).concat(
-     rooms.filter((room) => room.locked).map((room) => ({
+     rooms.filter((room) => room.id.startsWith("office-address-")).map((room) => ({
        id: `${room.id}-door`,
-       label: `${room.label ?? "OFFICE"} · LOCKED`,
+        label: `${room.label ?? "OFFICE"} · ${room.locked ? "LOCKED" : "SUITE DOOR"}`,
        col: room.doorSide === "left" ? room.x : room.doorSide === "right" ? room.x + room.w - 1 : room.doorAt ?? room.x + Math.floor(room.w / 2),
        row: room.doorSide === "top" ? room.y : room.doorSide === "bottom" ? room.y + room.h - 1 : room.doorAt ?? room.y + Math.floor(room.h / 2),
        radius: 30,

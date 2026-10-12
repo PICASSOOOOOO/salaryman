@@ -39,6 +39,7 @@ export const shadowTowerOfficeUnitsTable = pgTable("shadow_tower_office_units", 
   leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
   saleFiat: integer("sale_fiat"),
   leaseFiat: integer("lease_fiat"),
+  passwordHash: varchar("password_hash", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

@@ -526,6 +526,13 @@
       "when": 1791380203995,
       "tag": "0074_b1_loading_yard_presence_bounds",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1791809500000,
+      "tag": "0075_shadow_tower_suite_passwords",
+      "breakpoints": true
     }
   ]
 }
