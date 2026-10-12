@@ -29,6 +29,7 @@ const footprintSchema = z.object({
   x: z.number().int().nonnegative(), y: z.number().int().nonnegative(),
   cols: z.number().int().positive(), rows: z.number().int().positive(),
 }).strict();
+const SHADOW_TOWER_UNIT_LIMIT = 4;
 const shadowTowerDoorSchema = z.object({
   side: z.enum(["top", "bottom", "left", "right"]),
   at: z.number().int().nonnegative(),
@@ -60,6 +61,31 @@ export const shadowTowerPlanSchema = z.object({
 }).strict();
 export type ShadowTowerPlan = z.infer<typeof shadowTowerPlanSchema>;
 
+/**
+ * Player-authored furniture is a separate layer from the protected floor plan.
+ * Coordinates use the shared floor grid; unitNumber scopes each placement to a
+ * specific suite so rentals and owned offices can share the same contract.
+ */
+export const shadowTowerCustomOfficeLayoutSchema = z.object({
+  version: z.literal(1),
+  placements: z.array(z.object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/),
+    unitNumber: z.number().int().min(1).max(SHADOW_TOWER_UNIT_LIMIT),
+    kind: z.enum(["desk", "plant", "storage", "divider"]),
+    col: z.number().int().nonnegative(),
+    row: z.number().int().nonnegative(),
+    rotation: z.union([z.literal(0), z.literal(90)]).default(0),
+  }).strict()).max(32),
+}).strict();
+export type ShadowTowerCustomOfficeLayout = z.infer<typeof shadowTowerCustomOfficeLayoutSchema>;
+
+const CUSTOM_OFFICE_FURNITURE_SIZE = {
+  desk: { cols: 2, rows: 1 },
+  plant: { cols: 1, rows: 1 },
+  storage: { cols: 2, rows: 1 },
+  divider: { cols: 3, rows: 1 },
+} as const;
+
 export const shadowTowerListingSchema = z.object({
   archetype: z.enum(SHADOW_TOWER_ARCHETYPES),
   title: z.string().min(1), subtitle: z.string().min(1), capacity: z.number().int().positive(),
@@ -76,7 +102,7 @@ export const SHADOW_TOWER_LISTINGS: Record<ShadowTowerArchetype, ShadowTowerList
 /** The real-estate shell is deliberately independent of the playable tile map. */
 export const SHADOW_TOWER_FLOOR_ENVELOPE = { widthPixels: 100_000, heightPixels: 100_000, squareMeters: 10_000 } as const;
 export const SHADOW_TOWER_MIN_OFFICE_UNITS = 1;
-export const SHADOW_TOWER_MAX_OFFICE_UNITS = 4;
+export const SHADOW_TOWER_MAX_OFFICE_UNITS = SHADOW_TOWER_UNIT_LIMIT;
 export const SHADOW_TOWER_RESERVED_FLOORS = [
   1, 2, 3, 4,
   55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
@@ -384,6 +410,66 @@ function occupiedCells(footprint: z.infer<typeof footprintSchema>) {
   const cells: string[] = [];
   for (let x = footprint.x; x < footprint.x + footprint.cols; x++) for (let y = footprint.y; y < footprint.y + footprint.rows; y++) cells.push(`${x},${y}`);
   return cells;
+}
+
+/** Validate player furniture without allowing it to alter the server-owned shell. */
+export function validateShadowTowerCustomOfficeLayout(
+  plan: ShadowTowerPlan,
+  value: unknown,
+): { ok: true; layout: ShadowTowerCustomOfficeLayout } | { ok: false; errors: string[] } {
+  const parsed = shadowTowerCustomOfficeLayoutSchema.safeParse(value);
+  if (!parsed.success) return { ok: false, errors: parsed.error.issues.map((issue) => issue.message) };
+  const layout = parsed.data;
+  const suites = plan.objects.filter((object) => object.kind === "office_unit").sort((a, b) => a.id.localeCompare(b.id));
+  const errors: string[] = [];
+  const occupied = new Set<string>();
+  const ids = new Set<string>();
+
+  for (const item of layout.placements) {
+    if (ids.has(item.id)) errors.push(`${item.id} is duplicated`);
+    ids.add(item.id);
+    const suite = suites[item.unitNumber - 1];
+    if (!suite) {
+      errors.push(`${item.id} references a missing office unit`);
+      continue;
+    }
+    const base = CUSTOM_OFFICE_FURNITURE_SIZE[item.kind];
+    const cols = item.rotation === 90 ? base.rows : base.cols;
+    const rows = item.rotation === 90 ? base.cols : base.rows;
+    const fp = { x: item.col, y: item.row, cols, rows };
+    if (fp.x < suite.footprint.x + 1 || fp.y < suite.footprint.y + 1
+      || fp.x + fp.cols > suite.footprint.x + suite.footprint.cols - 1
+      || fp.y + fp.rows > suite.footprint.y + suite.footprint.rows - 1) {
+      errors.push(`${item.id} must stay inside office unit ${item.unitNumber}`);
+      continue;
+    }
+
+    const itemCells = occupiedCells(fp);
+    const reservedCells = new Set(plan.collisionFootprints.flatMap(occupiedCells));
+    const door = suite.door;
+    if (door) {
+      const doorX = door.side === "left" ? suite.footprint.x
+        : door.side === "right" ? suite.footprint.x + suite.footprint.cols - 1 : door.at;
+      const doorY = door.side === "top" ? suite.footprint.y
+        : door.side === "bottom" ? suite.footprint.y + suite.footprint.rows - 1 : door.at;
+      for (let dx = 0; dx < door.span; dx++) {
+        for (let dy = 1; dy <= 2; dy++) {
+          const x = door.side === "left" ? doorX + dy : door.side === "right" ? doorX - dy : doorX + dx;
+          const y = door.side === "top" ? doorY + dy : door.side === "bottom" ? doorY - dy : doorY + dx;
+          reservedCells.add(`${x},${y}`);
+        }
+      }
+    }
+    if (itemCells.some((cell) => reservedCells.has(cell))) {
+      errors.push(`${item.id} overlaps fixed furniture or the office entrance`);
+    }
+    if (itemCells.some((cell) => occupied.has(cell))) {
+      errors.push(`${item.id} overlaps another custom placement`);
+    }
+    itemCells.forEach((cell) => occupied.add(cell));
+  }
+
+  return errors.length ? { ok: false, errors } : { ok: true, layout };
 }
 
 /** Rejects visual-only geometry, footprint drift, bad numbered identity, and unreachable interactions. */

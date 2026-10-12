@@ -9,6 +9,7 @@ import {
   getShadowTowerCommercialTenants,
   getShadowTowerPlan,
   selectShadowTowerArchetype,
+  validateShadowTowerCustomOfficeLayout,
   validateShadowTowerPlan,
   withShadowTowerTenantFitout,
 } from "./shadow-tower";
@@ -39,6 +40,30 @@ describe("Shadow Tower contract", () => {
     expect(new Set(suites.map((item) => item.footprint.y))).toEqual(new Set([1, 15]));
     expect(new Set(suites.map((item) => item.footprint.x))).toEqual(new Set([4, 20]));
     expect(validateShadowTowerPlan(plan)).toMatchObject({ ok: true });
+  });
+
+  it("validates custom suite furniture without allowing it to alter protected floor geometry", () => {
+    const plan = getShadowTowerPlan("huda_city", 44, "company", [], 4);
+    const valid = validateShadowTowerCustomOfficeLayout(plan, {
+      version: 1,
+      placements: [{ id: "meeting-desk", unitNumber: 4, kind: "desk", col: 22, row: 17, rotation: 0 }],
+    });
+    expect(valid.ok).toBe(true);
+
+    const overlaps = validateShadowTowerCustomOfficeLayout(plan, {
+      version: 1,
+      placements: [
+        { id: "desk-a", unitNumber: 4, kind: "desk", col: 22, row: 17, rotation: 0 },
+        { id: "desk-b", unitNumber: 4, kind: "desk", col: 23, row: 17, rotation: 0 },
+      ],
+    });
+    expect(overlaps).toMatchObject({ ok: false });
+
+    const blocksEntrance = validateShadowTowerCustomOfficeLayout(plan, {
+      version: 1,
+      placements: [{ id: "door-divider", unitNumber: 4, kind: "divider", col: 25, row: 16, rotation: 90 }],
+    });
+    expect(blocksEntrance).toMatchObject({ ok: false });
   });
   it("makes settled workstation upgrades visible", () => {
     const base = getShadowTowerPlan("huda_city", 2, "company");
