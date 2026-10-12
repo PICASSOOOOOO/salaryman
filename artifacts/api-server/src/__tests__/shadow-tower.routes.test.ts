@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   bankAccountsTable, bankTransactionsTable, botMarketplaceTable, botsTable, db, orgMembersTable, organizationsTable,
-  shadowTowerFloorsTable, shadowTowerWorkstationAssignmentsTable, userFeaturesTable, usersTable,
+  shadowTowerFloorsTable, shadowTowerOfficeUnitsTable, shadowTowerWorkstationAssignmentsTable, userFeaturesTable, usersTable,
 } from "@workspace/db";
 import { getShadowTowerOfficeUnitGeometry, isCommercialShadowTowerFloor, quoteShadowTowerFloor, quoteShadowTowerOfficeUnitDetail, SHADOW_TOWER_FLOOR_ENVELOPE, SHADOW_TOWER_LISTINGS } from "@workspace/api-zod/shadow-tower";
 import { minimumPropertyStartingFiat } from "@workspace/api-zod/property-market";
@@ -190,6 +190,37 @@ describe("Shadow Tower routes", () => {
     expect(opened.status).toBe(200);
     expect(opened.body.plan.objects.find((object: { kind: string }) => object.kind === "office_unit").door).toMatchObject({ access: "password", side: "bottom" });
     expect(JSON.stringify(opened.body)).not.toContain("passwordHash");
+  });
+
+  it("lets authorized suite users in automatically and requires the suite password for floor-password visitors", async () => {
+    const owner = await user(); const visitor = await user();
+    const floorNumber = await freeReservedFloor("huda_city");
+    const [floor] = await db.insert(shadowTowerFloorsTable).values({
+      city: "huda_city", floorNumber, ownerUserId: owner, tenure: "own", archetype: "founder_team",
+    }).returning();
+    floors.push(floor.id);
+    const [unit] = await db.insert(shadowTowerOfficeUnitsTable).values({
+      floorId: floor.id, unitNumber: 1, status: "occupied", ownerUserId: owner, tenure: "own",
+    }).returning();
+
+    actAs(owner);
+    expect((await request(app).put(`/api/shadow-tower/floors/${floor.id}/units/1/access`).send({ password: "suite-secret" })).status).toBe(200);
+    expect((await request(app).post(`/api/shadow-tower/floors/${floor.id}/units/1/access/check`).send({ password: "wrong" })).body).toMatchObject({ allowed: true, automatic: true });
+    const current = await request(app).get("/api/shadow-tower/floors/current");
+    expect(current.body.authorizedUnitNumbers).toContain(1);
+    expect(JSON.stringify(current.body)).not.toContain("passwordHash");
+
+    actAs(owner);
+    expect((await request(app).put(`/api/shadow-tower/floors/${floor.id}/access`).send({ password: "floor-secret" })).status).toBe(200);
+    actAs(visitor);
+    const denied = await request(app).post(`/api/shadow-tower/floors/${floor.id}/units/1/access/check`)
+      .set("x-shadow-tower-password", "floor-secret").send({ password: "wrong" });
+    expect(denied.status).toBe(403);
+    const allowed = await request(app).post(`/api/shadow-tower/floors/${floor.id}/units/1/access/check`)
+      .set("x-shadow-tower-password", "floor-secret").send({ password: "suite-secret" });
+    expect(allowed.status).toBe(200);
+    expect(allowed.body).toEqual({ allowed: true, automatic: false });
+    expect(unit.unitNumber).toBe(1);
   });
 
   it("rejects assignment when every workstation is occupied and rejects expired entry", async () => {

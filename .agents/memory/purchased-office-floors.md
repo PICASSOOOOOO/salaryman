@@ -5,7 +5,7 @@ description: Durable rules for property-specific office layouts and avatar retur
 
 Each purchased office deed maps to one authoritative floor specification that owns dimensions, capacity, named zones, stations, spawn, and camera bounds. Tower and campus deeds use clearly named representative flagship/connected zones rather than pretending the full real-world acreage fits in one room.
 
-Custom offices need an extensible, suite-scoped layout/customization model for both owned and rented spaces. Visibility is discovery-based: public spaces are visible; undiscovered private offices stay obscured; discovered offices show only the last-known snapshot, never live occupants or changes unless the player is physically there. Discovery does not grant access.
+Custom offices need an extensible, suite-scoped layout/customization model for both owned and rented spaces. Visibility is discovery-based: public spaces are visible; undiscovered private offices stay obscured; discovered offices show only the last-known snapshot, never live occupants or changes unless the player is physically there. Discovery does not grant access. Authorized suite users enter automatically; other visitors need that suite’s password.
 
 **Why:** Collapsing seven deeds into a few fixed-width tiers made major properties visually interchangeable and allowed renderer, station, and camera geometry to drift apart.
 

@@ -266,7 +266,10 @@ router.get("/shadow-tower/floors/current", requireAuth, async (req, res) => {
     .filter((unit) => unit.ownerUserId === actor || floorRoleAccess)
     .map((unit) => unit.unitNumber);
   const canManage = floor.ownerUserId === actor || !!(floor.orgId && (await canDoInOrg(actor, floor.orgId, "org.settings")).allowed);
-  res.json({ floor: safeFloor(floor), canManage, authorizedUnitNumbers, plan: getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[], floor.officeCount), assignments, botGroups: consolidateShadowTowerBots(bots) });
+  const manageableUnitNumbers = units
+    .filter((unit) => unit.ownerUserId === actor || floor.ownerUserId === actor || canManage)
+    .map((unit) => unit.unitNumber);
+  res.json({ floor: safeFloor(floor), canManage, authorizedUnitNumbers, manageableUnitNumbers, plan: getShadowTowerPlan(floor.city as ShadowTowerCity, floor.floorNumber, floor.archetype as keyof typeof SHADOW_TOWER_LISTINGS, floor.upgrades as string[], floor.officeCount), assignments, botGroups: consolidateShadowTowerBots(bots) });
 });
 
 router.get("/shadow-tower/floors/:city/:floorNumber", requireAuth, async (req, res) => {
