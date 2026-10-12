@@ -161,6 +161,12 @@ describe("desktop basement survival authority", () => {
     }
   });
 
+  it("does not generate Tower work advice without fresh basement presence", async () => {
+    const response = await desktopPost("/api/desktop-building/basement/work-advice").send({});
+    expect(response.status).toBe(409);
+    expect(response.body.error).toMatch(/Enter the Tower basement/);
+  });
+
   it("allows stair entry to everyone and limits service-elevator basement entry to assigned staff", async () => {
     await db.update(desktopOfficePresenceTable)
       .set({ x: TOWER_ELEVATOR_POSITIONS[1].x, y: TOWER_ELEVATOR_POSITIONS[1].y, lastSeenAt: new Date() })

@@ -69,6 +69,8 @@ var room_label: Label
 var mission_label: Label
 var notice_label: Label
 var controls_label: Label
+var tower_advice_panel: ColorRect
+var tower_advice_body: Label
 var camera_target := Vector3.ZERO
 var camera_focus_amount := 0.0
 var elevator_floor_panel: ColorRect
@@ -1432,6 +1434,37 @@ func _build_interface() -> void:
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
+
+	tower_advice_panel = ColorRect.new()
+	tower_advice_panel.name = "TowerWorkAdvisor"
+	tower_advice_panel.color = Color("#07151af5")
+	tower_advice_panel.position = Vector2(230, 210)
+	tower_advice_panel.size = Vector2(720, 260)
+	tower_advice_panel.visible = false
+	tower_advice_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	interface_root.add_child(tower_advice_panel)
+
+	var advice_title := Label.new()
+	advice_title.text = "TOWER WORK ADVISER"
+	advice_title.position = Vector2(24, 20)
+	advice_title.add_theme_font_size_override("font_size", 21)
+	advice_title.add_theme_color_override("font_color", Color("#fff0ae"))
+	tower_advice_panel.add_child(advice_title)
+
+	tower_advice_body = Label.new()
+	tower_advice_body.position = Vector2(24, 62)
+	tower_advice_body.size = Vector2(672, 142)
+	tower_advice_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tower_advice_body.add_theme_font_size_override("font_size", 17)
+	tower_advice_body.add_theme_color_override("font_color", Color("#e4f0e5"))
+	tower_advice_panel.add_child(tower_advice_body)
+
+	var advice_footer := Label.new()
+	advice_footer.text = "READ-ONLY ADVICE  ·  F1 OR ESC TO CLOSE"
+	advice_footer.position = Vector2(24, 222)
+	advice_footer.add_theme_font_size_override("font_size", 12)
+	advice_footer.add_theme_color_override("font_color", Color("#9fd3bd"))
+	tower_advice_panel.add_child(advice_footer)
 
 	native_app_panel = ColorRect.new()
 	native_app_panel.name = "NativeGameAppPanel"
@@ -3032,12 +3065,12 @@ func _update_hud() -> void:
 				carcasses += 1 if pest_status == "carcass" else 0
 		var stamina := clampi(int(office.get("pestStamina", 0)), 0, 100)
 		var uniform_label := "UNIFORM ON" if bool(office.get("pestUniformWorn", false)) else "UNIFORM OFF"
-		controls_label.text = "WASD MOVE · F MELEE · E PICK UP / USE · O MUSIC %s\nSTAMINA %d%% · %s · %d ACTIVE PESTS · %d CARCASSES" % [
-			"ON" if bool(office.get("musicEnabled", false)) else "OFF",
+		controls_label.text = "WASD MOVE · F MELEE · E PICK UP / USE · F1 ASK ADVISER\nSTAMINA %d%% · %s · %d ACTIVE PESTS · %d CARCASSES · MUSIC %s" % [
 			stamina,
 			uniform_label,
 			active_pests,
 			carcasses,
+			"ON" if bool(office.get("musicEnabled", false)) else "OFF",
 		]
 		controls_label.add_theme_color_override("font_color", Color("#d9ddc7"))
 		mission_label.text = "TOWER SYSTEMS  ·  POWER %d%%  ·  WATER %d%%  ·  UPKEEP %d%%" % [
@@ -3048,6 +3081,10 @@ func _update_hud() -> void:
 	var notice := transient_notice_text if transient_notice_remaining > 0.0 \
 		else str(office.get("notice", "WAITING FOR GAME SIMULATION"))
 	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), notice]
+	if not room_id.begins_with("basement_b"):
+		tower_advice_panel.visible = false
+	if tower_advice_panel.visible:
+		tower_advice_body.text = str(office.get("towerWorkAdvice", "Checking approved Tower work…"))
 	_update_native_app_panel(office, scene_data)
 
 
@@ -3397,6 +3434,18 @@ func _input(event: InputEvent) -> void:
 		if _handle_elevator_picker_key(event.keycode):
 			get_viewport().set_input_as_handled()
 			return
+		var scene_data: Dictionary = snapshot.get("scene", {})
+		var in_basement := str(scene_data.get("room", "")).begins_with("basement_b")
+		if tower_advice_panel.visible and event.keycode in [KEY_ESCAPE, KEY_F1]:
+			tower_advice_panel.visible = false
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_F1 and in_basement:
+			tower_advice_panel.visible = true
+			tower_advice_body.text = "Checking the current approved Tower work priority…"
+			_send_command("ask_tower_work_advice")
+			get_viewport().set_input_as_handled()
+			return
 		var active_page := _active_page_name()
 		if not active_page.is_empty():
 			if event.keycode == KEY_ESCAPE:
@@ -3457,7 +3506,6 @@ func _input(event: InputEvent) -> void:
 		if elevator_transition_active:
 			get_viewport().set_input_as_handled()
 			return
-		var scene_data: Dictionary = snapshot.get("scene", {})
 		if event.keycode == KEY_M \
 			and int(scene_data.get("floor", 1)) == 7 \
 			and str(scene_data.get("room", "")) == "floor07_business":

@@ -102,6 +102,35 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.scene.current_room, "basement_b1")
         self.assertEqual(self.scene.basement_level, 1)
 
+    def test_tower_work_advice_is_a_read_only_basement_command(self):
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "ask_tower_work_advice",
+            "payload": {},
+        }
+        self.assertTrue(validate_command(command)[0])
+
+        class AdviceQueue:
+            def __init__(self):
+                self.requests = 0
+
+            def queue_work_advice(self):
+                self.requests += 1
+                return True
+
+        advice_queue = AdviceQueue()
+        self.assertTrue(self.scene.select_basement_level(4))
+        result = apply_command(command, self.state, self.scene, basement_sync=advice_queue)
+        self.assertTrue(result.ok)
+        self.assertEqual(advice_queue.requests, 1)
+        self.assertTrue(self.state.tower_work_advice.startswith("Checking"))
+
+        lobby_scene = build_tower_scene()
+        denied = apply_command(command, self.state, lobby_scene, basement_sync=advice_queue)
+        self.assertFalse(denied.ok)
+        self.assertEqual(advice_queue.requests, 1)
+
     def test_basement_stair_registry_has_one_valid_exit_per_landing(self):
         for level in range(1, 7):
             room_id = f"basement_b{level}"

@@ -161,6 +161,14 @@ def run(argv: list[str] | None = None) -> int:
                 if not event.ok:
                     state.notice = event.message.upper()
                 continue
+            if event.source == "basement_work_advice":
+                answer = data.get("answer")
+                state.tower_work_advice = (
+                    answer[:500] if event.ok and isinstance(answer, str)
+                    else event.message[:500]
+                )
+                state.notice = event.message.upper()
+                continue
             if not event.ok:
                 if event.source in {"basement_work_start", "basement_work_complete"}:
                     state.utility_work_active = False

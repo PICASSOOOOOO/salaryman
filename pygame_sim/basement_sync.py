@@ -66,6 +66,7 @@ class DesktopBasementSync:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_error: str | None = None
+        self._last_advice_request = float("-inf")
 
     def start(self) -> None:
         if self.link is None or self._thread is not None:
@@ -192,6 +193,16 @@ class DesktopBasementSync:
         if self.link is None or target not in WORK_TARGETS:
             return False
         return self._queue("basement_work_start", f"{BASEMENT_PATH}/work/start", {"target": target})
+
+    def queue_work_advice(self) -> bool:
+        if self.link is None or time.monotonic() - self._last_advice_request < 8.0:
+            return False
+        self._last_advice_request = time.monotonic()
+        return self._queue(
+            "basement_work_advice",
+            f"{BASEMENT_PATH}/work-advice",
+            {},
+        )
 
     def latest_snapshot(self) -> dict[str, Any] | None:
         with self._lock:
@@ -404,4 +415,6 @@ class DesktopBasementSync:
             return "PEST RESPONSE UNIFORM UPDATED"
         if source == "basement_work_start":
             return "TOWER MAINTENANCE IN PROGRESS"
+        if source == "basement_work_advice":
+            return "TOWER WORK ADVICE READY"
         return "BASEMENT SYNC COMPLETE"

@@ -47,6 +47,7 @@ import {
   utilityNpcLocation,
 } from "../lib/tower-operations";
 import { recordVerifiedCareerWork } from "../lib/career-progression";
+import { completeInternalText } from "../lib/internal-ai";
 
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
@@ -733,6 +734,58 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
   } catch (error) {
     req.log.error({ err: error }, "Desktop basement snapshot failed");
     res.status(500).json({ error: "Could not load basement state" });
+  }
+});
+
+router.post("/desktop-building/basement/work-advice", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const presence = await activePresence(link.userId, link.id);
+  if (!presence) {
+    res.status(409).json({ error: "Enter the Tower basement before asking for work advice" });
+    return;
+  }
+
+  const now = new Date();
+  try {
+    const operations = await db.transaction(async (tx) => {
+      await ensureVitals(tx);
+      return towerOperationsSnapshot(tx, now, link.userId);
+    });
+    const suggestion = operations.workSuggestions[0];
+    if (!suggestion) {
+      res.json({ answer: "No approved Tower maintenance item currently needs attention." });
+      return;
+    }
+
+    const completion = await completeInternalText([
+      {
+        role: "system",
+        content: [
+          "You are the Tower maintenance adviser inside the SALARYMAN game.",
+          "Explain only the provided, server-ranked approved work item in one or two short sentences.",
+          "Use only the supplied facts. Do not invent tasks, locations, risks, costs, or game rules.",
+          "You have no tools and cannot start work, spend currency, or change game state.",
+          "Do not ask the player for personal information or imply that you performed work.",
+        ].join(" "),
+      },
+      {
+        role: "user",
+        content: JSON.stringify({
+          approvedSuggestion: suggestion,
+          powerCondition: operations.vitals?.powerCondition ?? 100,
+          plumbingCondition: operations.vitals?.plumbingCondition ?? 100,
+          accumulatedTrash: operations.accumulatedTrash,
+        }),
+      },
+    ], { maxTokens: 120 });
+    res.json({
+      answer: completion.content.replace(/\s+/g, " ").trim().slice(0, 500),
+      suggestionId: suggestion.id,
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Tower work advice generation failed");
+    res.status(503).json({ error: "Tower adviser is unavailable right now" });
   }
 });
 

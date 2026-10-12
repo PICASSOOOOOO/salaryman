@@ -132,6 +132,7 @@ class OfficeState:
         default_factory=lambda: normalize_work_orders({})
     )
     active_pest_job: str | None = None
+    tower_work_advice: str = ""
     utility_work_target: str | None = None
     utility_work_started_at: float = 0.0
     utility_work_active: bool = False

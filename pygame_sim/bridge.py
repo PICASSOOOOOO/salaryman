@@ -64,6 +64,7 @@ COMMANDS = {
     "toggle_music",
     "open_melee_menu",
     "basement_attack",
+    "ask_tower_work_advice",
     "start_pest_job",
     "toggle_pest_uniform",
     "use_pest_supply",
@@ -416,6 +417,13 @@ def apply_command(
 
     if state.relocation_cutscene_pending:
         return CommandResult(False, "WAIT FOR THE RELOCATION SEQUENCE TO FINISH")
+    if name == "ask_tower_work_advice":
+        if not scene.is_basement:
+            return CommandResult(False, "TOWER WORK ADVICE IS AVAILABLE IN THE BASEMENT")
+        if basement_sync is None or not basement_sync.queue_work_advice():
+            return CommandResult(False, "TOWER ADVISER REQUIRES A LIVE GAME LINK")
+        state.tower_work_advice = "Checking the current approved Tower work priority…"
+        return CommandResult(True, "ASKING THE TOWER ADVISER")
     if state.utility_work_active:
         return CommandResult(False, "FINISH THE CURRENT UTILITY TASK FIRST")
 
@@ -860,6 +868,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "time": state.time_label,
             "running": state.running,
             "notice": state.notice,
+            "towerWorkAdvice": state.tower_work_advice[:500],
             "activePage": state.active_page,
             "pageSource": state.page_source,
             "activeObjectId": state.active_object_id,

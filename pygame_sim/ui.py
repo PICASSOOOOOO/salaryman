@@ -544,19 +544,6 @@ class SolarPunkRenderer:
                 f"  CARRY {carried}"
             )
             self.text(status, (28, 146), self.font_mono, Palette.MATRIX_DIM)
-            suggestions = operations.get("workSuggestions", [])
-            if isinstance(suggestions, list) and suggestions:
-                suggestion = suggestions[0]
-                if isinstance(suggestion, dict) and suggestion.get("advisoryOnly") is True:
-                    title = str(suggestion.get("title", "Review approved work"))[:48]
-                    reason = str(suggestion.get("reason", ""))[:64]
-                    floor = suggestion.get("floorNumber", "?")
-                    self.text(
-                        f"ADVISORY / B{floor} {title}: {reason}",
-                        (28, 170),
-                        self.font_sm,
-                        (236, 203, 135),
-                    )
 
         crew = snapshot.get("npcCrew", [])
         if isinstance(crew, list):
