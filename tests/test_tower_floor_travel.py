@@ -83,17 +83,15 @@ class TowerFloorTravelTests(unittest.TestCase):
         self.assertEqual(
             {tuple(obj.suite_bounds) for obj in floor_ten},
             {
-                (0, 0, 9000, 11000),
-                (13000, 0, 9000, 11000),
-                (0, 14000, 9000, 11000),
-                (13000, 14000, 9000, 11000),
+                tuple(unit["bounds"])
+                for unit in FLOOR_PLAN["businessSuiteLayout"]["fourUnitFloorUnits"]
             },
         )
 
     def test_every_floor_template_and_basement_has_one_shared_hallway_fixture_set(self):
         scene = TowerScene()
         fixture_kinds = {"pay_phone", "trash_can", "atm", "vending_machine", "fire_extinguisher"}
-        floor_seven_vending = scene.objects.get("floor-07-shared-vending")
+        floor_seven_vending = scene.objects.get("floor-07-vending")
         self.assertIsNotNone(floor_seven_vending)
         self.assertFalse(floor_seven_vending.interactive)
         self.assertEqual(floor_seven_vending.prompt, "")
@@ -153,7 +151,8 @@ class TowerFloorTravelTests(unittest.TestCase):
         lobby_spawn = tuple(scene.player_position)
         self.assertTrue(scene.select_floor(6))
         self.assertEqual(scene.current_floor, 6)
-        self.assertEqual(tuple(scene.player_position), (11_000, 1_500))
+        recreation_spawn = tuple(scene.room_spawn("recreation"))
+        self.assertEqual(tuple(scene.player_position), recreation_spawn)
         self.assertTrue(scene.select_floor(1))
         self.assertEqual(scene.current_floor, 1)
         self.assertEqual(tuple(scene.player_position), lobby_spawn)
@@ -192,9 +191,12 @@ class TowerFloorTravelTests(unittest.TestCase):
 
         self.assertTrue(scene.select_floor(approval[0].destination_floor))
         sync.update_scene(scene)
-        self.assertEqual(tuple(scene.player_position), (11_000, 1_500))
+        self.assertEqual(tuple(scene.player_position), tuple(scene.room_spawn("recreation")))
         sync._sync_once()
 
+        recreation_elevator = scene.objects.get("recreation-elevator")
+        self.assertIsNotNone(recreation_elevator)
+        scene.player_position = recreation_elevator.position
         self.assertTrue(sync.queue_elevator(1, scene))
         self.assertEqual(scene.current_floor, 6)
         sync._sync_once()
