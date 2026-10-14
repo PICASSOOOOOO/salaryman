@@ -1,6 +1,6 @@
 ---
-name: Phone-system daily testing
-description: How Twilio/phone-system health is verified and how the daily automated check is wired
+name: Phone-system testing and recurring health
+description: How Twilio phone health is verified, scheduled in production, and separated from development checks
 ---
 
 Two layers verify the phone system:
@@ -12,10 +12,10 @@ Two layers verify the phone system:
    production API (`/api/healthz` 200, unauth `POST /api/twilio/call` must be 401), then emails a
    PASS/FAIL report via Resend and exits non-zero on hard failure. Registered as validation `phone-health`.
 
-**Daily automation = a Replit Scheduled Deployment** running `pnpm --filter @workspace/api-server run health:phone`.
-The cron schedule is chosen by the user in the Publishing UI — the agent CANNOT create a scheduled
-deployment or set its cron programmatically (no callback exposes it). This is why the deliverable is a
-ready run command + a user publish step, not a fully self-running job.
+**19-minute automation:** Replit Scheduled Deployments have a one-hour minimum, so the 19-minute
+phone check runs from a production-only timer in the always-on API VM. It starts shortly after API
+startup, prevents overlapping checks, and emails failures rather than healthy passes. It cannot run
+while the API process is down; independent outage coverage requires an external monitor.
 
 **Why the live check complements the unit tests:**
 - The unit tests MOCK Twilio, so they never catch a real outage / expired creds / depleted balance.
@@ -38,3 +38,12 @@ fail while browser Voice is otherwise healthy.
 
 **How to apply:** Keep SMS verification out of Voice readiness checks and report phone subfeature
 status independently. The live `health:phone` script may still report its own SMS check as a failure.
+
+**Runtime packaging:** The API bundle intentionally leaves some packages external, so production
+images must retain runtime `node_modules`; excluding that tree can make the API crash before any
+phone, CRM, or game-bridge route is available.
+
+**Why:** A successful image build is not proof that an externalized runtime dependency is present.
+
+**How to apply:** Keep production dependencies available in the published API image and verify the
+API starts before interpreting downstream phone/CRM health failures.
