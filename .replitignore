@@ -10,6 +10,12 @@
 .local
 generated-artifacts/
 
+# Keep the workspace-wide dependency tree (all apps + development tools) out
+# of the image. The API build stages only its production dependencies here.
+**/node_modules/
+!artifacts/api-server/dist/runtime/node_modules/
+!artifacts/api-server/dist/runtime/node_modules/**
+
 # Repository exports and generated desktop build caches are not used by
 # production builds. Keep dist/releases: the API serves those downloads.
 exports/

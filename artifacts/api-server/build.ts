@@ -1,7 +1,9 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { build as esbuild } from "esbuild";
-import { rm, readFile } from "fs/promises";
+import { cpSync, mkdirSync, mkdtempSync, readFile, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "module";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,7 +48,7 @@ const allowlist = [
 
 async function buildAll() {
   const distDir = path.resolve(__dirname, "dist");
-  await rm(distDir, { recursive: true, force: true });
+  rmSync(distDir, { recursive: true, force: true });
 
   const versionStamp = getFormattedVersion();
   console.log(`building server... version: ${versionStamp}`);
@@ -76,6 +78,24 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  // Keep the published image lean: the workspace root node_modules includes
+  // every artifact and development tool. Stage only this API's production
+  // dependency tree, then copy it under dist so it can be selectively retained.
+  const workspaceRoot = path.resolve(__dirname, "../..");
+  const stagedPackage = mkdtempSync(path.join(tmpdir(), "salaryman-api-prod-"));
+  try {
+    execFileSync(
+      "pnpm",
+      ["--filter", "@workspace/api-server", "deploy", "--prod", "--legacy", stagedPackage],
+      { cwd: workspaceRoot, stdio: "inherit" },
+    );
+    const runtimeModules = path.join(distDir, "runtime", "node_modules");
+    mkdirSync(path.dirname(runtimeModules), { recursive: true });
+    cpSync(path.join(stagedPackage, "node_modules"), runtimeModules, { recursive: true });
+  } finally {
+    rmSync(stagedPackage, { recursive: true, force: true });
+  }
 }
 
 buildAll().catch((err) => {
