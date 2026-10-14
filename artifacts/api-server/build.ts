@@ -1,7 +1,18 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { build as esbuild } from "esbuild";
-import { cpSync, mkdirSync, mkdtempSync, readFile, rmSync } from "node:fs";
+import {
+  cpSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readlinkSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+} from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "module";
@@ -45,6 +56,37 @@ const allowlist = [
   "zod",
   "zod-validation-error",
 ];
+
+function rebaseStagedModuleLinks(
+  destination: string,
+  stagedNodeModules: string,
+): void {
+  const visit = (directory: string) => {
+    for (const entry of readdirSync(directory)) {
+      const entryPath = path.join(directory, entry);
+      const stat = lstatSync(entryPath);
+      if (stat.isSymbolicLink()) {
+        const target = readlinkSync(entryPath);
+        if (
+          path.isAbsolute(target) &&
+          (target === stagedNodeModules ||
+            target.startsWith(`${stagedNodeModules}${path.sep}`))
+        ) {
+          const relocatedTarget = path.join(
+            destination,
+            path.relative(stagedNodeModules, target),
+          );
+          unlinkSync(entryPath);
+          symlinkSync(relocatedTarget, entryPath);
+        }
+      } else if (stat.isDirectory()) {
+        visit(entryPath);
+      }
+    }
+  };
+
+  visit(destination);
+}
 
 async function buildAll() {
   const distDir = path.resolve(__dirname, "dist");
@@ -92,7 +134,9 @@ async function buildAll() {
     );
     const runtimeModules = path.join(distDir, "runtime", "node_modules");
     mkdirSync(path.dirname(runtimeModules), { recursive: true });
-    cpSync(path.join(stagedPackage, "node_modules"), runtimeModules, { recursive: true });
+    const stagedNodeModules = path.join(stagedPackage, "node_modules");
+    cpSync(stagedNodeModules, runtimeModules, { recursive: true });
+    rebaseStagedModuleLinks(runtimeModules, stagedNodeModules);
   } finally {
     rmSync(stagedPackage, { recursive: true, force: true });
   }
