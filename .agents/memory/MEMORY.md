@@ -10,7 +10,7 @@
 - [Pablo persona prompts](pablo-persona-prompts.md) — browser/phone use a shared professional core; industry follows the active org for all members, with sensitive data current-user/org scoped.
 - [Pablo Corp atmosphere](pablo-corp-atmosphere.md) — there is always an air of corruption at Pablo Corp; you never know what's happening behind the scenes.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
-- [Comms delivery + presence](comms-outgoing-delivery.md) — Send chat via acknowledged HTTP, receive via WebSocket, and refetch channels for fresh presence. See [details](comms-presence.md).
+- [Comms delivery + presence](comms-outgoing-delivery.md) — Send via acknowledged HTTP; browser org channels stay separate from the game's single proximity/voice group. See [details](comms-presence.md).
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Inbound phone routing](telephony-owner-resolution.md) — Active number ownership wins; match country from the dialed number. See [country-aware matching](country-aware-telephony.md).
 - [Office player avatar](office-player-avatar.md) — Keep players outside the NPC FSM; roster polls must not rebuild them, and re-added agents must cancel deferred despawn.

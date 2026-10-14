@@ -235,6 +235,27 @@ describe.skipIf(!OUTSIDE_WORLD_ENABLED)(
     expect(wasAbsent).toBe(true);
   });
 
+  it("nearby voice peers are announced only inside the same building interior", async () => {
+    const nameA = `VOICE_A_${randomUUID().slice(0, 6)}`.toUpperCase();
+    const nameB = `VOICE_B_${randomUUID().slice(0, 6)}`.toUpperCase();
+    const nameC = `VOICE_C_${randomUUID().slice(0, 6)}`.toUpperCase();
+    const sockA = await BufferedSocket.connect(nameA, TEST_CITY, port);
+    const sockB = await BufferedSocket.connect(nameB, TEST_CITY, port);
+    const sockC = await BufferedSocket.connect(nameC, TEST_CITY, port);
+    const playerAId = await waitForPlayerId(sockB, nameA);
+
+    sockA.send({ type: "move", x: 300, y: 400, interiorBid: "office-a" });
+    sockB.send({ type: "move", x: 310, y: 400, interiorBid: "office-a" });
+    sockC.send({ type: "move", x: 315, y: 400, interiorBid: "office-b" });
+    await new Promise((r) => setTimeout(r, 80));
+
+    const sameInterior = sockB.next((msg) => msg.type === "voice_peer_joined" && msg.id === playerAId, 4000);
+    const otherInterior = sockC.absent((msg) => msg.type === "voice_peer_joined" && msg.id === playerAId, 600);
+    sockA.send({ type: "voice_join" });
+    expect((await sameInterior).id).toBe(playerAId);
+    expect(await otherInterior).toBe(true);
+  });
+
   it("proximity_chat from an open-world player (no interiorBid) reaches all city players", async () => {
     const nameF = `ICIT_F_${randomUUID().slice(0, 6)}`.toUpperCase();
     const nameG = `ICIT_G_${randomUUID().slice(0, 6)}`.toUpperCase();

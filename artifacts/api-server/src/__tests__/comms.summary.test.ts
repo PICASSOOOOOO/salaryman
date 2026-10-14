@@ -190,6 +190,43 @@ describe("GET /comms/summary — unread counts", () => {
   });
 });
 
+describe("organization Comms channels", () => {
+  it("lists channels, lets organization managers create and rename them, and protects the default room", async () => {
+    const owner = await createUser();
+    const orgId = await createOrgWithMembers(owner.id);
+    actAs(owner);
+
+    const initial = await request(app).get("/api/chat/channels");
+    expect(initial.status).toBe(200);
+    expect(initial.body.canManageOrgChannels).toBe(true);
+    const defaultChannelId = initial.body.companyChannelId;
+
+    const created = await request(app).post("/api/chat/company/channels").send({ name: "Projects" });
+    expect(created.status).toBe(201);
+    const channelId = created.body.channelId;
+
+    const renameDefault = await request(app).patch(`/api/chat/company/channels/${defaultChannelId}`).send({ name: "Renamed" });
+    expect(renameDefault.status).toBe(409);
+    const renamed = await request(app).patch(`/api/chat/company/channels/${channelId}`).send({ name: "Launch Plan" });
+    expect(renamed.status).toBe(200);
+
+    const channels = await request(app).get("/api/chat/channels");
+    expect(channels.body.orgChannels).toEqual(expect.arrayContaining([
+      expect.objectContaining({ channelId: defaultChannelId, isDefault: true }),
+      expect.objectContaining({ channelId, name: "Launch Plan", isDefault: false }),
+    ]));
+
+    const outsider = await createUser();
+    actAs(outsider);
+    expect((await request(app).get(`/api/chat/channels/${channelId}/messages`)).status).toBe(403);
+
+    actAs(owner);
+    expect((await request(app).delete(`/api/chat/company/channels/${channelId}`)).status).toBe(200);
+    expect((await request(app).delete(`/api/chat/company/channels/${defaultChannelId}`)).status).toBe(409);
+    expect(orgId).toBeGreaterThan(0);
+  });
+});
+
 describe("GET /comms/summary — pending associate requests", () => {
   it("counts only INCOMING pending requests, not ones the caller initiated", async () => {
     const me = await createUser();

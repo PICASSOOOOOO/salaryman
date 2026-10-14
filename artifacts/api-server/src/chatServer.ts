@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage, Server } from 'http';
 import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import { resolveChatAttachment, type ResolvedAttachment } from './lib/chat-attachments';
 import { resolveWebSocketUser } from './lib/replit-websocket-auth';
 async function resolveSessionUserId(req: IncomingMessage): Promise<string | null> {
@@ -110,7 +110,8 @@ async function getOrCreateCompanyChannel(orgId: number, orgName: string): Promis
   const existing = await db
     .select()
     .from(chatChannelsTable)
-    .where(and(eq(chatChannelsTable.type, 'company'), eq(chatChannelsTable.orgId, orgId), eq(chatChannelsTable.name, orgName)))
+    .where(and(eq(chatChannelsTable.type, 'company'), eq(chatChannelsTable.orgId, orgId)))
+    .orderBy(asc(chatChannelsTable.id))
     .limit(1);
   if (existing[0]) return existing[0].id;
   const [ch] = await db

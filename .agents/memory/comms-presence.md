@@ -30,3 +30,16 @@ never updated.
 the WS is OPEN (currently every ~32s = every 4th 8s tick in
 `use-chat-socket.ts`). If you ever push presence over WS instead, you can drop
 this poll. Don't assume a single fetch keeps dots correct.
+
+# Browser channels and game meetings
+
+Browser Comms may have customizable organization channels. The downloadable
+game keeps one organization group; meetings there remain spatial, using nearby
+text/voice in the same building interior rather than browser channel selection.
+
+**Why:** the user explicitly wants Slack-like channel customization in the
+browser, while game meetings should be physical and proximity-based.
+
+**How to apply:** keep the default org room stable for game-side org messaging;
+scope in-building proximity speech and voice to the same interior and nearby
+players. Do not mirror every browser channel as an in-game channel.

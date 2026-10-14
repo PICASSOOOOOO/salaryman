@@ -959,6 +959,12 @@ export function ChatPanel({
   const globalChannelId = channelMeta?.globalChannelId ?? null;
   const pabloChannelId = channelMeta?.pabloChannelId ?? null;
   const companyChannelId = channelMeta?.companyChannelId ?? null;
+  useEffect(() => {
+    const channels = channelMeta?.orgChannels ?? [];
+    if (activeOrgChannelId != null && !channels.some((channel) => channel.channelId === activeOrgChannelId)) {
+      setActiveOrgChannelId(companyChannelId);
+    }
+  }, [activeOrgChannelId, channelMeta?.orgChannels, companyChannelId]);
 
   const activeChannelId =
     activeTab === "pablo"

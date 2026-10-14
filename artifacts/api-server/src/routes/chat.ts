@@ -115,7 +115,8 @@ async function ensureCompanyChannel(orgId: number, orgName: string): Promise<num
   const existing = await db
     .select()
     .from(chatChannelsTable)
-    .where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, orgId), eq(chatChannelsTable.name, orgName)))
+    .where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, orgId)))
+    .orderBy(asc(chatChannelsTable.id))
     .limit(1);
   if (existing[0]) return existing[0].id;
   const [ch] = await db
@@ -418,10 +419,10 @@ router.patch("/chat/company/channels/:channelId", async (req, res) => {
   const channelId = Number(req.params.channelId);
   const name = typeof req.body?.name === "string" ? req.body.name.trim().replace(/^#+/, "").slice(0, 48) : "";
   if (!Number.isInteger(channelId) || !/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,47}$/u.test(name)) { res.status(400).json({ error: "Valid channel and name required" }); return; }
-  const [defaultChannel] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id), eq(chatChannelsTable.name, membership.org.name))).limit(1);
+  const defaultChannelId = await ensureCompanyChannel(membership.org.id, membership.org.name);
   const [target] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.id, channelId), eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id))).limit(1);
   if (!target) { res.status(404).json({ error: "Channel not found" }); return; }
-  if (target.id === defaultChannel?.id) { res.status(409).json({ error: "The default organization room cannot be renamed" }); return; }
+  if (target.id === defaultChannelId) { res.status(409).json({ error: "The default organization room cannot be renamed" }); return; }
   const all = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id)));
   if (all.some((channel) => channel.id !== channelId && channel.name?.toLocaleLowerCase() === name.toLocaleLowerCase())) { res.status(409).json({ error: "A channel with that name already exists" }); return; }
   await db.update(chatChannelsTable).set({ name }).where(eq(chatChannelsTable.id, channelId));
@@ -434,10 +435,10 @@ router.delete("/chat/company/channels/:channelId", async (req, res) => {
   const membership = await getCallerOrgMembership(userId);
   if (!membership || !(await canDoInOrg(userId, membership.org.id, "org.settings")).allowed) { res.status(403).json({ error: "Organization settings permission required" }); return; }
   const channelId = Number(req.params.channelId);
-  const [defaultChannel] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id), eq(chatChannelsTable.name, membership.org.name))).limit(1);
+  const defaultChannelId = await ensureCompanyChannel(membership.org.id, membership.org.name);
   const [target] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.id, channelId), eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id))).limit(1);
   if (!target) { res.status(404).json({ error: "Channel not found" }); return; }
-  if (target.id === defaultChannel?.id) { res.status(409).json({ error: "The default organization room cannot be deleted" }); return; }
+  if (target.id === defaultChannelId) { res.status(409).json({ error: "The default organization room cannot be deleted" }); return; }
   await db.delete(chatChannelsTable).where(eq(chatChannelsTable.id, channelId));
   res.json({ ok: true });
 });

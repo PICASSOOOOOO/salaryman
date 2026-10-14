@@ -900,7 +900,8 @@ export const handleMessage = (player: Player, raw: string) => {
     case 'speaking':
       player.speaking = !!msg.speaking;
       for (const peer of players.values()) {
-        if (peer.id !== player.id && peer.cityId === player.cityId && peer.interiorBid === player.interiorBid) {
+        if (peer.id !== player.id && peer.cityId === player.cityId && peer.interiorBid === player.interiorBid
+          && Math.hypot(peer.x - player.x, peer.y - player.y) < 150) {
           sendTo(peer.id, { type: 'player_speaking', id: player.id, speaking: player.speaking });
         }
       }
@@ -1028,7 +1029,8 @@ export const handleMessage = (player: Player, raw: string) => {
         });
         for (const [, p] of players) {
           if (p.cityId !== player.cityId) continue;
-          if (p.interiorBid !== player.interiorBid) continue;
+          if (player.interiorBid && p.interiorBid !== player.interiorBid) continue;
+          if (Math.hypot(p.x - player.x, p.y - player.y) > 150) continue;
           if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(proximityMsg);
         }
       }
