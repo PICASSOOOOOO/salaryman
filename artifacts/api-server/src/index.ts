@@ -33,6 +33,7 @@ import { isUserDataRetentionEnabled, runUserDataRetentionSweep } from './routes/
 import { purgeOutsideWorldState } from './lib/outside-world';
 import { setupGodotRenderBridge } from './godot-render-bridge';
 import { setupDeviceControlBridge } from './device-control-bridge';
+import { startPhoneHealthScheduler } from './lib/phone-health-scheduler';
 
 const rawPort = process.env["PORT"];
 
@@ -147,6 +148,7 @@ function startListening(): void {
   httpServer.listen(port, () => {
     bindAttempts = 0;
     console.log(`Server listening on port ${port}`);
+    startPhoneHealthScheduler();
     if (ownerEmails.length > 0) {
       console.log(`[Access] Tester / Picasso staff bypass active for ${ownerEmails.length} address(es) — every paid feature free.`);
     } else {
