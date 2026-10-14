@@ -110,7 +110,7 @@ async function getOrCreateCompanyChannel(orgId: number, orgName: string): Promis
   const existing = await db
     .select()
     .from(chatChannelsTable)
-    .where(and(eq(chatChannelsTable.type, 'company'), eq(chatChannelsTable.orgId, orgId)))
+    .where(and(eq(chatChannelsTable.type, 'company'), eq(chatChannelsTable.orgId, orgId), eq(chatChannelsTable.name, orgName)))
     .limit(1);
   if (existing[0]) return existing[0].id;
   const [ch] = await db

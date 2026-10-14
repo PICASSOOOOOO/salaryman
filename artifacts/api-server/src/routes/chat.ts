@@ -36,6 +36,7 @@ import { completeInternalText, getInternalOpenAiModel, selectClaudeTools } from 
 import { isPabloNavPath } from "../lib/pablo-navigation";
 import { getOpenAiTextModel, isAstraRequested, isAstraVerified } from "../lib/openai-models";
 import { logger } from "../lib/logger";
+import { canDoInOrg } from "../lib/org-permissions";
 import { safePabloErrorFields } from "../lib/pablo-chat-diagnostics";
 import { getPabloSheetsAccess, listPabloSheetSources, readPabloSheet, writePabloSheet, type SheetsToolAccess } from "../lib/pablo-google-sheets";
 import { importPabloCrmFile } from "../lib/crm-lead-import";
@@ -114,7 +115,7 @@ async function ensureCompanyChannel(orgId: number, orgName: string): Promise<num
   const existing = await db
     .select()
     .from(chatChannelsTable)
-    .where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, orgId)))
+    .where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, orgId), eq(chatChannelsTable.name, orgName)))
     .limit(1);
   if (existing[0]) return existing[0].id;
   const [ch] = await db
@@ -298,8 +299,17 @@ router.get("/chat/channels", async (req, res) => {
   const membership = await getCallerOrgMembership(userId);
 
   let companyChannelId: number | null = null;
+  let orgChannels: Array<{ channelId: number; name: string; isDefault: boolean }> = [];
   if (membership) {
     companyChannelId = await ensureCompanyChannel(membership.org.id, membership.org.name);
+    const rows = await db.select().from(chatChannelsTable).where(
+      and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id)),
+    );
+    orgChannels = rows.map((channel) => ({
+      channelId: channel.id,
+      name: channel.name ?? membership.org.name,
+      isDefault: channel.id === companyChannelId,
+    }));
   }
 
   const privateChannels = await db
@@ -347,6 +357,7 @@ router.get("/chat/channels", async (req, res) => {
     globalChannelId,
     pabloChannelId,
     ...(companyChannelId ? [companyChannelId] : []),
+    ...orgChannels.map((channel) => channel.channelId),
     ...privateChannels.map((r) => r.channel.id),
   ];
 
@@ -361,6 +372,8 @@ router.get("/chat/channels", async (req, res) => {
     pabloChannelId,
     companyChannelId,
     companyName: membership?.org.name ?? null,
+    orgChannels,
+    canManageOrgChannels: membership ? (await canDoInOrg(userId, membership.org.id, "org.settings")).allowed : false,
     privateChannels: privateChannels.map((r) => {
       const lastSeenAt = r.otherUser ? lastSeenMap.get(r.otherUser.id) ?? null : null;
       return {
@@ -381,6 +394,54 @@ router.get("/chat/channels", async (req, res) => {
   });
 });
 
+router.post("/chat/company/channels", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const membership = await getCallerOrgMembership(userId);
+  if (!membership) { res.status(403).json({ error: "Active organization required" }); return; }
+  if (!(await canDoInOrg(userId, membership.org.id, "org.settings")).allowed) { res.status(403).json({ error: "Organization settings permission required" }); return; }
+  const name = typeof req.body?.name === "string" ? req.body.name.trim().replace(/^#+/, "").slice(0, 48) : "";
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,47}$/u.test(name)) { res.status(400).json({ error: "Channel names must start with a letter or number and use up to 48 letters, numbers, spaces, underscores, or hyphens" }); return; }
+  const existing = await db.select().from(chatChannelsTable).where(
+    and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id)),
+  );
+  if (existing.some((channel) => channel.name?.toLocaleLowerCase() === name.toLocaleLowerCase())) { res.status(409).json({ error: "A channel with that name already exists" }); return; }
+  const [channel] = await db.insert(chatChannelsTable).values({ type: "company", name, orgId: membership.org.id }).returning();
+  res.status(201).json({ channelId: channel.id, name: channel.name });
+});
+
+router.patch("/chat/company/channels/:channelId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const membership = await getCallerOrgMembership(userId);
+  if (!membership || !(await canDoInOrg(userId, membership.org.id, "org.settings")).allowed) { res.status(403).json({ error: "Organization settings permission required" }); return; }
+  const channelId = Number(req.params.channelId);
+  const name = typeof req.body?.name === "string" ? req.body.name.trim().replace(/^#+/, "").slice(0, 48) : "";
+  if (!Number.isInteger(channelId) || !/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,47}$/u.test(name)) { res.status(400).json({ error: "Valid channel and name required" }); return; }
+  const [defaultChannel] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id), eq(chatChannelsTable.name, membership.org.name))).limit(1);
+  const [target] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.id, channelId), eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id))).limit(1);
+  if (!target) { res.status(404).json({ error: "Channel not found" }); return; }
+  if (target.id === defaultChannel?.id) { res.status(409).json({ error: "The default organization room cannot be renamed" }); return; }
+  const all = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id)));
+  if (all.some((channel) => channel.id !== channelId && channel.name?.toLocaleLowerCase() === name.toLocaleLowerCase())) { res.status(409).json({ error: "A channel with that name already exists" }); return; }
+  await db.update(chatChannelsTable).set({ name }).where(eq(chatChannelsTable.id, channelId));
+  res.json({ channelId, name });
+});
+
+router.delete("/chat/company/channels/:channelId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const membership = await getCallerOrgMembership(userId);
+  if (!membership || !(await canDoInOrg(userId, membership.org.id, "org.settings")).allowed) { res.status(403).json({ error: "Organization settings permission required" }); return; }
+  const channelId = Number(req.params.channelId);
+  const [defaultChannel] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id), eq(chatChannelsTable.name, membership.org.name))).limit(1);
+  const [target] = await db.select().from(chatChannelsTable).where(and(eq(chatChannelsTable.id, channelId), eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id))).limit(1);
+  if (!target) { res.status(404).json({ error: "Channel not found" }); return; }
+  if (target.id === defaultChannel?.id) { res.status(409).json({ error: "The default organization room cannot be deleted" }); return; }
+  await db.delete(chatChannelsTable).where(eq(chatChannelsTable.id, channelId));
+  res.json({ ok: true });
+});
+
 // The set of channels that feed the COMMS unread badge: the user's Pablo DM,
 // their company channel (if any), and every private DM they belong to. The
 // public Global firehose is intentionally EXCLUDED — counting it would keep the
@@ -389,9 +450,12 @@ router.get("/chat/channels", async (req, res) => {
 async function getCountedCommsChannelIds(userId: string): Promise<number[]> {
   const pabloChannelId = await ensurePabloChannel(userId);
   const membership = await getCallerOrgMembership(userId);
-  let companyChannelId: number | null = null;
+  let companyChannelIds: number[] = [];
   if (membership) {
-    companyChannelId = await ensureCompanyChannel(membership.org.id, membership.org.name);
+    await ensureCompanyChannel(membership.org.id, membership.org.name);
+    companyChannelIds = (await db.select({ id: chatChannelsTable.id }).from(chatChannelsTable).where(
+      and(eq(chatChannelsTable.type, "company"), eq(chatChannelsTable.orgId, membership.org.id)),
+    )).map((channel) => channel.id);
   }
 
   const privateChannels = await db
@@ -409,7 +473,7 @@ async function getCountedCommsChannelIds(userId: string): Promise<number[]> {
 
   return [
     pabloChannelId,
-    ...(companyChannelId ? [companyChannelId] : []),
+    ...companyChannelIds,
     ...privateChannels.map((c) => c.id),
   ];
 }

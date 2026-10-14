@@ -29,6 +29,8 @@ interface ChannelMeta {
   pabloChannelId: number | null;
   companyChannelId: number | null;
   companyName: string | null;
+  orgChannels: Array<{ channelId: number; name: string; isDefault: boolean }>;
+  canManageOrgChannels: boolean;
   privateChannels: Array<{
     channelId: number;
     otherUser: {
@@ -280,6 +282,13 @@ export function useChatSocket(): UseChatSocket {
       ws.send(JSON.stringify({ type: "subscribe", channelId: channel.channelId }));
     }
   }, [state.connected, state.channelMeta?.privateChannels]);
+
+  useEffect(() => {
+    const ws = wsRef.current;
+    const orgChannels = state.channelMeta?.orgChannels ?? [];
+    if (!state.connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    for (const channel of orgChannels) ws.send(JSON.stringify({ type: "subscribe", channelId: channel.channelId }));
+  }, [state.connected, state.channelMeta?.orgChannels]);
 
   const send: SendFn = useCallback(async (channelId, content, attachmentFileId) => {
     const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);

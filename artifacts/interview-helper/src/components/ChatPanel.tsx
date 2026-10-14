@@ -921,6 +921,7 @@ export function ChatPanel({
   const [open, setOpen] = useState(embedded || initiallyOpen);
   const [activeTab, setActiveTab] = useState<Tab>("pablo");
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
+  const [activeOrgChannelId, setActiveOrgChannelId] = useState<number | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [pabloLoading, setPabloLoading] = useState(false);
 
@@ -965,7 +966,7 @@ export function ChatPanel({
       : activeTab === "global"
       ? globalChannelId
       : activeTab === "company"
-      ? companyChannelId
+      ? activeOrgChannelId ?? companyChannelId
       : activePrivateChannelId;
 
   useEffect(() => {
@@ -1076,13 +1077,16 @@ export function ChatPanel({
   const openChannelById = useCallback((channelId: number) => {
     setShowUserSearch(false);
     if (channelId === pabloChannelId) setActiveTab("pablo");
-    else if (channelId === companyChannelId) setActiveTab("company");
+    else if ((channelMeta?.orgChannels ?? []).some((channel) => channel.channelId === channelId)) {
+      setActiveTab("company");
+      setActiveOrgChannelId(channelId);
+    }
     else {
       setActiveTab("private");
       setActivePrivateChannelId(channelId);
     }
     setOpen(true);
-  }, [pabloChannelId, companyChannelId]);
+  }, [pabloChannelId, companyChannelId, channelMeta?.orgChannels]);
 
   // Message-arrival toasts. We track which message ids we've already
   // considered so re-renders never re-toast, and use createdAt recency to
@@ -1226,7 +1230,9 @@ export function ChatPanel({
 
   const tabPabloUnread = unreadCounts[pabloChannelId ?? -1] ?? 0;
   const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
-  const tabCompanyUnread = unreadCounts[companyChannelId ?? -1] ?? 0;
+  const tabCompanyUnread = (channelMeta?.orgChannels ?? []).reduce(
+    (sum, channel) => sum + (unreadCounts[channel.channelId] ?? 0), 0
+  );
   const tabPrivateUnread = channelMeta?.privateChannels.reduce(
     (sum, p) => sum + (unreadCounts[p.channelId] ?? 0),
     0
@@ -1477,6 +1483,53 @@ export function ChatPanel({
               );
             })}
           </div>
+
+          {activeTab === "company" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px", overflowX: "auto", flexShrink: 0, borderBottom: `1px solid ${BORDER(0.08)}` }}>
+              {(channelMeta?.orgChannels ?? []).map((channel) => {
+                const selected = (activeOrgChannelId ?? companyChannelId) === channel.channelId;
+                return (
+                  <button key={channel.channelId} type="button" onClick={() => setActiveOrgChannelId(channel.channelId)}
+                    style={{ flexShrink: 0, border: `1px solid ${selected ? CRT(0.35) : CRT(0.12)}`, borderRadius: 4, background: selected ? CRT(0.07) : "transparent", color: selected ? CRT(0.9) : CRT(0.5), padding: "4px 7px", font: `bold 0.5rem ${fontFor(boomer)}`, cursor: "pointer", whiteSpace: "nowrap" }}
+                    aria-pressed={selected}>
+                    # {channel.name} {(unreadCounts[channel.channelId] ?? 0) > 0 ? `· ${unreadCounts[channel.channelId]}` : ""}
+                  </button>
+                );
+              })}
+              {channelMeta?.canManageOrgChannels && (
+                <>
+                  <button type="button" aria-label="Create organization channel" onClick={async () => {
+                    const name = window.prompt("New channel name");
+                    if (!name?.trim()) return;
+                    const response = await apiFetch("/api/chat/company/channels", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+                    if (!response.ok) { toast({ title: "CHANNEL NOT CREATED", description: (await response.json().catch(() => ({}))).error ?? "Try another name.", variant: "destructive" }); return; }
+                    const created = await response.json();
+                    await refreshChannels();
+                    setActiveOrgChannelId(created.channelId);
+                  }} style={{ flexShrink: 0, border: `1px dashed ${CRT(0.25)}`, background: "transparent", color: CRT(0.65), padding: "4px 7px", font: `bold 0.5rem ${fontFor(boomer)}`, cursor: "pointer" }}><Plus size={10} /> CHANNEL</button>
+                  {(() => {
+                    const selected = (channelMeta?.orgChannels ?? []).find((channel) => channel.channelId === (activeOrgChannelId ?? companyChannelId));
+                    if (!selected || selected.isDefault) return null;
+                    return <button type="button" aria-label={`Rename or delete ${selected.name}`} onClick={async () => {
+                      const action = window.prompt(`Manage #${selected.name}: enter R to rename or D to delete`);
+                      if (action?.toLowerCase() === "r") {
+                        const name = window.prompt("New channel name", selected.name);
+                        if (!name?.trim()) return;
+                        const response = await apiFetch(`/api/chat/company/channels/${selected.channelId}`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+                        if (!response.ok) { toast({ title: "CHANNEL NOT RENAMED", description: (await response.json().catch(() => ({}))).error ?? "Try another name.", variant: "destructive" }); return; }
+                        await refreshChannels();
+                      } else if (action?.toLowerCase() === "d" && window.confirm(`Delete #${selected.name} and its message history?`)) {
+                        const response = await apiFetch(`/api/chat/company/channels/${selected.channelId}`, { method: "DELETE", credentials: "include" });
+                        if (!response.ok) { toast({ title: "CHANNEL NOT DELETED", variant: "destructive" }); return; }
+                        setActiveOrgChannelId(companyChannelId);
+                        await refreshChannels();
+                      }
+                    }} style={{ flexShrink: 0, border: `1px solid ${CRT(0.12)}`, background: "transparent", color: CRT(0.55), padding: "4px 7px", font: `bold 0.5rem ${fontFor(boomer)}`, cursor: "pointer" }}>EDIT</button>;
+                  })()}
+                </>
+              )}
+            </div>
+          )}
 
           {activeTab === "private" && !showUserSearch && (
             <div

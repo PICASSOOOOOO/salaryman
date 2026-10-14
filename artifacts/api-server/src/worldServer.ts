@@ -899,13 +899,18 @@ export const handleMessage = (player: Player, raw: string) => {
 
     case 'speaking':
       player.speaking = !!msg.speaking;
-      broadcastCity(player.cityId, { type: 'player_speaking', id: player.id, speaking: player.speaking }, player.id);
+      for (const peer of players.values()) {
+        if (peer.id !== player.id && peer.cityId === player.cityId && peer.interiorBid === player.interiorBid) {
+          sendTo(peer.id, { type: 'player_speaking', id: player.id, speaking: player.speaking });
+        }
+      }
       break;
 
     case 'voice_join': {
       const nearbyPeers = Array.from(players.values()).filter(p =>
         p.id !== player.id &&
         p.cityId === player.cityId &&
+        p.interiorBid === player.interiorBid &&
         Math.hypot(p.x - player.x, p.y - player.y) < 100
       );
       for (const peer of nearbyPeers) {
@@ -916,24 +921,32 @@ export const handleMessage = (player: Player, raw: string) => {
 
     case 'voice_offer': {
       const { to, sdp } = msg;
-      if (!to || !sdp || !players.has(to)) break;
-      const dist = Math.hypot(player.x - players.get(to)!.x, player.y - players.get(to)!.y);
+      const peer = to ? players.get(to) : null;
+      if (!to || !sdp || !peer) break;
       const inCall = activeCalls.get(player.id) === to || activeCalls.get(to) === player.id;
-      if (dist > 150 && !inCall) break;
+      const sameInterior = peer.cityId === player.cityId && peer.interiorBid === player.interiorBid;
+      const dist = Math.hypot(player.x - peer.x, player.y - peer.y);
+      if (!inCall && (!sameInterior || dist > 150)) break;
       sendTo(to, { type: 'voice_offer', from: player.id, sdp });
       break;
     }
 
     case 'voice_answer': {
       const { to, sdp } = msg;
-      if (!to || !sdp || !players.has(to)) break;
+      const peer = to ? players.get(to) : null;
+      if (!to || !sdp || !peer) break;
+      if (activeCalls.get(player.id) !== to && activeCalls.get(to) !== player.id
+        && (peer.cityId !== player.cityId || peer.interiorBid !== player.interiorBid)) break;
       sendTo(to, { type: 'voice_answer', from: player.id, sdp });
       break;
     }
 
     case 'voice_ice': {
       const { to, candidate } = msg;
-      if (!to || !candidate || !players.has(to)) break;
+      const peer = to ? players.get(to) : null;
+      if (!to || !candidate || !peer) break;
+      if (activeCalls.get(player.id) !== to && activeCalls.get(to) !== player.id
+        && (peer.cityId !== player.cityId || peer.interiorBid !== player.interiorBid)) break;
       sendTo(to, { type: 'voice_ice', from: player.id, candidate });
       break;
     }
@@ -1015,7 +1028,7 @@ export const handleMessage = (player: Player, raw: string) => {
         });
         for (const [, p] of players) {
           if (p.cityId !== player.cityId) continue;
-          if (player.interiorBid && p.interiorBid !== player.interiorBid) continue;
+          if (p.interiorBid !== player.interiorBid) continue;
           if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(proximityMsg);
         }
       }
