@@ -1,6 +1,12 @@
 # The format of this file is identical to `.dockerignore`.
 # It is used to reduce the size of deployed images to make the process of publishing faster.
 
+# Deployment builds install dependencies and do not need repository history,
+# local caches, or the workspace's development-time node_modules.
+.git/
+.cache/
+node_modules/
+
 # No need to store the pnpm store twice.
 .local
 generated-artifacts/
