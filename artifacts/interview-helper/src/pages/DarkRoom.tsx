@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clapperboard, Image, FileText, Share2, Camera, Video } from 'lucide-react';
+import { Clapperboard, Image, FileText, Share2, Camera, Video, Box } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
@@ -9,8 +9,9 @@ import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 
 const ContentStudioInner = lazy(() => import('./ContentStudio'));
 const ProductionStudioInner = lazy(() => import('./ProductionStudio'));
+const SceneComposerInner = lazy(() => import('./SceneComposer'));
 
-type DarkRoomTab = 'graphics' | 'copy' | 'social' | 'image' | 'video';
+type DarkRoomTab = 'graphics' | 'copy' | 'social' | 'image' | 'video' | 'scene';
 
 const ACCENT_CYAN = '#22d3ee';
 
@@ -39,6 +40,7 @@ export default function DarkRoom() {
     { id: 'social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', icon: Share2, desc: 'Social media templates & scheduling' },
     { id: 'image', label: 'PRODUCTION', boomerLabel: 'PRODUCTION', icon: Camera, desc: 'Image production — clothing, lookbook, billboard, film, packaging' },
     { id: 'video', label: 'VIDEO', boomerLabel: 'VIDEO SCRIPTS', icon: Video, desc: 'TV commercial, music video, brand film & social video scripts' },
+    { id: 'scene', label: 'SCENE', boomerLabel: '3D SCENE', icon: Box, desc: 'Compose a 3D scene before AI rendering' },
   ];
 
   return (
@@ -127,6 +129,7 @@ export default function DarkRoom() {
               {(activeTab === 'image' || activeTab === 'video') && (
                 <ProductionStudioInner embedded initialTab={activeTab} />
               )}
+              {activeTab === 'scene' && <SceneComposerInner embedded />}
             </Suspense>
           </motion.div>
         </AnimatePresence>

@@ -94,6 +94,7 @@ const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
 const JobCommandCenter = lazy(() => import("@/pages/JobCommandCenter"));
 const ClaudeTemplates = lazy(() => import("@/pages/ClaudeTemplates"));
 const ProductionStudio = lazy(() => import("@/pages/ProductionStudio"));
+const SceneComposer = lazy(() => import("@/pages/SceneComposer"));
 
 const LegalHub = lazy(() => import("@/pages/legal/LegalHub"));
 const LegalTerms = lazy(() => import("@/pages/legal/TermsOfService"));
@@ -683,6 +684,7 @@ function AppShell() {
 
             {/* CREATIVE module */}
             <Route path="/creative/darkroom" component={DarkRoom} />
+            <Route path="/creative/scene">{() => <SceneComposer />}</Route>
             <Route path="/creative/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/production">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
