@@ -377,7 +377,7 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(self.state.active_page, "reception")
         self.assertEqual(self.state.page_source, "MILA / RECEPTION")
-        self.assertIn("FLOOR SIX", result.message)
+        self.assertIn("OPEN MIC", result.message)
 
     def test_floor_seven_is_a_pablo_business_floor_without_a_directory_counter(self):
         self.assertTrue(self.scene.select_floor(7))
