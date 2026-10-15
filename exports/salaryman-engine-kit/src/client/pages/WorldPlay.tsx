@@ -23375,6 +23375,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           >
             ☰ TERMINAL {unread > 0 && <span style={{ display: 'inline-block', width: 8, height: 8, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
           </button>
+          <button
+            onClick={() => { void toggleVoice(); }}
+            aria-label={voice ? 'Turn open mic off' : 'Turn open mic on'}
+            aria-pressed={voice}
+            title={voice ? (micMuted ? 'Open mic is muted' : 'Open mic is on') : 'Open mic is off'}
+            style={{
+              padding: '.5rem .55rem',
+              background: voice && !micMuted ? 'rgba(0,255,204,.08)' : 'rgba(0,5,0,.92)',
+              border: `1px solid ${voice && !micMuted ? 'rgba(0,255,204,.4)' : micMuted ? 'rgba(255,136,68,.35)' : 'rgba(0,200,255,.25)'}`,
+              color: voice && !micMuted ? '#00ffcc' : micMuted ? '#ff8844' : 'rgba(0,200,255,.65)',
+              cursor: 'pointer',
+              fontFamily: "var(--font-sans)",
+              fontSize: isTouchDevice ? '.75rem' : '.8rem',
+              letterSpacing: '.04em',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🎙 {voice ? (micMuted ? 'MUTED' : 'OPEN') : 'MIC OFF'}
+          </button>
+          {voice && (
+            <button
+              onClick={toggleMicMute}
+              aria-label={micMuted ? 'Unmute microphone' : 'Mute microphone'}
+              aria-pressed={micMuted}
+              style={{
+                padding: '.5rem .45rem',
+                background: micMuted ? 'rgba(255,136,68,.08)' : 'rgba(0,5,0,.92)',
+                border: `1px solid ${micMuted ? 'rgba(255,136,68,.35)' : 'rgba(0,200,255,.2)'}`,
+                color: micMuted ? '#ff8844' : 'rgba(0,200,255,.55)',
+                cursor: 'pointer',
+                fontFamily: "var(--font-sans)",
+                fontSize: isTouchDevice ? '.75rem' : '.8rem',
+                letterSpacing: '.04em',
+              }}
+            >
+              {micMuted ? 'UNMUTE' : 'MUTE'}
+            </button>
+          )}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => { setShowSoundPanel(v => !v); setShowTopMenu(false); }}
