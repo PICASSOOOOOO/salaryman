@@ -79,6 +79,12 @@ VENDING_ITEMS: dict[str, tuple[str, float]] = {
     "coffee": ("COFFEE", 18.0),
 }
 
+MILA_LOBBY_STORY_LINES = (
+    "MILA / FLOOR SIX IS PLANNING AN OPEN MIC WITH THE RADIO STATION. SIGN-UP IS HERE.",
+    "MILA / THE FLOWER SHOP ON SIX HAS STARTED KEEPING CUTTINGS FOR THE OTHER SHOPS.",
+    "MILA / THE SCHOOL AND RADIO STATION ARE STILL ARGUING OVER WHO GETS THE FIRST SET.",
+)
+
 @dataclass(frozen=True)
 class InteractionResult:
     """The small result shared by input handlers, tests, and renderers."""
@@ -437,13 +443,16 @@ class OfficeObjectRegistry:
 
         if item.id == "lobby-receptionist":
             scene.focus_on_interaction(item)
+            story_index = int(scene.npc_motion_seconds // 90.0) % len(MILA_LOBBY_STORY_LINES)
+            message = MILA_LOBBY_STORY_LINES[story_index]
             if state.open_page(
                 "reception",
                 from_object=True,
                 source="MILA / RECEPTION",
                 source_object_id=item.id,
             ):
-                return InteractionResult(True, "MILA / BUSINESS SERVICES AND CLASSIFIEDS")
+                state.notice = message
+                return InteractionResult(True, message)
             return InteractionResult(False, "MILA IS UNAVAILABLE")
 
         if item.kind == "pest_job_board":

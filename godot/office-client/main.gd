@@ -146,6 +146,10 @@ func _build_materials() -> void:
 	materials["lobby_rug"] = _material(Color("#55433c"), 0.96)
 	materials["lobby_rug_field"] = _material(Color("#705949"), 0.96)
 	materials["lobby_rug_trim"] = _material(Color("#a6814d"), 0.86)
+materials["lobby_art_panel"] = _material(Color("#173b3b"), 0.76)
+materials["lobby_leaf"] = _material(Color("#6d9270"), 0.88)
+materials["lobby_pot"] = _material(Color("#b66e52"), 0.82)
+materials["lobby_mural"] = _material(Color("#e0bd78"), 0.48, false, 0.0, Color("#a98146"))
 	materials["office_rug"] = _material(Color("#4b3d38"), 0.94)
 	materials["office_rug_field"] = _material(Color("#665247"), 0.94)
 	materials["office_rug_trim"] = _material(Color("#a18155"), 0.84)
@@ -1033,6 +1037,7 @@ func _add_horizontal_wall_segments(node_prefix: String, left: float, right: floa
 func _build_static_furniture() -> void:
 	imported_scenes["table"] = load("res://agentshire-assets/furniture/table_medium.gltf")
 	imported_scenes["couch"] = load("res://agentshire-assets/furniture/couch.gltf")
+imported_scenes["chair"] = load("res://agentshire-assets/furniture/chair_A.gltf")
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
 	imported_scenes["character"] = load("res://agentshire-assets/characters/character-male-a.glb")
 
@@ -1048,8 +1053,82 @@ func _build_static_furniture() -> void:
 	_add_lobby_rug(lounge_center)
 	_add_imported("LobbyCouch", "couch", lounge_center + Vector3(1.2, 0.0, -1.2), 1.25)
 	_add_imported("LobbyLamp", "lamp", lamp_position, 1.1)
+_build_lobby_decor(lounge_center)
 	if warm_lamp_light != null:
 		warm_lamp_light.position = lamp_position + Vector3(0.0, 2.25, 0.0)
+
+
+func _build_lobby_decor(center: Vector3) -> void:
+# Renderer-only dressing: Python remains the authority for floor space and collision.
+_add_imported("LobbyGuestChairWest", "chair", center + Vector3(-4.4, 0.0, -1.0), 0.92)
+_add_imported("LobbyGuestChairEast", "chair", center + Vector3(4.3, 0.0, -1.0), 0.92)
+_add_imported("LobbySideTable", "table", center + Vector3(-2.2, 0.0, 1.8), 0.55)
+
+# A warm, low wall gives the waiting area a clear identity without blocking routes.
+var feature_wall := center + Vector3(0.0, 1.35, -6.0)
+_add_box("LobbyStoryWall", feature_wall, Vector3(8.8, 2.7, 0.22), materials["lobby_art_panel"])
+_add_box("LobbyStoryWallTop", feature_wall + Vector3(0.0, 1.34, 0.0), Vector3(8.95, 0.08, 0.28), materials["lobby_rug_trim"])
+_add_box("LobbyStoryWallBase", feature_wall + Vector3(0.0, -1.30, 0.0), Vector3(8.95, 0.10, 0.28), materials["lobby_rug_trim"])
+for index in range(9):
+var x := feature_wall.x - 3.75 + float(index) * 0.94
+_add_box("LobbyStoryWallRib%d" % index, Vector3(x, feature_wall.y, feature_wall.z + 0.13), Vector3(0.045, 2.34, 0.05), materials["wall_trim"])
+
+var tower_title := Label3D.new()
+tower_title.name = "LobbyTowerTitle"
+tower_title.text = "SHADOW TOWER"
+tower_title.font_size = 42
+tower_title.pixel_size = 0.009
+tower_title.modulate = Color("#f0e7d2")
+tower_title.position = feature_wall + Vector3(0.0, 0.32, 0.16)
+tower_title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+world_root.add_child(tower_title)
+var story_note := Label3D.new()
+story_note.name = "LobbyStoryNote"
+story_note.text = "FLOOR 06  ·  SCHOOL × RADIO STATION  ·  OPEN MIC SIGN-UP AT RECEPTION"
+story_note.font_size = 16
+story_note.pixel_size = 0.008
+story_note.modulate = Color("#dfc98e")
+story_note.position = feature_wall + Vector3(0.0, -0.30, 0.17)
+story_note.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+world_root.add_child(story_note)
+
+_add_lobby_plant("LobbyPlantWest", center + Vector3(-7.0, 0.0, 0.0))
+_add_lobby_plant("LobbyPlantEast", center + Vector3(7.0, 0.0, 0.0))
+
+
+func _add_lobby_plant(node_name: String, position: Vector3) -> void:
+var pot := CylinderMesh.new()
+pot.top_radius = 0.34
+pot.bottom_radius = 0.28
+pot.height = 0.48
+pot.material = materials["lobby_pot"]
+var pot_instance := MeshInstance3D.new()
+pot_instance.name = node_name + "Pot"
+pot_instance.mesh = pot
+pot_instance.position = position + Vector3(0.0, 0.24, 0.0)
+world_root.add_child(pot_instance)
+var soil := CylinderMesh.new()
+soil.top_radius = 0.29
+soil.bottom_radius = 0.29
+soil.height = 0.035
+soil.material = materials["foundation"]
+var soil_instance := MeshInstance3D.new()
+soil_instance.name = node_name + "Soil"
+soil_instance.mesh = soil
+soil_instance.position = position + Vector3(0.0, 0.49, 0.0)
+world_root.add_child(soil_instance)
+for leaf_index in range(5):
+var angle := TAU * float(leaf_index) / 5.0
+var leaf_mesh := SphereMesh.new()
+leaf_mesh.radius = 0.34
+leaf_mesh.height = 0.68
+leaf_mesh.material = materials["lobby_leaf"]
+var leaf := MeshInstance3D.new()
+leaf.name = node_name + "Leaf%d" % leaf_index
+leaf.mesh = leaf_mesh
+leaf.position = position + Vector3(cos(angle) * 0.25, 0.92 + float(leaf_index % 2) * 0.18, sin(angle) * 0.25)
+leaf.scale = Vector3(0.75, 1.2, 0.7)
+world_root.add_child(leaf)
 
 
 func _add_lobby_rug(center: Vector3) -> void:
