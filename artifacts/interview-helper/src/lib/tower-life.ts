@@ -285,7 +285,59 @@ export type TowerAmbientOccupant = Pick<TowerResident, "id" | "name" | "col" | "
   artSrc?: string;
   /** The concrete task currently visible on the resident's route. */
   workLabel: string;
+  routine: TowerDailyRoutine;
 };
+
+export type TowerDailyRoutine = {
+  shiftStartMinute: number;
+  shiftDurationMinutes: number;
+  breakOffsetMinutes: number;
+  breakDurationMinutes: number;
+  tasks: readonly string[];
+};
+
+export type TowerRoutineState = {
+  phase: "on_shift" | "meal_break" | "off_shift";
+  task: string;
+  speedMultiplier: number;
+};
+
+const NIGHT_SHIFT_RESIDENTS = new Set([502, 506, 510]);
+
+export function createTowerDailyRoutine(id: number, errands: readonly string[]): TowerDailyRoutine {
+  const baseStart = NIGHT_SHIFT_RESIDENTS.has(id) ? 20 * 60 : id === 509 ? 10 * 60 : 8 * 60;
+  const shiftStartMinute = (baseStart + (Math.abs(id) % 3) * 10) % 1440;
+  const tasks = errands.length > 1
+    ? [...errands]
+    : [`Prepare ${errands[0] ?? "the service desk"}`, errands[0] ?? "Serve the floor", `Close out ${errands[0] ?? "the service desk"}`];
+  return {
+    shiftStartMinute,
+    shiftDurationMinutes: 8 * 60,
+    breakOffsetMinutes: 4 * 60,
+    breakDurationMinutes: 30,
+    tasks,
+  };
+}
+
+export function getTowerRoutineState(routine: TowerDailyRoutine, at = new Date()): TowerRoutineState {
+  const minuteOfDay = at.getHours() * 60 + at.getMinutes();
+  const elapsed = (minuteOfDay - routine.shiftStartMinute + 1440) % 1440;
+  if (elapsed >= routine.shiftDurationMinutes) {
+    return { phase: "off_shift", task: "Off shift · resting", speedMultiplier: 0 };
+  }
+  if (elapsed >= routine.breakOffsetMinutes && elapsed < routine.breakOffsetMinutes + routine.breakDurationMinutes) {
+    return { phase: "meal_break", task: "Meal break · staff commons", speedMultiplier: 0.55 };
+  }
+  const taskIndex = Math.min(
+    routine.tasks.length - 1,
+    Math.floor((elapsed / routine.shiftDurationMinutes) * routine.tasks.length),
+  );
+  return {
+    phase: "on_shift",
+    task: routine.tasks[Math.max(0, taskIndex)] ?? "Working the floor",
+    speedMultiplier: 1,
+  };
+}
 
 function ambientArtSrc(id: number): string | undefined {
   return id === 501 ? "tower-art/character-claw-prime.png" : undefined;
@@ -303,6 +355,7 @@ function projectAmbientResident(resident: TowerResident): TowerAmbientOccupant {
     role: resident.role,
     errands: resident.errands,
     workLabel: resident.errands[0] ?? resident.role,
+    routine: createTowerDailyRoutine(resident.id, resident.errands),
     artSrc: ambientArtSrc(resident.id),
   };
 }
@@ -320,6 +373,7 @@ export function getTowerAmbientOccupants(floor: TowerFloor): TowerAmbientOccupan
       role: resident.role,
       errands: [business.service],
       workLabel: business.service,
+      routine: createTowerDailyRoutine(resident.id, [business.service]),
       artSrc: ambientArtSrc(resident.id),
     }));
   }

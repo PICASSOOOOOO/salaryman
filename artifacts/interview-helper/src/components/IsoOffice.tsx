@@ -10,6 +10,7 @@ import {
 } from '@/lib/office-property-layouts';
 import { sfxStep } from '@/soundEngine';
 import { useLowGfx } from '@/lib/lowGfx';
+import { getTowerRoutineState } from '@/lib/tower-life';
 import {
   isPlayerInsideOfficeRoom, loadOfficeRoomSnapshots, resolveOfficeRoomVisibility,
   saveOfficeRoomSnapshots, snapshotOfficeRoom, type OfficeRoomVisibility,
@@ -76,6 +77,8 @@ export interface OfficeAmbientOccupant {
   workLabel?: string;
   /** Workspace-relative public art path, resolved against the artifact base URL. */
   artSrc?: string;
+  /** Optional Tower shift schedule; omitted for ordinary office visitors. */
+  routine?: Parameters<typeof getTowerRoutineState>[0];
 }
 // `colCount` / `rowCount` cap how many desk columns/rows are generated so the
 // furnished desk count scales with the owned property tier (capsule → suite).
@@ -994,7 +997,10 @@ interface SceneCtx {
 function getAmbientPosition(occupant: OfficeAmbientOccupant, now: number): { col: number; row: number } {
   const path = occupant.path;
   if (!path || path.length < 2) return { col: occupant.col, row: occupant.row };
-  const phase = ((now / 1000) * (occupant.speed ?? 0.15) + occupant.id * 0.37) % path.length;
+  const routine = occupant.routine ? getTowerRoutineState(occupant.routine) : null;
+  if (routine?.phase === 'off_shift') return { col: path[0].col, row: path[0].row };
+  const speed = (occupant.speed ?? 0.15) * (routine?.speedMultiplier ?? 1);
+  const phase = ((now / 1000) * speed + occupant.id * 0.37) % path.length;
   const index = Math.floor(phase);
   const progress = phase - index;
   const from = path[index] ?? path[0];
@@ -1109,13 +1115,14 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 
   // Visitors and staff who belong to the room itself rather than a desk.
   for (const occupant of s.ambientOccupants) {
+    const routine = occupant.routine ? getTowerRoutineState(occupant.routine) : null;
     const position = getAmbientPosition(occupant, s.now);
     push(position.col, position.row, () => drawBot(ctx, s, position.col, position.row, {
       id: occupant.id,
       name: occupant.name,
       status: 'active',
       teamColor: occupant.color,
-      workLabel: occupant.workLabel,
+      workLabel: routine?.task ?? occupant.workLabel,
       role: occupant.role,
       artSrc: occupant.artSrc,
       dialogueText: occupant.id === s.dialogue?.occupantId ? s.dialogue.text : undefined,

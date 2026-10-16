@@ -3,6 +3,8 @@ import { TOWER_INFRASTRUCTURE_BUSINESSES } from "@workspace/api-zod";
 import { getShadowTowerCommercialTenants } from "@workspace/api-zod/shadow-tower";
 import {
   getTowerAmbientOccupants,
+  createTowerDailyRoutine,
+  getTowerRoutineState,
   getTowerOperatorDialogue,
   getTowerOperatorDialogues,
   TOWER_BUSINESSES,
@@ -39,6 +41,25 @@ describe("Tower Life operating catalog", () => {
       .toBe("tower-art/character-claw-prime.png");
     expect(residents.find((resident) => resident.name === "FINANCE TRACKER")?.artSrc)
       .toBeUndefined();
+    expect(residents.every((resident) => resident.routine.tasks.length > 0)).toBe(true);
+  });
+
+  it("derives stable day and night shifts with work, break, and off-shift states", () => {
+    const errands = ["check lift permissions", "route a tenant"];
+    const day = createTowerDailyRoutine(501, errands);
+    const night = createTowerDailyRoutine(502, errands);
+    expect(createTowerDailyRoutine(501, errands)).toEqual(day);
+    expect(day.shiftStartMinute).toBeLessThan(12 * 60);
+    expect(night.shiftStartMinute).toBeGreaterThanOrEqual(20 * 60);
+
+    const shiftStart = new Date(2026, 0, 1, Math.floor(day.shiftStartMinute / 60), day.shiftStartMinute % 60);
+    expect(getTowerRoutineState(day, shiftStart).phase).toBe("on_shift");
+    const breakMinute = day.shiftStartMinute + day.breakOffsetMinutes + 5;
+    expect(getTowerRoutineState(day, new Date(
+      2026, 0, 1, Math.floor(breakMinute / 60), breakMinute % 60,
+    )).phase).toBe("meal_break");
+    expect(getTowerRoutineState(day, new Date(2026, 0, 1, 19, 0)).phase).toBe("off_shift");
+    expect(getTowerRoutineState(night, new Date(2026, 0, 1, 23, 0)).phase).toBe("on_shift");
   });
 
   it("projects only catalog-backed commercial residents onto occupied floors", () => {
