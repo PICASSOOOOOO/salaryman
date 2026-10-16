@@ -25,12 +25,13 @@ describe("Tower Life operating catalog", () => {
   });
 
   it("places traveling operators on the public floors they service", () => {
-    const floorTwo = getTowerAmbientOccupants(2).map((occupant) => occupant.name);
-    const floorThree = getTowerAmbientOccupants(3).map((occupant) => occupant.name);
+    const menderAtFloorTwo = [{ id: 509, floor: 2 as const, phase: "on_shift" as const, nextFloor: 3 as const }];
+    const wardAtFloorThree = [{ id: 510, floor: 3 as const, phase: "on_shift" as const, nextFloor: 4 as const }];
+    const floorTwo = getTowerAmbientOccupants(2, menderAtFloorTwo).map((occupant) => occupant.name);
+    const floorThree = getTowerAmbientOccupants(3, wardAtFloorThree).map((occupant) => occupant.name);
     expect(floorTwo).toContain("MENDER-9");
-    expect(floorTwo).toContain("WARD 67");
-    expect(floorThree).toContain("MENDER-9");
     expect(floorThree).toContain("WARD 67");
+    expect(getTowerAmbientOccupants(2).map((occupant) => occupant.name)).not.toContain("MENDER-9");
   });
 
   it("gives ambient residents a concrete productive routine and optional named art", () => {
@@ -52,14 +53,14 @@ describe("Tower Life operating catalog", () => {
     expect(day.shiftStartMinute).toBeLessThan(12 * 60);
     expect(night.shiftStartMinute).toBeGreaterThanOrEqual(20 * 60);
 
-    const shiftStart = new Date(2026, 0, 1, Math.floor(day.shiftStartMinute / 60), day.shiftStartMinute % 60);
+    const shiftStart = new Date(Date.UTC(2026, 0, 1, Math.floor(day.shiftStartMinute / 60), day.shiftStartMinute % 60));
     expect(getTowerRoutineState(day, shiftStart).phase).toBe("on_shift");
     const breakMinute = day.shiftStartMinute + day.breakOffsetMinutes + 5;
     expect(getTowerRoutineState(day, new Date(
-      2026, 0, 1, Math.floor(breakMinute / 60), breakMinute % 60,
+      Date.UTC(2026, 0, 1, Math.floor(breakMinute / 60), breakMinute % 60),
     )).phase).toBe("meal_break");
-    expect(getTowerRoutineState(day, new Date(2026, 0, 1, 19, 0)).phase).toBe("off_shift");
-    expect(getTowerRoutineState(night, new Date(2026, 0, 1, 23, 0)).phase).toBe("on_shift");
+    expect(getTowerRoutineState(day, new Date(Date.UTC(2026, 0, 1, 19, 0))).phase).toBe("off_shift");
+    expect(getTowerRoutineState(night, new Date(Date.UTC(2026, 0, 1, 23, 0))).phase).toBe("on_shift");
   });
 
   it("projects only catalog-backed commercial residents onto occupied floors", () => {

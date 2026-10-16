@@ -11,6 +11,39 @@ const MENDER_TASK = {
   relationshipDelta: 1,
 } as const;
 
+const COMMUTER_ROUTES = [
+  { id: 509, startMinute: 10 * 60 + (509 % 3) * 10, floors: ["lobby", 2, 3, 4] as const },
+  { id: 510, name: "WARD 67", startMinute: 20 * 60, floors: ["lobby", 2, 3, 4] as const },
+] as const;
+
+export type TowerResidentPresence = {
+  id: number;
+  floor: "lobby" | 2 | 3 | 4;
+  phase: "on_shift" | "boarding" | "arriving";
+  nextFloor: "lobby" | 2 | 3 | 4;
+};
+
+export function getTowerResidentPresence(at = new Date()): TowerResidentPresence[] {
+  const minuteOfDay = at.getUTCHours() * 60 + at.getUTCMinutes();
+  const presence: TowerResidentPresence[] = [];
+  for (const route of COMMUTER_ROUTES) {
+    const elapsed = (minuteOfDay - route.startMinute + 1440) % 1440;
+    if (elapsed >= 8 * 60) continue;
+    const cycleMinute = elapsed % 65;
+    const stopIndex = Math.floor(elapsed / 65) % route.floors.length;
+    const currentFloor = route.floors[stopIndex];
+    const nextFloor = route.floors[(stopIndex + 1) % route.floors.length];
+    if (cycleMinute < 55) {
+      presence.push({ id: route.id, floor: currentFloor, phase: "on_shift", nextFloor });
+    } else if (cycleMinute < 57) {
+      presence.push({ id: route.id, floor: currentFloor, phase: "boarding", nextFloor });
+    } else if (cycleMinute >= 63) {
+      presence.push({ id: route.id, floor: nextFloor, phase: "arriving", nextFloor });
+    }
+  }
+  return presence;
+}
+
 function requireAuth(req: Request, res: Response): string | null {
   if (!req.isAuthenticated?.() || !req.user?.id) {
     res.status(401).json({ error: "Login required" });
@@ -23,6 +56,26 @@ function validSlot(value: unknown): value is number {
   const slot = Number(value);
   return Number.isInteger(slot) && slot >= 0 && slot <= 64;
 }
+
+router.get("/tower/resident-presence", (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const cityId = typeof req.query.cityId === "string" ? req.query.cityId : "";
+  const floorValue = typeof req.query.floor === "string" ? req.query.floor : "";
+  const floor = floorValue === "lobby" ? "lobby" : Number(floorValue);
+  if (!/^[a-z0-9_-]{2,48}$/i.test(cityId)
+    || !(floor === "lobby" || (typeof floor === "number" && [2, 3, 4].includes(floor)))) {
+    res.status(400).json({ error: "Invalid Tower resident location" });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    cityId,
+    floor,
+    serverTime: new Date().toISOString(),
+    residents: getTowerResidentPresence().filter((resident) => resident.floor === floor),
+  });
+});
 
 /**
  * Settle a physical resident work order. The save marker and wallet credit live

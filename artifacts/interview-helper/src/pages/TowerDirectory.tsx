@@ -45,6 +45,7 @@ import { IsoOffice } from "@/components/IsoOffice";
 import type { IsoOfficeProps } from "@/components/IsoOffice";
 import { getLobbyOfficeLayout } from "@/lib/office-property-layouts";
 import { getTowerAmbientOccupants } from "@/lib/tower-life";
+import { useTowerResidentPresence } from "@/lib/use-tower-resident-presence";
 import { getTowerSpaceArtUrl } from "@/lib/tower-space-art";
 
 const occupiedFloors = new Map([
@@ -237,6 +238,7 @@ function TowerReceptionScene({
     return () => window.removeEventListener("resize", resize);
   }, []);
   const city = getActiveCityId() === "huda_city" ? "huda_city" : "minx_city";
+  const residentPresence = useTowerResidentPresence(city, "lobby");
   const layout = useMemo(() => {
     const base = getLobbyOfficeLayout(city);
     return {
@@ -309,7 +311,7 @@ function TowerReceptionScene({
         suppressLabels={viewport.width < 680}
         playerName="YOU"
         hallwaySignage="MAIN LOBBY · ELEVATOR CORE"
-        ambientOccupants={getTowerAmbientOccupants("lobby")}
+        ambientOccupants={getTowerAmbientOccupants("lobby", residentPresence)}
         onAmbientInteract={onResidentInteract}
         dialogue={dialogue}
         lighting="cool"

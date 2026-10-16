@@ -11,6 +11,7 @@ import {
 import { getActiveCityId, getActiveCityName } from "@/lib/city-defs";
 import { CityClock } from "@/components/CityClock";
 import { getTowerAmbientOccupants, getTowerOperatorDialogue, type TowerOperatorDialogue } from "@/lib/tower-life";
+import { useTowerResidentPresence } from "@/lib/use-tower-resident-presence";
 import { getTowerSpaceArtKind, getTowerSpaceArtUrl, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api-client";
@@ -267,6 +268,7 @@ export default function TowerFloorScene({
 
   const safeFloor = Number.isFinite(floor) ? Math.trunc(floor) : 1;
   const city = useMemo(() => resolveCity(cityProp), [cityProp]);
+  const residentPresence = useTowerResidentPresence(city, safeFloor);
   const commercialTenants = useMemo(() => getShadowTowerCommercialTenants(safeFloor), [safeFloor]);
   const identity = useMemo(() => getTowerFloorIdentity(safeFloor, commercialTenants[0]), [commercialTenants, safeFloor]);
   const selectedArchetype: ShadowTowerArchetype = archetype ?? (identity.status === "available" ? "founder_team" : "company");
@@ -300,8 +302,8 @@ export default function TowerFloorScene({
   }, [identity.status, layout]);
   const floorPath = useMemo(() => floorPathFor(location, safeFloor), [location, safeFloor]);
   const ambientOccupants = useMemo(() => {
-    return getTowerAmbientOccupants(safeFloor);
-  }, [safeFloor]);
+    return getTowerAmbientOccupants(safeFloor, residentPresence);
+  }, [residentPresence, safeFloor]);
 
   useEffect(() => {
     const resize = () => setViewport({

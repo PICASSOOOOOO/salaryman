@@ -12,6 +12,7 @@ import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getAmbianceEnabled, getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
 import { getTowerAmbientOccupants, TOWER_BUSINESSES, TOWER_RESIDENTS } from "@/lib/tower-life";
+import { useTowerResidentPresence } from "@/lib/use-tower-resident-presence";
 import { getTowerSpaceArtUrl, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 
 type FloorNumber = 2 | 3 | 4;
@@ -44,6 +45,8 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     () => getPublicFloorOfficeLayout(getActiveCityId() === "huda_city" ? "huda_city" : "minx_city", floor),
     [floor],
   );
+  const cityId = getActiveCityId() === "huda_city" ? "huda_city" : "minx_city";
+  const residentPresence = useTowerResidentPresence(cityId, floor);
   const floorPath = floor === 2 ? "/tower/mezzanine" : floor === 3 ? "/tower/rest" : "/tower/security";
   const spaceArt: TowerSpaceArtKind = floor === 2 ? "mezzanine" : floor === 3 ? "rest" : "security";
 
@@ -245,7 +248,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
            hallwaySignage={floor === 2 ? "PUBLIC TERMINALS · CLASSIFIEDS" : floor === 3 ? "REST WARD · OBSERVATION" : "SECURITY · CUSTODY"}
           suppressLabels={window.innerWidth < 680} frozen={!!panel}
           playerName={mezzanine ? "CAFE GUEST" : "PATIENT"}
-           ambientOccupants={getTowerAmbientOccupants(floor)}
+            ambientOccupants={getTowerAmbientOccupants(floor, residentPresence)}
            onAmbientInteract={(occupant) => void talkToResident(occupant)}
         />
       </main>

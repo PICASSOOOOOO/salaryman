@@ -302,6 +302,13 @@ export type TowerRoutineState = {
   speedMultiplier: number;
 };
 
+export type TowerResidentPresence = {
+  id: number;
+  floor: TowerFloor;
+  phase: "on_shift" | "boarding" | "arriving";
+  nextFloor: TowerFloor;
+};
+
 const NIGHT_SHIFT_RESIDENTS = new Set([502, 506, 510]);
 
 export function createTowerDailyRoutine(id: number, errands: readonly string[]): TowerDailyRoutine {
@@ -320,7 +327,7 @@ export function createTowerDailyRoutine(id: number, errands: readonly string[]):
 }
 
 export function getTowerRoutineState(routine: TowerDailyRoutine, at = new Date()): TowerRoutineState {
-  const minuteOfDay = at.getHours() * 60 + at.getMinutes();
+  const minuteOfDay = at.getUTCHours() * 60 + at.getUTCMinutes();
   const elapsed = (minuteOfDay - routine.shiftStartMinute + 1440) % 1440;
   if (elapsed >= routine.shiftDurationMinutes) {
     return { phase: "off_shift", task: "Off shift · resting", speedMultiplier: 0 };
@@ -360,7 +367,10 @@ function projectAmbientResident(resident: TowerResident): TowerAmbientOccupant {
   };
 }
 
-export function getTowerAmbientOccupants(floor: TowerFloor): TowerAmbientOccupant[] {
+export function getTowerAmbientOccupants(
+  floor: TowerFloor,
+  presence: readonly TowerResidentPresence[] = [],
+): TowerAmbientOccupant[] {
   if (typeof floor === "number" && floor >= 5) {
     return getShadowTowerCommercialTenants(floor).map(({ resident, business }) => ({
       id: resident.id,
@@ -378,8 +388,22 @@ export function getTowerAmbientOccupants(floor: TowerFloor): TowerAmbientOccupan
     }));
   }
   return TOWER_RESIDENTS
-    .filter((resident) => resident.floor === floor || resident.serviceFloors?.includes(floor))
-    .map(projectAmbientResident);
+    .filter((resident) => resident.serviceFloors
+      ? presence.some((entry) => entry.id === resident.id && entry.floor === floor)
+      : resident.floor === floor)
+    .map((resident) => {
+      const occupant = projectAmbientResident(resident);
+      const state = presence.find((entry) => entry.id === resident.id);
+      if (!state) return occupant;
+      return {
+        ...occupant,
+        workLabel: state.phase === "boarding"
+          ? `Boarding lift · toward ${state.nextFloor}`
+          : state.phase === "arriving"
+            ? "Arriving from lift"
+            : occupant.workLabel,
+      };
+    });
 }
 
 export const TOWER_GOSSIP = [
