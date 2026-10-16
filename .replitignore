@@ -6,6 +6,10 @@
 .git/
 .cache/
 
+# Reference uploads are not read by production services; shipped web assets
+# live in the artifact's public directory.
+attached_assets/
+
 # No need to store the pnpm store twice.
 .local
 generated-artifacts/
