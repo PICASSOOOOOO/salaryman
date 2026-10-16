@@ -28,9 +28,34 @@ describe("Pablo command response parsing", () => {
     });
   });
 
+  it("accepts JSON wrapped in a markdown code fence", () => {
+    expect(parsePabloCommandResponse('```json\n{"say":"I found your office.","action":null}\n```')).toEqual({
+      say: "I found your office.",
+      action: null,
+    });
+  });
+
+  it("recovers a complete JSON reply surrounded by provider commentary", () => {
+    expect(parsePabloCommandResponse('Here is the reply:\n{"say":"Opening your office.","action":{"kind":"navigate","path":"/office"}}\nDone.')).toEqual({
+      say: "Opening your office.",
+      action: { kind: "navigate", path: "/office" },
+    });
+  });
+
   it("uses a neutral reply for valid JSON without a non-empty say field", () => {
     expect(parsePabloCommandResponse('{"action":null}')).toEqual({
       say: "I'm here.",
+      action: null,
+    });
+  });
+
+  it("still hides incomplete or non-JSON model output", () => {
+    expect(parsePabloCommandResponse('{"say":"unfinished"')).toEqual({
+      say: PABLO_COMMAND_RESPONSE_FALLBACK,
+      action: null,
+    });
+    expect(parsePabloCommandResponse("```diff\n+ internal code changes\n```")).toEqual({
+      say: PABLO_COMMAND_RESPONSE_FALLBACK,
       action: null,
     });
   });

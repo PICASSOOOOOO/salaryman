@@ -2192,6 +2192,16 @@ ${await buildLiveContext(transcript)}`;
   try {
     const completion = await completeInternalText(messages, { maxTokens: 400, json: true });
     const parsed = parsePabloCommandResponse(completion.content);
+    if (parsed.say === "I couldn't form a clear reply. Please try again.") {
+      requestLog.warn(
+        {
+          phase: "command-response-parse",
+          provider: completion.provider,
+          responseLength: completion.content.length,
+        },
+        "Pablo command response was not valid JSON",
+      );
+    }
     const say = parsed.say;
     let action: unknown = parsed.action;
     if (action && typeof action === "object" && "kind" in action) {
