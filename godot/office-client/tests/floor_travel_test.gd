@@ -11,6 +11,18 @@ func _initialize() -> void:
 
 
 func _run_tests() -> void:
+	var hud_min_width := int(ProjectSettings.get_setting("display/window/size/min_width"))
+	var hud_min_height := int(ProjectSettings.get_setting("display/window/size/min_height"))
+	assert(hud_min_width == 1180 and hud_min_height == 720)
+	var wide_hud: Dictionary = OfficeClient.hud_layout_for_viewport(Vector2(1920.0, 1080.0))
+	assert(is_equal_approx(float(wide_hud["scale"]), 1.5))
+	assert(wide_hud["position"] == Vector2(75.0, 0.0))
+	var design_hud: Dictionary = OfficeClient.hud_layout_for_viewport(Vector2(1180.0, 720.0))
+	assert(is_equal_approx(float(design_hud["scale"]), 1.0))
+	assert(design_hud["position"] == Vector2.ZERO)
+	var invalid_hud: Dictionary = OfficeClient.hud_layout_for_viewport(Vector2.ZERO)
+	assert(is_equal_approx(float(invalid_hud["scale"]), 0.0))
+
 	var client = OfficeClient.new()
 	var floor_plan = JSON.parse_string(FileAccess.get_file_as_string("res://floor_plan.json"))
 	assert(floor_plan is Dictionary)

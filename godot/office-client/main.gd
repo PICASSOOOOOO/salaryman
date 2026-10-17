@@ -28,6 +28,7 @@ const CAMERA_FOLLOW_RESPONSE := 5.0
 const CAMERA_ZOOM_RESPONSE := 6.0
 const CAMERA_LOOK_AHEAD_SECONDS := 0.18
 const CAMERA_LOOK_AHEAD_MAX_SPEED := 3.2
+const HUD_DESIGN_SIZE := Vector2(1180.0, 720.0)
 # Room floors are 0.16 units above the world origin (0.08 center + 0.08
 # half-height). Keep the player root on that same surface; the imported
 # character's feet are authored at its local origin.
@@ -1631,12 +1632,26 @@ func _update_interface_scale() -> void:
 	if interface_root == null:
 		return
 	var viewport_size := get_viewport().get_visible_rect().size
-	var scale_factor := minf(viewport_size.x / 1180.0, viewport_size.y / 720.0)
+	var layout := hud_layout_for_viewport(viewport_size)
+	var scale_factor: float = layout["scale"]
 	if scale_factor <= 0.0:
 		return
-	var scaled_size := Vector2(1180.0, 720.0) * scale_factor
 	interface_root.scale = Vector2.ONE * scale_factor
-	interface_root.position = (viewport_size - scaled_size) / 2.0
+	interface_root.position = layout["position"]
+
+
+static func hud_layout_for_viewport(viewport_size: Vector2) -> Dictionary:
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return {"scale": 0.0, "position": Vector2.ZERO}
+	var scale_factor := minf(
+		viewport_size.x / HUD_DESIGN_SIZE.x,
+		viewport_size.y / HUD_DESIGN_SIZE.y,
+	)
+	var scaled_size := HUD_DESIGN_SIZE * scale_factor
+	return {
+		"scale": scale_factor,
+		"position": (viewport_size - scaled_size) / 2.0,
+	}
 
 
 func _connect_to_pygame() -> void:
