@@ -2614,18 +2614,29 @@ func _refresh_elevator_floor_label() -> void:
 
 func _advance_elevator_floor(direction: int) -> void:
 	var open_floors := _available_elevator_floors()
+	if open_floors.is_empty():
+		_show_transient_notice("NO ELEVATOR STOPS ARE CURRENTLY OPEN")
+		return
 	var current_index := open_floors.find(selected_elevator_floor)
 	if current_index < 0:
 		current_index = 0
 	var next_index := current_index + direction
 	if next_index < 0:
-		_show_transient_notice("BASEMENT AND FLOORS 02–05 ARE UNDER CONSTRUCTION")
+		_show_transient_notice(elevator_boundary_notice(-1, open_floors))
 		return
 	if next_index >= open_floors.size():
-		_show_transient_notice("FLOORS 07–67 ARE UNDER CONSTRUCTION")
+		_show_transient_notice(elevator_boundary_notice(1, open_floors))
 		return
 	selected_elevator_floor = open_floors[next_index]
 	_refresh_elevator_floor_label()
+
+
+static func elevator_boundary_notice(direction: int, open_floors: Array[int]) -> String:
+	if open_floors.is_empty():
+		return "NO ELEVATOR STOPS ARE CURRENTLY OPEN"
+	if direction < 0:
+		return "LOWEST OPEN STOP IS FLOOR %02d" % open_floors.front()
+	return "HIGHEST OPEN STOP IS FLOOR %02d" % open_floors.back()
 
 
 func _handle_elevator_picker_key(keycode: int) -> bool:
