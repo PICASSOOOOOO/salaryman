@@ -1,10 +1,10 @@
 ---
-name: No CRT visual language
-description: The durable visual direction after retiring SALARYMAN's CRT presentation.
+name: SALARYMAN game interaction visual language
+description: Keep DOS-style green-on-black treatment scoped to camera-transition feature panels and terminals.
 ---
 
-Use a modern dark interface with Inter for UI/display text and Fira Code only where data or code benefits from monospace. The in-world Godot terminal panels are a narrow exception: use a clean DOS-style green-code/CCTV display with numbered keyboard choices (1–9), confined to those terminals. Do not apply that style to the HUD, menus, other screens, or world art. Do not add CRT scanlines, phosphor glow, flicker, animated grain, chromatic aberration, glitch overlays, or VT323/Share Tech Mono presentation.
+Use a modern dark interface with Inter for UI/display text and Fira Code only where data or code benefits from monospace. In the downloadable game, camera-transition panels that bridge real SALARYMAN features or in-game actions may use a clean DOS-style green-on-black, typewriter-like interface with keyboard commands. Keep that treatment scoped to those interaction panels and in-world terminals; do not apply it to the general HUD, browser/control-plane, office builder/customization systems, or world art. The office builder/simulation customization is a separate endeavor. Do not add CRT scanlines, phosphor glow, flicker, animated grain, chromatic aberration, glitch overlays, or VT323/Share Tech Mono presentation.
 
-**Why:** The user explicitly requested a DOS-like green terminal with numbered options, while keeping the rest of SALARYMAN's visual direction intact. The broader CRT treatment remains rejected.
+**Why:** The user broadened the DOS-style treatment from terminals to game feature panels that use camera transitions, while explicitly keeping office-builder/simulation customization separate. The broader CRT treatment remains rejected.
 
-**How to apply:** Keep browser/control-plane surfaces modern and restrained. Limit the DOS exception to functional in-world Godot terminals; render the text crisply without fake-monitor effects.
+**How to apply:** Use the green-on-black keyboard-command style for camera-transition feature panels and in-world terminals only. Keep browser/control-plane and general HUD surfaces modern; render text crisply without fake-monitor effects.
