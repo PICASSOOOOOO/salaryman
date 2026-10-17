@@ -17,6 +17,7 @@ import {
   organizationsTable,
   shadowTowerFloorsTable,
   shadowTowerOfficeUnitsTable,
+  salarymanSavesTable,
   usersTable,
 } from "@workspace/db";
 import desktopBuildingRouter from "../routes/desktop-building";
@@ -62,6 +63,13 @@ beforeAll(async () => {
   const [user] = await db.insert(usersTable).values({ email }).returning();
   userId = user.id;
   userIds.push(userId);
+  await db.insert(salarymanSavesTable).values({
+    userId,
+    slotIndex: 0,
+    charName: "TEST",
+    charClass: "salaryman",
+    data: { energy: 100, energyUpdatedAt: new Date().toISOString() },
+  });
   await db.insert(bankAccountsTable).values({
     userId,
     kind: "checking",
@@ -197,6 +205,7 @@ afterAll(async () => {
   if (userIds.length) {
     await db.delete(bankTransactionsTable).where(inArray(bankTransactionsTable.userId, userIds));
     await db.delete(bankAccountsTable).where(inArray(bankAccountsTable.userId, userIds));
+    await db.delete(salarymanSavesTable).where(inArray(salarymanSavesTable.userId, userIds));
     await db.delete(usersTable).where(inArray(usersTable.id, userIds));
   }
 });
@@ -366,6 +375,7 @@ describe("desktop office work settlement", () => {
     });
     expect(cleaned.status, JSON.stringify(cleaned.body)).toBe(200);
     expect(cleaned.body).toMatchObject({ working: true, rewardFiat: 0 });
+    expect(cleaned.body.stamina).toBe(96);
     expect(cleaned.body.state).toMatchObject({
       objectId: "recreation-atm",
       floorNumber: 6,
@@ -420,6 +430,7 @@ describe("desktop office work settlement", () => {
       working: true,
       rewardFiat: 100,
       payerLabel: "MILA",
+      stamina: 92,
     });
     const publicSessionId = publicStart.body.sessionId as string;
     maintenanceSessionIds.push(publicSessionId);
@@ -479,6 +490,7 @@ describe("desktop office work settlement", () => {
       working: true,
       rewardFiat: 100,
       payerLabel: "ORGANIZATION RECEPTIONIST",
+      stamina: 88,
     });
     const privateSessionId = repaired.body.sessionId as string;
     maintenanceSessionIds.push(privateSessionId);

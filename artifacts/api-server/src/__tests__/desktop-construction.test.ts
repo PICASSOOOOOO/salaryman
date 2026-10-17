@@ -11,6 +11,7 @@ import {
   desktopOfficePresenceTable,
   deviceLinksTable,
   playerLedgerTable,
+  salarymanSavesTable,
   towerConstructionContributionsTable,
   usersTable,
   worldBuildPlansTable,
@@ -63,6 +64,8 @@ function desktopPost(path: string) {
 async function setBasementPresence(level: number, x: number, y: number): Promise<void> {
   if (!linkId) throw new Error("Test desktop link is not ready");
   const now = new Date();
+  await db.delete(desktopBasementPresenceTable)
+    .where(eq(desktopBasementPresenceTable.userId, userId));
   await db.insert(desktopBasementPresenceTable).values({
     userId,
     linkId,
@@ -71,15 +74,14 @@ async function setBasementPresence(level: number, x: number, y: number): Promise
     y,
     action: "stand",
     lastSeenAt: now,
-  }).onConflictDoUpdate({
-    target: desktopBasementPresenceTable.userId,
-    set: { linkId, level, x, y, action: "stand", lastSeenAt: now },
   });
 }
 
 async function setOfficePresence(targetFloor: number, x: number, y: number): Promise<void> {
   if (!linkId) throw new Error("Test desktop link is not ready");
   const now = new Date();
+  await db.delete(desktopOfficePresenceTable)
+    .where(eq(desktopOfficePresenceTable.userId, userId));
   await db.insert(desktopOfficePresenceTable).values({
     userId,
     linkId,
@@ -91,18 +93,6 @@ async function setOfficePresence(targetFloor: number, x: number, y: number): Pro
     y,
     action: "stand",
     lastSeenAt: now,
-  }).onConflictDoUpdate({
-    target: desktopOfficePresenceTable.userId,
-    set: {
-      linkId,
-      roomKey: `hallway:minx_city:${targetFloor}`,
-      room: "hallway",
-      floorNumber: targetFloor,
-      x,
-      y,
-      action: "stand",
-      lastSeenAt: now,
-    },
   });
 }
 
@@ -135,6 +125,14 @@ beforeAll(async () => {
     scopes: ["salaryman_app"],
   }).returning({ id: deviceLinksTable.id });
   linkId = link.id;
+
+  await db.insert(salarymanSavesTable).values({
+    userId,
+    slotIndex: 0,
+    charName: "TEST",
+    charClass: "salaryman",
+    data: { energy: 100, energyUpdatedAt: new Date().toISOString() },
+  });
 
   await db.insert(bankAccountsTable).values({
     userId,
@@ -173,6 +171,7 @@ afterAll(async () => {
   await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
   await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
   await db.delete(bankTransactionsTable).where(eq(bankTransactionsTable.userId, userId));
+  await db.delete(salarymanSavesTable).where(eq(salarymanSavesTable.userId, userId));
   await db.delete(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
   await db.delete(playerLedgerTable).where(eq(playerLedgerTable.userId, userId));
   if (linkId) await db.delete(deviceLinksTable).where(eq(deviceLinksTable.id, linkId));
@@ -206,6 +205,13 @@ describe("Tower area-powered construction contracts", () => {
     const powerStart = await desktopPost("/api/desktop-building/construction/work/start")
       .send({ planId, taskId: powerTaskId });
     expect(powerStart.status).toBe(200);
+    expect(powerStart.body.stamina).toBe(97);
+
+    const powerStartRetry = await desktopPost("/api/desktop-building/construction/work/start")
+      .send({ planId, taskId: powerTaskId });
+    expect(powerStartRetry.status).toBe(200);
+    expect(powerStartRetry.body.sessionId).toBe(powerStart.body.sessionId);
+    expect(powerStartRetry.body.stamina).toBe(97);
 
     const earlyPowerComplete = await desktopPost("/api/desktop-building/construction/work/complete")
       .send({ planId, taskId: powerTaskId, sessionId: powerStart.body.sessionId });
@@ -221,6 +227,7 @@ describe("Tower area-powered construction contracts", () => {
     const frameStart = await desktopPost("/api/desktop-building/construction/work/start")
       .send({ planId, taskId: constructionTaskId });
     expect(frameStart.status).toBe(200);
+    expect(frameStart.body.stamina).toBe(94);
 
     const earlyFrameComplete = await desktopPost("/api/desktop-building/construction/work/complete")
       .send({ planId, taskId: constructionTaskId, sessionId: frameStart.body.sessionId });
@@ -253,5 +260,8 @@ describe("Tower area-powered construction contracts", () => {
     expect(wallet.balance).toBe(rewardPerTask * 2);
     expect(contributions).toHaveLength(2);
     expect(transactions).toHaveLength(2);
+    const [save] = await db.select().from(salarymanSavesTable)
+      .where(eq(salarymanSavesTable.userId, userId));
+    expect(save.data.energy).toBe(94);
   });
 });
