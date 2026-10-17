@@ -394,6 +394,11 @@ class OfficeState:
     def net_today(self) -> float:
         return self.total_output - self.total_wages_paid
 
+    @property
+    def shift_payroll_forecast(self) -> float:
+        """Show the roster's full-shift wage commitment without changing settlement."""
+        return round(sum(worker.daily_wage for worker in self.roster.workers), 2)
+
     def add_funds(self, amount: float, label: str) -> None:
         self.funds = round(self.funds + amount, 2)
         self.ledger.append(LedgerEntry(label, amount, self.funds))

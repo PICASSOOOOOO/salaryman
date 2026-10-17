@@ -2053,7 +2053,10 @@ func _apply_tower_floor_style(floor_number: int, room_id: String) -> void:
 	if style_key == last_floor_style_key:
 		return
 	last_floor_style_key = style_key
-	for material_name in ["hall_floor", "construction_floor", "temple_floor", "lobby_floor"]:
+	for material_name in [
+		"floor", "hall_floor", "construction_floor", "temple_floor", "lobby_floor",
+		"office_1", "office_2", "office_3", "office_4",
+	]:
 		var floor_material: Variant = materials.get(material_name)
 		if floor_material is StandardMaterial3D:
 			floor_material.albedo_color = palette["floor"]

@@ -123,6 +123,23 @@ func _run_tests() -> void:
 		assert(not floor_colors.has(basement_color))
 		floor_style_keys[basement_key] = true
 		floor_colors[basement_color] = true
+	for material_name in [
+		"floor", "hall_floor", "construction_floor", "temple_floor", "lobby_floor",
+		"office_1", "office_2", "office_3", "office_4", "wall", "wall_trim",
+	]:
+		client.materials[material_name] = StandardMaterial3D.new()
+	client._apply_tower_floor_style(6, "executive")
+	var concourse_style: Dictionary = OfficeClient.tower_floor_style_palette(6, "executive")
+	for material_name in [
+		"floor", "hall_floor", "construction_floor", "temple_floor", "lobby_floor",
+		"office_1", "office_2", "office_3", "office_4",
+	]:
+		assert(
+			client.materials[material_name].albedo_color == concourse_style["floor"],
+			"Floor style must tint %s" % material_name,
+		)
+	assert(client.materials["wall"].albedo_color == concourse_style["wall"])
+	assert(client.materials["wall_trim"].albedo_color == concourse_style["trim"])
 	assert(PlayerController.sprint_input_active(true, false))
 	assert(PlayerController.sprint_input_active(false, true))
 	assert(not PlayerController.sprint_input_active(false, false))

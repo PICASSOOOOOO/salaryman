@@ -159,6 +159,14 @@ class PygameSimulationTests(unittest.TestCase):
         self.assertGreater(state.total_wages_paid, 0)
         self.assertGreater(state.roster.workers[0].wealth_fiat, 300)
 
+    def test_shift_payroll_forecast_tracks_the_current_roster(self):
+        state = OfficeState.with_default_roster()
+        expected = sum(worker.daily_wage for worker in state.roster.workers)
+        self.assertEqual(state.shift_payroll_forecast, expected)
+
+        state.roster.workers.append(Worker("New Hire", "ROLE", 10, 500, (1, 2, 3)))
+        self.assertEqual(state.shift_payroll_forecast, expected + 500 * 8)
+
     def test_npcs_get_hungry_and_eat_from_personal_wealth(self):
         state = OfficeState.with_default_roster()
         worker = state.roster.workers[0]

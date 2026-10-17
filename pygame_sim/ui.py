@@ -2748,7 +2748,7 @@ class SolarPunkRenderer:
             (176, 219, 192),
         )
         self.text(
-            "ATRIUM LIGHT  /  WATER LOOP  /  PEOPLE ON SHIFT",
+            f"PROJECTED SHIFT PAYROLL  ƒ{state.shift_payroll_forecast:,.2f}",
             (50, 635),
             self.font_sm,
             Palette.SUN,
