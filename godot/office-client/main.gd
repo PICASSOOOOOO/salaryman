@@ -82,9 +82,19 @@ var native_app_panel: ColorRect
 var native_app_title: Label
 var native_app_body: Label
 var native_app_footer: Label
+var native_app_accent: ColorRect
 var native_app_action_grid: GridContainer
+var feature_command_font: Font
 var last_native_app_page := ""
 var last_native_action_signature := ""
+var native_app_animation_progress := 0.0
+var native_typewriter_page := ""
+var native_typewriter_text := ""
+var native_typewriter_progress := 0.0
+var native_typewriter_delay := 0.0
+var native_typewriter_active := false
+var elevator_panel_animation_progress := 0.0
+var elevator_panel_was_visible := false
 var ghost_dialogue_line := ""
 var selected_elevator_floor := 1
 var elevator_wait_remaining := 0.0
@@ -1448,6 +1458,16 @@ func _build_interface() -> void:
 	canvas.name = "HUD"
 	add_child(canvas)
 
+	var command_font := SystemFont.new()
+	command_font.font_names = PackedStringArray([
+		"DejaVu Sans Mono",
+		"Consolas",
+		"Courier New",
+		"monospace",
+	])
+	command_font.allow_system_fallback = true
+	feature_command_font = command_font
+
 	interface_root = Control.new()
 	interface_root.name = "DesignResolutionHUD"
 	interface_root.size = Vector2(1180.0, 720.0)
@@ -1565,12 +1585,13 @@ func _build_interface() -> void:
 	native_app_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	interface_root.add_child(native_app_panel)
 
-	var app_panel_accent := ColorRect.new()
-	app_panel_accent.color = Color("#f8b957")
-	app_panel_accent.position = Vector2(0, 0)
-	app_panel_accent.size = Vector2(580, 4)
-	app_panel_accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	native_app_panel.add_child(app_panel_accent)
+	native_app_panel.pivot_offset = native_app_panel.size * 0.5
+	native_app_accent = ColorRect.new()
+	native_app_accent.color = Color("#f8b957")
+	native_app_accent.position = Vector2(0, 0)
+	native_app_accent.size = Vector2(580, 4)
+	native_app_accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	native_app_panel.add_child(native_app_accent)
 
 	native_app_title = Label.new()
 	native_app_title.position = Vector2(28, 24)
@@ -1606,18 +1627,25 @@ func _build_interface() -> void:
 
 	elevator_floor_panel = ColorRect.new()
 	elevator_floor_panel.name = "ElevatorFloorPicker"
-	elevator_floor_panel.color = Color("#07151af2")
+	elevator_floor_panel.color = Color("#020905")
 	elevator_floor_panel.position = Vector2(390, 230)
 	elevator_floor_panel.size = Vector2(400, 270)
+	elevator_floor_panel.pivot_offset = elevator_floor_panel.size * 0.5
 	elevator_floor_panel.visible = false
 	elevator_floor_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	interface_root.add_child(elevator_floor_panel)
+	var elevator_accent := ColorRect.new()
+	elevator_accent.color = Color("#3bff79")
+	elevator_accent.size = Vector2(400, 4)
+	elevator_accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	elevator_floor_panel.add_child(elevator_accent)
 
 	var elevator_title := Label.new()
-	elevator_title.text = "ELEVATOR  /  SELECT DESTINATION"
+	elevator_title.text = "> ELEVATOR // SELECT DESTINATION"
 	elevator_title.position = Vector2(28, 25)
 	elevator_title.add_theme_font_size_override("font_size", 17)
-	elevator_title.add_theme_color_override("font_color", Color("#eff8df"))
+	elevator_title.add_theme_color_override("font_color", Color("#86ffab"))
+	elevator_title.add_theme_font_override("font", feature_command_font)
 	elevator_floor_panel.add_child(elevator_title)
 
 	elevator_floor_label = Label.new()
@@ -1625,7 +1653,8 @@ func _build_interface() -> void:
 	elevator_floor_label.size = Vector2(340, 56)
 	elevator_floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	elevator_floor_label.add_theme_font_size_override("font_size", 32)
-	elevator_floor_label.add_theme_color_override("font_color", Color("#fff0ae"))
+	elevator_floor_label.add_theme_color_override("font_color", Color("#4dff86"))
+	elevator_floor_label.add_theme_font_override("font", feature_command_font)
 	elevator_floor_panel.add_child(elevator_floor_label)
 
 	elevator_floor_status_label = Label.new()
@@ -1633,16 +1662,18 @@ func _build_interface() -> void:
 	elevator_floor_status_label.size = Vector2(340, 28)
 	elevator_floor_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	elevator_floor_status_label.add_theme_font_size_override("font_size", 14)
-	elevator_floor_status_label.add_theme_color_override("font_color", Color("#9fd3bd"))
+	elevator_floor_status_label.add_theme_color_override("font_color", Color("#9cffb8"))
+	elevator_floor_status_label.add_theme_font_override("font", feature_command_font)
 	elevator_floor_panel.add_child(elevator_floor_status_label)
 
 	var elevator_instructions := Label.new()
-	elevator_instructions.text = "UP / DOWN  ·  OPEN STOPS ONLY\nENTER  ·  RIDE     ESC  ·  CLOSE"
+	elevator_instructions.text = "UP / DOWN // SELECT OPEN STOP\nENTER // RIDE     ESC // CLOSE"
 	elevator_instructions.position = Vector2(28, 174)
 	elevator_instructions.size = Vector2(340, 54)
 	elevator_instructions.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	elevator_instructions.add_theme_font_size_override("font_size", 13)
-	elevator_instructions.add_theme_color_override("font_color", Color("#9fd3bd"))
+	elevator_instructions.add_theme_color_override("font_color", Color("#9cffb8"))
+	elevator_instructions.add_theme_font_override("font", feature_command_font)
 	elevator_floor_panel.add_child(elevator_instructions)
 
 	get_viewport().size_changed.connect(_update_interface_scale)
@@ -1708,6 +1739,7 @@ func _process(delta: float) -> void:
 	_smooth_visual_player(delta)
 	_update_camera(delta)
 	_update_hud()
+	_advance_feature_panel_animations(delta)
 	_update_art_motion(delta)
 	_update_danger_audio(delta)
 	_update_temple_music()
@@ -2422,11 +2454,11 @@ func _tower_floor_status(floor_number: int) -> String:
 
 func _refresh_elevator_floor_label() -> void:
 	if elevator_floor_label != null:
-		elevator_floor_label.text = "FLOOR %02d" % selected_elevator_floor
+		elevator_floor_label.text = "> FLOOR %02d" % selected_elevator_floor
 	if elevator_floor_status_label != null:
 		var playable: Dictionary = floor_plan_data.get("playableFloors", {})
 		var stop: Dictionary = playable.get(str(selected_elevator_floor), {})
-		elevator_floor_status_label.text = str(stop.get("label", "UNDER CONSTRUCTION"))
+		elevator_floor_status_label.text = "// " + str(stop.get("label", "UNDER CONSTRUCTION"))
 
 
 func _advance_elevator_floor(direction: int) -> void:
@@ -3263,17 +3295,27 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	native_app_panel.visible = not page.is_empty()
 	if page.is_empty():
 		last_native_app_page = ""
+		native_typewriter_page = ""
+		native_typewriter_active = false
 		_sync_native_app_actions("", "")
 		return
+	if page != last_native_app_page:
+		native_app_animation_progress = 0.0
+		native_typewriter_page = ""
 	if page == "merchant" and last_native_app_page != "merchant":
 		ghost_dialogue_line = "You didn't see me. People rarely notice what they expect to find."
 	last_native_app_page = page
 	native_app_panel.color = Color("#07151af5")
+	native_app_accent.color = Color("#f8b957")
 	native_app_title.add_theme_color_override("font_color", Color("#eff8df"))
 	native_app_body.add_theme_color_override("font_color", Color("#c4ddcb"))
 	native_app_body.add_theme_font_size_override("font_size", 16)
 	native_app_body.size.y = 215
 	native_app_footer.add_theme_color_override("font_color", Color("#f8b957"))
+	native_app_title.add_theme_font_override("font", ThemeDB.fallback_font)
+	native_app_body.add_theme_font_override("font", ThemeDB.fallback_font)
+	native_app_footer.add_theme_font_override("font", ThemeDB.fallback_font)
+	native_app_title.add_theme_font_size_override("font_size", 21)
 
 	var page_source_value: Variant = office.get("pageSource")
 	var page_source := "" if page_source_value == null else str(page_source_value)
@@ -3529,6 +3571,25 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_title.text = page_source.to_upper() if not page_source.is_empty() else page.to_upper()
 			native_app_body.text = location + "\n\nThis view is rendered by the game client."
 			native_app_footer.text = "ESC CLOSE"
+	if feature_panel_uses_command_style(page):
+		native_app_panel.color = Color("#020905")
+		native_app_accent.color = Color("#3bff79")
+		native_app_title.add_theme_color_override("font_color", Color("#9cffb7"))
+		native_app_body.add_theme_color_override("font_color", Color("#56f789"))
+		native_app_footer.add_theme_color_override("font_color", Color("#a7ffc0"))
+		native_app_title.add_theme_font_override("font", feature_command_font)
+		native_app_body.add_theme_font_override("font", feature_command_font)
+		native_app_footer.add_theme_font_override("font", feature_command_font)
+		native_app_title.add_theme_font_size_override("font_size", 18)
+		native_app_body.add_theme_font_size_override("font_size", 14)
+		native_app_footer.add_theme_font_size_override("font_size", 12)
+		native_app_body.text = "SALARYMAN // FEATURE BRIDGE PLACEHOLDER\n> " + native_app_body.text.replace("\n", "\n> ")
+		native_app_footer.text = "> " + native_app_footer.text
+		_prepare_native_typewriter(page)
+	else:
+		native_app_body.visible_characters = -1
+		native_typewriter_page = page
+		native_typewriter_active = false
 	_sync_native_app_actions(page, page_source)
 
 
@@ -3538,20 +3599,110 @@ func _active_page_name() -> String:
 	return "" if page_value == null else str(page_value)
 
 
+static func feature_panel_uses_command_style(page: String) -> bool:
+	var normalized_page := page.strip_edges().to_lower().replace("-", "_").replace(" ", "_")
+	return not normalized_page.is_empty() and not [
+		"customize",
+		"customization",
+		"builder",
+		"officebuilder",
+		"sim_systems",
+		"sim_system",
+		"simulation",
+		"simulation_system",
+		"simulation_systems",
+		"office_builder",
+		"office_builder_simulation",
+		"simulation_customization",
+	].has(normalized_page)
+
+
+func _prepare_native_typewriter(page: String) -> void:
+	if page != native_typewriter_page:
+		native_typewriter_page = page
+		native_typewriter_text = native_app_body.text
+		native_typewriter_progress = 0.0
+		native_typewriter_delay = 0.10
+		native_typewriter_active = true
+		native_app_body.visible_characters = 0
+	elif native_app_body.text != native_typewriter_text:
+		# Live balances and work status can update while a panel is open. Show
+		# those snapshots immediately rather than restarting the typewriter.
+		native_typewriter_text = native_app_body.text
+		native_typewriter_progress = float(native_typewriter_text.length())
+		native_typewriter_active = false
+		native_app_body.visible_characters = -1
+
+
+func _advance_feature_panel_animations(delta: float) -> void:
+	if native_app_panel != null:
+		if native_app_panel.visible:
+			native_app_animation_progress = minf(
+				1.0,
+				native_app_animation_progress + delta * 5.0,
+			)
+			var panel_ease := 1.0 - pow(1.0 - native_app_animation_progress, 3.0)
+			native_app_panel.modulate = Color(1.0, 1.0, 1.0, panel_ease)
+			native_app_panel.scale = Vector2.ONE * (0.975 + 0.025 * panel_ease)
+			native_app_panel.position = Vector2(300, 184) + Vector2(0, 12 * (1.0 - panel_ease))
+		else:
+			native_app_animation_progress = 0.0
+			native_app_panel.modulate = Color.WHITE
+			native_app_panel.scale = Vector2.ONE
+			native_app_panel.position = Vector2(300, 184)
+
+	if elevator_floor_panel != null:
+		if elevator_floor_panel.visible:
+			if not elevator_panel_was_visible:
+				elevator_panel_animation_progress = 0.0
+				elevator_panel_was_visible = true
+			elevator_panel_animation_progress = minf(
+				1.0,
+				elevator_panel_animation_progress + delta * 5.5,
+			)
+			var elevator_ease := 1.0 - pow(1.0 - elevator_panel_animation_progress, 3.0)
+			elevator_floor_panel.modulate = Color(1.0, 1.0, 1.0, elevator_ease)
+			elevator_floor_panel.scale = Vector2.ONE * (0.97 + 0.03 * elevator_ease)
+			elevator_floor_panel.position = Vector2(390, 230) + Vector2(0, 10 * (1.0 - elevator_ease))
+		else:
+			elevator_panel_was_visible = false
+			elevator_panel_animation_progress = 0.0
+			elevator_floor_panel.modulate = Color.WHITE
+			elevator_floor_panel.scale = Vector2.ONE
+			elevator_floor_panel.position = Vector2(390, 230)
+
+	if native_typewriter_active and native_app_body != null:
+		if native_typewriter_delay > 0.0:
+			native_typewriter_delay = maxf(0.0, native_typewriter_delay - delta)
+		else:
+			var typewriter_rate := maxf(
+				80.0,
+				float(native_typewriter_text.length()) / 2.1,
+			)
+			native_typewriter_progress = minf(
+				float(native_typewriter_text.length()),
+				native_typewriter_progress + delta * typewriter_rate,
+			)
+			native_app_body.visible_characters = int(native_typewriter_progress)
+			if native_typewriter_progress >= float(native_typewriter_text.length()):
+				native_app_body.visible_characters = -1
+				native_typewriter_active = false
+
+
 func _sync_native_app_actions(page: String, page_source: String) -> void:
 	var labels: Array[String] = []
 	match page:
 		"phone":
 			if page_source.to_upper().contains("PAY PHONE"):
-				labels = ["CALLL HOME", "COMMS"]
+				labels = ["1 > CALLL HOME", "2 > COMMS"]
 			else:
-				labels = ["OPEN PHONE CENTER", "COMMS"]
+				labels = ["1 > PHONE CENTER", "2 > COMMS"]
 		"reception":
-			labels = ["1  JOBS", "2  CONTRACTS", "3  REALTY"]
+			labels = ["1 > JOBS", "2 > CONTRACTS", "3 > REALTY"]
 		"systems":
 			labels = [
-				"1  JOBS", "2  BOOKS", "3  CONTACTS", "4  MARKETING",
-				"5  DARKROOM", "6  INTEL", "7  BANK", "8  PHONE",
+				"1 > JOBS", "2 > BOOKS", "3 > CONTACTS", "4 > MARKETING",
+				"5 > DARKROOM", "6 > INTEL", "7 > BANK", "8 > PHONE",
 			]
 	var signature := page + ":" + "|".join(labels)
 	if signature == last_native_action_signature:
@@ -3571,8 +3722,31 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 		button.text = labels[index]
 		button.custom_minimum_size = Vector2(120, 34)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_style_feature_command_button(button)
 		button.pressed.connect(_on_native_app_action_pressed.bind(page, index + 1))
 		native_app_action_grid.add_child(button)
+
+
+func _style_feature_command_button(button: Button) -> void:
+	button.add_theme_font_override("font", feature_command_font)
+	button.add_theme_color_override("font_color", Color("#75ffa0"))
+	button.add_theme_color_override("font_hover_color", Color("#c6ffd5"))
+	button.add_theme_color_override("font_pressed_color", Color("#e8fff0"))
+	button.add_theme_color_override("font_focus_color", Color("#c6ffd5"))
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color("#031008")
+	normal.border_color = Color("#20733a")
+	normal.set_border_width_all(1)
+	normal.set_corner_radius_all(2)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = Color("#0a2712")
+	hover.border_color = Color("#69ff91")
+	var pressed := normal.duplicate() as StyleBoxFlat
+	pressed.bg_color = Color("#144321")
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("focus", hover)
 
 
 func _on_native_app_action_pressed(page: String, choice: int) -> void:
