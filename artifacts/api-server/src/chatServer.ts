@@ -367,7 +367,11 @@ export function setupChatServer(server: Server) {
       const membership = await db.select().from(orgMembersTable)
         .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, 'active')))
         .limit(1);
-      if (membership.length === 0) {
+      const [org] = membership.length === 0
+        ? await db.select({ ownerUserId: organizationsTable.ownerUserId })
+          .from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1)
+        : [];
+      if (membership.length === 0 && org?.ownerUserId !== userId) {
         orgId = null;
       }
     }

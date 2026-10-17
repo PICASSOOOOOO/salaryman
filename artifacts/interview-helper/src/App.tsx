@@ -173,6 +173,7 @@ const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
 const MyOffice = lazy(() => import("@/pages/MyOffice"));
+const OfficeMonitor = lazy(() => import("@/pages/OfficeMonitor"));
 const TheaterPage = lazy(() => import("@/pages/TheaterPage"));
 const DeviceLink = lazy(() => import("@/pages/DeviceLink"));
 
@@ -186,7 +187,7 @@ const queryClient = new QueryClient({
 });
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/onboarding", "/theater", "/device-link", "/sms-opt-in"];
+const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/onboarding", "/theater", "/device-link", "/sms-opt-in", "/my-office/monitor"];
 
 function LoadingFallback() {
   return (
@@ -325,6 +326,7 @@ function AppShell() {
   const isAuthRoute = pathname === "/sign-in" || pathname === "/sign-up";
   const isDeviceLinkRoute = pathname === "/device-link";
   const isPabloRoute = pathname === "/pablo";
+  const isOfficeMonitorRoute = pathname === "/my-office/monitor";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   // The browser product has one visual contract: cream/white surfaces and
   // black ink. The downloadable game owns the cyberpunk palette.
@@ -546,8 +548,8 @@ function AppShell() {
       {/* Route-independent toaster for the persistent notification stream.
           Immersive gameplay intentionally keeps this surface out of the
           viewport; ordinary fullscreen routes still receive it. */}
-        {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && <NotificationToaster />}
-        {isAuthenticated && !isEmbed && !isAuthRoute && !isDeviceLinkRoute && pathname !== "/comms" && (
+        {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && !isOfficeMonitorRoute && <NotificationToaster />}
+        {isAuthenticated && !isEmbed && !isAuthRoute && !isDeviceLinkRoute && !isOfficeMonitorRoute && pathname !== "/comms" && (
           <DeferredChatPanel />
         )}
       </Suspense>
@@ -625,6 +627,7 @@ function AppShell() {
             <Route path="/tower">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/tower/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/my-office" component={MyOffice} />
+            <Route path="/my-office/monitor" component={OfficeMonitor} />
             <Route path="/skills">{() => <Redirect to="/desktop" />}</Route>
             {/* The legacy bathroom->office cutscene now folds into the single
                 walkable office (no separate tutorial-office surface). */}

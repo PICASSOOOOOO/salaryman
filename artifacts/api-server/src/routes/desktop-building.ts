@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
-import { and, count, desc, eq, gte, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 import {
   db,
   desktopBuildingObjectStatesTable,
@@ -646,6 +646,7 @@ router.get("/desktop-building/office-monitor", async (req, res): Promise<void> =
     const rows = await db.select({
       userId: desktopOfficePresenceTable.userId,
       roomKey: desktopOfficePresenceTable.roomKey,
+      room: desktopOfficePresenceTable.room,
       floorNumber: desktopOfficePresenceTable.floorNumber,
       x: desktopOfficePresenceTable.x,
       y: desktopOfficePresenceTable.y,
@@ -656,25 +657,33 @@ router.get("/desktop-building/office-monitor", async (req, res): Promise<void> =
       lastName: usersTable.lastName,
       username: usersTable.username,
       avatarUrl: usersTable.profileImageUrl,
+      orgOwnerUserId: organizationsTable.ownerUserId,
     }).from(desktopOfficePresenceTable)
-      .innerJoin(orgMembersTable, and(
+      .leftJoin(orgMembersTable, and(
         eq(orgMembersTable.orgId, desktopOfficePresenceTable.orgId),
         eq(orgMembersTable.userId, desktopOfficePresenceTable.userId),
         eq(orgMembersTable.status, "active"),
       ))
       .innerJoin(usersTable, eq(usersTable.id, desktopOfficePresenceTable.userId))
+      .leftJoin(organizationsTable, eq(organizationsTable.id, orgId))
       .where(and(
         eq(desktopOfficePresenceTable.orgId, orgId),
-        eq(desktopOfficePresenceTable.room, "office"),
+        inArray(desktopOfficePresenceTable.room, ["office", "executive_suite"]),
         gte(desktopOfficePresenceTable.lastSeenAt, new Date(now.getTime() - 15_000)),
+        or(
+          isNotNull(orgMembersTable.userId),
+          eq(organizationsTable.ownerUserId, desktopOfficePresenceTable.userId),
+        ),
       ));
-    const people = rows.filter((person) =>
-      viewerIsManagement || !hasRoleAccess(person.role as OrgRole, "manager"))
-      .map((person) => ({
+    const people = rows.flatMap((person) => {
+      const role = person.role
+        ?? (person.orgOwnerUserId === person.userId ? "owner" : null);
+      if (!role || (!viewerIsManagement && hasRoleAccess(role as OrgRole, "manager"))) return [];
+      return [{
         userId: person.userId,
         name: [person.firstName, person.lastName].filter(Boolean).join(" ").trim()
           || person.username || "Employee",
-        role: person.role,
+        role,
         roomKey: person.roomKey,
         floorNumber: person.floorNumber,
         x: person.x,
@@ -682,7 +691,8 @@ router.get("/desktop-building/office-monitor", async (req, res): Promise<void> =
         action: person.action,
         avatarUrl: person.avatarUrl,
         lastSeenAt: person.lastSeenAt.toISOString(),
-      }));
+      }];
+    });
     res.json({
       orgId,
       observedAt: now.toISOString(),
