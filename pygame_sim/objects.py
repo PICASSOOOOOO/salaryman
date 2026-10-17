@@ -688,6 +688,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("lobby-receptionist", "receptionist", "MILA / RECEPTIONIST", "lobby", (49_978_250, 49_998_600), "BUSINESS SERVICES / CLASSIFIEDS"),
         OfficeObject("lobby-atm", "atm", "ATM", "lobby", (49_976_750, 50_000_800), "CHECK BANCO OMBRA"),
         OfficeObject("lobby-vending", "vending_machine", "VENDING", "lobby", (49_978_750, 50_000_800), "BUY OFFICE ASSETS"),
+        OfficeObject("lobby-reception-desk-phone", "telephone", "RECEPTION DESK PHONE", "lobby", (49_977_700, 49_999_200), "OPEN PHONE CENTER"),
         OfficeObject("lobby-pay-phone", "pay_phone", "PAY PHONE", "lobby", (49_976_200, 49_999_300), "OPEN COMMS"),
         OfficeObject("lobby-restroom-stall-1", "restroom_stall", "RESTROOM STALL", "lobby", (49_978_300, 50_002_200), "PRIVATE RESTROOM / RESTORE STAMINA"),
         OfficeObject("lobby-restroom-stall-2", "restroom_stall", "RESTROOM STALL", "lobby", (49_978_300, 50_001_600), "PRIVATE RESTROOM / RESTORE STAMINA"),

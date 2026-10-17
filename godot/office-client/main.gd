@@ -3263,7 +3263,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	native_app_panel.visible = not page.is_empty()
 	if page.is_empty():
 		last_native_app_page = ""
-		_sync_native_app_actions("")
+		_sync_native_app_actions("", "")
 		return
 	if page == "merchant" and last_native_app_page != "merchant":
 		ghost_dialogue_line = "You didn't see me. People rarely notice what they expect to find."
@@ -3384,7 +3384,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_body.text = (
 				"Public line · CALLL HOME and COMMS only.\nChoose a service; calls and messages require confirmation."
 				if is_pay_phone
-				else "Private workstation line · open CALLL HOME or COMMS.\nCalls and messages require confirmation."
+				else "Desk line · open the full CALLL HOME phone center or COMMS.\nCalls and messages require confirmation."
 			)
 			native_app_footer.text = "SELECT A SERVICE  ·  1/2 OR ESC CLOSE"
 		"reception":
@@ -3529,7 +3529,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_title.text = page_source.to_upper() if not page_source.is_empty() else page.to_upper()
 			native_app_body.text = location + "\n\nThis view is rendered by the game client."
 			native_app_footer.text = "ESC CLOSE"
-	_sync_native_app_actions(page)
+	_sync_native_app_actions(page, page_source)
 
 
 func _active_page_name() -> String:
@@ -3538,11 +3538,14 @@ func _active_page_name() -> String:
 	return "" if page_value == null else str(page_value)
 
 
-func _sync_native_app_actions(page: String) -> void:
+func _sync_native_app_actions(page: String, page_source: String) -> void:
 	var labels: Array[String] = []
 	match page:
 		"phone":
-			labels = ["CALLL HOME", "COMMS"]
+			if page_source.to_upper().contains("PAY PHONE"):
+				labels = ["CALLL HOME", "COMMS"]
+			else:
+				labels = ["OPEN PHONE CENTER", "COMMS"]
 		"reception":
 			labels = ["1  JOBS", "2  CONTRACTS", "3  REALTY"]
 		"systems":

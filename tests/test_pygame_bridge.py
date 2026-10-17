@@ -93,6 +93,49 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertFalse(no_link.ok)
         self.assertIn("LINK A GAME ACCOUNT", no_link.message)
 
+    def test_desk_telephone_opens_phone_page_and_enforces_proximity(self):
+        telephone = self.scene.objects.get("lobby-reception-desk-phone")
+        self.assertIsNotNone(telephone)
+        self.scene.player_position = telephone.position
+        interact = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "interact",
+            "payload": {"object_id": telephone.id},
+        }
+        opened = apply_command(interact, self.state, self.scene)
+        self.assertTrue(opened.ok)
+        self.assertEqual(self.state.active_page, "phone")
+        self.assertEqual(self.state.page_source, "DESK PHONE")
+
+        self.scene.player_position = (
+            telephone.position[0] + 5_000,
+            telephone.position[1],
+        )
+        service = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "phone_choice",
+            "payload": {"choice": 1},
+        }
+        too_far = apply_command(
+            service,
+            self.state,
+            self.scene,
+            SimpleNamespace(link=SimpleNamespace(server_url="https://salaryman.example")),
+        )
+        self.assertFalse(too_far.ok)
+        self.assertIn("MOVE BACK TO THE PHONE", too_far.message)
+
+        self.scene.player_position = telephone.position
+        building_sync = SimpleNamespace(
+            link=SimpleNamespace(server_url="https://salaryman.example")
+        )
+        with patch("pygame_sim.bridge.webbrowser.open", return_value=True) as open_url:
+            selected = apply_command(service, self.state, self.scene, building_sync)
+        self.assertTrue(selected.ok)
+        open_url.assert_called_once_with("https://salaryman.example/phone")
+
     def test_slow_client_keeps_only_the_latest_unsent_snapshot(self):
         class BlockedClient:
             def send(self, _data):
@@ -544,7 +587,7 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(requests, [("buy_vending", "vend_coffee")])
 
     def test_mila_menu_opens_only_the_selected_existing_service(self):
-        self.scene.player_position = (49_978_250, 49_998_600)
+        self.scene.player_position = self.scene.objects.get("lobby-receptionist").position
         self.state.open_page(
             "reception",
             from_object=True,
@@ -570,7 +613,7 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertIsNone(self.state.active_page)
 
     def test_mila_menu_rejects_invalid_choice_and_requires_link(self):
-        self.scene.player_position = (49_978_250, 49_998_600)
+        self.scene.player_position = self.scene.objects.get("lobby-receptionist").position
         command = {
             "type": "command",
             "version": PROTOCOL_VERSION,
