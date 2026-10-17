@@ -35,6 +35,12 @@ experience. Organizations may opt in to be featured on the game download page as
 a live, Twitch-like feed; feeds should be shareable and suitable for broadcasting
 on Twitch. Public promotion is opt-in at the organization level.
 
+Public featured feeds should use anonymous avatars and movement, include game
+sound effects and stereo music, and never expose sensitive messages or
+conversations. The camera should automatically follow characters with the most
+interaction, action, or fictional combat. SALARYMAN's office simulation is a free
+game and the monitor is intended to help browser users discover it.
+
 ## Where it renders (load-bearing)
 - The LIVE engine is `components/PixelOffice.tsx` (NOT pixel-office/LiveOffice).
   It already had the desk+capsule system; it just needs to be fed.
