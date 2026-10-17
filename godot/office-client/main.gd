@@ -3771,7 +3771,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 		native_app_title.add_theme_font_size_override("font_size", 18)
 		native_app_body.add_theme_font_size_override("font_size", 14)
 		native_app_footer.add_theme_font_size_override("font_size", 12)
-		native_app_body.text = "SALARYMAN // FEATURE BRIDGE PLACEHOLDER\n> " + native_app_body.text.replace("\n", "\n> ")
+		native_app_body.text = feature_panel_command_text(native_app_body.text)
 		native_app_footer.text = "> " + native_app_footer.text
 		_apply_native_app_frame_template(page, page_source, office, scene_data)
 		_prepare_native_typewriter(page)
@@ -3810,6 +3810,10 @@ static func feature_panel_uses_command_style(page: String) -> bool:
 		"office_builder_simulation",
 		"simulation_customization",
 	].has(normalized_page)
+
+
+static func feature_panel_command_text(body: String) -> String:
+	return "> " + body.replace("\n", "\n> ")
 
 
 static func feature_panel_template_for(page: String, object_kind: String) -> String:

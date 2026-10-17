@@ -102,6 +102,10 @@ func _run_tests() -> void:
 	assert(OfficeClient.feature_panel_template_for("economy", "atm") == "finance")
 	assert(OfficeClient.feature_panel_template_for("utility_work", "") == "operations")
 	assert(OfficeClient.feature_panel_template_for("customize", "terminal") == "plain")
+	assert(
+		OfficeClient.feature_panel_command_text("CONNECTED\nChoose an action")
+		== "> CONNECTED\n> Choose an action"
+	)
 	var floor_style_keys := {}
 	var floor_colors := {}
 	for floor_number in range(1, 13):
