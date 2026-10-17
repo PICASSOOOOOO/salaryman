@@ -2603,6 +2603,32 @@ func _tower_floor_status(floor_number: int) -> String:
 	return "under_construction"
 
 
+static func staircase_construction_notice(status_name: String, statuses: Dictionary) -> String:
+	var floor_ranges := PackedStringArray()
+	for raw_range in statuses.keys():
+		var range_key := str(raw_range)
+		if range_key == "basement" or str(statuses[raw_range]) != status_name:
+			continue
+		var endpoints := range_key.split("-", false)
+		if endpoints.is_empty() or endpoints.size() > 2:
+			continue
+		var first_floor := int(endpoints[0])
+		var last_floor := first_floor
+		if endpoints.size() == 2:
+			last_floor = int(endpoints[1])
+		if first_floor < 1 or last_floor < first_floor:
+			continue
+		if first_floor == last_floor:
+			floor_ranges.append("FLOOR %02d" % first_floor)
+		else:
+			floor_ranges.append("FLOORS %02d–%02d" % [first_floor, last_floor])
+	floor_ranges.sort()
+	if floor_ranges.is_empty():
+		return "TOWER ACCESS STATUS UNAVAILABLE"
+	var heading := "CONSTRUCTION IN PROGRESS" if status_name == "construction_open" else "UNDER CONSTRUCTION"
+	return heading + "\n" + ", ".join(floor_ranges)
+
+
 func _refresh_elevator_floor_label() -> void:
 	if elevator_floor_label != null:
 		elevator_floor_label.text = "> FLOOR %02d" % selected_elevator_floor
@@ -2940,9 +2966,9 @@ func _build_staircase(position: Vector3, object_id: String) -> MeshInstance3D:
 	locked_gate.add_child(gate_visual)
 	var landing_notice := Label3D.new()
 	landing_notice.name = object_id + "-construction-sign"
-	landing_notice.text = "UNDER CONSTRUCTION\nBASEMENT + FLOORS 02–05" \
-		if object_id.begins_with("lobby") \
-else "UNDER CONSTRUCTION\nFLOORS 08–67"
+	var statuses: Dictionary = floor_plan_data.get("floorBuildStatus", {})
+	var construction_status := "construction_open" if object_id.begins_with("lobby") else "under_construction"
+	landing_notice.text = staircase_construction_notice(construction_status, statuses)
 	landing_notice.font_size = 28
 	landing_notice.pixel_size = 0.006
 	landing_notice.position = position + Vector3(0.0, 2.45, 0.58)

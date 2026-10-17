@@ -211,6 +211,18 @@ func _run_tests() -> void:
 		assert(client._tower_floor_status(floor_number) == "open")
 	assert(client._tower_floor_status(13) == "under_construction")
 	assert(client._tower_floor_status(67) == "under_construction")
+	assert(
+		OfficeClient.staircase_construction_notice("construction_open", floor_plan["floorBuildStatus"])
+		== "CONSTRUCTION IN PROGRESS\nFLOORS 02–05"
+	)
+	assert(
+		OfficeClient.staircase_construction_notice("under_construction", floor_plan["floorBuildStatus"])
+		== "UNDER CONSTRUCTION\nFLOORS 13–67"
+	)
+	assert(
+		OfficeClient.staircase_construction_notice("missing", {})
+		== "TOWER ACCESS STATUS UNAVAILABLE"
+	)
 	client.elevator_floor_panel = ColorRect.new()
 	client.elevator_floor_panel.visible = true
 	client.selected_elevator_floor = 1
