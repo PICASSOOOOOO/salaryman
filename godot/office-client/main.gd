@@ -83,6 +83,12 @@ var native_app_title: Label
 var native_app_body: Label
 var native_app_footer: Label
 var native_app_accent: ColorRect
+var native_app_frame: Panel
+var native_app_inner_frame: Panel
+var native_app_frame_rail: ColorRect
+var native_app_template_label: Label
+var native_app_object_label: Label
+var native_app_header_rule: ColorRect
 var native_app_action_grid: GridContainer
 var feature_command_font: Font
 var last_native_app_page := ""
@@ -1585,6 +1591,36 @@ func _build_interface() -> void:
 	native_app_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	interface_root.add_child(native_app_panel)
 
+	native_app_frame = Panel.new()
+	native_app_frame.position = Vector2.ZERO
+	native_app_frame.size = native_app_panel.size
+	native_app_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var frame_box := StyleBoxFlat.new()
+	frame_box.bg_color = Color(0, 0, 0, 0)
+	frame_box.border_color = Color("#3bff79")
+	frame_box.set_border_width_all(1)
+	native_app_frame.add_theme_stylebox_override("panel", frame_box)
+	native_app_panel.add_child(native_app_frame)
+
+	native_app_inner_frame = Panel.new()
+	native_app_inner_frame.position = Vector2(7, 7)
+	native_app_inner_frame.size = native_app_panel.size - Vector2(14, 14)
+	native_app_inner_frame.visible = false
+	native_app_inner_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var inner_frame_box := StyleBoxFlat.new()
+	inner_frame_box.bg_color = Color(0, 0, 0, 0)
+	inner_frame_box.border_color = Color("#328c4e")
+	inner_frame_box.set_border_width_all(1)
+	native_app_inner_frame.add_theme_stylebox_override("panel", inner_frame_box)
+	native_app_panel.add_child(native_app_inner_frame)
+
+	native_app_frame_rail = ColorRect.new()
+	native_app_frame_rail.position = Vector2(9, 18)
+	native_app_frame_rail.size = Vector2(3, 300)
+	native_app_frame_rail.visible = false
+	native_app_frame_rail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	native_app_panel.add_child(native_app_frame_rail)
+
 	native_app_panel.pivot_offset = native_app_panel.size * 0.5
 	native_app_accent = ColorRect.new()
 	native_app_accent.color = Color("#f8b957")
@@ -1600,8 +1636,32 @@ func _build_interface() -> void:
 	native_app_title.add_theme_color_override("font_color", Color("#eff8df"))
 	native_app_panel.add_child(native_app_title)
 
+	native_app_template_label = Label.new()
+	native_app_template_label.position = Vector2(28, 56)
+	native_app_template_label.size = Vector2(280, 16)
+	native_app_template_label.add_theme_font_size_override("font_size", 11)
+	native_app_template_label.add_theme_color_override("font_color", Color("#75ffa0"))
+	native_app_template_label.add_theme_font_override("font", feature_command_font)
+	native_app_panel.add_child(native_app_template_label)
+
+	native_app_object_label = Label.new()
+	native_app_object_label.position = Vector2(315, 56)
+	native_app_object_label.size = Vector2(237, 16)
+	native_app_object_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	native_app_object_label.add_theme_font_size_override("font_size", 11)
+	native_app_object_label.add_theme_color_override("font_color", Color("#75ffa0"))
+	native_app_object_label.add_theme_font_override("font", feature_command_font)
+	native_app_panel.add_child(native_app_object_label)
+
+	native_app_header_rule = ColorRect.new()
+	native_app_header_rule.position = Vector2(28, 75)
+	native_app_header_rule.size = Vector2(524, 1)
+	native_app_header_rule.color = Color("#287b42")
+	native_app_header_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	native_app_panel.add_child(native_app_header_rule)
+
 	native_app_body = Label.new()
-	native_app_body.position = Vector2(28, 78)
+	native_app_body.position = Vector2(28, 82)
 	native_app_body.size = Vector2(524, 215)
 	native_app_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	native_app_body.add_theme_font_size_override("font_size", 16)
@@ -3585,8 +3645,15 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 		native_app_footer.add_theme_font_size_override("font_size", 12)
 		native_app_body.text = "SALARYMAN // FEATURE BRIDGE PLACEHOLDER\n> " + native_app_body.text.replace("\n", "\n> ")
 		native_app_footer.text = "> " + native_app_footer.text
+		_apply_native_app_frame_template(page, page_source, office, scene_data)
 		_prepare_native_typewriter(page)
 	else:
+		native_app_frame.visible = false
+		native_app_inner_frame.visible = false
+		native_app_frame_rail.visible = false
+		native_app_template_label.visible = false
+		native_app_object_label.visible = false
+		native_app_header_rule.visible = false
 		native_app_body.visible_characters = -1
 		native_typewriter_page = page
 		native_typewriter_active = false
@@ -3615,6 +3682,101 @@ static func feature_panel_uses_command_style(page: String) -> bool:
 		"office_builder_simulation",
 		"simulation_customization",
 	].has(normalized_page)
+
+
+static func feature_panel_template_for(page: String, object_kind: String) -> String:
+	var normalized_page := page.strip_edges().to_lower().replace("-", "_").replace(" ", "_")
+	var normalized_kind := object_kind.strip_edges().to_lower().replace("-", "_").replace(" ", "_")
+	if not feature_panel_uses_command_style(normalized_page):
+		return "plain"
+	if normalized_page == "phone" or normalized_kind in ["pay_phone", "telephone", "desk_phone"]:
+		return "communications"
+	if normalized_page == "systems" or normalized_kind == "crt_terminal":
+		return "terminal"
+	if normalized_page == "reception" or normalized_kind == "receptionist":
+		return "services"
+	if normalized_page in ["vending", "business_stock", "inventory"] or normalized_kind == "vending_machine":
+		return "supply"
+	if normalized_page == "economy" or normalized_kind == "atm":
+		return "finance"
+	if normalized_page in ["tools", "utility_work", "pest_jobs", "pest_uniform", "melee"]:
+		return "operations"
+	return "field"
+
+
+func _focused_feature_object(office: Dictionary, scene_data: Dictionary) -> Dictionary:
+	var object_id := str(office.get("activeObjectId", ""))
+	if object_id.is_empty():
+		object_id = str(scene_data.get("cameraFocusObjectId", ""))
+	var objects: Variant = scene_data.get("objects", [])
+	if objects is Array:
+		for object_value in objects:
+			if object_value is Dictionary and str(object_value.get("id", "")) == object_id:
+				return object_value
+		for object_value in objects:
+			if object_value is Dictionary and bool(object_value.get("nearby", false)):
+				return object_value
+	return {}
+
+
+func _apply_native_app_frame_template(
+	page: String,
+	page_source: String,
+	office: Dictionary,
+	scene_data: Dictionary,
+) -> void:
+	var focused_object := _focused_feature_object(office, scene_data)
+	var object_kind := str(focused_object.get("kind", ""))
+	var template := feature_panel_template_for(page, object_kind)
+	var frame_labels := {
+		"communications": "COMMS // LINK",
+		"terminal": "DATA // TERMINAL",
+		"services": "SERVICES // DESK",
+		"supply": "SUPPLY // INVENTORY",
+		"finance": "FINANCE // ACCOUNT",
+		"operations": "OPERATIONS // FIELD",
+		"field": "FIELD DEVICE // FEATURE",
+	}
+	var template_color := Color("#75ffa0")
+	var frame_box := native_app_frame.get_theme_stylebox("panel") as StyleBoxFlat
+	var inner_box := native_app_inner_frame.get_theme_stylebox("panel") as StyleBoxFlat
+	frame_box.border_color = template_color
+	frame_box.set_border_width_all(2 if template == "terminal" else 1)
+	inner_box.border_color = Color("#328c4e")
+	inner_box.set_border_width_all(1)
+
+	native_app_frame.visible = true
+	native_app_inner_frame.visible = template in ["terminal", "finance"]
+	native_app_frame_rail.visible = template in ["communications", "supply", "operations"]
+	native_app_frame_rail.color = template_color
+	native_app_frame_rail.position = Vector2(
+		9 if template != "supply" else 568,
+		18,
+	)
+	native_app_frame_rail.size = Vector2(3 if template != "operations" else 5, 300)
+	native_app_template_label.visible = true
+	native_app_template_label.text = str(frame_labels.get(template, "FIELD DEVICE // FEATURE"))
+	native_app_object_label.visible = true
+	var object_label := str(focused_object.get("label", ""))
+	if object_label.is_empty():
+		object_label = page_source if not page_source.is_empty() else page.to_upper()
+	object_label = object_label.strip_edges().to_upper()
+	if object_label.length() > 26:
+		object_label = object_label.substr(0, 25) + "…"
+	native_app_object_label.text = "OBJECT // " + object_label
+	native_app_header_rule.visible = true
+	native_app_header_rule.color = Color("#287b42")
+
+	var accent_widths := {
+		"communications": 420.0,
+		"terminal": 580.0,
+		"services": 470.0,
+		"supply": 520.0,
+		"finance": 580.0,
+		"operations": 500.0,
+		"field": 430.0,
+	}
+	native_app_accent.size.x = float(accent_widths.get(template, 430.0))
 
 
 func _prepare_native_typewriter(page: String) -> void:
