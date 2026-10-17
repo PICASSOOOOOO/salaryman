@@ -3059,6 +3059,16 @@ static func door_swing_angle(is_open: bool) -> float:
 	return -1.45 if is_open else 0.0
 
 
+static func elevator_indicator_text(room_id: String, floor_number: int, basement_level: int) -> String:
+	if room_id.begins_with("basement_b"):
+		var room_level := int(room_id.trim_prefix("basement_b"))
+		var displayed_level := room_level if room_level > 0 else basement_level
+		return "B%d" % clampi(displayed_level, 1, 6)
+	if basement_level > 0 and room_id.is_empty():
+		return "B%d" % clampi(basement_level, 1, 6)
+	return "%02d" % maxi(floor_number, 1)
+
+
 static func lobby_render_origin_from_plan(
 	lobby_bounds: Array,
 	main_hall: Array,
@@ -3107,6 +3117,28 @@ func _sync_door_states(objects: Array) -> void:
 		tween.tween_property(pivot, "rotation:y", door_swing_angle(is_open), 0.18)
 
 
+func _sync_elevator_floor_indicators(scene_data: Dictionary) -> void:
+	var objects: Variant = scene_data.get("objects", [])
+	if not objects is Array:
+		return
+	var label := elevator_indicator_text(
+		str(scene_data.get("room", "")),
+		int(scene_data.get("floor", 1)),
+		int(scene_data.get("basementLevel", 0)),
+	)
+	for value in objects:
+		if not value is Dictionary:
+			continue
+		var object: Dictionary = value
+		if str(object.get("kind", "")) not in ["elevator", "service_elevator"]:
+			continue
+		var indicator := dynamic_root.get_node_or_null(
+			NodePath(str(object.get("id", "")) + "-floor-display-text")
+		) as Label3D
+		if indicator != null:
+			indicator.text = label
+
+
 func _build_elevator_visual(position: Vector3, object_id: String) -> MeshInstance3D:
 	var opening_position := position + Vector3(0.0, 0.0, 0.18)
 	_add_box_to_dynamic(
@@ -3121,6 +3153,16 @@ func _build_elevator_visual(position: Vector3, object_id: String) -> MeshInstanc
 		Vector3(0.38, 0.16, 0.06),
 		materials["crt_screen"],
 	)
+	var floor_display := Label3D.new()
+	floor_display.name = object_id + "-floor-display-text"
+	floor_display.text = "--"
+	floor_display.font_size = 28
+	floor_display.pixel_size = 0.005
+	floor_display.position = opening_position + Vector3(0.0, 2.55, 0.105)
+	floor_display.modulate = Color("#8dffb0")
+	floor_display.outline_size = 6
+	floor_display.outline_modulate = Color("#07151a")
+	dynamic_root.add_child(floor_display)
 	_add_box_to_dynamic(
 		object_id + "-frame-left",
 		opening_position + Vector3(-0.84, 1.22, 0.0),
@@ -3318,6 +3360,7 @@ func _update_hud() -> void:
 	var office: Dictionary = snapshot.get("office", {})
 	var room_id := str(scene_data.get("room", "waiting for bridge"))
 	var floor_number := int(scene_data.get("floor", 1))
+	_sync_elevator_floor_indicators(scene_data)
 	var playable: Dictionary = floor_plan_data.get("playableFloors", {})
 	var floor_stop: Dictionary = playable.get(str(floor_number), {})
 	var room_name := room_id.replace("_", " ").to_upper()

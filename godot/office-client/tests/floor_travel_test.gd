@@ -179,6 +179,11 @@ func _run_tests() -> void:
 		assert(tone.data.size() > 0)
 	assert(is_equal_approx(OfficeClient.door_swing_angle(false), 0.0))
 	assert(is_equal_approx(OfficeClient.door_swing_angle(true), -1.45))
+	assert(OfficeClient.elevator_indicator_text("lobby", 1, 0) == "01")
+	assert(OfficeClient.elevator_indicator_text("recreation", 6, 0) == "06")
+	assert(OfficeClient.elevator_indicator_text("basement_b4", 1, 2) == "B4")
+	assert(OfficeClient.elevator_indicator_text("", 1, 3) == "B3")
+	assert(OfficeClient.elevator_indicator_text("", 0, 0) == "01")
 	for kind in [
 		"fire_extinguisher", "temple_tree", "reflection_screen", "meditation_cushion",
 		"temple_audio_control", "chapel_pew", "chapel_altar", "library_shelf",
@@ -246,9 +251,22 @@ func _run_tests() -> void:
 
 	client.dynamic_root = Node3D.new()
 	root.add_child(client.dynamic_root)
+	for material_name in ["wall", "crt_screen", "wall_trim", "metal", "lamp_glow"]:
+		client.materials[material_name] = StandardMaterial3D.new()
+	client._build_elevator_visual(Vector3.ZERO, "test-elevator")
+	var elevator_indicator := client.dynamic_root.get_node_or_null(
+		"test-elevator-floor-display-text"
+	) as Label3D
+	assert(elevator_indicator != null)
+	client._sync_elevator_floor_indicators({
+		"room": "basement_b4",
+		"floor": 1,
+		"basementLevel": 2,
+		"objects": [{"kind": "service_elevator", "id": "test-elevator"}],
+	})
+	assert(elevator_indicator.text == "B4")
 	client.materials["door"] = StandardMaterial3D.new()
 	client.materials["door_glass"] = StandardMaterial3D.new()
-	client.materials["metal"] = StandardMaterial3D.new()
 	var door: Node3D = client._build_door_visual(Vector3.ZERO, "test-door")
 	assert(door.get_node_or_null("DoorPivot/DoorLeaf") is MeshInstance3D)
 	assert(door.get_node_or_null("DoorPivot/DoorWindow") is MeshInstance3D)
