@@ -106,6 +106,7 @@
 - [Cross-client economy](cross-client-economy.md) — desktop/browser game FIAT shares server ledgers; browser Credits are distinct from FIAT and GOLD and remain a separate service-use balance.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
+- [Employee wellbeing + time off](employee-wellbeing-time-off.md) — Player fatigue should encourage world play; office/org wellbeing should lead to retreat and vacation options.
 - [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Use managed GPT/Claude fallback; keep health probes provider-strict and navigation server-owned.
 - [Paid custom phone numbers](paid-custom-phone-numbers.md) — CALLL HOME is fixed; internal employee calls reuse client identities and assigned office lines, never extra numbers.
 - [Replit session identity bridge](replit-session-identity-bridge.md) — Match OIDC callbacks to local users by email before creating another identity.
