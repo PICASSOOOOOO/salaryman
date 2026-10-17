@@ -46,6 +46,10 @@ function timeLabel(value: string | null) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function roomLabel(roomKey: string) {
+  return roomKey.endsWith(":suite") ? "Executive suite" : "Organization office";
+}
+
 export default function OfficeMonitor() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [snapshot, setSnapshot] = useState<OfficeSnapshot | null>(null);
@@ -326,7 +330,7 @@ export default function OfficeMonitor() {
                 </div>
                 <dl className="om-facts">
                   <div><dt>Floor</dt><dd>{selected.floorNumber}</dd></div>
-                  <div><dt>Room</dt><dd>{selected.roomKey}</dd></div>
+                  <div><dt>Room</dt><dd>{roomLabel(selected.roomKey)}</dd></div>
                   <div><dt>Position</dt><dd>{Math.round(selected.x).toLocaleString()} / {Math.round(selected.y).toLocaleString()}</dd></div>
                   <div><dt>Action</dt><dd>{selected.action || "—"}</dd></div>
                   <div><dt>Last seen</dt><dd>{timeLabel(selected.lastSeenAt)}</dd></div>

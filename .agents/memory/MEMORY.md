@@ -141,6 +141,7 @@
 - [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
 - [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
+- [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is Dec 31, 2026; defer pledge offers until the asset catalog is decided and keep the base game free.
 - [Packaged game capture](desktop-game-capture.md) — on virtual Linux displays, XWD may return black for Godot/OpenGL; use the paired game's Movie Writer and verify input effects.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
 - [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.

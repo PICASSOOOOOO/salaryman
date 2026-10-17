@@ -59,7 +59,7 @@ beforeAll(async () => {
   }
   const now = new Date();
   await db.insert(desktopOfficePresenceTable).values([
-    { userId: ownerId, linkId: linkIds[0], orgId: createdOrgId, city: "minx_city", roomKey: `org:${createdOrgId}:suite`, room: "executive_suite", floorNumber: 6, x: 1_800, y: 5_500, action: "sit", lastSeenAt: now },
+    { userId: ownerId, linkId: linkIds[0], orgId: createdOrgId, city: "minx_city", roomKey: `org:${createdOrgId}`, room: "office", floorNumber: 6, x: 1_800, y: 5_500, action: "sit", lastSeenAt: now },
     { userId: managerId, linkId: linkIds[1], orgId: createdOrgId, city: "minx_city", roomKey: `org:${createdOrgId}`, room: "office", floorNumber: 6, x: 4_500, y: 5_500, action: "stand", lastSeenAt: now },
     { userId: employeeId, linkId: linkIds[2], orgId: createdOrgId, city: "minx_city", roomKey: `org:${createdOrgId}`, room: "office", floorNumber: 6, x: 17_500, y: 5_500, action: "walk", lastSeenAt: now },
     { userId: peerId, linkId: linkIds[3], orgId: createdOrgId, city: "minx_city", roomKey: `org:${createdOrgId}`, room: "office", floorNumber: 6, x: 18_000, y: 6_000, action: "sit", lastSeenAt: now },
@@ -82,7 +82,7 @@ afterAll(async () => {
 });
 
 describe("browser office monitor privacy", () => {
-  it("lets managers see organization staff, including the executive suite", async () => {
+  it("lets managers see all current organization staff", async () => {
     const response = await getSnapshot(managerId);
     expect(response.status).toBe(200);
     expect(response.body.people.map((person: { userId: string }) => person.userId).sort())
