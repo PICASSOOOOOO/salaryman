@@ -1,14 +1,39 @@
 ---
-name: Office bot monitoring (in-floor)
-description: where bot monitoring lives in /office, the capsule/awake rule, the engine that renders it, and why screenshots don't show it
+name: Browser office monitor and in-floor bots
+description: The new browser-only supervisory monitor, privacy boundaries, and existing in-floor bot rendering rules.
 ---
 
-# Office bot monitoring — in the walkable floor
+# Office monitoring and in-floor bots
 
-Owner picked the IN-FLOOR approach over a DOM dashboard: bots physically lie in
-cryo-capsules on the game floor and stand at desks when activated. The separate
-DOM `mode=monitor` split-window dashboard (component `OfficeMonitor.tsx`) was
-REMOVED — `/office` modes are back to LIVE / CCTV only.
+The owner later requested a detachable, browser-only, read-only office monitor,
+overriding the earlier decision to remove the separate DOM monitor. It must not
+expose game controls or the game HUD. It should show coworker avatars and their
+physical office activity, be usable on mobile and desktop, and only show people
+the viewer is authorized to see. Managers can monitor lower-level staff; lower
+employees can see peers but not management. Enforce this on the server, not only
+in the browser.
+
+Keep the professional browser surface free of game-economy clutter. Credits and
+USD payroll figures must remain clearly separate; per-minute salary activity is
+real-time in browser and game clients. A terminal catalog is also desired:
+department-focused terminals and more expensive all-in-one models, including an
+automation terminal/section for hiring in-game bots or NPCs that operate across
+browser and game experiences.
+
+The existing in-floor bot rule remains: bots physically use desks and cryo
+capsules in the game office; the browser monitor is a separate supervision
+surface, not a replacement for those game characters.
+
+The owner clarified that the game office and browser monitor must be an exact
+live feed of the same state, not two simulations. Game movement/actions are
+authoritative; the browser monitor subscribes read-only and mirrors those
+updates, with role/privacy filtering applied before data reaches a viewer.
+
+The live monitor should also promote the downloadable office simulation: browser-
+only users can watch game-side activity, while the game remains the interactive
+experience. Organizations may opt in to be featured on the game download page as
+a live, Twitch-like feed; feeds should be shareable and suitable for broadcasting
+on Twitch. Public promotion is opt-in at the organization level.
 
 ## Where it renders (load-bearing)
 - The LIVE engine is `components/PixelOffice.tsx` (NOT pixel-office/LiveOffice).

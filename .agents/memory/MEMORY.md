@@ -41,7 +41,7 @@
 - [IsoOffice isometric renderer](iso-office-renderer.md) — `/office` uses IsoOffice; inspect gated pages with a temporary non-lazy early return, then revert it.
 - [Office surveillance embed mode](office-embed-mode.md) — Detect embed mode from frame context because redirects can strip `?embed=1`.
 - [Office consolidation](office-consolidation.md) — Keep one `/office` route with URL-driven surveillance; legacy routes redirect and `/my-office` remains separate.
-- [Office bot monitoring (in-floor)](office-monitor.md) — Active bots use desks and inactive bots use floor capsules; avoid a separate DOM monitor.
+- [Browser office monitor and in-floor bots](office-monitor.md) — A detachable, read-only browser monitor uses role-based visibility; game bots still occupy desks or capsules in-floor.
 - [Audio MUSIC vs AMBIANCE](audio-music-vs-ambiance.md) — MUSIC is radio; AMBIANCE is procedural score and must be muted at transport.
 - [In-building pest danger audio](in-building-pest-danger-audio.md) — Basement pests are nonlethal; danger music fades by proximity and only overrides placed radios.
 - [Object ACL disabled posture](object-acl-disabled-posture.md) — Object reads are path-protected; new routes must allow objects without policies.

@@ -56,6 +56,7 @@ import {
 } from "../lib/desktop-building-objects";
 import { hasTowerStaffAssignment, TOWER_STAFF_ROLES } from "../lib/tower-staff-access";
 import { spendPlayerStamina } from "../lib/desktop-player-stamina";
+import { broadcastOfficePresence } from "../chatServer";
 
 const router = Router();
 router.use(desktopConstructionRouter);
@@ -614,6 +615,89 @@ router.get("/desktop-building/snapshot", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/desktop-building/office-monitor", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated?.() || !req.user?.id) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const userId = String(req.user.id);
+  try {
+    const orgId = await resolveCurrentOrgId(userId);
+    if (orgId == null) {
+      res.status(403).json({ error: "Join an organization to view its office monitor" });
+      return;
+    }
+    const [org] = await db.select({ ownerUserId: organizationsTable.ownerUserId })
+      .from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+    const [membership] = await db.select({
+      role: orgMembersTable.role,
+      status: orgMembersTable.status,
+    }).from(orgMembersTable).where(and(
+      eq(orgMembersTable.orgId, orgId),
+      eq(orgMembersTable.userId, userId),
+    )).limit(1);
+    if (org?.ownerUserId !== userId && membership?.status !== "active") {
+      res.status(403).json({ error: "Active organization membership is required" });
+      return;
+    }
+    const viewerRole = org?.ownerUserId === userId ? "owner" : membership!.role as OrgRole;
+    const viewerIsManagement = hasRoleAccess(viewerRole, "manager");
+    const now = new Date();
+    const rows = await db.select({
+      userId: desktopOfficePresenceTable.userId,
+      roomKey: desktopOfficePresenceTable.roomKey,
+      floorNumber: desktopOfficePresenceTable.floorNumber,
+      x: desktopOfficePresenceTable.x,
+      y: desktopOfficePresenceTable.y,
+      action: desktopOfficePresenceTable.action,
+      lastSeenAt: desktopOfficePresenceTable.lastSeenAt,
+      role: orgMembersTable.role,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      username: usersTable.username,
+      avatarUrl: usersTable.profileImageUrl,
+    }).from(desktopOfficePresenceTable)
+      .innerJoin(orgMembersTable, and(
+        eq(orgMembersTable.orgId, desktopOfficePresenceTable.orgId),
+        eq(orgMembersTable.userId, desktopOfficePresenceTable.userId),
+        eq(orgMembersTable.status, "active"),
+      ))
+      .innerJoin(usersTable, eq(usersTable.id, desktopOfficePresenceTable.userId))
+      .where(and(
+        eq(desktopOfficePresenceTable.orgId, orgId),
+        eq(desktopOfficePresenceTable.room, "office"),
+        gte(desktopOfficePresenceTable.lastSeenAt, new Date(now.getTime() - 15_000)),
+      ));
+    const people = rows.filter((person) =>
+      viewerIsManagement || !hasRoleAccess(person.role as OrgRole, "manager"))
+      .map((person) => ({
+        userId: person.userId,
+        name: [person.firstName, person.lastName].filter(Boolean).join(" ").trim()
+          || person.username || "Employee",
+        role: person.role,
+        roomKey: person.roomKey,
+        floorNumber: person.floorNumber,
+        x: person.x,
+        y: person.y,
+        action: person.action,
+        avatarUrl: person.avatarUrl,
+        lastSeenAt: person.lastSeenAt.toISOString(),
+      }));
+    res.json({
+      orgId,
+      observedAt: now.toISOString(),
+      people,
+      permissions: {
+        canViewManagement: viewerIsManagement,
+        canViewPeers: true,
+      },
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Browser office monitor snapshot failed");
+    res.status(500).json({ error: "Could not load the office monitor" });
+  }
+});
+
 router.post("/desktop-building/presence", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
@@ -807,6 +891,19 @@ router.post("/desktop-building/presence", async (req, res): Promise<void> => {
     if (presenceValidationError) {
       res.status(409).json({ error: presenceValidationError });
       return;
+    }
+    const presenceOrgId = ownOffice?.orgId ?? currentOrgId;
+    if (room === "office" && presenceOrgId != null) {
+      await broadcastOfficePresence({
+        orgId: presenceOrgId,
+        userId: link.userId,
+        roomKey,
+        floorNumber,
+        x,
+        y,
+        action,
+        observedAt: now.toISOString(),
+      });
     }
     res.json({ ok: true, observedAt: now.toISOString(), roomKey, workPresence: isWorkPresence });
   } catch (error) {

@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage, Server } from 'http';
-import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
+import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable, hasRoleAccess, type OrgRole } from '@workspace/db';
 import { eq, and, sql, asc } from 'drizzle-orm';
 import { resolveChatAttachment, type ResolvedAttachment } from './lib/chat-attachments';
 import { resolveWebSocketUser } from './lib/replit-websocket-auth';
@@ -294,6 +294,48 @@ export function broadcastLeadEvent(orgId: number, event: { type: string; [key: s
   const serialized = JSON.stringify({ ...event, _channel: 'leads' });
   for (const client of clientsByOrg.get(orgId) ?? []) {
     sendSerialized(client.ws, serialized);
+  }
+}
+
+/**
+ * Fan out authoritative office movement through the authenticated org socket.
+ * Management movement is only visible to management; staff movement is visible
+ * to active org coworkers and management. Never trust a browser-supplied role.
+ */
+export async function broadcastOfficePresence(event: {
+  orgId: number;
+  userId: string;
+  roomKey: string;
+  floorNumber: number;
+  x: number;
+  y: number;
+  action: string;
+  observedAt: string;
+}) {
+  const [org] = await db.select({ ownerUserId: organizationsTable.ownerUserId })
+    .from(organizationsTable).where(eq(organizationsTable.id, event.orgId)).limit(1);
+  const members = await db.select({
+    userId: orgMembersTable.userId,
+    role: orgMembersTable.role,
+  }).from(orgMembersTable).where(and(
+    eq(orgMembersTable.orgId, event.orgId),
+    eq(orgMembersTable.status, 'active'),
+  ));
+  const roles = new Map<string, OrgRole>(members.map((member) => [
+    member.userId,
+    member.role as OrgRole,
+  ]));
+  if (org?.ownerUserId) roles.set(org.ownerUserId, 'owner');
+  const actorRole = roles.get(event.userId);
+  if (!actorRole) return;
+  const actorIsManagement = hasRoleAccess(actorRole, 'manager');
+  const payload = JSON.stringify({ type: 'office_presence', ...event });
+  for (const client of clientsByOrg.get(event.orgId) ?? []) {
+    const viewerRole = roles.get(client.userId);
+    if (!viewerRole) continue;
+    const viewerIsManagement = hasRoleAccess(viewerRole, 'manager');
+    if (actorIsManagement && !viewerIsManagement) continue;
+    sendSerialized(client.ws, payload);
   }
 }
 
