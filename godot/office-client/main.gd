@@ -8,6 +8,7 @@ extends Node3D
 const PROTOCOL_VERSION := 1
 const PlayerController = preload("res://player_controller.gd")
 const OfficeProp = preload("res://office_prop.gd")
+const ArcadeProp = preload("res://office_arcade_prop.gd")
 const ServiceProp = preload("res://office_service_prop.gd")
 const TowerExteriorWorld = preload("res://exterior_world.gd")
 const HOST := "127.0.0.1"
@@ -2316,6 +2317,11 @@ collision_extents: Array = [],
 		return _build_floor_sign(position, object_id)
 	if kind == "crt_terminal":
 		return _build_crt_terminal(position, object_id)
+	if kind == "arcade":
+		var arcade := ArcadeProp.create(object_id, label)
+		arcade.position = position
+		dynamic_root.add_child(arcade)
+		return arcade
 	if kind == "business_suite" or kind == "business_kiosk":
 		return _build_business_prop(kind, position, object_id, label)
 	if kind == "yard_gate":
@@ -2346,7 +2352,7 @@ collision_extents: Array = [],
 				materials["wall_trim"],
 			)
 		return _add_box_to_dynamic(object_id, position + Vector3(0.0, 1.1, 0.0), partition_size, materials["wall_trim"])
-	elif kind == "tv" or kind == "arcade":
+	elif kind == "tv":
 		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
 

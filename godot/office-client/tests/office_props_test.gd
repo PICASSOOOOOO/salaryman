@@ -3,6 +3,7 @@ extends SceneTree
 const Prop = preload("res://office_prop.gd")
 const Service = preload("res://office_service_prop.gd")
 const Client = preload("res://main.gd")
+const ArcadeProp = preload("res://office_arcade_prop.gd")
 var failures := 0
 
 
@@ -52,6 +53,23 @@ func _run() -> void:
 	var vending := Service.create_service("vending_machine")
 	check(vending.has_node("PickupHatchPivot"), "Vending hatch must remain independently animatable")
 	vending.free()
+	var arcade_ids := [
+		"arcade-cyber-serpent",
+		"arcade-void-invaders",
+		"arcade-barrel-runner",
+		"arcade-neon-breaker",
+	]
+	var arcade_accents := {}
+	for arcade_id in arcade_ids:
+		var arcade := ArcadeProp.create(arcade_id, arcade_id.trim_prefix("arcade-").replace("-", " ").to_upper())
+		check(arcade.has_node("CabinetBody"), "Arcade must have a full cabinet")
+		check(arcade.has_node("GameTitle"), "Arcade must show its game title")
+		check(arcade.has_node("ScreenField"), "Arcade must have a distinct screen")
+		check(arcade.has_node("JoystickKnob"), "Arcade must have player controls")
+		check(arcade.get_node("GameTitle").text != "", "Arcade title cannot be blank")
+		arcade_accents[arcade.get_node("MarqueeFace").mesh.material.albedo_color] = true
+		arcade.free()
+	check(arcade_accents.size() == 4, "Each approved arcade must have a distinct cabinet accent")
 	check(Client.museum_case_variant("floor-12-interior-prop-12") == 0, "First museum case must select exhibit one")
 	check(Client.museum_case_variant("floor-12-interior-prop-13") == 1, "Second museum case must select exhibit two")
 	check(Client.museum_case_variant("floor-12-interior-prop-14") == 2, "Third museum case must select exhibit three")
@@ -68,6 +86,14 @@ func _run() -> void:
 	var client := Client.new()
 	client.dynamic_root = Node3D.new()
 	client.add_child(client.dynamic_root)
+	var arcade_from_bridge := client._build_bridge_object(
+		"arcade",
+		Vector3(2.0, 0.0, 3.0),
+		"arcade-cyber-serpent",
+		"CYBER SERPENT",
+	)
+	check(arcade_from_bridge.get_node("GameTitle").text == "CYBER SERPENT", "Bridge title reaches cabinet marquee")
+	check(arcade_from_bridge.position == Vector3(2.0, 0.0, 3.0), "Arcade cabinet keeps bridge position")
 	var objects := [
 		{"id": "office1-desk", "kind": "desk", "x": 1800, "y": 6250, "condition": 85, "cleanliness": 90},
 		{"id": "lobby-reception-desk", "kind": "desk", "x": 1900, "y": 2200, "condition": 50, "cleanliness": 40},
