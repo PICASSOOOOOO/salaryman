@@ -57,6 +57,42 @@ class PygameBridgeTests(unittest.TestCase):
             client.close()
             bridge.close()
 
+    def test_phone_choice_opens_only_the_selected_linked_service(self):
+        self.state.open_page("phone", source="PLAYER MENU")
+        building_sync = SimpleNamespace(
+            link=SimpleNamespace(server_url="https://salaryman.example/")
+        )
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "phone_choice",
+            "payload": {"choice": 2},
+        }
+        with patch("pygame_sim.bridge.webbrowser.open", return_value=True) as open_url:
+            result = apply_command(command, self.state, self.scene, building_sync)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.message, "OPENING COMMS")
+        open_url.assert_called_once_with("https://salaryman.example/comms")
+
+    def test_phone_choice_requires_link_and_phone_page(self):
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "phone_choice",
+            "payload": {"choice": 1},
+        }
+        invalid_choice = {**command, "payload": {"choice": 3}}
+        self.assertFalse(validate_command(invalid_choice)[0])
+
+        not_open = apply_command(command, self.state, self.scene)
+        self.assertFalse(not_open.ok)
+
+        self.state.open_page("phone", source="PLAYER MENU")
+        no_link = apply_command(command, self.state, self.scene)
+        self.assertFalse(no_link.ok)
+        self.assertIn("LINK A GAME ACCOUNT", no_link.message)
+
     def test_slow_client_keeps_only_the_latest_unsent_snapshot(self):
         class BlockedClient:
             def send(self, _data):

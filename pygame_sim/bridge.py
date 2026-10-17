@@ -58,6 +58,7 @@ COMMANDS = {
     "hire_candidate",
     "terminal_choice",
     "reception_choice",
+    "phone_choice",
     "toggle_business_stock",
     "toggle_drawer",
     "close_page",
@@ -74,6 +75,10 @@ RECEPTION_SERVICE_ROUTES = {
     1: ("JOB OPPORTUNITIES", "/business/jobs"),
     2: ("BUSINESS CONTRACTS", "/business/contracts"),
     3: ("REAL ESTATE / LEASING", "/store/realty"),
+}
+PHONE_SERVICE_ROUTES = {
+    1: ("CALLL HOME", "/phone"),
+    2: ("COMMS", "/comms"),
 }
 
 
@@ -140,6 +145,10 @@ def validate_command(command: object) -> tuple[bool, str]:
         choice = payload.get("choice")
         if not _is_int(choice) or choice not in RECEPTION_SERVICE_ROUTES:
             return False, "RECEPTION SERVICE CHOICE MUST BE 1-3"
+    elif name == "phone_choice":
+        choice = payload.get("choice")
+        if not _is_int(choice) or choice not in PHONE_SERVICE_ROUTES:
+            return False, "PHONE SERVICE CHOICE MUST BE 1-2"
     elif name == "buy_vending":
         item_id = payload.get("item_id")
         if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
@@ -723,6 +732,30 @@ def apply_command(
         if not opened:
             return CommandResult(False, "COULD NOT OPEN THE SELECTED SERVICE")
         state.close_page()
+        return CommandResult(True, f"OPENING {label}")
+    if name == "phone_choice":
+        if state.active_page != "phone":
+            return CommandResult(False, "OPEN A PHONE PANEL FIRST")
+        if state.active_object_id is not None:
+            phone = scene.objects.get(state.active_object_id)
+            nearby = scene.nearby_object
+            if (
+                phone is None
+                or phone.kind not in {"telephone", "pay_phone"}
+                or nearby is None
+                or nearby.id != phone.id
+            ):
+                return CommandResult(False, "MOVE BACK TO THE PHONE TO USE IT")
+        link = getattr(building_sync, "link", None)
+        if link is None:
+            return CommandResult(False, "LINK A GAME ACCOUNT TO OPEN PHONE SERVICES")
+        label, route = PHONE_SERVICE_ROUTES[payload["choice"]]
+        try:
+            opened = webbrowser.open(f"{link.server_url.rstrip('/')}{route}")
+        except Exception:
+            opened = False
+        if not opened:
+            return CommandResult(False, "COULD NOT OPEN THE SELECTED PHONE SERVICE")
         return CommandResult(True, f"OPENING {label}")
     if name == "terminal_choice":
         if state.active_page != "systems":

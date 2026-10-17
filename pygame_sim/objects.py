@@ -365,6 +365,18 @@ class OfficeObjectRegistry:
             state.notice = message
             return InteractionResult(True, message, route="payphone-console")
 
+        if item.kind == "telephone":
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "phone",
+                from_object=True,
+                source="DESK PHONE",
+                source_object_id=item.id,
+            )
+            message = "DESK PHONE / CALLL HOME + COMMS"
+            state.notice = message
+            return InteractionResult(True, message, route="phone-center")
+
         if item.kind == "tv":
             scene.focus_on_interaction(item)
             message = "CCTV MONITOR / SURVEILLANCE"

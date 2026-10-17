@@ -70,6 +70,7 @@ var room_label: Label
 var mission_label: Label
 var notice_label: Label
 var controls_label: Label
+var interaction_button: Button
 var tower_advice_panel: ColorRect
 var tower_advice_body: Label
 var camera_target := Vector3.ZERO
@@ -81,7 +82,9 @@ var native_app_panel: ColorRect
 var native_app_title: Label
 var native_app_body: Label
 var native_app_footer: Label
+var native_app_action_grid: GridContainer
 var last_native_app_page := ""
+var last_native_action_signature := ""
 var ghost_dialogue_line := ""
 var selected_elevator_floor := 1
 var elevator_wait_remaining := 0.0
@@ -1494,6 +1497,14 @@ func _build_interface() -> void:
 	status_label.size = Vector2(350, 24)
 	top_bar.add_child(status_label)
 
+	interaction_button = Button.new()
+	interaction_button.name = "ContextInteractionButton"
+	interaction_button.position = Vector2(835, 112)
+	interaction_button.size = Vector2(310, 44)
+	interaction_button.visible = false
+	interaction_button.pressed.connect(_on_context_interaction_pressed)
+	interface_root.add_child(interaction_button)
+
 	mission_label = Label.new()
 	mission_label.position = Vector2(30, 650)
 	mission_label.add_theme_font_size_override("font_size", 14)
@@ -1575,6 +1586,16 @@ func _build_interface() -> void:
 	native_app_body.add_theme_font_size_override("font_size", 16)
 	native_app_body.add_theme_color_override("font_color", Color("#c4ddcb"))
 	native_app_panel.add_child(native_app_body)
+
+	native_app_action_grid = GridContainer.new()
+	native_app_action_grid.name = "FeatureActionGrid"
+	native_app_action_grid.position = Vector2(28, 220)
+	native_app_action_grid.size = Vector2(524, 76)
+	native_app_action_grid.columns = 4
+	native_app_action_grid.visible = false
+	native_app_action_grid.add_theme_constant_override("h_separation", 8)
+	native_app_action_grid.add_theme_constant_override("v_separation", 6)
+	native_app_panel.add_child(native_app_action_grid)
 
 	native_app_footer = Label.new()
 	native_app_footer.position = Vector2(28, 311)
@@ -3143,6 +3164,7 @@ func _update_hud() -> void:
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Waiting for the game simulation to provide the room mission."))
+	_update_context_interaction(scene_data)
 	if room_id.begins_with("basement_b"):
 		var basement: Dictionary = scene_data.get("basement", {})
 		var building: Dictionary = basement.get("building", {})
@@ -3181,6 +3203,32 @@ func _update_hud() -> void:
 	_update_native_app_panel(office, scene_data)
 
 
+func _update_context_interaction(scene_data: Dictionary) -> void:
+	if interaction_button == null:
+		return
+	var objects: Variant = scene_data.get("objects", [])
+	var nearby_label := ""
+	if objects is Array:
+		for object_value in objects:
+			if not object_value is Dictionary:
+				continue
+			var object: Dictionary = object_value
+			if not bool(object.get("nearby", false)) or not bool(object.get("interactive", false)):
+				continue
+			nearby_label = str(object.get("label", object.get("kind", "OBJECT"))).strip_edges().to_upper()
+			break
+	interaction_button.visible = not nearby_label.is_empty() and _active_page_name().is_empty()
+	if interaction_button.visible:
+		if nearby_label.length() > 24:
+			nearby_label = nearby_label.substr(0, 23) + "…"
+		interaction_button.text = "E  ·  USE  " + nearby_label
+		interaction_button.disabled = connection.get_status() != StreamPeerTCP.STATUS_CONNECTED
+
+
+func _on_context_interaction_pressed() -> void:
+	_send_command("interact")
+
+
 func _nearby_maintenance_status(scene_data: Dictionary) -> Dictionary:
 	var raw_objects: Variant = scene_data.get("objects", [])
 	if not raw_objects is Array:
@@ -3215,6 +3263,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	native_app_panel.visible = not page.is_empty()
 	if page.is_empty():
 		last_native_app_page = ""
+		_sync_native_app_actions("")
 		return
 	if page == "merchant" and last_native_app_page != "merchant":
 		ghost_dialogue_line = "You didn't see me. People rarely notice what they expect to find."
@@ -3223,6 +3272,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	native_app_title.add_theme_color_override("font_color", Color("#eff8df"))
 	native_app_body.add_theme_color_override("font_color", Color("#c4ddcb"))
 	native_app_body.add_theme_font_size_override("font_size", 16)
+	native_app_body.size.y = 215
 	native_app_footer.add_theme_color_override("font_color", Color("#f8b957"))
 
 	var page_source_value: Variant = office.get("pageSource")
@@ -3322,20 +3372,34 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			]
 			native_app_footer.text = "1–2 ASK  ·  3 OR ESC LEAVE"
 		"phone":
-			native_app_title.text = "TOWER PAY PHONE"
-			native_app_body.text = "CALLL HOME\nCOMMS\n\nThis line is limited to those two services. The game screen is read-only in this pass."
-			native_app_footer.text = "CALLS AND MESSAGES ARE NOT STARTED HERE  ·  ESC CLOSE"
+			var phone_source := page_source.to_upper()
+			var is_pay_phone := phone_source.contains("PAY PHONE")
+			if is_pay_phone:
+				native_app_title.text = "TOWER PAY PHONE"
+			elif phone_source.contains("DESK PHONE"):
+				native_app_title.text = "DESK PHONE / PHONE CENTER"
+			else:
+				native_app_title.text = "PHONE CENTER"
+			native_app_body.size.y = 132
+			native_app_body.text = (
+				"Public line · CALLL HOME and COMMS only.\nChoose a service; calls and messages require confirmation."
+				if is_pay_phone
+				else "Private workstation line · open CALLL HOME or COMMS.\nCalls and messages require confirmation."
+			)
+			native_app_footer.text = "SELECT A SERVICE  ·  1/2 OR ESC CLOSE"
 		"reception":
 			native_app_panel.color = Color("#f0eee8")
 			native_app_title.add_theme_color_override("font_color", Color("#171717"))
 			native_app_body.add_theme_color_override("font_color", Color("#30302d"))
 			native_app_footer.add_theme_color_override("font_color", Color("#76543d"))
 			native_app_title.text = "MILA  /  RECEPTION SERVICES"
-			native_app_body.text = "%s\n\nCLASSIFIEDS & BUSINESS SERVICES\n1  JOB OPPORTUNITIES\n2  BUSINESS CONTRACTS\n3  REAL ESTATE / LEASING\n\nSelected services open their existing SALARYMAN screens." % location
+			native_app_body.size.y = 132
+			native_app_body.text = "%s\n\nChoose an existing SALARYMAN service. Links open only after selection." % location
 			native_app_footer.text = "1–3 OPEN A SERVICE  ·  ESC CLOSE"
 		"systems":
 			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
-			native_app_body.text = "CONNECTED GAME MODULES\n%s  /  TEAM %d  /  FIAT ƒ%.2f\n1 JOB COMMAND  2 ACCOUNTING  3 CONTACTS\n4 MARKETING  5 DARKROOM  6 INTELLIGENCE\n7 BANK VIEW  8 CALLL HOME / COMMS  9 CLOSE" % [
+			native_app_body.size.y = 132
+			native_app_body.text = "CONNECTED GAME MODULES\n%s  /  TEAM %d  /  FIAT ƒ%.2f" % [
 				location,
 				workers.size(),
 				float(office.get("funds", 0.0)),
@@ -3465,12 +3529,57 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_title.text = page_source.to_upper() if not page_source.is_empty() else page.to_upper()
 			native_app_body.text = location + "\n\nThis view is rendered by the game client."
 			native_app_footer.text = "ESC CLOSE"
+	_sync_native_app_actions(page)
 
 
 func _active_page_name() -> String:
 	var office: Dictionary = snapshot.get("office", {})
 	var page_value: Variant = office.get("activePage")
 	return "" if page_value == null else str(page_value)
+
+
+func _sync_native_app_actions(page: String) -> void:
+	var labels: Array[String] = []
+	match page:
+		"phone":
+			labels = ["CALLL HOME", "COMMS"]
+		"reception":
+			labels = ["1  JOBS", "2  CONTRACTS", "3  REALTY"]
+		"systems":
+			labels = [
+				"1  JOBS", "2  BOOKS", "3  CONTACTS", "4  MARKETING",
+				"5  DARKROOM", "6  INTEL", "7  BANK", "8  PHONE",
+			]
+	var signature := page + ":" + "|".join(labels)
+	if signature == last_native_action_signature:
+		return
+	last_native_action_signature = signature
+	for child in native_app_action_grid.get_children():
+		child.queue_free()
+	native_app_action_grid.visible = not labels.is_empty()
+	if page == "systems":
+		native_app_action_grid.columns = 4
+	elif page == "reception":
+		native_app_action_grid.columns = 3
+	else:
+		native_app_action_grid.columns = 2
+	for index in labels.size():
+		var button := Button.new()
+		button.text = labels[index]
+		button.custom_minimum_size = Vector2(120, 34)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_on_native_app_action_pressed.bind(page, index + 1))
+		native_app_action_grid.add_child(button)
+
+
+func _on_native_app_action_pressed(page: String, choice: int) -> void:
+	match page:
+		"phone":
+			_send_command("phone_choice", {"choice": choice})
+		"reception":
+			_send_command("reception_choice", {"choice": choice})
+		"systems":
+			_send_command("terminal_choice", {"choice": choice})
 
 
 static func terminal_choice_for_key(keycode: int) -> int:
@@ -3559,6 +3668,8 @@ func _input(event: InputEvent) -> void:
 				var choice := terminal_choice_for_key(event.keycode)
 				if choice > 0:
 					_send_command("terminal_choice", {"choice": choice})
+			elif active_page == "phone" and event.keycode in [KEY_1, KEY_2]:
+				_send_command("phone_choice", {"choice": event.keycode - KEY_0})
 			elif active_page in ["vending", "business_stock"] and event.keycode == KEY_B:
 				_send_command("toggle_business_stock")
 			elif active_page == "vending" and event.keycode in [
@@ -3647,7 +3758,9 @@ func _input(event: InputEvent) -> void:
 				_connect_to_pygame()
 	elif event is InputEventMouseButton and event.pressed:
 		if native_app_panel != null and native_app_panel.visible:
-			get_viewport().set_input_as_handled()
+			return
+		if interaction_button != null and interaction_button.visible \
+			and interaction_button.get_global_rect().has_point(event.position):
 			return
 		if elevator_transition_active or (
 			elevator_floor_panel != null and elevator_floor_panel.visible
