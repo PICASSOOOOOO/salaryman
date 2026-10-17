@@ -102,6 +102,27 @@ func _run_tests() -> void:
 	assert(OfficeClient.feature_panel_template_for("economy", "atm") == "finance")
 	assert(OfficeClient.feature_panel_template_for("utility_work", "") == "operations")
 	assert(OfficeClient.feature_panel_template_for("customize", "terminal") == "plain")
+	var floor_style_keys := {}
+	var floor_colors := {}
+	for floor_number in range(1, 13):
+		var style := OfficeClient.tower_floor_style_palette(floor_number, "")
+		var style_key := str(style["key"])
+		var floor_color := str(style["floor"])
+		assert(not floor_style_keys.has(style_key))
+		assert(not floor_colors.has(floor_color))
+		floor_style_keys[style_key] = true
+		floor_colors[floor_color] = true
+	for basement_number in range(1, 7):
+		var basement_style := OfficeClient.tower_floor_style_palette(
+			-basement_number,
+			"basement_b%d" % basement_number,
+		)
+		var basement_key := str(basement_style["key"])
+		var basement_color := str(basement_style["floor"])
+		assert(not floor_style_keys.has(basement_key))
+		assert(not floor_colors.has(basement_color))
+		floor_style_keys[basement_key] = true
+		floor_colors[basement_color] = true
 	assert(PlayerController.sprint_input_active(true, false))
 	assert(PlayerController.sprint_input_active(false, true))
 	assert(not PlayerController.sprint_input_active(false, false))

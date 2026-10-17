@@ -133,6 +133,7 @@ var danger_audio_current_track := -1
 var temple_music_player: AudioStreamPlayer
 var temple_music_enabled := false
 var temple_music_frame := 0
+var last_floor_style_key := ""
 const TEMPLE_MIX_RATE := 22050.0
 var structural_wall_thickness := 0.3
 var wall_service_cavity := 0.12
@@ -1982,11 +1983,98 @@ func _apply_snapshot(message: Dictionary) -> void:
 	if location_id != last_room_id:
 		last_room_id = location_id
 		last_floor_number = floor_number
+		_apply_tower_floor_style(floor_number, room_id)
 		_rebuild_bridge_objects(scene_data.get("objects", []))
 	_sync_prop_surfaces(scene_data.get("objects", []))
 	_sync_door_states(scene_data.get("objects", []))
 	_sync_automation_characters(scene_data.get("automationCharacters", []))
 	_sync_basement_actors(scene_data.get("basement", {}), room_id)
+
+
+static func tower_floor_style_key(floor_number: int, room_id: String) -> String:
+	var normalized_room := room_id.strip_edges().to_lower()
+	if normalized_room.begins_with("basement_b"):
+		var basement_number := normalized_room.trim_prefix("basement_b").to_int()
+		if basement_number in range(1, 7):
+			return "basement_b%d" % basement_number
+	if floor_number < 1:
+		return "basement_b%d" % clampi(absi(floor_number), 1, 6)
+	if floor_number == 1:
+		return "lobby"
+	if floor_number >= 2 and floor_number <= 5:
+		return "construction_f%02d" % floor_number
+	if floor_number == 6:
+		return "concourse"
+	if floor_number == 7:
+		return "temple"
+	if floor_number >= 8 and floor_number <= 12:
+		return "business_f%02d" % floor_number
+	return "upper_offices"
+
+
+static func tower_floor_style_palette(floor_number: int, room_id: String) -> Dictionary:
+	var key := tower_floor_style_key(floor_number, room_id)
+	var palettes := {
+		"lobby": ["#3d655a", "#173239", "#2f8f82", "#55433c", "#705949", "#a6814d"],
+		"construction_f02": ["#786b5d", "#473e36", "#aa8050", "#60463c", "#7a5a43", "#b58b58"],
+		"construction_f03": ["#6b7066", "#3d453e", "#8ba091", "#3c5146", "#53695a", "#9bb596"],
+		"construction_f04": ["#69665f", "#3c3e41", "#a28b75", "#4e4142", "#69565b", "#b28a78"],
+		"construction_f05": ["#6a7477", "#3a4749", "#91a6a5", "#384e51", "#4d6667", "#a5b6ae"],
+		"concourse": ["#415965", "#193239", "#2f8f82", "#55433c", "#705949", "#a6814d"],
+		"temple": ["#9baa87", "#293a34", "#a6ad82", "#6d775f", "#8a9271", "#bcab7a"],
+		"business_f08": ["#465d5a", "#253a39", "#6fa69a", "#3f514b", "#53685a", "#9a8c67"],
+		"business_f09": ["#6b5e5a", "#3b3035", "#a77e74", "#554046", "#76535b", "#bd9b7b"],
+		"business_f10": ["#595e70", "#303542", "#8793b4", "#45485a", "#626077", "#b4a987"],
+		"business_f11": ["#776a5b", "#473a34", "#b08c5f", "#62483f", "#80614a", "#caa56f"],
+		"business_f12": ["#52656f", "#293843", "#7da6ae", "#384957", "#4d6572", "#a0b8a8"],
+		"basement_b1": ["#746757", "#45392f", "#c18c56", "#594133", "#72523a", "#c9975c"],
+		"basement_b2": ["#454b52", "#282f37", "#8b7770", "#463e3d", "#5e4c49", "#a39179"],
+		"basement_b3": ["#6c4f48", "#3d2e2b", "#c27957", "#55403a", "#76544a", "#c18a65"],
+		"basement_b4": ["#63674c", "#363b2b", "#97a06a", "#4c4d38", "#686b45", "#afa978"],
+		"basement_b5": ["#465b60", "#27383c", "#63a3a5", "#374a4e", "#4a6467", "#a0b6a5"],
+		"basement_b6": ["#47645f", "#243c3b", "#69b0a6", "#38514b", "#4f7165", "#a1c3a8"],
+		"upper_offices": ["#4d5c5d", "#29363a", "#728d88", "#3d4b4b", "#556363", "#8ea195"],
+	}
+	var colors: Array = palettes.get(key, palettes["upper_offices"])
+	return {
+		"key": key,
+		"floor": Color(str(colors[0])),
+		"wall": Color(str(colors[1])),
+		"trim": Color(str(colors[2])),
+		"rug": Color(str(colors[3])),
+		"rugField": Color(str(colors[4])),
+		"rugTrim": Color(str(colors[5])),
+	}
+
+
+func _apply_tower_floor_style(floor_number: int, room_id: String) -> void:
+	var palette := tower_floor_style_palette(floor_number, room_id)
+	var style_key := str(palette.get("key", ""))
+	if style_key == last_floor_style_key:
+		return
+	last_floor_style_key = style_key
+	for material_name in ["hall_floor", "construction_floor", "temple_floor", "lobby_floor"]:
+		var floor_material: Variant = materials.get(material_name)
+		if floor_material is StandardMaterial3D:
+			floor_material.albedo_color = palette["floor"]
+	var wall_material: Variant = materials.get("wall")
+	if wall_material is StandardMaterial3D:
+		wall_material.albedo_color = palette["wall"]
+	var trim_material: Variant = materials.get("wall_trim")
+	if trim_material is StandardMaterial3D:
+		trim_material.albedo_color = palette["trim"]
+	for material_name in ["office_rug", "lobby_rug"]:
+		var rug_material: Variant = materials.get(material_name)
+		if rug_material is StandardMaterial3D:
+			rug_material.albedo_color = palette["rug"]
+	for material_name in ["office_rug_field", "lobby_rug_field"]:
+		var rug_field_material: Variant = materials.get(material_name)
+		if rug_field_material is StandardMaterial3D:
+			rug_field_material.albedo_color = palette["rugField"]
+	for material_name in ["office_rug_trim", "lobby_rug_trim"]:
+		var rug_trim_material: Variant = materials.get(material_name)
+		if rug_trim_material is StandardMaterial3D:
+			rug_trim_material.albedo_color = palette["rugTrim"]
 
 
 func _pygame_to_world(x: float, y: float, room_id: String = "") -> Vector3:
