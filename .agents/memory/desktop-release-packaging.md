@@ -59,6 +59,9 @@ macOS is the first user test target, while Windows remains required. Preserve
 Linux compatibility for now; discontinuing Linux is conditional on it adding
 substantial separate workload, not an approved removal.
 
+The user also wants the desktop game distributed on itch.io alongside the native
+macOS, Windows, and Linux downloads.
+
 **Why:** The user said all platforms must work, selected macOS for their testing,
 and would discontinue Linux if it doubles the workload.
 
