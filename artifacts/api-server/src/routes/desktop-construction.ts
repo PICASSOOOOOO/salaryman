@@ -5,6 +5,7 @@ import {
   db,
   desktopBasementPresenceTable,
   desktopOfficePresenceTable,
+  salarymanSavesTable,
   towerBuildingVitalsTable,
   towerConstructionContributionsTable,
   worldBuildPlansTable,
@@ -14,6 +15,7 @@ import { creditFiat } from "../lib/fiat-wallet";
 import { BUILDING_PRESENCE_MAX_AGE_MS } from "../lib/desktop-building-objects";
 import { TOWER_BASEMENT_STATIONS, TOWER_POWER_EXPORT_REACH } from "../lib/tower-basement-layout";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
+import { readPlayerStamina, spendPlayerStamina } from "../lib/desktop-player-stamina";
 
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
@@ -21,6 +23,7 @@ const MIN_WORK_MS = 8_000;
 const MAX_WORK_AGE_MS = 10 * 60_000;
 const SITE_REACH = 850;
 const SITE_FLOORS = [2, 3, 4, 5] as const;
+const CONSTRUCTION_STAMINA_COST = 3;
 
 function defaultPlan(floor: number) {
   const floorLabel = String(floor).padStart(2, "0");
@@ -250,6 +253,24 @@ router.post("/desktop-building/construction/work/start", async (req, res): Promi
       if (sessionFresh && task.workingUserId && task.workingUserId !== link.userId) {
         return { status: 409, error: "Another player is working on this task" } as const;
       }
+      let stamina = 100;
+      if (!sessionFresh || task.workingUserId !== link.userId) {
+        const [save] = await tx.select().from(salarymanSavesTable).where(and(
+          eq(salarymanSavesTable.userId, link.userId),
+          eq(salarymanSavesTable.slotIndex, 0),
+        )).for("update").limit(1);
+        if (!save) return { status: 404, error: "Create a character before starting construction work" } as const;
+        const spent = spendPlayerStamina(save.data, CONSTRUCTION_STAMINA_COST, now);
+        if (!spent) return { status: 402, error: "Too exhausted to work; recover stamina before starting another task" } as const;
+        stamina = spent.stamina;
+        await tx.update(salarymanSavesTable).set({ data: spent.data }).where(eq(salarymanSavesTable.id, save.id));
+      } else {
+        const [save] = await tx.select().from(salarymanSavesTable).where(and(
+          eq(salarymanSavesTable.userId, link.userId),
+          eq(salarymanSavesTable.slotIndex, 0),
+        )).limit(1);
+        if (save) stamina = readPlayerStamina(save.data, now).stamina;
+      }
       const sessionId = sessionFresh && task.workingUserId === link.userId && task.workSessionId
         ? task.workSessionId
         : randomUUID();
@@ -264,7 +285,7 @@ router.post("/desktop-building/construction/work/start", async (req, res): Promi
       await tx.update(worldBuildPlansTable)
         .set({ tasks, updatedAt: now })
         .where(eq(worldBuildPlansTable.id, plan.id));
-      return { status: 200, sessionId, durationMs: MIN_WORK_MS, label: task.label } as const;
+      return { status: 200, sessionId, durationMs: MIN_WORK_MS, label: task.label, stamina } as const;
     });
     if ("error" in result) {
       res.status(result.status).json({ error: result.error });

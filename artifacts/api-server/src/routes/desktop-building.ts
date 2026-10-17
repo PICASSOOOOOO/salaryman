@@ -15,6 +15,7 @@ import {
   shadowTowerOfficeUnitsTable,
   towerStaffAssignmentsTable,
   shadowTowerWorkstationAssignmentsTable,
+  salarymanSavesTable,
   usersTable,
   type OrgRole,
 } from "@workspace/db";
@@ -54,6 +55,7 @@ import {
   validateBuildingPresence,
 } from "../lib/desktop-building-objects";
 import { hasTowerStaffAssignment, TOWER_STAFF_ROLES } from "../lib/tower-staff-access";
+import { spendPlayerStamina } from "../lib/desktop-player-stamina";
 
 const router = Router();
 router.use(desktopConstructionRouter);
@@ -74,6 +76,7 @@ const ROOM_LABEL: Record<string, string> = {
   executive_suite: "EXECUTIVE SUITE",
 };
 const MAINTENANCE_REACH_PX = 1_250;
+const BUILDING_MAINTENANCE_STAMINA_COST = 4;
 const PUBLIC_WORK_SESSION_MAX_AGE_MS = 15 * 60 * 1_000;
 const PUBLIC_WORK_SLOT_LOCK_KEY = 731_904_218;
 const TOWER_STAFF_ACCESS_ERROR = "The service elevator is restricted to assigned Tower staff";
@@ -1216,6 +1219,20 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
         }
       }
 
+      const [save] = await tx.select().from(salarymanSavesTable).where(and(
+        eq(salarymanSavesTable.userId, link.userId),
+        eq(salarymanSavesTable.slotIndex, 0),
+      )).for("update").limit(1);
+      if (!save) {
+        return { kind: "error" as const, status: 404 as const, error: "Create a character before starting building work" };
+      }
+      const staminaCost = spendPlayerStamina(save.data, BUILDING_MAINTENANCE_STAMINA_COST, now);
+      if (!staminaCost) {
+        return { kind: "error" as const, status: 402 as const, error: "Too exhausted to work; recover stamina before starting another task" };
+      }
+      await tx.update(salarymanSavesTable).set({ data: staminaCost.data })
+        .where(eq(salarymanSavesTable.id, save.id));
+
       const workSessionId = randomUUID();
       const durationMs = publicMaintenanceDurationMs(action, score);
       const [started] = await tx.update(desktopBuildingObjectStatesTable)
@@ -1237,6 +1254,7 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
         progress: 0,
         rewardFiat,
         payerLabel,
+        stamina: staminaCost.stamina,
         durationMs,
         state: serializeBuildingObject(object, saved.floorNumber, started, {
           publicWork: isPublic,
@@ -1263,6 +1281,7 @@ router.post("/desktop-building/objects/action", async (req, res): Promise<void> 
         durationMs: result.durationMs,
         rewardFiat: result.rewardFiat,
         payerLabel: result.payerLabel,
+        stamina: "stamina" in result ? result.stamina : undefined,
         message: result.rewardFiat > 0
           ? `WORKING / ${result.payerLabel} PAYS ƒ${result.rewardFiat}`
           : "WORK IN PROGRESS",
