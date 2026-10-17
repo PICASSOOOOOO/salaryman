@@ -2279,6 +2279,15 @@ func _upsert_basement_actor(
 	actor_node.position = _pygame_to_world(x, y, room_id)
 
 
+static func museum_case_variant(object_id: String) -> int:
+	var id_parts := object_id.split("-")
+	if id_parts.size() < 2:
+		return 0
+	var prop_index := int(id_parts[id_parts.size() - 1])
+	# Floor 12's museum cases are the final three interior fixtures (12–14).
+	return clampi(prop_index - 12, 0, 2)
+
+
 func _build_bridge_object(
 kind: String,
 position: Vector3,
@@ -2289,7 +2298,8 @@ interactive: bool = true,
 collision_extents: Array = [],
 ) -> Node3D:
 	if kind in OfficeProp.SUPPORTED_KINDS:
-		var prop := OfficeProp.create(kind, object_id == "lobby-reception-desk")
+		var prop_variant := museum_case_variant(object_id) if kind == "museum_case" else 0
+		var prop := OfficeProp.create(kind, object_id == "lobby-reception-desk", prop_variant)
 		prop.name = object_id
 		prop.position = position
 		dynamic_root.add_child(prop)

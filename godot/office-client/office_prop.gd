@@ -13,9 +13,9 @@ var dust_marks: Array[MeshInstance3D] = []
 var repair_seam: MeshInstance3D
 
 
-static func create(kind: String, reception := false) -> Node3D:
+static func create(kind: String, reception := false, variant := 0) -> Node3D:
 	var prop := new()
-	prop._build(kind, reception)
+	prop._build(kind, reception, variant)
 	return prop
 
 
@@ -27,7 +27,7 @@ func _finish(color: String, metal := 0.0) -> StandardMaterial3D:
 	return material
 
 
-func _build(kind: String, reception: bool) -> void:
+func _build(kind: String, reception: bool, variant: int) -> void:
 	var wood := _finish("#78523b")
 	var edge := _finish("#b28a59")
 	var brass := _finish("#ad884e", 0.55)
@@ -65,7 +65,7 @@ func _build(kind: String, reception: bool) -> void:
 		"reading_table":
 			_reading_table(wood, brass, cream)
 		"museum_case":
-			_museum_case(wood, brass, cream)
+			_museum_case(wood, brass, cream, variant)
 	set_surface_state(100, 100)
 
 
@@ -304,11 +304,43 @@ func _reading_table(wood: Material, brass: Material, cream: Material) -> void:
 	_wear_detail(Vector3(0, 0.844, 0.68), Vector3(0.18, 0.004, 0.008), brass)
 
 
-func _museum_case(wood: Material, brass: Material, cream: Material) -> void:
+func _museum_case(wood: Material, brass: Material, cream: Material, variant: int) -> void:
 	finish = _finish("#8b7659")
 	_box("DisplayBase", Vector3(0, 0.32, 0), Vector3(1.6, 0.54, 0.85), wood)
 	_box("GlassTop", Vector3(0, 0.90, 0), Vector3(1.52, 0.62, 0.77), _finish("#a9c6b8"))
-	_box("DisplayArtifact", Vector3(0, 0.74, 0), Vector3(0.34, 0.20, 0.28), cream)
+	match posmod(variant, 3):
+		0:
+			var medallion := CylinderMesh.new()
+			medallion.top_radius = 0.18
+			medallion.bottom_radius = 0.18
+			medallion.height = 0.07
+			medallion.radial_segments = 24
+			medallion.material = brass
+			var medallion_instance := _mesh(
+				"DisplayArtifactMedallion",
+				Vector3(0, 0.78, 0),
+				medallion,
+				self,
+			)
+			medallion_instance.rotation.x = PI / 2.0
+			_cylinder("MedallionStand", Vector3(0, 0.63, 0), 0.045, 0.20, wood)
+		1:
+			var crystal := PrismMesh.new()
+			crystal.size = Vector3(0.34, 0.38, 0.28)
+			crystal.material = _finish("#6f9c8e")
+			_mesh("DisplayArtifactCrystal", Vector3(0, 0.78, 0), crystal, self)
+			_box("CrystalFoot", Vector3(0, 0.62, 0), Vector3(0.42, 0.035, 0.34), brass)
+		_:
+			_box("DisplayArtifactModelBase", Vector3(0, 0.62, 0), Vector3(0.48, 0.06, 0.36), brass)
+			for index in range(3):
+				var width := 0.10 + float(index % 2) * 0.035
+				var height := 0.18 + float(index) * 0.07
+				_box(
+					"DisplayArtifactTower%d" % index,
+					Vector3(float(index - 1) * 0.13, 0.66 + height / 2.0, 0),
+					Vector3(width, height, 0.12),
+					cream,
+				)
 	_box("BrassEdge", Vector3(0, 0.60, 0.43), Vector3(1.62, 0.06, 0.04), brass)
 	_wear_detail(Vector3(0, 0.34, 0.428), Vector3(0.18, 0.004, 0.008), brass)
 
