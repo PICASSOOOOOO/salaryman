@@ -22,7 +22,6 @@ MaterialKind = Literal[
     "cloth",
     "electronics",
     "glass",
-    "plastic",
     "organic",
 ]
 
@@ -60,7 +59,6 @@ MATERIAL_PROFILES: dict[MaterialKind, MaterialProfile] = {
     "cloth": MaterialProfile(0.20, 0.96, 0.82, 0.0),
     "electronics": MaterialProfile(0.28, 0.24, 0.18, 0.88),
     "glass": MaterialProfile(0.18, 0.0, 0.0, 0.0),
-    "plastic": MaterialProfile(0.24, 0.68, 0.55, 0.01),
     "organic": MaterialProfile(0.31, 0.74, 0.28, 0.01),
 }
 

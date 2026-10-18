@@ -146,10 +146,12 @@ class PygameSpatialTests(unittest.TestCase):
 
         self.assertEqual(scene.current_room, "executive")
 
-    def test_executive_desk_blocks_crossing_but_terminal_stays_reachable(self):
+    def test_starter_workstation_is_private_and_terminal_stays_reachable(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
         scene.select_room("executive")
+        scene.player_position = scene.objects.get("executive-suite-door").position
+        self.assertTrue(scene.select_room("executive_suite"))
         desk = scene.objects.get("executive-desk")
         scene.player_position = (
             desk.position[0],
@@ -172,41 +174,37 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(result.route, "systems-terminal")
         self.assertEqual(state.active_page, "systems")
 
-    def test_executive_workstation_children_belong_to_their_desk(self):
+    def test_open_office_starts_empty_and_private_office_has_one_workstation(self):
         scene = build_tower_scene()
-        workstation_ids = ("", "-2", "-3", "-4")
-
-        for suffix in workstation_ids:
-            desk_id = f"executive-desk{suffix}"
-            desk = scene.objects.get(desk_id)
-            chair = scene.objects.get(f"executive-chair{suffix}")
-            computer = scene.objects.get(f"executive-crt{suffix}")
-            lamp = scene.objects.get(
-                "executive-desk-lamp" if not suffix else f"executive-desk-lamp{suffix}"
-            )
-
-            self.assertIsNotNone(desk)
-            self.assertEqual(chair.parent_id, desk_id)
-            self.assertEqual(computer.parent_id, desk_id)
-            self.assertEqual(lamp.parent_id, desk_id)
-            self.assertGreater(chair.position[1], desk.position[1])
-            self.assertEqual(
-                chair.position[1] - desk.position[1],
-                desk.collision_half_extents[1] + chair.collision_half_extents[1],
-            )
-            self.assertTrue(chair.interactive)
-            self.assertTrue(computer.interactive)
+        open_furniture = [
+            item for item in scene.objects.objects
+            if item.room == "executive" and item.kind in {"desk", "chair", "crt_terminal", "desk_lamp"}
+        ]
+        self.assertEqual(open_furniture, [])
+        private_furniture = [
+            item for item in scene.objects.objects
+            if item.room == "executive_suite" and item.kind in {"desk", "chair", "crt_terminal", "desk_lamp"}
+        ]
+        self.assertEqual(
+            [(item.kind, item.id) for item in private_furniture],
+            [("desk", "executive-desk"), ("chair", "executive-chair"), ("crt_terminal", "executive-crt")],
+        )
+        for item in private_furniture[1:]:
+            self.assertEqual(item.parent_id, "executive-desk")
+            self.assertTrue(item.interactive)
 
     def test_player_actions_stay_grounded_and_sit_on_a_nearby_chair(self):
         scene = build_tower_scene()
         scene.select_room("executive")
-        chair = scene.objects.get("executive-chair-3")
+        scene.player_position = scene.objects.get("executive-suite-door").position
+        self.assertTrue(scene.select_room("executive_suite"))
+        chair = scene.objects.get("executive-chair")
         scene.player_position = (chair.position[0] - 300, chair.position[1] + 20)
 
         self.assertTrue(scene.set_player_action("sit", duration=1.0))
         self.assertEqual(scene.player_position, chair.position)
         self.assertEqual(scene.player_action, "sit")
-        self.assertEqual(scene.seated_workstation_id, "executive-desk-3")
+        self.assertEqual(scene.seated_workstation_id, "executive-desk")
 
         scene.update_motion(1.1)
         self.assertEqual(scene.player_action, "stand")
