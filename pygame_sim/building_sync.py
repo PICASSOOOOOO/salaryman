@@ -11,6 +11,8 @@ from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from .business_services import PURCHASABLE_BUSINESSES
+
 from .automation import DesktopLink
 from .pest_work import STAMINA_SUPPLY_ITEMS
 from .scene import FLOOR_PLAN, TowerScene
@@ -136,7 +138,7 @@ class DesktopBuildingSync:
         elif action == "buy_business":
             if (
                 not isinstance(item_id, str) or not item_id or len(item_id) > 80
-                or business_key not in {"fish-store", "furniture-store"}
+                or business_key not in PURCHASABLE_BUSINESSES
             ):
                 return False
             request = (
