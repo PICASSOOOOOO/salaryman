@@ -40,8 +40,9 @@ NPCs should extend existing API automations rather than use separate game-only
 assistant backends. Fraction each automation into narrow NPC roles: no NPC should
 have broad, all-purpose authority. Each should be a useful, recognizable character
 with one real job, a destination or route, and a concrete responsibility, and may
-innovate only within that job's domain. Prefer a small cast with meaningful roles
-over many generic background NPCs. NPC-operated businesses may grow into
+innovate only within that job's domain. Pablo Corp's curated rental workforce may
+grow into many named, unique specialist characters, not generic background headcount.
+NPC-operated businesses may grow into
 specialized sellers and develop improved versions of their products; do not imply
 that this progression is active until it has a real simulation.
 
@@ -56,6 +57,28 @@ Structure business stock with stable product families and version metadata so
 future NPC growth can build on it, while clearly distinguishing data readiness
 from live behavior. Keep each NPC's tools and decisions limited to its own job
 and improvement domain.
+
+## Pablo Corp workforce rentals and Prime secretary
+
+Game-world NPC hires cost a signing bonus plus a recurring daily rate. Pablo Corp
+owns a curated roster of named, costumed specialist NPCs included with PABLO
+PRIME's browser-side workforce access. Each roster character is unique: only one
+exists and can be rented by one organization at a time; in-game organizations
+hire specialists for their particular strengths at a steep price.
+
+Self-owned automation is a separate, very expensive service rather than an NPC
+hire. A PABLO PRIME subscriber may receive one distinctive secretary in their
+office who combines the available skills and automations, with a unique name
+and costume; this service must be paid for. The payment rail and price are not
+specified yet.
+
+**Why:** The user explicitly distinguishes paid game NPC labor, Pablo Corp's
+exclusive specialist rentals, and expensive all-in-one automation service.
+
+**How to apply:** Keep individual hiring costs and NPC rental exclusivity in the
+game economy; keep Prime entitlement, browser access, and any separately paid
+automation service distinct. Never allow concurrent rentals of the same
+specialist.
 
 ## Fish pets and unique companions
 
