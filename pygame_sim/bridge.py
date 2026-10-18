@@ -50,6 +50,7 @@ COMMANDS = {
     "select_worker",
     "buy_coffee",
     "buy_vending",
+    "buy_business_item",
     "toggle_running",
     "toggle_auto_breaks",
     "start_break",
@@ -153,6 +154,13 @@ def validate_command(command: object) -> tuple[bool, str]:
         item_id = payload.get("item_id")
         if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
             return False, "VENDING ITEM ID NOT VALID"
+    elif name == "buy_business_item":
+        item_id = payload.get("item_id")
+        business_key = payload.get("business_key")
+        if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
+            return False, "SHOP ITEM ID NOT VALID"
+        if business_key not in {"fish-store", "furniture-store"}:
+            return False, "SHOP IS NOT AVAILABLE"
     elif name == "basement_attack":
         move_id = payload.get("move_id")
         if not isinstance(move_id, str) or move_id not in MELEE_MOVE_BY_ID:
@@ -582,6 +590,38 @@ def apply_command(
         if building_sync is None or not building_sync.queue_game_request("buy_vending", item_id):
             return CommandResult(False, "PURCHASE UNAVAILABLE / CHECK GAME LINK")
         state.game_service_loading.add("buy_vending")
+        state.notice = "PURCHASE SENT / WAITING FOR SERVER"
+        return CommandResult(True, state.notice)
+    if name == "buy_business_item":
+        shop = scene.objects.get(state.active_object_id or "")
+        nearby = scene.nearby_object
+        item_id = payload["item_id"]
+        business_key = payload["business_key"]
+        if (
+            state.active_page != "business_shop"
+            or shop is None
+            or shop.kind != "business_suite"
+            or shop.business_key != business_key
+            or shop.room != scene.current_room
+            or nearby is None
+            or nearby.id != shop.id
+        ):
+            return CommandResult(False, "STAND AT THE SHOP COUNTER TO BUY")
+        if not any(
+            isinstance(line, dict)
+            and line.get("sellerBusinessKey") == business_key
+            and any(
+                isinstance(product, dict) and product.get("id") == item_id
+                for product in (line.get("items") or [])
+            )
+            for line in (state.business_stock_lines or [])
+        ):
+            return CommandResult(False, "ITEM IS NOT LISTED BY THIS SHOP")
+        if building_sync is None or not building_sync.queue_game_request(
+            "buy_business", item_id, business_key
+        ):
+            return CommandResult(False, "PURCHASE UNAVAILABLE / CHECK GAME LINK")
+        state.game_service_loading.add("buy_business")
         state.notice = "PURCHASE SENT / WAITING FOR SERVER"
         return CommandResult(True, state.notice)
     if name == "climb_stairs":

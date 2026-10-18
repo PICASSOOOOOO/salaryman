@@ -397,7 +397,13 @@ class OfficeObjectRegistry:
 
         if item.kind in {"business_suite", "business_kiosk"}:
             scene.focus_on_interaction(item)
-            page = "reception" if item.business_key == "tower_reception_kiosk" else "business"
+            page = (
+                "reception"
+                if item.business_key == "tower_reception_kiosk"
+                else "business_shop"
+                if item.business_key in {"fish-store", "furniture-store"}
+                else "business"
+            )
             state.open_page(
                 page,
                 from_object=True,

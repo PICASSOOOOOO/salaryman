@@ -130,7 +130,7 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "LINK A GAME ACCOUNT TO USE VENDING"
             if building_sync.queue_game_request("bank"):
                 state.game_service_loading.add("bank")
-        elif page == "business_stock":
+        elif page in {"business_stock", "business_shop"}:
             if state.business_stock_lines is None:
                 if building_sync.queue_game_request("vending_catalog"):
                     state.game_service_loading.add("vending_catalog")
@@ -318,6 +318,13 @@ def run(argv: list[str] | None = None) -> int:
         elif action.startswith("buy:"):
             item_id = action.split(":", 1)[1]
             if building_sync.queue_game_request("buy_vending", item_id):
+                state.notice = "PURCHASE SENT / WAITING FOR SERVER"
+            else:
+                state.notice = "PURCHASE UNAVAILABLE / CHECK GAME LINK"
+        elif action.startswith("shopbuy:"):
+            _, business_key, item_id = action.split(":", 2)
+            if building_sync.queue_game_request("buy_business", item_id, business_key):
+                state.game_service_loading.add("buy_business")
                 state.notice = "PURCHASE SENT / WAITING FOR SERVER"
             else:
                 state.notice = "PURCHASE UNAVAILABLE / CHECK GAME LINK"
@@ -713,7 +720,7 @@ def run(argv: list[str] | None = None) -> int:
                         )
                         state.notice = (
                             f"BUSINESS STOCK LOADED / {len(state.business_stock_lines)} LINES"
-                            if state.active_page == "business_stock"
+                            if state.active_page in {"business_stock", "business_shop"}
                             else f"VENDING STOCK LOADED / {len(state.vending_catalog)} ITEMS"
                         )
                     elif action == "bank":
@@ -730,6 +737,17 @@ def run(argv: list[str] | None = None) -> int:
                             state.notice = "ITEM ALREADY OWNED"
                         else:
                             state.notice = f"PURCHASE COMPLETE / ƒ{int(payload.get('fiat', 0) or 0):,}"
+                        state.game_inventory = None
+                        state.fiat_balance = None
+                        state.fiat_spendable = None
+                        request_page_data("inventory")
+                        request_page_data("bank")
+                    elif action == "buy_business":
+                        state.notice = (
+                            "ITEM ALREADY OWNED"
+                            if payload.get("alreadyOwned")
+                            else f"PURCHASE COMPLETE / ƒ{int(payload.get('fiat', 0) or 0):,}"
+                        )
                         state.game_inventory = None
                         state.fiat_balance = None
                         state.fiat_spendable = None

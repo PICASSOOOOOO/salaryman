@@ -3781,6 +3781,35 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 				ghost_notice
 			]
 			native_app_footer.text = "B RETURN TO VENDING STOCK  ·  ESC CLOSE"
+		"business_shop":
+			native_app_title.text = "TOWER SHOP / DIRECT PURCHASE"
+			var shop_key := "fish-store" if page_source.to_lower().contains("fish") else "furniture-store"
+			var shop_items: Array[Dictionary] = []
+			var shop_lines_value: Variant = office.get("businessStockLines", [])
+			if shop_lines_value is Array:
+				for listing_value in shop_lines_value:
+					if not listing_value is Dictionary:
+						continue
+					var listing: Dictionary = listing_value
+					if str(listing.get("sellerBusinessKey", "")) != shop_key:
+						continue
+					var products_value: Variant = listing.get("items", [])
+					if products_value is Array:
+						for product_value in products_value:
+							if product_value is Dictionary and shop_items.size() < 5:
+								shop_items.append(product_value)
+			var shop_lines: Array[String] = []
+			for index in shop_items.size():
+				var product: Dictionary = shop_items[index]
+				shop_lines.append("%d  %s  /  ƒ%s" % [
+					index + 1,
+					str(product.get("name", product.get("id", "ITEM"))),
+					str(int(product.get("priceFiat", 0))),
+				])
+			if shop_lines.is_empty():
+				shop_lines.append("NO SERVER-PRICED STOCK IS AVAILABLE")
+			native_app_body.text = "IN-PERSON SHOP STOCK\n%s\n\nPrices and ownership are confirmed by the Tower server." % "\n".join(shop_lines)
+			native_app_footer.text = "1–5 BUY LISTED STOCK  ·  ESC CLOSE"
 		"merchant":
 			native_app_panel.color = Color("#f0eee8")
 			native_app_title.add_theme_color_override("font_color", Color("#171717"))
@@ -4351,6 +4380,34 @@ func _input(event: InputEvent) -> void:
 				_send_command("phone_choice", {"choice": event.keycode - KEY_0})
 			elif active_page in ["vending", "business_stock"] and event.keycode == KEY_B:
 				_send_command("toggle_business_stock")
+			elif active_page == "business_shop" and event.keycode in [
+				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5
+			]:
+				var office: Dictionary = snapshot.get("office", {})
+				var shop_source := str(office.get("pageSource", "")).to_lower()
+				var shop_key := "fish-store" if shop_source.contains("fish") else "furniture-store"
+				var selected_index := int(event.keycode) - KEY_1
+				var stock_value: Variant = office.get("businessStockLines", [])
+				if stock_value is Array:
+					var product_index := 0
+					for listing_value in stock_value:
+						if not listing_value is Dictionary:
+							continue
+						var listing: Dictionary = listing_value
+						if str(listing.get("sellerBusinessKey", "")) != shop_key:
+							continue
+						var products_value: Variant = listing.get("items", [])
+						if not products_value is Array:
+							continue
+						for product_value in products_value:
+							if product_index == selected_index and product_value is Dictionary:
+								_send_command("buy_business_item", {
+									"item_id": str(product_value.get("id", "")),
+									"business_key": shop_key,
+								})
+								get_viewport().set_input_as_handled()
+								return
+							product_index += 1
 			elif active_page == "vending" and event.keycode in [
 				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5
 			]:

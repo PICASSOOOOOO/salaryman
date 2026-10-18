@@ -16,6 +16,8 @@ BUSINESS_SERVICE_ACTIONS: dict[str, tuple[str, ...]] = {
     "jewelry_store": ("gold_exchange",),
 }
 
+PURCHASABLE_BUSINESSES = frozenset({"fish-store", "furniture-store"})
+
 BUSINESS_ACTION_LABELS: dict[str, str] = {
     "bank_balance": "VIEW BANCO OMBRA BALANCE",
     "gold_exchange": "OPEN FIAT / GOLD EXCHANGE",

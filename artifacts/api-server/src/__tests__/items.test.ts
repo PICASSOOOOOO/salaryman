@@ -102,11 +102,11 @@ describe("GET /items/vending-catalog", () => {
     });
 
     const aquarium = listings.find((listing) => listing.id === "aquariums-and-fish");
-    expect(aquarium?.sellerBusinessKey).toBe("fish-store");
-    expect(aquarium?.sellerLocationLabel).toBe("FLOOR 06 / OFFICE 03");
+    expect(aquarium?.sellerBusinessKey).toBe("furniture-store");
+    expect(aquarium?.sellerLocationLabel).toBe("FLOOR 02 / SUITE 07");
     expect(aquarium?.items[0].id).toBe("decor_aquarium");
     const furniture = listings.find((listing) => listing.id === "desks");
-    expect(furniture?.sellerLocationLabel).toBe("FLOOR 06 / OFFICE 04");
+    expect(furniture?.sellerLocationLabel).toBe("FLOOR 02 / SUITE 07");
     expect(res.body.ghost).toMatchObject({
       availability: "direct_npc",
       requiresProximityInteraction: true,

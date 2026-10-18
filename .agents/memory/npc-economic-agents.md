@@ -59,8 +59,9 @@ and improvement domain.
 
 ## Fish pets and unique companions
 
-Fish live in tanks, not as followers; tanks can be moved around within a room.
-Fish shops should offer distinct fish types, tanks, and supplies for their care.
+Fish live in tanks, not as followers; tanks are furniture/decor that can be moved
+around within a room. Fish are chosen and purchased individually, using real-world
+species with prices that reflect the species.
 Dogs and cats may follow their owner. Each character can have at most one unique
 NPC companion or assistant, with no duplicates; companions may follow and unlock
 task automations as the game progresses.
@@ -71,3 +72,14 @@ companions and defined the one-unique-companion-per-character progression rule.
 **How to apply:** Keep fish placement and care attached to their room's aquarium
 state. Enforce companion uniqueness per character, and expose automation only as
 the companion's progression unlocks it.
+
+All living beings in the SALARYMAN ecosystem—including players, NPCs, and pets—
+share survival-health concerns: disease, illness, fatigue, stress, poison,
+nursing/care, and possible death or lethal harm.
+
+**Why:** The user explicitly wants a sandbox survival office sim RPG MMO where
+health consequences apply to all living beings, not only the player.
+
+**How to apply:** Reuse a coherent authoritative health model across entity
+types. New pets need compatible health and care behavior; do not give fish or
+companions a decorative-only health bar or a separate incompatible system.

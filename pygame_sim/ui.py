@@ -1989,7 +1989,7 @@ class SolarPunkRenderer:
         self.overlay_close_rect = pygame.Rect(page.right - 108, page.y + 18, 82, 28)
         self.panel(self.overlay_close_rect, Palette.MATRIX_PANEL_2, accent, radius=2, width=1)
         self.text("CLOSE  ESC", (self.overlay_close_rect.x + 10, self.overlay_close_rect.y + 8), self.font_mono, accent)
-        if state.active_page == "business":
+        if state.active_page in {"business", "business_shop"}:
             self._draw_business_page(state, scene, page)
         elif state.active_page in custom_titles:
             self._draw_basement_page(state, scene, page)
@@ -2021,6 +2021,41 @@ class SolarPunkRenderer:
             Palette.MATRIX_DIM,
         )
         actions = item.service_actions if item is not None else ()
+        if state.active_page == "business_shop":
+            business_key = item.business_key if item is not None else None
+            listings = [
+                listing for listing in (state.business_stock_lines or [])
+                if isinstance(listing, dict)
+                and listing.get("sellerBusinessKey") == business_key
+            ]
+            product_index = 0
+            for listing in listings:
+                for product in listing.get("items", []):
+                    if not isinstance(product, dict) or product_index >= 8:
+                        continue
+                    item_id = str(product.get("id", ""))
+                    if not item_id:
+                        continue
+                    y = page.y + 180 + product_index * 48
+                    button = pygame.Rect(page.x + 26, y, min(page.width - 52, 590), 40)
+                    self.game_page_actions[f"shopbuy:{business_key}:{item_id}"] = button
+                    self.panel(button, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
+                    self.text(
+                        f"{product_index + 1}  {product.get('name', 'ITEM')}  /  ƒ{int(product.get('priceFiat', 0)):,}",
+                        (button.x + 14, button.y + 12),
+                        self.font_md,
+                        Palette.MATRIX_BRIGHT,
+                    )
+                    product_index += 1
+            if product_index == 0:
+                self.text("NO SERVER-PRICED STOCK IS AVAILABLE", (page.x + 26, page.y + 193), self.font_lg, Palette.MATRIX_AMBER)
+            self.text(
+                "Prices and purchases are confirmed by the Tower server.",
+                (page.x + 26, page.bottom - 36),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            return
         if not actions:
             self.text(
                 "NO CONNECTED SERVICE SCREEN",

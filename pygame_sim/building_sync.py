@@ -84,7 +84,12 @@ class DesktopBuildingSync:
         self._last_error: str | None = None
         self._waiting_for_payment = False
 
-    def queue_game_request(self, action: str, item_id: str | None = None) -> bool:
+    def queue_game_request(
+        self,
+        action: str,
+        item_id: str | None = None,
+        business_key: str | None = None,
+    ) -> bool:
         """Queue an allow-listed game-service request for the authenticated player."""
         if self.link is None:
             return False
@@ -127,6 +132,23 @@ class DesktopBuildingSync:
                 "POST",
                 "/items/buy",
                 {"slot": 0, "itemId": item_id, "qty": 1, "source": "tower_vending"},
+            )
+        elif action == "buy_business":
+            if (
+                not isinstance(item_id, str) or not item_id or len(item_id) > 80
+                or business_key not in {"fish-store", "furniture-store"}
+            ):
+                return False
+            request = (
+                "POST",
+                "/items/buy",
+                {
+                    "slot": 0,
+                    "itemId": item_id,
+                    "qty": 1,
+                    "source": "tower_business",
+                    "businessKey": business_key,
+                },
             )
         elif action == "consume_supply":
             if item_id not in STAMINA_SUPPLY_ITEMS:

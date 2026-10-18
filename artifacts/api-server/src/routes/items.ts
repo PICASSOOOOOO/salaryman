@@ -11,6 +11,7 @@ import {
   salarymanSavesTable,
   botsTable,
   usersTable,
+  desktopOfficePresenceTable,
   INSTALL_TARGET_TYPES,
   INSTALL_CAPACITY,
   type InstallTargetType,
@@ -39,6 +40,7 @@ import { CRAFT_RECIPES, getCraftRecipe, isUtilityOutput } from "../lib/crafting-
 import { getResourceDef } from "../lib/resource-catalog";
 import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { getMarketIndex } from "./real-estate";
+import { recordTowerCompanyRevenueTx } from "../lib/tower-finance";
 import {
   TOWER_BUSINESS_STOCK_LINES,
   TOWER_GHOST_LISTING,
@@ -54,6 +56,11 @@ import {
 
 const router: IRouter = Router();
 
+const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; y: number }> = {
+  "fish-store": { floor: 2, x: 22_884, y: 47_470 },
+  "furniture-store": { floor: 2, x: 39_341, y: 47_470 },
+};
+
 function requireAuth(req: Request, res: any): string | null {
   if (!(req as any).isAuthenticated?.()) {
     res.status(401).json({ error: "Login required" });
@@ -67,7 +74,12 @@ function requireAuth(req: Request, res: any): string | null {
   return id;
 }
 
-type GameItemsIdentity = { userId: string; email?: string | null; desktopLink: boolean };
+type GameItemsIdentity = {
+  userId: string;
+  email?: string | null;
+  desktopLink: boolean;
+  desktopLinkId?: string;
+};
 
 async function resolveGameItemsIdentity(req: Request, res: any): Promise<GameItemsIdentity | null> {
   if ((req as any).isAuthenticated?.() && (req as any).user?.id) {
@@ -87,7 +99,7 @@ async function resolveGameItemsIdentity(req: Request, res: any): Promise<GameIte
     res.status(401).json({ error: "Desktop account is unavailable" });
     return null;
   }
-  return { userId: link.userId, email: user.email, desktopLink: true };
+  return { userId: link.userId, email: user.email, desktopLink: true, desktopLinkId: link.id };
 }
 
 function parseSlot(raw: unknown): number {
@@ -268,10 +280,12 @@ router.post("/items/buy", async (req, res) => {
   if (!identity) return;
   const userId = identity.userId;
   const source = String(req.body?.source ?? "");
-  if (identity.desktopLink && source !== "tower_vending") {
-    res.status(403).json({ error: "Desktop purchases are limited to Tower vending stock." });
+  const businessKey = String(req.body?.businessKey ?? "");
+  if (identity.desktopLink && source !== "tower_vending" && source !== "tower_business") {
+    res.status(403).json({ error: "Desktop purchases require an authorized Tower seller." });
     return;
   }
+  let businessName = "";
   if (identity.desktopLink && req.body?.slot !== undefined && parseSlot(req.body.slot) !== 0) {
     res.status(403).json({ error: "The linked game can purchase only for the primary character." });
     return;
@@ -282,6 +296,34 @@ router.post("/items/buy", async (req, res) => {
   if (!item) {
     res.status(400).json({ error: "Unknown item" });
     return;
+  }
+  if (source === "tower_business") {
+    const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+    if (!identity.desktopLink || !shop) {
+      res.status(403).json({ error: "Business purchases require an in-person desktop shop interaction." });
+      return;
+    }
+    const listing = TOWER_BUSINESS_STOCK_LINES.find(
+      (entry) => entry.sellerBusinessKey === businessKey && entry.itemIds.includes(item.id),
+    );
+    if (!listing) {
+      res.status(403).json({ error: "This item is not sold by that Tower business." });
+      return;
+    }
+    const [presence] = await db.select().from(desktopOfficePresenceTable)
+      .where(eq(desktopOfficePresenceTable.userId, userId))
+      .limit(1);
+    const presenceAgeMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+    const distance = presence
+      ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
+      : Number.POSITIVE_INFINITY;
+    if (!presence || presence.linkId !== identity.desktopLinkId
+      || presence.floorNumber !== shop.floor || presence.room !== "hallway"
+      || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
+      res.status(403).json({ error: "Approach this Tower shop before purchasing." });
+      return;
+    }
+    businessName = listing.sellerName ?? "Tower shop";
   }
   if (requiresPhysicalBlackMarket(item) && source !== "black_market") {
     res.status(403).json({ error: "Find the physical black-market dealer in Shadow Tower." });
@@ -414,6 +456,15 @@ router.post("/items/buy", async (req, res) => {
         .onConflictDoNothing()
         .returning({ id: playerInventoryTable.id });
       if (inserted.length === 0) throw new Error("ITEM_ALREADY_OWNED");
+      if (source === "tower_business") {
+        await recordTowerCompanyRevenueTx(tx, {
+          eventKey: `tower-business-sale:${randomUUID()}`,
+          category: businessKey,
+          userId,
+          amountFiat: effectivePrice,
+          description: `${businessName} sale: ${item.name}`,
+        });
+      }
       if (source === "tower_vending") {
         await recordLegacyRecoveryEventTx(tx, {
           userId,
