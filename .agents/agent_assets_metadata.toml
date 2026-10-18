@@ -2475,3 +2475,31 @@ mtime_ms = 1792337406367
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/114f9cb7-657e-44cf-9805-1dd871a6d300/25ed41d5-f260-45af-92ba-ae1977d15d6b"
 storage_version_token = "1792337412339273"
 content_type = "image/png"
+
+[[outputs]]
+id = "zw-Zt50h_mPop4spPdyFT"
+uri = "file://generated-artifacts/pygame-style-hd-avatar-candidate.png"
+type = "image"
+title = "Pygame-inspired HD avatar concept"
+description = "High-resolution pixel-inspired character concept: brown hair, blue jacket, white shirt, black tie, adult proportions, no eyewear. Review art only; not yet a playable Godot model."
+logical_id = "a94725bf-f13c-4685-bed1-e03de586c2a5"
+content_hash = "sha256:3f0103180d3a15b7b122a0facbae3f06d06b0b90c528299eb13bb32b2cf29fd3"
+size = 928242
+mtime_ms = 1792338064857
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a94725bf-f13c-4685-bed1-e03de586c2a5/fc6a6399-20c0-4590-9c1f-1c8fbf56cb2a"
+storage_version_token = "1792338135911365"
+content_type = "image/png"
+
+[[outputs]]
+id = "qvNWOecLNSihrtRaA9h_U"
+uri = "file://generated-artifacts/pygame-avatar-in-tower-preview.png"
+type = "image"
+title = "Avatar concept in the Tower"
+description = "Composite showing the new review concept at approximate gameplay scale beside the existing avatar on the Floor 1 screenshot. Production scene and roster are unchanged."
+logical_id = "de31393b-b84b-43dc-839b-07200bd282b1"
+content_hash = "sha256:d88311c5516d7a0e6acda68d33c583af0c9fa9f23ac23898729abe080cbbf0f4"
+size = 192387
+mtime_ms = 1792338112045
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/de31393b-b84b-43dc-839b-07200bd282b1/f2b07a4c-41d6-4514-b374-3a6b6e2809a8"
+storage_version_token = "1792338136705815"
+content_type = "image/png"
