@@ -56,3 +56,18 @@ Structure business stock with stable product families and version metadata so
 future NPC growth can build on it, while clearly distinguishing data readiness
 from live behavior. Keep each NPC's tools and decisions limited to its own job
 and improvement domain.
+
+## Fish pets and unique companions
+
+Fish live in tanks, not as followers; tanks can be moved around within a room.
+Fish shops should offer distinct fish types, tanks, and supplies for their care.
+Dogs and cats may follow their owner. Each character can have at most one unique
+NPC companion or assistant, with no duplicates; companions may follow and unlock
+task automations as the game progresses.
+
+**Why:** The user explicitly distinguished tank-based fish from following animal
+companions and defined the one-unique-companion-per-character progression rule.
+
+**How to apply:** Keep fish placement and care attached to their room's aquarium
+state. Enforce companion uniqueness per character, and expose automation only as
+the companion's progression unlocks it.
