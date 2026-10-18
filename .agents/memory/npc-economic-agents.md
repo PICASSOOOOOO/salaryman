@@ -81,13 +81,17 @@ objects and the terminal and visibly works there. Players access and configure
 her skills through the game terminal's Automations section, parallel to the
 browser surface. Reuse the same server-side automations and reflect their actual
 run state and duration; do not simulate instant work or invent a fixed AI delay.
+When the player is away, she acts as an office manager; where a human office
+manager is assigned, she supports that person with their work rather than
+replacing them.
 Without Prime, players ask the receptionist which Pixel Agent or NPC is
 available for work. Hiring and construction organizations are subject to
 regulations.
 
 **Why:** The user explicitly distinguishes paid game NPC labor, Pablo Corp's
 exclusive specialist rentals, Prime-triggered secretary onboarding, and an
-in-world secretary that physically performs real automation work.
+in-world secretary that physically performs real automation work and supports
+the human office manager when the player is away.
 
 **How to apply:** Keep individual hiring costs and NPC rental exclusivity in the
 game economy; gate the automatic all-skills secretary and online workforce
