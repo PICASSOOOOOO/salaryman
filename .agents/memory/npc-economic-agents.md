@@ -97,6 +97,11 @@ coordinate or delegate suitable subtasks to NPC staff hired by the organization.
 She runs operations when the owner or human management is away, while also
 helping human managers learn how to use her and the available tools.
 
+Each human employee has an individual desk, chair, and computer terminal.
+Organization systems and automation configurations are shared across members;
+a task submitted from any member's terminal can be routed to the secretary and
+her hired NPC support staff.
+
 NPCs hired to support this work receive a one-time signing bonus and recurring
 daily pay under a fixed-term contract lasting weeks or months. This is
 pay-as-you-go employment: organizations must keep funds available for payroll.
