@@ -74,6 +74,12 @@ describe("Tower business stock catalog", () => {
         "education-books",
       ]),
     );
+    const seating = TOWER_BUSINESS_STOCK_LINES.find((listing) => listing.id === "chairs");
+    expect(seating).toMatchObject({
+      sellerBusinessKey: "furniture-store",
+      itemIds: ["furn_couch"],
+      priceSource: "catalog_item",
+    });
     for (const listing of TOWER_BUSINESS_STOCK_LINES) {
       expect(listing.npcProductFamily).toBeTruthy();
       expect(listing.npcVersion).toBe(1);

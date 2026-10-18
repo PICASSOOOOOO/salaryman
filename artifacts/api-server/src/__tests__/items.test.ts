@@ -107,6 +107,10 @@ describe("GET /items/vending-catalog", () => {
     expect(aquarium?.items[0].id).toBe("decor_aquarium");
     const furniture = listings.find((listing) => listing.id === "desks");
     expect(furniture?.sellerLocationLabel).toBe("FLOOR 02 / SUITE 07");
+    const seating = listings.find((listing) => listing.id === "chairs");
+    expect(seating?.sellerBusinessKey).toBe("furniture-store");
+    expect(seating?.items).toHaveLength(1);
+    expect(seating?.items[0]).toMatchObject({ id: "furn_couch", basePriceFiat: 8_000 });
     expect(res.body.ghost).toMatchObject({
       availability: "direct_npc",
       requiresProximityInteraction: true,

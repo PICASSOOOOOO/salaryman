@@ -6,7 +6,7 @@ const SUPPORTED_KINDS := [
 	"desk", "telephone", "pay_phone", "desk_lamp", "trash_can", "fire_extinguisher",
 	"temple_tree", "reflection_screen", "meditation_cushion", "temple_audio_control",
 	"chapel_pew", "chapel_altar", "library_shelf", "reading_table", "museum_case",
-	"furniture_lounge_chair", "furniture_sideboard", "furniture_display_shelf",
+	"furniture_lounge_chair", "furniture_couch", "furniture_sideboard", "furniture_display_shelf",
 ]
 var finish: StandardMaterial3D
 var surface_base := Color("#35574a")
@@ -69,6 +69,8 @@ func _build(kind: String, reception: bool, variant: int) -> void:
 			_museum_case(wood, brass, cream, variant)
 		"furniture_lounge_chair":
 			_furniture_lounge_chair(wood, edge, brass)
+		"furniture_couch":
+			_furniture_couch(wood, edge, brass)
 		"furniture_sideboard":
 			_furniture_sideboard(wood, edge, brass, cream)
 		"furniture_display_shelf":
@@ -369,6 +371,27 @@ func _furniture_lounge_chair(wood: Material, edge: Material, brass: Material) ->
 			_box("ChairLeg", Vector3(side * 0.42, 0.22, depth), Vector3(0.085, 0.42, 0.085), wood)
 			_cylinder("BrassFoot", Vector3(side * 0.42, 0.025, depth), 0.058, 0.05, brass)
 	_wear_detail(Vector3(0, 0.56, 0.468), Vector3(0.18, 0.004, 0.008), brass)
+
+
+func _furniture_couch(wood: Material, edge: Material, brass: Material) -> void:
+	finish = _finish("#35574a")
+	finish.roughness = 0.43
+	surface_base = Color("#35574a")
+	_box("WalnutBase", Vector3(0, 0.37, 0), Vector3(2.55, 0.30, 0.92), wood)
+	_box("LeatherSeatDeck", Vector3(0, 0.57, 0.02), Vector3(2.38, 0.14, 0.84), finish)
+	_box("CouchBackFrame", Vector3(0, 1.06, -0.34), Vector3(2.52, 0.90, 0.20), wood)
+	_box("CouchBackUpholstery", Vector3(0, 1.08, -0.205), Vector3(2.34, 0.78, 0.09), finish)
+	for cushion in range(3):
+		var x := -0.77 + float(cushion) * 0.77
+		_box("SeatCushion", Vector3(x, 0.70, 0.055), Vector3(0.73, 0.22, 0.67), finish)
+		_box("CushionPiping", Vector3(x, 0.812, 0.38), Vector3(0.60, 0.012, 0.014), edge)
+	for side in [-1.0, 1.0]:
+		_box("UpholsteredArm", Vector3(side * 1.14, 0.82, 0.0), Vector3(0.28, 0.75, 0.94), finish)
+		_box("WalnutArmCap", Vector3(side * 1.14, 1.22, 0.0), Vector3(0.32, 0.08, 1.00), wood)
+		for depth in [-0.34, 0.34]:
+			_box("CouchLeg", Vector3(side * 0.98, 0.16, depth), Vector3(0.12, 0.30, 0.12), wood)
+			_cylinder("BrassFoot", Vector3(side * 0.98, 0.025, depth), 0.075, 0.05, brass)
+	_wear_detail(Vector3(0, 0.49, 0.466), Vector3(0.22, 0.004, 0.008), brass)
 
 
 func _furniture_sideboard(wood: Material, edge: Material, brass: Material, cream: Material) -> void:

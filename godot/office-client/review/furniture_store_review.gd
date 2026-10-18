@@ -55,26 +55,31 @@ func _render() -> void:
 	sunlight.shadow_enabled = true
 	world.add_child(sunlight)
 
-	_box(world, Vector3(0, -0.12, 0), Vector3(15, 0.24, 8.5), "#b9a889")
-	_box(world, Vector3(0, 1.45, -4.1), Vector3(15, 2.9, 0.18), "#35574a")
-	_box(world, Vector3(0, 0.16, -3.97), Vector3(14.8, 0.08, 0.04), "#ad884e", 0.55)
-	for slat in range(25):
-		_box(world, Vector3(-7.0 + float(slat) * 0.58, 1.48, -3.96), Vector3(0.026, 2.36, 0.04), "#6a7762")
+	_box(world, Vector3(0, -0.12, 0), Vector3(18, 0.24, 8.5), "#b9a889")
+	_box(world, Vector3(0, 1.45, -4.1), Vector3(18, 2.9, 0.18), "#35574a")
+	_box(world, Vector3(0, 0.16, -3.97), Vector3(17.8, 0.08, 0.04), "#ad884e", 0.55)
+	for slat in range(30):
+		_box(world, Vector3(-8.5 + float(slat) * 0.58, 1.48, -3.96), Vector3(0.026, 2.36, 0.04), "#6a7762")
 
 	var chair: Node3D = Prop.create("furniture_lounge_chair")
-	chair.position = Vector3(-4.3, 0, 0.0)
+	chair.position = Vector3(-6.2, 0, 0.0)
 	world.add_child(chair)
-	_label(world, "LOUNGE CHAIR", Vector3(-4.3, 2.18, 0.0))
+	_label(world, "LOUNGE CHAIR", Vector3(-6.2, 2.18, 0.0))
+
+	var couch: Node3D = Prop.create("furniture_couch")
+	couch.position = Vector3(-2.0, 0, 0.0)
+	world.add_child(couch)
+	_label(world, "GREEN LEATHER COUCH", Vector3(-2.0, 2.18, 0.0))
 
 	var sideboard: Node3D = Prop.create("furniture_sideboard")
-	sideboard.position = Vector3(0, 0, 0.0)
+	sideboard.position = Vector3(2.2, 0, 0.0)
 	world.add_child(sideboard)
-	_label(world, "WALNUT SIDEBOARD", Vector3(0, 2.18, 0.0))
+	_label(world, "WALNUT SIDEBOARD", Vector3(2.2, 2.18, 0.0))
 
 	var shelf: Node3D = Prop.create("furniture_display_shelf")
-	shelf.position = Vector3(4.35, 0, 0.0)
+	shelf.position = Vector3(6.1, 0, 0.0)
 	world.add_child(shelf)
-	_label(world, "DISPLAY SHELF", Vector3(4.35, 2.92, 0.0))
+	_label(world, "DISPLAY SHELF", Vector3(6.1, 2.92, 0.0))
 
 	var title := Label3D.new()
 	title.text = "FURNITURE STORE  /  WALNUT · BRASS · GREEN ENAMEL"
@@ -87,8 +92,8 @@ func _render() -> void:
 
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 12.5
-	camera.position = Vector3(9.5, 8.0, 12.0)
+	camera.size = 16.5
+	camera.position = Vector3(11.5, 9.0, 15.0)
 	world.add_child(camera)
 	camera.look_at(Vector3(0, 1.0, 0))
 	camera.current = true
