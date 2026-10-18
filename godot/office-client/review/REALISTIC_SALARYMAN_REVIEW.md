@@ -1,16 +1,16 @@
-# F06 salaryman review
+# SALARYMAN appearance review
 
-Run the review-only scene with:
+Run the standalone, review-only character scene from the repository root:
 
 ```sh
-godot --path godot/office-client res://review/character_walk_preview.tscn
+godot --path godot/office-client res://review/realistic_salaryman_review.tscn
 ```
 
-Use WASD or the arrow keys to move, Shift to sprint, and Escape to exit. The
-scene uses the same Tower floor-plan data and production Godot world builders as
-the game. It starts the production player model at the F06 radio-station office
-entrance and uses the game's overhead camera and model scale.
+Use the left/right arrow keys to turn the model, R to reset, and Escape to exit.
+The isolated full-body three-quarter view uses `realistic_salaryman_preview.glb`,
+hides its explicit glasses meshes, and applies a restrained head proportion
+adjustment through the head skeleton joint only.
 
-This review does not create substitute room geometry, resize the doorway, alter
-the character proportions, edit animation clips, or change the shared player/NPC
-roster. Any appearance changes remain unapproved until the user approves them.
+**UNAPPROVED REVIEW ART.** This is a visual candidate only. No production player
+or NPC model, shared roster, animation clip, material, UI avatar, browser/Pygame
+art, or backend asset is changed.

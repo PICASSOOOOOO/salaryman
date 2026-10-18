@@ -2447,3 +2447,17 @@ mtime_ms = 1792329083159
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/06006ace-21dd-494d-927f-e47afa8403c1/9ba3c1da-194c-4b65-9458-a2df4b258749"
 storage_version_token = "1792329090196767"
 content_type = "image/png"
+
+[[outputs]]
+id = "t97JIY5CCnefjbuf6aV5x"
+uri = "file://generated-artifacts/avatar-proportion-review.png"
+type = "image"
+title = "SALARYMAN avatar review"
+description = "Review-only candidate with no sunglasses and a slightly smaller head. Production player and NPC avatars are unchanged."
+logical_id = "b1f503e7-c065-425e-9afc-8d87fa3febc3"
+content_hash = "sha256:25094fc695a3a990e68f405c138222f155fa31113c4e269b2444e14a0dfd241b"
+size = 216104
+mtime_ms = 1792335454252
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b1f503e7-c065-425e-9afc-8d87fa3febc3/905b6933-d41a-4a8e-b468-f5a555aec61e"
+storage_version_token = "1792335460322158"
+content_type = "image/png"
