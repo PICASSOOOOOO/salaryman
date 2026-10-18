@@ -37,11 +37,11 @@ money from the authoritative public pool or the owning organization's funds.
 ## NPCs as purposeful automation characters
 
 NPCs should extend existing API automations rather than use separate game-only
-assistant backends. Fraction each automation into narrow NPC roles: no NPC should
-have broad, all-purpose authority. Each should be a useful, recognizable character
-with one real job, a destination or route, and a concrete responsibility, and may
-innovate only within that job's domain. Pablo Corp's curated rental workforce may
-grow into many named, unique specialist characters, not generic background headcount.
+assistant backends. Fraction the curated workforce into named specialist NPCs with
+a unique identity, story, purpose, job, destination or route, and bounded authority.
+Pablo Corp's rental roster may grow into many such characters, not generic background
+headcount. The Prime office secretary is the explicit all-skills/all-automations
+exception, but must still reuse the existing automation systems.
 NPC-operated businesses may grow into
 specialized sellers and develop improved versions of their products; do not imply
 that this progression is active until it has a real simulation.
@@ -60,25 +60,33 @@ and improvement domain.
 
 ## Pablo Corp workforce rentals and Prime secretary
 
-Game-world NPC hires cost a signing bonus plus a recurring daily rate. Pablo Corp
-owns a curated roster of named, costumed specialist NPCs included with PABLO
-PRIME's browser-side workforce access. Each roster character is unique: only one
-exists and can be rented by one organization at a time; in-game organizations
-hire specialists for their particular strengths at a steep price.
+Game-world NPC hires cost a signing bonus plus a recurring daily rate. The
+minimum-wage benchmark for NPCs and humans is USD-equivalent $1/hour: a 12-hour
+workday is $12/day, paid in game FIAT (ƒ12/day).
 
-Self-owned automation is a separate, very expensive service rather than an NPC
-hire. A PABLO PRIME subscriber may receive one distinctive secretary in their
-office who combines the available skills and automations, with a unique name
-and costume; this service must be paid for. The payment rail and price are not
-specified yet.
+Pablo Corp owns the Tower and a curated roster of named, costumed specialist NPCs
+included with PABLO PRIME's browser-side workforce access. Each roster character
+is unique: only one exists and can be rented by one organization at a time;
+in-game organizations hire specialists for their particular strengths at a
+steep price. NPCs may be working, unemployed, sick, displaced by a business
+disaster, or starting their own businesses; they should autonomously pursue
+wealth and compete with players and each other.
+
+A PABLO PRIME Stripe subscription automatically triggers an elaborate elevator
+cutscene delivering one distinctive secretary to the subscriber's office. This
+secretary combines the available skills and automations, with a unique name and
+costume, and requires a separate one-time real-money setup fee. Without Prime,
+players ask the receptionist which Pixel Agent or NPC is available for work.
+Hiring and construction organizations are subject to regulations.
 
 **Why:** The user explicitly distinguishes paid game NPC labor, Pablo Corp's
-exclusive specialist rentals, and expensive all-in-one automation service.
+exclusive specialist rentals, Prime-triggered secretary onboarding, and autonomous
+NPC economic lives.
 
 **How to apply:** Keep individual hiring costs and NPC rental exclusivity in the
-game economy; keep Prime entitlement, browser access, and any separately paid
-automation service distinct. Never allow concurrent rentals of the same
-specialist.
+game economy; keep Prime entitlement, browser access, and the separately paid
+one-time secretary setup distinct. Never allow concurrent rentals of the same
+specialist. Pay the wage floor in FIAT; do not invent the secretary setup price.
 
 ## Fish pets and unique companions
 

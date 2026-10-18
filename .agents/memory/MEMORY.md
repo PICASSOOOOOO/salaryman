@@ -117,7 +117,7 @@
 - [Godot movie capture paths](godot-movie-capture-paths.md) — `--write-movie` output resolves under the selected Godot project root, not the shell working directory.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
 - [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
-- [NPC economic agents](npc-economic-agents.md) — named specialist rentals are unique and exclusive; distinguish signing/daily pay from expensive Prime automation.
+- [NPC economic agents](npc-economic-agents.md) — unique NPCs have autonomous economic lives; Prime unlocks exclusive rentals and a separately paid secretary.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — polish existing interiors and connect a small cast of purposeful NPCs through grounded stories inside the Tower.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — Keep reset-independent purchase snapshots outside wipe tables; restore monotonically under identity-safe locking.
