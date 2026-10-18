@@ -30,11 +30,17 @@ The main Godot avatars should closely resemble the Pygame characters overall, no
 
 **How to apply:** Match the full character read more closely than color alone, keep natural head proportions and no sunglasses, and use the existing Godot pipeline. The base direction is approved; keep later cast designs review-only until the user approves them.
 
-The user approved a high-resolution, pixel-inspired 3D character direction that fits the Tower environment. Retire the oversized-head player look, then build a varied cast: multiple men, women, human-looking replicants in civilian clothes, distinct NPCs, and pets.
+The user approved the attached voxel/pixel-inspired 3D character reference: stepped block geometry, adult proportions, brown hair, blue blazer, white shirt, black tie, and dark trousers. A smooth low-poly humanoid with only matching colors does not satisfy the direction. Retire the oversized-head player look, then build a varied cast: multiple men, women, human-looking replicants in civilian clothes, distinct NPCs, and pets.
 
-**Why:** The user approved the new avatar concept and explicitly requested these character families.
+**Why:** The user explicitly approved this character style and corrected the first production preview because its smooth model did not resemble the attached voxel example.
 
-**How to apply:** Preserve the established animation/runtime path for playable humanoids, keep replicants visually human and civilian-dressed, and develop new cast assets in the approved style rather than reusing the pixel sprite sheet as finished Godot art.
+**How to apply:** Preserve the established animation/runtime path for playable humanoids, build visible block geometry rather than merely recoloring a smooth model, keep replicants visually human and civilian-dressed, and develop new cast assets in this style rather than reusing the pixel sprite sheet as finished Godot art.
+
+The source humanoid rig can serve as an animation skeleton while all original mesh instances are hidden and block-built parts are attached to its named bones. Compute each attachment transform from the unscaled bone rest transform and the desired model-space part transform; apply shape scaling to mesh dimensions instead of independently stretching target positions.
+
+**Why:** Nonuniformly stretching target positions against the existing bone-rest transforms caused head/torso alignment failures in the first voxel avatar pass.
+
+**How to apply:** Keep attachment centers in the rig's native coordinate frame, verify arm and leg parts follow their individual bones, and test the visible avatar with the source animation library.
 
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 

@@ -2517,3 +2517,17 @@ mtime_ms = 1792339504302
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/58b8acfe-6998-4047-8d3a-88cbc9c1f54f/4812fe4d-872c-4cef-9c46-efde5541c5df"
 storage_version_token = "1792339563001063"
 content_type = "image/png"
+
+[[outputs]]
+id = "OiBImR_PGcxcJU_Wmc1B-"
+uri = "file://generated-artifacts/avatar-voxel-review.png"
+type = "image"
+title = "Voxel-style avatar in the Tower lobby"
+description = "Godot runtime capture of the block-built avatar using the attached reference style. The original smooth meshes are hidden; the existing 32-clip rig drives the new visible parts."
+logical_id = "cd58710e-96fe-4373-bf0a-d9de74195c2d"
+content_hash = "sha256:e22622a41f17bcafdb4bba471f334c7f292013c35bc9f06d3549253054bfcebd"
+size = 160904
+mtime_ms = 1792341251717
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/cd58710e-96fe-4373-bf0a-d9de74195c2d/acde2609-8625-4461-8df6-4857bbafc776"
+storage_version_token = "1792341271200801"
+content_type = "image/png"

@@ -7,7 +7,6 @@ var _review_camera: Camera3D
 var _frame_count := 0
 var _capture_path := ""
 var _clip_mode := "interactive"
-var _walk_key_down := false
 
 
 func _ready() -> void:
@@ -30,7 +29,7 @@ func _build_preview() -> void:
 
 	_actor = PlayerController.new()
 	_actor.name = "ReviewSalaryman"
-	_actor.configure_character(load("res://agentshire-assets/characters/avatar-human-adult.glb"))
+	_actor.configure_character(load("res://agentshire-assets/characters/character-male-a.glb"))
 	_actor.set_bridge_connected(true)
 	world_root.add_child(_actor)
 	if (
@@ -39,6 +38,9 @@ func _build_preview() -> void:
 	):
 		push_error("The production character must retain all 32 source animation clips.")
 		return
+	if _clip_mode in ["idle", "walk", "static"] and _actor.animation_player.has_animation(_clip_mode):
+		_actor.set_physics_process(false)
+		_actor.animation_player.play(_clip_mode)
 	_actor.visual_root.scale = Vector3.ONE * 3.0
 	# Start near reception in the real first-floor lobby, rather than at an
 	# unrelated F06 business-suite entrance.
@@ -95,9 +97,9 @@ func _add_review_labels() -> void:
 	title.add_theme_color_override("font_color", Color("#f0e3c7"))
 	layer.add_child(title)
 
-	if _clip_mode in ["idle", "walk"]:
+	if _clip_mode in ["idle", "walk", "static"]:
 		var clip_label := Label.new()
-		clip_label.text = "LOBBY / %s  ·  APPROVED PIXEL-INSPIRED STYLE" % _clip_mode.to_upper()
+		clip_label.text = "LOBBY / %s  ·  VOXEL AVATAR REVIEW" % _clip_mode.to_upper()
 		clip_label.position = Vector2(28.0, 48.0)
 		clip_label.add_theme_font_size_override("font_size", 16)
 		clip_label.add_theme_color_override("font_color", Color("#f0e3c7"))
@@ -116,8 +118,6 @@ func _process(delta: float) -> void:
 	if _actor == null or not is_instance_valid(_actor):
 		return
 	_frame_count += 1
-	if _clip_mode == "walk":
-		_update_walk_clip_input()
 	if Input.is_key_pressed(KEY_ESCAPE):
 		get_tree().quit()
 		return
@@ -125,32 +125,13 @@ func _process(delta: float) -> void:
 		call_deferred("_capture_frame")
 
 
-func _update_walk_clip_input() -> void:
-	# At 24 fps, begin walking after a short idle lead-in and release before
-	# the clip ends so both locomotion and the return to idle are visible. Walk
-	# south into the clear lobby floor, away from the reception lamp.
-	if _frame_count == 24:
-		_set_review_key(KEY_S, true)
-	elif _frame_count == 48:
-		_set_review_key(KEY_S, false)
-
-
-func _set_review_key(key: Key, pressed: bool) -> void:
-	var event := InputEventKey.new()
-	event.keycode = key
-	event.physical_keycode = key
-	event.pressed = pressed
-	Input.parse_input_event(event)
-	_walk_key_down = pressed
-
-
 func _update_review_camera() -> void:
 	if _actor == null or _review_camera == null:
 		return
 	var target := _actor.global_position + Vector3(0.0, 0.2, 0.0)
 	var distance := REVIEW_CAMERA_DISTANCE
-	_review_camera.size = 12.0
-	_review_camera.position = target + Vector3(0.72, 0.95, 0.72).normalized() * distance
+	_review_camera.size = 3.5
+	_review_camera.position = target + Vector3(0.72, 0.52, 1.1).normalized() * distance
 	_review_camera.look_at(target, Vector3.UP)
 
 

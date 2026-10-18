@@ -3,9 +3,8 @@ extends SceneTree
 const CHARACTER_SCENE: PackedScene = preload(
 	"res://agentshire-assets/characters/character-male-a.glb"
 )
-const AVATAR_STYLE = preload("res://characters/avatar_style.gd")
+const AVATAR_STYLE = preload("res://characters/voxel_avatar.gd")
 const EXPECTED_CLIPS := 32
-const EXPECTED_HEAD_SCALE := 0.80
 
 
 func _initialize() -> void:
@@ -16,10 +15,18 @@ func _run() -> void:
 	var model := CHARACTER_SCENE.instantiate() as Node3D
 	assert(model != null, "The production humanoid model must instantiate.")
 	root.add_child(model)
-	for skeleton_node in model.find_children("*", "Skeleton3D", true, false):
-		var skeleton := skeleton_node as Skeleton3D
-		for bone_index in range(skeleton.get_bone_count()):
-			print(skeleton.get_bone_name(bone_index), " rest=", skeleton.get_bone_rest(bone_index))
+	AVATAR_STYLE.apply(model)
+	var visible_parts := 0
+	var original_meshes_hidden := true
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		if mesh.name in ["body-mesh", "head-mesh"] and mesh.visible:
+			original_meshes_hidden = false
+		if mesh.visible:
+			visible_parts += 1
+	print("Visible model meshes after voxel rebuild: ", visible_parts)
+	assert(visible_parts >= 20, "The voxel avatar must replace the source meshes with block-built parts.")
+	assert(original_meshes_hidden, "The original oversized source meshes must stay hidden.")
 
 	var animation_players := model.find_children("*", "AnimationPlayer", true, false)
 	assert(not animation_players.is_empty(), "The production avatar needs its source animation player.")
@@ -29,8 +36,8 @@ func _run() -> void:
 		"The production avatar must keep every source animation clip."
 	)
 
-	print("Avatar style test passed: %d animation clips, head scale %.2f." % [
+	print("Voxel avatar test passed: %d animation clips and %d visible block parts." % [
 		animation_player.get_animation_list().size(),
-		EXPECTED_HEAD_SCALE,
+		visible_parts,
 	])
 	quit()

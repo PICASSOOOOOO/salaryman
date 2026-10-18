@@ -9,9 +9,9 @@ const ACCELERATION := 15.0
 const FRICTION := 20.0
 const GRAVITY := 18.0
 const JUMP_SPEED := 5.0
-const MODEL_SCALE := 2.15
+const MODEL_SCALE := 3.0
 const GAMEPAD_DEADZONE := 0.22
-const AvatarStyle = preload("res://characters/avatar_style.gd")
+const AvatarStyle = preload("res://characters/voxel_avatar.gd")
 
 var character_scene: PackedScene
 var visual_root: Node3D
