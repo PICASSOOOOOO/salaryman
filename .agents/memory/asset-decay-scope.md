@@ -27,10 +27,6 @@ need maintenance. Keep the visual world’s gradual solarpunk-to-cyberpunk shift
 slow; do not turn every condition into the same meter or give pets an excessive
 care cadence.
 
-The uploaded old SALARYMAN trailer depicts the environment after it has been
-left without upkeep. Use it as a reference for environmental neglect, not as
-character approval or footage to reuse; the intended game view is top-down.
-
 **Why:** the user defined a survival office sim RPG MMO in which living beings,
 vehicles, buildings, and infrastructure all lose condition and require
 maintenance, with distinct needs for humans, replicants, and pets.
