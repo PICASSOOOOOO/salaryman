@@ -11,7 +11,7 @@ const GRAVITY := 18.0
 const JUMP_SPEED := 5.0
 const MODEL_SCALE := 2.15
 const GAMEPAD_DEADZONE := 0.22
-const CHARACTER_ALBEDO := preload("res://agentshire-assets/characters/Textures/colormap.png")
+const AvatarStyle = preload("res://characters/avatar_style.gd")
 
 var character_scene: PackedScene
 var visual_root: Node3D
@@ -130,17 +130,7 @@ func _ready() -> void:
 
 static func configure_character_model(model: Node3D, scale_value: float = MODEL_SCALE) -> AnimationPlayer:
 	model.scale = Vector3.ONE * scale_value
-	for node in model.find_children("*", "MeshInstance3D", true, false):
-		var mesh_instance := node as MeshInstance3D
-		if mesh_instance.mesh == null:
-			continue
-		for surface_index in range(mesh_instance.mesh.get_surface_count()):
-			var source_material := mesh_instance.get_active_material(surface_index)
-			var material := source_material.duplicate() as StandardMaterial3D if source_material is StandardMaterial3D else StandardMaterial3D.new()
-			material.albedo_texture = CHARACTER_ALBEDO
-			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			material.roughness = 0.82
-			mesh_instance.set_surface_override_material(surface_index, material)
+	AvatarStyle.apply(model)
 	var animation_nodes := model.find_children("*", "AnimationPlayer", true, false)
 	if animation_nodes.is_empty():
 		return null

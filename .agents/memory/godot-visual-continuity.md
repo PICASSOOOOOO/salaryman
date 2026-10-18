@@ -30,6 +30,12 @@ The main Godot avatars should closely resemble the Pygame characters overall, no
 
 **How to apply:** Match the full character read more closely than color alone, keep natural head proportions and no sunglasses, and use the existing Godot pipeline. Keep changes review-only until the user approves the appearance.
 
+The user approved a high-resolution, pixel-inspired 3D character direction that fits the Tower environment. Retire the oversized-head player look, then build a varied cast: multiple men, women, human-looking replicants in civilian clothes, distinct NPCs, and pets.
+
+**Why:** The user approved the new avatar concept and explicitly requested these character families.
+
+**How to apply:** Preserve the established animation/runtime path for playable humanoids, keep replicants visually human and civilian-dressed, and develop new cast assets in the approved style rather than reusing the pixel sprite sheet as finished Godot art.
+
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 
 **Why:** The user explicitly said the camera zoom at transitions is important for making travel feel like a game, and requested sound effects for zooming in and out.
