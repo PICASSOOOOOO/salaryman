@@ -7,6 +7,8 @@ export interface DailyBusinessTaxInput {
   grossIncomeFiat: number;
   grossIncomeGold: number;
   grossIncomeCredits?: number;
+  stolenIncomeFiat?: number;
+  stolenIncomeGold?: number;
 }
 
 export interface DailyBusinessTaxResult {
@@ -16,6 +18,8 @@ export interface DailyBusinessTaxResult {
   fiatTax: number;
   goldTax: number;
   excludedGrossIncomeCredits: number;
+  excludedStolenFiat: number;
+  excludedStolenGold: number;
 }
 
 export const REAL_BUSINESS_TAX_BPS = 500;
@@ -46,12 +50,16 @@ export function getDailyBusinessTaxRateBps(
 /**
  * Tax daily gross earned income in FIAT and GOLD independently so neither
  * currency is silently converted. No expense or cost deductions are applied.
- * Service Credits are excluded from every business tax calculation.
+ * Stolen proceeds and service Credits are excluded from every business tax.
  */
 export function calculateDailyBusinessTax(input: DailyBusinessTaxInput): DailyBusinessTaxResult {
   const rateBps = getDailyBusinessTaxRateBps(input.businessKind, input.netWorthFiat);
-  const taxableGrossIncomeFiat = positiveWholeAmount(input.grossIncomeFiat);
-  const taxableGrossIncomeGold = positiveWholeAmount(input.grossIncomeGold);
+  const grossIncomeFiat = positiveWholeAmount(input.grossIncomeFiat);
+  const grossIncomeGold = positiveWholeAmount(input.grossIncomeGold);
+  const excludedStolenFiat = Math.min(grossIncomeFiat, positiveWholeAmount(input.stolenIncomeFiat ?? 0));
+  const excludedStolenGold = Math.min(grossIncomeGold, positiveWholeAmount(input.stolenIncomeGold ?? 0));
+  const taxableGrossIncomeFiat = grossIncomeFiat - excludedStolenFiat;
+  const taxableGrossIncomeGold = grossIncomeGold - excludedStolenGold;
   return {
     rateBps,
     taxableGrossIncomeFiat,
@@ -59,5 +67,7 @@ export function calculateDailyBusinessTax(input: DailyBusinessTaxInput): DailyBu
     fiatTax: Math.floor((taxableGrossIncomeFiat * rateBps) / 10_000),
     goldTax: Math.floor((taxableGrossIncomeGold * rateBps) / 10_000),
     excludedGrossIncomeCredits: positiveWholeAmount(input.grossIncomeCredits ?? 0),
+    excludedStolenFiat,
+    excludedStolenGold,
   };
 }

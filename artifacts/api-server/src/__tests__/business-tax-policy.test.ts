@@ -20,6 +20,8 @@ describe("daily game-business tax policy", () => {
       fiatTax: 500,
       goldTax: 5,
       excludedGrossIncomeCredits: 50_000,
+      excludedStolenFiat: 0,
+      excludedStolenGold: 0,
     });
   });
 
@@ -29,7 +31,7 @@ describe("daily game-business tax policy", () => {
     expect(getDailyBusinessTaxRateBps("fictional", FICTIONAL_TAX_DISCOUNT_NET_WORTH_CAP)).toBe(1_000);
   });
 
-  it("taxes stolen FIAT belonging to an illegal business organization at forty percent", () => {
+  it("charges an illegal business organization forty percent on earned income", () => {
     expect(calculateDailyBusinessTax({
       businessKind: "illegal",
       netWorthFiat: 1_000_000,
@@ -42,6 +44,20 @@ describe("daily game-business tax policy", () => {
       fiatTax: 40_000,
       goldTax: 20,
       excludedGrossIncomeCredits: 900,
+    });
+  });
+
+  it("does not tax stolen FIAT, including when received by an illegal business organization", () => {
+    expect(calculateDailyBusinessTax({
+      businessKind: "illegal",
+      netWorthFiat: 0,
+      grossIncomeFiat: 100_000,
+      grossIncomeGold: 0,
+      stolenIncomeFiat: 100_000,
+    })).toMatchObject({
+      taxableGrossIncomeFiat: 0,
+      fiatTax: 0,
+      excludedStolenFiat: 100_000,
     });
   });
 
@@ -62,6 +78,8 @@ describe("daily game-business tax policy", () => {
       taxableGrossIncomeGold: 0,
       fiatTax: 0,
       goldTax: 0,
+      excludedStolenFiat: 0,
+      excludedStolenGold: 0,
     });
   });
 });

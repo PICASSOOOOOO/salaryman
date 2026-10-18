@@ -23,8 +23,11 @@ Personal net worth is the player's total personal worth, not only the FIAT they
 carry in their wallet. Players may apply for checking and savings accounts so
 they do not need to keep all their FIAT in the wallet. Wallet FIAT can be stolen,
 but theft should be very difficult and carry security repercussions; victims may
-defend themselves without repercussions. The 40% gross-income tax applies only
-to illegal business organizations, not to an individual merely because they stole.
+defend themselves without repercussions. Stolen money is not taxable. Illegal
+business organizations provide special abilities that make criminal activity
+easier; solo criminals have a harder time, and crimes such as safebreaking need
+the right tools and skills. Legitimate operators can build power by buying,
+selling, controlling operations, and hiring an army, guards, and bodyguards.
 Lower-income players should gain strength, stamina, power, attack and defense,
 better protection from weather and natural disasters, and heightened senses.
 They should have fewer opportunities, and everything should cost them more.
@@ -106,3 +109,11 @@ difficulty, security consequences, and victim self-defense should work.
 **How to apply:** Use the player's total personal worth for net-worth eligibility,
 keep carried wallet FIAT distinct from checking and savings balances when
 modeling theft exposure, and do not penalize a victim for defending themselves.
+
+**Why:** The user clarified that theft itself is not taxed and described the
+different capability paths for illegal organizations, solo criminals, and
+legitimate business operators.
+
+**How to apply:** Exclude stolen proceeds from tax bases. Make organizational
+criminal advantages and law-abiding business/security capabilities meaningful;
+require tools and skills for specific crimes such as safebreaking.
