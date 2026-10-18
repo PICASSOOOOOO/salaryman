@@ -101,3 +101,12 @@ missing cold-start dependency.
 
 **How to apply:** Keep direct, clean-project launch in verification and use a
 preload constant when a runtime entry script needs the new controller type.
+
+The native downloadable game must support common Xbox- and PlayStation-style
+controllers, in addition to keyboard controls.
+
+**Why:** The user explicitly asked to play the native game with a controller.
+
+**How to apply:** Preserve standard Godot gamepad mappings in the native client
+and package them with the game. Do not claim physical-controller compatibility
+was verified unless an actual device is tested.

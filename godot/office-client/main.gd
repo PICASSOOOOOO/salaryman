@@ -3208,12 +3208,26 @@ static func door_swing_angle(is_open: bool) -> float:
 
 static func elevator_indicator_text(room_id: String, floor_number: int, basement_level: int) -> String:
 	if room_id.begins_with("basement_b"):
-		var room_level := int(room_id.trim_prefix("basement_b"))
+		var room_level := safe_int(room_id.trim_prefix("basement_b"))
 		var displayed_level := room_level if room_level > 0 else basement_level
 		return "B%d" % clampi(displayed_level, 1, 6)
 	if basement_level > 0 and room_id.is_empty():
 		return "B%d" % clampi(basement_level, 1, 6)
 	return "%02d" % maxi(floor_number, 1)
+
+
+static func safe_int(value: Variant, fallback: int = 0) -> int:
+	match typeof(value):
+		TYPE_INT:
+			return value
+		TYPE_FLOAT:
+			return roundi(value)
+		TYPE_BOOL:
+			return 1 if value else 0
+		TYPE_STRING, TYPE_STRING_NAME:
+			var text := str(value)
+			return text.to_int() if text.is_valid_int() else fallback
+	return fallback
 
 
 static func lobby_render_origin_from_plan(
@@ -3270,8 +3284,8 @@ func _sync_elevator_floor_indicators(scene_data: Dictionary) -> void:
 		return
 	var label := elevator_indicator_text(
 		str(scene_data.get("room", "")),
-		int(scene_data.get("floor", 1)),
-		int(scene_data.get("basementLevel", 0)),
+		safe_int(scene_data.get("floor", 1), 1),
+		safe_int(scene_data.get("basementLevel", 0)),
 	)
 	for value in objects:
 		if not value is Dictionary:
@@ -4330,6 +4344,24 @@ func _send_command(name: String, payload: Dictionary = {}) -> String:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton:
+		var joypad_event := event as InputEventJoypadButton
+		var menu_open := not _active_page_name().is_empty() \
+			or (elevator_floor_panel != null and elevator_floor_panel.visible)
+		var keycode := PlayerController.keycode_for_joypad_button(
+			joypad_event.button_index,
+			menu_open,
+		)
+		if keycode > 0:
+			var key_event := InputEventKey.new()
+			key_event.keycode = keycode
+			key_event.physical_keycode = keycode
+			key_event.pressed = joypad_event.pressed
+			key_event.echo = false
+			key_event.device = joypad_event.device
+			Input.parse_input_event(key_event)
+			get_viewport().set_input_as_handled()
+		return
 	if (
 		PlayerController.is_jump_input(event)
 		and _active_page_name().is_empty()

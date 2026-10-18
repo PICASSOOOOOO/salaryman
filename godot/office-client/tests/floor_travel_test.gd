@@ -177,6 +177,26 @@ func _run_tests() -> void:
 	wheel_up.button_index = MOUSE_BUTTON_WHEEL_UP
 	wheel_up.pressed = true
 	assert(not PlayerController.is_jump_input(wheel_up))
+	assert(
+		PlayerController.gamepad_movement_vector(0.1, 0.1).is_zero_approx(),
+		"Small stick drift should stay inside the deadzone.",
+	)
+	var stick_move := PlayerController.gamepad_movement_vector(-0.8, 0.0)
+	assert(is_equal_approx(stick_move.x, -0.8))
+	assert(
+		PlayerController.gamepad_movement_vector(0.0, 0.0, 1.0, 0.0)
+			.is_equal_approx(Vector2.RIGHT),
+		"D-pad should move when the analog stick is idle.",
+	)
+	assert(PlayerController.keycode_for_joypad_button(JOY_BUTTON_A) == KEY_E)
+	assert(
+		PlayerController.keycode_for_joypad_button(JOY_BUTTON_A, true) == KEY_ENTER,
+		"Primary action should activate focused menus.",
+	)
+	assert(PlayerController.keycode_for_joypad_button(JOY_BUTTON_B) == KEY_ESCAPE)
+	assert(PlayerController.keycode_for_joypad_button(JOY_BUTTON_X) == KEY_SPACE)
+	assert(PlayerController.keycode_for_joypad_button(JOY_BUTTON_LEFT_SHOULDER) == KEY_SHIFT)
+	assert(PlayerController.keycode_for_joypad_button(JOY_BUTTON_DPAD_UP) == KEY_UP)
 	for zooming_in in [true, false]:
 		var tone: AudioStreamWAV = CameraSfx.make_zoom_tone(zooming_in)
 		assert(tone.mix_rate == 22050)
@@ -186,7 +206,11 @@ func _run_tests() -> void:
 	assert(OfficeClient.elevator_indicator_text("lobby", 1, 0) == "01")
 	assert(OfficeClient.elevator_indicator_text("recreation", 6, 0) == "06")
 	assert(OfficeClient.elevator_indicator_text("basement_b4", 1, 2) == "B4")
+	assert(OfficeClient.elevator_indicator_text("basement_b", 1, 2) == "B2")
 	assert(OfficeClient.elevator_indicator_text("", 1, 3) == "B3")
+	assert(OfficeClient.safe_int(null, 7) == 7)
+	assert(OfficeClient.safe_int("not-an-integer", 3) == 3)
+	assert(OfficeClient.safe_int(2.6) == 3)
 	assert(OfficeClient.elevator_indicator_text("", 0, 0) == "01")
 	for kind in [
 		"fire_extinguisher", "temple_tree", "reflection_screen", "meditation_cushion",

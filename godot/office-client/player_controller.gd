@@ -10,6 +10,7 @@ const FRICTION := 20.0
 const GRAVITY := 18.0
 const JUMP_SPEED := 5.0
 const MODEL_SCALE := 2.15
+const GAMEPAD_DEADZONE := 0.22
 const CHARACTER_ALBEDO := preload("res://agentshire-assets/characters/Textures/colormap.png")
 
 var character_scene: PackedScene
@@ -49,6 +50,50 @@ static func is_jump_input(event: InputEvent) -> bool:
 		var mouse_event := event as InputEventMouseButton
 		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN
 	return false
+
+
+static func gamepad_movement_vector(
+	axis_x: float,
+	axis_y: float,
+	dpad_x: float = 0.0,
+	dpad_y: float = 0.0,
+	deadzone: float = GAMEPAD_DEADZONE,
+) -> Vector2:
+	var stick := Vector2(axis_x, axis_y)
+	if stick.length() <= deadzone:
+		stick = Vector2.ZERO
+	else:
+		stick = stick.limit_length(1.0)
+	if not stick.is_zero_approx():
+		return stick
+	return Vector2(dpad_x, dpad_y).limit_length(1.0)
+
+
+static func keycode_for_joypad_button(button_index: int, menu_open: bool = false) -> int:
+	match button_index:
+		JOY_BUTTON_A:
+			return KEY_ENTER if menu_open else KEY_E
+		JOY_BUTTON_B, JOY_BUTTON_START:
+			return KEY_ESCAPE
+		JOY_BUTTON_X:
+			return KEY_SPACE
+		JOY_BUTTON_Y:
+			return KEY_V
+		JOY_BUTTON_LEFT_SHOULDER:
+			return KEY_SHIFT
+		JOY_BUTTON_RIGHT_SHOULDER:
+			return KEY_F
+		JOY_BUTTON_LEFT_STICK:
+			return KEY_Q
+		JOY_BUTTON_DPAD_UP:
+			return KEY_UP
+		JOY_BUTTON_DPAD_DOWN:
+			return KEY_DOWN
+		JOY_BUTTON_DPAD_LEFT:
+			return KEY_LEFT
+		JOY_BUTTON_DPAD_RIGHT:
+			return KEY_RIGHT
+	return 0
 
 
 func configure_character(scene: PackedScene) -> void:
@@ -113,17 +158,38 @@ func requested_movement() -> Vector2:
 	x -= float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
 	var y := float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN))
 	y -= float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
-	return Vector2(x, y).limit_length(1.0)
+	var movement := Vector2(x, y)
+	var devices := Input.get_connected_joypads()
+	if not devices.is_empty():
+		var device := devices[0]
+		var pad_x := float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_RIGHT))
+		pad_x -= float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_LEFT))
+		var pad_y := float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_DOWN))
+		pad_y -= float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_UP))
+		movement += gamepad_movement_vector(
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_X),
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_Y),
+			pad_x,
+			pad_y,
+		)
+	return movement.limit_length(1.0)
 
 
 func wants_sprint() -> bool:
 	return (
 		not requested_movement().is_zero_approx()
 		and sprint_input_active(
-			Input.is_key_pressed(KEY_SHIFT),
+			Input.is_key_pressed(KEY_SHIFT) or _gamepad_sprint_pressed(),
 			mouse_sprint_toggled,
 		)
 	)
+
+
+func _gamepad_sprint_pressed() -> bool:
+	for device in Input.get_connected_joypads():
+		if Input.is_joy_button_pressed(device, JOY_BUTTON_LEFT_SHOULDER):
+			return true
+	return false
 
 
 func set_authoritative_action(action: String) -> void:
