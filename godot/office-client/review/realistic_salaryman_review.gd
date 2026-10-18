@@ -3,7 +3,7 @@ extends Node3D
 
 const MODEL_SCENE: PackedScene = preload("res://review/realistic_salaryman_preview.glb")
 const MODEL_SCALE := 2.55
-const REVIEW_HEAD_SCALE := 0.88
+const REVIEW_HEAD_SCALE := 0.82
 
 var _model: Node3D
 var _camera: Camera3D
@@ -24,10 +24,10 @@ func _build_environment() -> void:
 	world.name = "ReviewWorldEnvironment"
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color("#d9ded2")
+	environment.background_color = Color("#b9c5bb")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("#f0e5d1")
-	environment.ambient_light_energy = 0.72
+	environment.ambient_light_energy = 0.42
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	world.environment = environment
 	add_child(world)
@@ -36,7 +36,7 @@ func _build_environment() -> void:
 	key_light.name = "SoftKey"
 	key_light.rotation_degrees = Vector3(-38.0, -34.0, 0.0)
 	key_light.light_color = Color("#fff0d9")
-	key_light.light_energy = 1.35
+	key_light.light_energy = 0.88
 	key_light.shadow_enabled = true
 	add_child(key_light)
 
@@ -44,7 +44,7 @@ func _build_environment() -> void:
 	fill_light.name = "CoolFill"
 	fill_light.rotation_degrees = Vector3(-18.0, 146.0, 0.0)
 	fill_light.light_color = Color("#d5e1db")
-	fill_light.light_energy = 0.42
+	fill_light.light_energy = 0.26
 	add_child(fill_light)
 
 	var floor := MeshInstance3D.new()
@@ -53,22 +53,35 @@ func _build_environment() -> void:
 	floor_mesh.size = Vector2(200.0, 200.0)
 	floor.mesh = floor_mesh
 	var floor_material := StandardMaterial3D.new()
-	floor_material.albedo_color = Color("#c8d0c5")
+	floor_material.albedo_color = Color("#64766c")
 	floor_material.roughness = 0.94
 	floor.material_override = floor_material
 	floor.position.y = -0.035
 	add_child(floor)
 
+	var backdrop := MeshInstance3D.new()
+	backdrop.name = "ReviewBackdrop"
+	var backdrop_mesh := PlaneMesh.new()
+	backdrop_mesh.size = Vector2(10.0, 7.0)
+	backdrop.mesh = backdrop_mesh
+	backdrop.rotation_degrees.x = 90.0
+	backdrop.position = Vector3(0.0, 2.65, -1.45)
+	var backdrop_material := StandardMaterial3D.new()
+	backdrop_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	backdrop_material.albedo_color = Color("#d4ddd3")
+	backdrop.material_override = backdrop_material
+	add_child(backdrop)
+
 	var plinth := MeshInstance3D.new()
 	plinth.name = "CharacterDisplayPlinth"
 	var plinth_mesh := CylinderMesh.new()
-	plinth_mesh.top_radius = 0.88
-	plinth_mesh.bottom_radius = 0.88
+	plinth_mesh.top_radius = 0.76
+	plinth_mesh.bottom_radius = 0.76
 	plinth_mesh.height = 0.055
 	plinth_mesh.radial_segments = 64
 	plinth.mesh = plinth_mesh
 	var plinth_material := StandardMaterial3D.new()
-	plinth_material.albedo_color = Color("#879b8e")
+	plinth_material.albedo_color = Color("#65796f")
 	plinth_material.roughness = 0.76
 	plinth.material_override = plinth_material
 	plinth.position.y = -0.005
@@ -95,7 +108,75 @@ func _build_character() -> void:
 	if hidden_mesh_count < 2:
 		push_warning("Expected explicit glasses nodes were not all found; check imported candidate node names.")
 
+	_apply_sprite_palette_review_overrides()
 	_apply_head_joint_proportion()
+
+
+func _apply_sprite_palette_review_overrides() -> void:
+	# Color cues are reinterpreted as 3D materials; the pixel sheet itself is
+	# never imported, sampled, or used as a rendered texture.
+	_set_review_material("ProceduralShortHair", Color("#563a2a"), 0.88)
+	_set_review_material("ProceduralSideburn", Color("#563a2a"), 0.88)
+	_set_review_material("ProceduralSideburn.001", Color("#563a2a"), 0.88)
+	_set_review_material("salarymanMesh", Color("#bf805d"), 0.78)
+	_set_review_material("high-polyMesh", Color("#35241b"), 0.38)
+	_set_review_material("Ivory shirt front", Color("#f3f0e6"), 0.86)
+	_set_review_material("Shirt collar", Color("#f3f0e6"), 0.86)
+	_set_review_material("Burgundy tie", Color("#17191c"), 0.82)
+	_set_review_material("PlaneMesh", Color("#24262a"), 0.5)
+
+	var suit_nodes: Array[Node] = []
+	for node in _model.find_children("*", "MeshInstance3D", true, false):
+		if _normalized_node_name(node.name) == "jackettiepantsmesh":
+			suit_nodes.append(node)
+	if suit_nodes.is_empty():
+		push_warning("The combined jacket/trouser mesh was not found for review palette overrides.")
+		return
+
+	# The candidate combines jacket and trousers in one skinned surface. Use its
+	# original local height to tint jacket and trousers separately without
+	# editing the source GLB or disturbing its skeleton weights.
+	var suit_shader := Shader.new()
+	suit_shader.code = """
+shader_type spatial;
+
+uniform vec4 jacket_color : source_color = vec4(0.13, 0.23, 0.40, 1.0);
+uniform vec4 trouser_color : source_color = vec4(0.075, 0.082, 0.095, 1.0);
+varying float garment_height;
+
+void vertex() {
+	garment_height = VERTEX.y;
+}
+
+void fragment() {
+	ALBEDO = garment_height < 0.325 ? trouser_color.rgb : jacket_color.rgb;
+	ROUGHNESS = 0.82;
+}
+"""
+	var suit_material := ShaderMaterial.new()
+	suit_material.shader = suit_shader
+	for node in suit_nodes:
+		(node as MeshInstance3D).material_override = suit_material
+
+
+func _set_review_material(mesh_name: String, color: Color, roughness: float) -> void:
+	var requested_name := _normalized_node_name(mesh_name)
+	var meshes: Array[Node] = []
+	for node in _model.find_children("*", "MeshInstance3D", true, false):
+		if _normalized_node_name(node.name) == requested_name:
+			meshes.append(node)
+	if meshes.is_empty():
+		push_warning("Review palette mesh not found: %s" % mesh_name)
+		return
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = roughness
+	for node in meshes:
+		(node as MeshInstance3D).material_override = material
+
+
+func _normalized_node_name(node_name: String) -> String:
+	return node_name.to_lower().replace(".", "").replace("_", "").replace("-", "")
 
 
 func _is_explicit_glasses_node(node_name: String) -> bool:
@@ -107,13 +188,17 @@ func _apply_head_joint_proportion() -> void:
 	var skeleton_nodes := _model.find_children("*", "Skeleton3D", true, false)
 	for node in skeleton_nodes:
 		var skeleton := node as Skeleton3D
+		var head_index := -1
 		for bone_index in range(skeleton.get_bone_count()):
-			if skeleton.get_bone_name(bone_index).to_lower() != "head":
-				continue
-			# Scale the head joint only. The torso, neck, skin weights, and source
-			# mesh stay untouched to keep the neck transition continuous.
-			skeleton.set_bone_pose_scale(bone_index, Vector3.ONE * REVIEW_HEAD_SCALE)
-			return
+			if skeleton.get_bone_name(bone_index).to_lower() == "head":
+				head_index = bone_index
+				break
+		if head_index < 0:
+			continue
+		# Scale the head joint only. The torso, neck, skin weights, and source
+		# mesh stay untouched to keep the neck transition continuous.
+		skeleton.set_bone_pose_scale(head_index, Vector3.ONE * REVIEW_HEAD_SCALE)
+		return
 	push_warning("No head skeleton joint found; the candidate is shown at source proportions.")
 
 
@@ -158,7 +243,7 @@ func _build_review_overlay() -> void:
 	layer.add_child(_status_label)
 
 	var character_note := Label.new()
-	character_note.text = "MID-50s  ·  JAPANESE  ·  SALT-AND-PEPPER"
+	character_note.text = "MID-50s  ·  JAPANESE  ·  WARM BROWN HAIR"
 	character_note.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	character_note.position = Vector2(-388.0, 28.0)
 	character_note.size = Vector2(358.0, 28.0)
