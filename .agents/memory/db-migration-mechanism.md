@@ -20,3 +20,9 @@ The source of truth is the schema TS (`lib/db/src/schema/*`). It is synced to ev
 **Why:** A publish attempt stalled after the image was built because the post-build schema push opened an interactive constraint prompt while the VM waited to become ready.
 
 **How to apply:** Use push-force only for the development/post-merge path. Remove any deployment `postBuild` database push before asking the user to publish.
+
+**Schema-drift safety:** A regular `drizzle-kit push` can prompt for destructive changes to an unrelated table even when the inspected primary key matches the TypeScript schema. Do not accept a truncate prompt or blindly retry with force just to apply additive tables.
+
+**Why:** The daily game-business schema addition triggered a proposed `career_positions` primary-key change and table truncation; inspection showed the existing primary key already matched the declared key.
+
+**How to apply:** Inspect the actual database constraint and keep the change additive. If the prompt still threatens unrelated data, stop the push and apply only the reviewed additive development DDL; never bypass production Publish schema review.
