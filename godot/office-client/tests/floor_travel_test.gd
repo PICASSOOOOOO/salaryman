@@ -87,10 +87,11 @@ func _run_tests() -> void:
 	assert(OfficeClient.terminal_choice_for_key(KEY_1) == 1)
 	assert(OfficeClient.terminal_choice_for_key(KEY_9) == 9)
 	assert(OfficeClient.terminal_choice_for_key(KEY_ESCAPE) == 0)
-	assert(
-		OfficeClient.basement_controls_hint()
-		== "WASD MOVE · F MELEE MENU · 1–9 SELECT · E PICK UP/USE · F1 ADVISER"
-	)
+	var settings_text := OfficeClient.settings_menu_text("FLOOR 01", false)
+	assert(settings_text.contains("CONTROLS"))
+	assert(settings_text.contains("DISPLAY"))
+	assert(settings_text.contains("A / Cross — interact"))
+	assert(settings_text.contains("minimum 1180 × 720"))
 	assert(OfficeClient.feature_panel_uses_command_style("phone"))
 	assert(OfficeClient.feature_panel_uses_command_style("reception"))
 	assert(OfficeClient.feature_panel_uses_command_style("systems"))

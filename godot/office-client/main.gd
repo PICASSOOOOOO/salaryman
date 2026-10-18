@@ -1528,14 +1528,6 @@ func _build_interface() -> void:
 	mission_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	interface_root.add_child(mission_plate)
 
-	var controls_plate := ColorRect.new()
-	controls_plate.name = "ControlsPlate"
-	controls_plate.color = Color("#07151ae0")
-	controls_plate.position = Vector2(620, 638)
-	controls_plate.size = Vector2(542, 64)
-	controls_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	interface_root.add_child(controls_plate)
-
 	var title := Label.new()
 	title.text = "SALARYMAN  /  SHADOW TOWER"
 	title.position = Vector2(24, 13)
@@ -1557,14 +1549,6 @@ func _build_interface() -> void:
 	status_label.size = Vector2(350, 24)
 	top_bar.add_child(status_label)
 
-	interaction_button = Button.new()
-	interaction_button.name = "ContextInteractionButton"
-	interaction_button.position = Vector2(835, 112)
-	interaction_button.size = Vector2(310, 44)
-	interaction_button.visible = false
-	interaction_button.pressed.connect(_on_context_interaction_pressed)
-	interface_root.add_child(interaction_button)
-
 	mission_label = Label.new()
 	mission_label.position = Vector2(30, 650)
 	mission_label.add_theme_font_size_override("font_size", 14)
@@ -1580,7 +1564,8 @@ func _build_interface() -> void:
 	controls_label = Label.new()
 	controls_label.position = Vector2(636, 646)
 	controls_label.size = Vector2(512, 48)
-	controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
+	controls_label.text = ""
+	controls_label.visible = false
 	controls_label.add_theme_font_size_override("font_size", 12)
 	controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	interface_root.add_child(controls_label)
@@ -3560,16 +3545,16 @@ func _update_hud() -> void:
 				]
 		else:
 			var public_work: Variant = maintenance_status.get("maintenanceWork", maintenance_status.get("publicWork", {}))
-			var clean_hint := "C CLEAN %d%%" % cleanliness
-			var repair_hint := "V REPAIR %d%%" % condition
+			var clean_status := "CLEAN %d%%" % cleanliness
+			var repair_status := "REPAIR %d%%" % condition
 			if public_work is Dictionary:
 				if bool(public_work.get("cleanAvailable", false)):
-					clean_hint = "C CLEAN / ƒ%d" % int(public_work.get("cleanRewardFiat", 0))
+					clean_status = "CLEAN AVAILABLE / ƒ%d" % int(public_work.get("cleanRewardFiat", 0))
 				if bool(public_work.get("repairAvailable", false)):
-					repair_hint = "V REPAIR / ƒ%d" % int(public_work.get("repairRewardFiat", 0))
-			controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\n%s  ·  %s  ·  %s" % [
-				clean_hint,
-				repair_hint,
+					repair_status = "REPAIR AVAILABLE / ƒ%d" % int(public_work.get("repairRewardFiat", 0))
+			controls_label.text = "%s  ·  %s  ·  %s" % [
+				clean_status,
+				repair_status,
 				target_name,
 			]
 		var worst_state := mini(cleanliness, condition)
@@ -3582,9 +3567,9 @@ func _update_hud() -> void:
 	else:
 		if floor_number == 7 and room_id == "floor07_business":
 			var music_state := "ON" if temple_music_enabled else "OFF"
-			controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · M MEDITATION MUSIC %s · C CLEAN · V REPAIR" % music_state
+			controls_label.text = "MEDITATION MUSIC / %s" % music_state
 		else:
-			controls_label.text = "WASD MOVE · SHIFT HOLD / M3 TOGGLE SPRINT · SPACE/WHEEL DOWN JUMP\nE USE · Z/X ZOOM (NEAR/MID/FAR) · C CLEAN · V REPAIR"
+			controls_label.text = ""
 		controls_label.add_theme_color_override("font_color", Color("#c4ddcb"))
 	var navigation: Dictionary = scene_data.get("navigation", {})
 	mission_label.text = "MISSION  ·  " + str(navigation.get("mission", "Waiting for the game simulation to provide the room mission."))
@@ -3604,8 +3589,7 @@ func _update_hud() -> void:
 				carcasses += 1 if pest_status == "carcass" else 0
 		var stamina := clampi(int(office.get("pestStamina", 0)), 0, 100)
 		var uniform_label := "UNIFORM ON" if bool(office.get("pestUniformWorn", false)) else "UNIFORM OFF"
-		controls_label.text = "%s\nSTAMINA %d%% · %s · %d ACTIVE PESTS · %d CARCASSES · MUSIC %s" % [
-			basement_controls_hint(),
+		controls_label.text = "STAMINA %d%% · %s · %d ACTIVE PESTS · %d CARCASSES · MUSIC %s" % [
 			stamina,
 			uniform_label,
 			active_pests,
@@ -3613,6 +3597,7 @@ func _update_hud() -> void:
 			"ON" if bool(office.get("musicEnabled", false)) else "OFF",
 		]
 		controls_label.add_theme_color_override("font_color", Color("#d9ddc7"))
+	controls_label.visible = not controls_label.text.is_empty()
 		mission_label.text = "TOWER SYSTEMS  ·  POWER %d%%  ·  WATER %d%%  ·  UPKEEP %d%%" % [
 			int(building.get("powerCondition", 0)),
 			int(building.get("plumbingCondition", 0)),
@@ -3960,11 +3945,11 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_footer.text = "SELECT A NUMBER TO USE  ·  ESC CLOSE"
 		"settings":
 			native_app_title.text = "PLAYER SETTINGS"
-			native_app_body.text = "%s\n\nMUSIC %s\nNearby basement pests trigger a quiet, distance-faded cue when enabled.\n\nMUSIC starts OFF." % [
+			native_app_body.text = settings_menu_text(
 				location,
-				"ON" if bool(office.get("musicEnabled", false)) else "OFF",
-			]
-			native_app_footer.text = "4 OR O TO TOGGLE MUSIC  ·  ESC CLOSE"
+				bool(office.get("musicEnabled", false)),
+			)
+			native_app_footer.text = "O / 4 TO TOGGLE MUSIC  ·  ESC / B TO CLOSE"
 		"utility_work":
 			native_app_title.text = "TOWER INFRASTRUCTURE / REPAIR ROUTES"
 			native_app_body.add_theme_font_size_override("font_size", 12)
@@ -4323,8 +4308,11 @@ static func terminal_choice_for_key(keycode: int) -> int:
 	return 0
 
 
-static func basement_controls_hint() -> String:
-	return "WASD MOVE · F MELEE MENU · 1–9 SELECT · E PICK UP/USE · F1 ADVISER"
+static func settings_menu_text(location: String, music_enabled: bool) -> String:
+	return "%s\n\nCONTROLS\nWASD / ARROWS or left stick / D-pad — move\nA / Cross — interact · X / Square — jump\nB / Circle or Start — menu / back\nLB / L1 — sprint · RB / R1 — fight\nY / Triangle — repair · L3 — sweep\n\nDISPLAY\nHUD fits the window; minimum 1180 × 720.\n\nMUSIC %s · O / 4 to toggle" % [
+		location,
+		"ON" if music_enabled else "OFF",
+	]
 
 
 func _send_command(name: String, payload: Dictionary = {}) -> String:
@@ -4476,6 +4464,10 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if elevator_transition_active:
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_ESCAPE:
+			_send_command("open_settings_menu")
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_M \

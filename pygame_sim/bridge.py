@@ -64,6 +64,7 @@ COMMANDS = {
     "toggle_business_stock",
     "toggle_drawer",
     "close_page",
+    "open_settings_menu",
     "toggle_music",
     "open_melee_menu",
     "basement_attack",
@@ -689,6 +690,10 @@ def apply_command(
         state.music_enabled = not state.music_enabled
         state.notice = f"MUSIC / {'ON' if state.music_enabled else 'OFF'}"
         return CommandResult(True, state.notice)
+    if name == "open_settings_menu":
+        if not state.open_page("settings", source="SETTINGS MENU"):
+            return CommandResult(False, "SETTINGS MENU UNAVAILABLE")
+        return CommandResult(True, "SETTINGS MENU OPEN")
     if name == "open_melee_menu":
         if not scene.is_basement:
             return CommandResult(False, "MELEE IS AVAILABLE ONLY FOR BASEMENT PESTS")

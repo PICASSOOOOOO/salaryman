@@ -57,6 +57,19 @@ class PygameBridgeTests(unittest.TestCase):
             client.close()
             bridge.close()
 
+    def test_native_menu_can_open_settings_without_visible_hud_prompts(self):
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "open_settings_menu",
+            "payload": {},
+        }
+        self.assertTrue(validate_command(command)[0])
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "settings")
+        self.assertEqual(self.state.page_source, "SETTINGS MENU")
+
     def test_phone_choice_opens_only_the_selected_linked_service(self):
         self.state.open_page("phone", source="PLAYER MENU")
         building_sync = SimpleNamespace(
