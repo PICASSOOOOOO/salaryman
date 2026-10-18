@@ -25,6 +25,7 @@ from .pest_work import (
     PEST_JOB_BY_ID,
     STAMINA_SUPPLY_ITEMS,
 )
+from .object_physics import interaction_profile_for
 from .scene import FLOOR_COUNT, TowerScene
 from .state import OfficeState
 
@@ -906,6 +907,16 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "constructionTaskId": item.construction_task_id,
                     "constructionComplete": item.completed,
                     "cameraFocusEnabled": item.camera_focus_enabled,
+                    "material": interaction_profile_for(item.kind).material,
+                    "interactionProfile": {
+                        "movable": interaction_profile_for(item.kind).movable,
+                        "rotatable": interaction_profile_for(item.kind).rotatable,
+                        "sittable": interaction_profile_for(item.kind).sittable,
+                        "standable": interaction_profile_for(item.kind).standable,
+                        "destructible": interaction_profile_for(item.kind).destructible,
+                        "burnable": interaction_profile_for(item.kind).burnable,
+                        "fuelCapacityLiters": interaction_profile_for(item.kind).fuel_capacity_liters,
+                    },
                     "destinationRoom": item.destination_room,
                     "doorOpen": item.id in scene.opened_door_ids,
                     "nearby": item == scene.nearby_object,

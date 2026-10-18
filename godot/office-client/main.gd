@@ -2170,6 +2170,10 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 			collision_extents,
 		)
 		marker.name = object_id
+		marker.set_meta("material_kind", str(object.get("material", "unknown")))
+		var interaction_profile: Variant = object.get("interactionProfile", {})
+		if interaction_profile is Dictionary:
+			marker.set_meta("interaction_profile", interaction_profile.duplicate(true))
 		if bool(object.get("nearby", false)):
 			_add_interaction_ring(position)
 

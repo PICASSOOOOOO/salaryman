@@ -14,6 +14,7 @@ from .objects import (
     OfficeObjectRegistry,
     build_tower_object_registry,
 )
+from .object_physics import interaction_profile_for
 from .automation import (
     AUTOMATION_CHARACTERS,
     AutopilotDomainStatus,
@@ -698,29 +699,29 @@ class TowerScene:
         if action not in {"stand", "jump", "sit", "sleep", "fight", "sweep", "maintenance"}:
             return False
         if action == "sit":
-            chairs = [
+            seats = [
                 item
                 for item in self.objects.objects
                 if item.room == self.current_room
-                and item.kind == "chair"
+                and interaction_profile_for(item.kind).sittable
                 and item.interactive
             ]
-            if not chairs:
+            if not seats:
                 return False
-            chair = min(
-                chairs,
+            seat = min(
+                seats,
                 key=lambda item: hypot(
                     item.position[0] - self.player_position[0],
                     item.position[1] - self.player_position[1],
                 ),
             )
             if hypot(
-                chair.position[0] - self.player_position[0],
-                chair.position[1] - self.player_position[1],
+                seat.position[0] - self.player_position[0],
+                seat.position[1] - self.player_position[1],
             ) > 450:
                 return False
-            self.player_position = chair.position
-            self.seated_chair_id = chair.id
+            self.player_position = seat.position
+            self.seated_chair_id = seat.id
         else:
             self.seated_chair_id = None
         self.player_action = action
