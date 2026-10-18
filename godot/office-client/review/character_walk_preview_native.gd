@@ -130,7 +130,7 @@ func _update_review_camera() -> void:
 		return
 	var target := _actor.global_position + Vector3(0.0, 0.2, 0.0)
 	var distance := REVIEW_CAMERA_DISTANCE
-	_review_camera.size = 3.5
+	_review_camera.size = 2.7
 	_review_camera.position = target + Vector3(0.72, 0.52, 1.1).normalized() * distance
 	_review_camera.look_at(target, Vector3.UP)
 
