@@ -24,11 +24,11 @@ For this mid-50s Japanese salaryman, use a stylized adult 3D game look rather th
 
 **How to apply:** Preserve movement and all source clips; override only the review character as needed. Keep the shared player/NPC roster unchanged until approval, and prioritize a floor-by-floor Tower tour over isolated idle/walk footage.
 
-The main Godot avatars should retain the Pygame player sprite's identity cues, while avoiding oversized heads and sunglasses. Recreate those cues with native 3D assets; never use the pixel sheet as the rendered Godot art.
+The main Godot avatars should closely resemble the Pygame characters overall, not only copy their palette or outfit, while avoiding oversized heads and sunglasses. Recreate that look with native Godot art unless the user explicitly asks to use the sprites.
 
-**Why:** The user rejected the large-head/sunglasses direction and explicitly asked for the main avatars to be similar to the Pygame pixel version.
+**Why:** The user rejected the large-head/sunglasses direction, asked for similarity to the Pygame characters, and rejected two studies that matched mostly palette/clothing.
 
-**How to apply:** Use the sprite's recognizable hair, clothing, and palette as reference, but keep natural adult proportions, visible faces, no sunglasses, and the existing animated Godot character pipeline. Keep changes review-only until the user approves the appearance.
+**How to apply:** Match the full character read more closely than color alone, keep natural head proportions and no sunglasses, and use the existing Godot pipeline. Keep changes review-only until the user approves the appearance.
 
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 
