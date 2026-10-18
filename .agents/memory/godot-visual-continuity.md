@@ -28,7 +28,7 @@ The main Godot avatars should closely resemble the Pygame characters overall, no
 
 **Why:** The user rejected the large-head/sunglasses direction, asked for similarity to the Pygame characters, and rejected two studies that matched mostly palette/clothing.
 
-**How to apply:** Match the full character read more closely than color alone, keep natural head proportions and no sunglasses, and use the existing Godot pipeline. Keep changes review-only until the user approves the appearance.
+**How to apply:** Match the full character read more closely than color alone, keep natural head proportions and no sunglasses, and use the existing Godot pipeline. The base direction is approved; keep later cast designs review-only until the user approves them.
 
 The user approved a high-resolution, pixel-inspired 3D character direction that fits the Tower environment. Retire the oversized-head player look, then build a varied cast: multiple men, women, human-looking replicants in civilian clothes, distinct NPCs, and pets.
 

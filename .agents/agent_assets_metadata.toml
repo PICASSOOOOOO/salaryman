@@ -2503,3 +2503,17 @@ mtime_ms = 1792338112045
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/de31393b-b84b-43dc-839b-07200bd282b1/f2b07a4c-41d6-4514-b374-3a6b6e2809a8"
 storage_version_token = "1792338136705815"
 content_type = "image/png"
+
+[[outputs]]
+id = "4UtBoSNao2jpwKqL7yGdx"
+uri = "file://generated-artifacts/avatar-style-production-floor.png"
+type = "image"
+title = "Updated avatar in the Tower lobby"
+description = "Runtime capture from the Floor 1 lobby using the new adult-proportioned animated humanoid, toon materials, brown hair, navy suit, white shirt, and no eyewear. All 32 source animation clips are retained."
+logical_id = "58b8acfe-6998-4047-8d3a-88cbc9c1f54f"
+content_hash = "sha256:db0d46e3634420a4626533b21609b38173823ad5f50bcef52a1b5d1e789249b4"
+size = 197779
+mtime_ms = 1792339504302
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/58b8acfe-6998-4047-8d3a-88cbc9c1f54f/4812fe4d-872c-4cef-9c46-efde5541c5df"
+storage_version_token = "1792339563001063"
+content_type = "image/png"

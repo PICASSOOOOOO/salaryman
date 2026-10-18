@@ -1,11 +1,11 @@
 extends SceneTree
 
 const CHARACTER_SCENE: PackedScene = preload(
-	"res://agentshire-assets/characters/character-male-a.glb"
+	"res://agentshire-assets/characters/avatar-human-adult.glb"
 )
 const AVATAR_STYLE = preload("res://characters/avatar_style.gd")
 const EXPECTED_CLIPS := 32
-const EXPECTED_HEAD_SCALE := 0.64
+const EXPECTED_HEAD_SCALE := 0.80
 
 
 func _initialize() -> void:

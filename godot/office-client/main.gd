@@ -1063,7 +1063,7 @@ func _build_static_furniture() -> void:
 	imported_scenes["couch"] = load("res://agentshire-assets/furniture/couch.gltf")
 	imported_scenes["chair"] = load("res://agentshire-assets/furniture/chair_A.gltf")
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
-	imported_scenes["character"] = load("res://agentshire-assets/characters/character-male-a.glb")
+	imported_scenes["character"] = load("res://agentshire-assets/characters/avatar-human-adult.glb")
 
 	var spawn_data: Array = floor_plan_data.get("baseLayout", {}).get("elevatorLobby", {}).get("spawn", [])
 	var lobby_spawn := _pygame_to_world(

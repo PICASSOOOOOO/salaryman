@@ -1,23 +1,26 @@
 extends RefCounted
 ## Shared high-resolution, pixel-inspired look for animated humanoid avatars.
 
-const SALARYMAN_ATLAS: Texture2D = preload(
-	"res://agentshire-assets/characters/Textures/colormap-salaryman-1980s.png"
-)
-const HEAD_SCALE := 0.64
+const HEAD_SCALE := 0.80
 
 
 static func apply(model: Node3D) -> void:
+	var suit_meshes: Array[MeshInstance3D] = []
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var mesh_instance := node as MeshInstance3D
+		var normalized := _normalized_name(mesh_instance.name)
 		var lowered := mesh_instance.name.to_lower()
 		if lowered.contains("glasses") or lowered.contains("eyewear"):
 			mesh_instance.visible = false
-		elif lowered == "headmesh":
+		elif normalized == "headmesh":
 			_strip_merged_eyewear(mesh_instance)
 
 		if mesh_instance.mesh == null:
 			continue
+		if normalized == "jackettiepantsmesh":
+			suit_meshes.append(mesh_instance)
+			continue
+		var color := _avatar_color(normalized)
 		for surface_index in range(mesh_instance.mesh.get_surface_count()):
 			var source := mesh_instance.get_active_material(surface_index)
 			var material := (
@@ -25,12 +28,14 @@ static func apply(model: Node3D) -> void:
 				if source is StandardMaterial3D
 				else StandardMaterial3D.new()
 			)
-			material.albedo_texture = SALARYMAN_ATLAS
-			material.albedo_color = Color.WHITE
+			material.albedo_texture = null if color != Color.TRANSPARENT else material.albedo_texture
+			material.albedo_color = color if color != Color.TRANSPARENT else material.albedo_color
 			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 			material.roughness = 0.88
 			material.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
 			mesh_instance.set_surface_override_material(surface_index, material)
+
+	_split_suit_meshes(suit_meshes)
 
 	for node in model.find_children("*", "Skeleton3D", true, false):
 		var skeleton := node as Skeleton3D
@@ -39,6 +44,71 @@ static func apply(model: Node3D) -> void:
 				skeleton.set_bone_pose_scale(bone_index, Vector3.ONE * HEAD_SCALE)
 				skeleton.force_update_all_bone_transforms()
 				return
+
+
+static func _avatar_color(normalized_mesh_name: String) -> Color:
+	match normalized_mesh_name:
+		"salarymanmesh":
+			return Color("#c68b68")
+		"highpolymesh", "proceduralshorthair", "proceduralshorthair001", "proceduralsideburn", "proceduralsideburn001":
+			return Color("#563a2a")
+		"ivoryshirtfront", "shirtcollar":
+			return Color("#f5f1e7")
+		"burgundytie":
+			return Color("#17191c")
+		"planemesh":
+			return Color("#222428")
+	return Color.TRANSPARENT
+
+
+static func _split_suit_meshes(suit_meshes: Array[MeshInstance3D]) -> void:
+	var jacket_material := _flat_material(Color("#263f65"))
+	var trouser_material := _flat_material(Color("#202328"))
+	for mesh_instance in suit_meshes:
+		if not mesh_instance.mesh is ArrayMesh:
+			continue
+		var source_mesh := mesh_instance.mesh as ArrayMesh
+		if source_mesh.get_surface_count() != 1 or source_mesh.get_blend_shape_count() > 0:
+			continue
+		var source_arrays := source_mesh.surface_get_arrays(0)
+		var vertices: PackedVector3Array = source_arrays[Mesh.ARRAY_VERTEX]
+		var source_indices: PackedInt32Array = source_arrays[Mesh.ARRAY_INDEX]
+		var jacket_indices := PackedInt32Array()
+		var trouser_indices := PackedInt32Array()
+		for index in range(0, source_indices.size(), 3):
+			var center_y := (
+				vertices[source_indices[index]].y
+				+ vertices[source_indices[index + 1]].y
+				+ vertices[source_indices[index + 2]].y
+			) / 3.0
+			var destination := trouser_indices if center_y < 0.325 else jacket_indices
+			destination.append_array(PackedInt32Array([
+				source_indices[index],
+				source_indices[index + 1],
+				source_indices[index + 2],
+			]))
+		var split_mesh := ArrayMesh.new()
+		var trouser_arrays: Array = source_arrays.duplicate()
+		trouser_arrays[Mesh.ARRAY_INDEX] = trouser_indices
+		split_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, trouser_arrays)
+		var jacket_arrays: Array = source_arrays.duplicate()
+		jacket_arrays[Mesh.ARRAY_INDEX] = jacket_indices
+		split_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, jacket_arrays)
+		mesh_instance.mesh = split_mesh
+		mesh_instance.set_surface_override_material(0, trouser_material)
+		mesh_instance.set_surface_override_material(1, jacket_material)
+
+
+static func _flat_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.84
+	material.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+	return material
+
+
+static func _normalized_name(node_name: String) -> String:
+	return node_name.to_lower().replace(".", "").replace("_", "").replace("-", "").replace(" ", "")
 
 
 static func _strip_merged_eyewear(head_mesh: MeshInstance3D) -> void:
