@@ -22,13 +22,19 @@ should bring more benefits.
 Personal net worth is the player's total personal worth, not only the FIAT they
 carry in their wallet. Players may apply for checking and savings accounts so
 they do not need to keep all their FIAT in the wallet. Wallet FIAT can be stolen,
-but theft should be very difficult and carry security repercussions; victims may
-defend themselves without repercussions. Stolen money is not taxable. Illegal
-business organizations provide special abilities and protection that make
-criminal activity easier; their members do not pay personal taxes on illegal
-activities. Solo criminals have a harder time, and crimes such as safebreaking
-need the right tools and skills. Legitimate operators can build power by buying,
-selling, controlling operations, and hiring an army, guards, and bodyguards.
+but theft should be very difficult, high-risk, and low-reward. It may happen in
+dark places when nobody is around, and can happen to anyone; victims may defend
+themselves without repercussions. Security keeps peace and order, arrests
+offenders, and refers unpaid restitution to debt agents. Debt agents may bar
+access to floors/buildings, block hiring opportunities, impose levies, and
+garnish wages until debts are recovered. They are intimidating black-suited,
+FBI-like figures. These are restitution/debt consequences, not tax on stolen
+proceeds. Stolen money is not taxable, and members do not pay personal taxes on
+their illegal activities. Illegal business organizations provide special
+abilities and protection that make criminal activity easier; solo criminals
+have a harder time, and crimes such as safebreaking need the right tools and
+skills. Legitimate operators can build power by buying, selling, controlling
+operations, and hiring an army, guards, and bodyguards.
 Lower-income players should gain strength, stamina, power, attack and defense,
 better protection from weather and natural disasters, and heightened senses.
 They should have fewer opportunities, and everything should cost them more.
@@ -118,6 +124,13 @@ legitimate business operators.
 **How to apply:** Exclude stolen proceeds from tax bases. Make organizational
 criminal advantages and law-abiding business/security capabilities meaningful;
 require tools and skills for specific crimes such as safebreaking.
+
+**Why:** The user clarified theft as a high-risk, low-reward activity with
+security intervention, restitution, and severe debt-agent enforcement.
+
+**How to apply:** Keep theft possible but difficult and context-sensitive; route
+unpaid restitution to debt collection consequences, and keep those consequences
+separate from income-tax treatment of stolen proceeds.
 
 **Why:** The user clarified that illegal-organization members are not personally
 taxed on their illegal activities because the organization supplies abilities,
