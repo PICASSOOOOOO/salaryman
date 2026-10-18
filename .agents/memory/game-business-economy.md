@@ -13,6 +13,8 @@ Fictional businesses may recruit NPCs without a fixed numerical cap. Some NPCs a
 
 The user's tax policy is daily on gross earned income, not net profit or income after expenses: real businesses pay 5% on FIAT/GOLD, never service Credits; fictional businesses pay 10–20%, with higher net worth lowering the rate; only illegal business organizations pay 40% of their earned gross income. Theft proceeds are not taxed, even when stolen by or received through an illegal organization; ƒ100,000 of earned income in an illegal organization means ƒ40,000 tax, but ƒ100,000 stolen means no tax. Unpaid taxes enter collections; after three days the organization closes and its owner cannot qualify for another business for three days.
 
+The user has broadened the tax scope: NPCs, players, users, and organizations all pay daily tax on income; sales tax and capital-gains tax also exist, and Pablo Corp collects these taxes. Rates and collection rules for the new individual, sales, and capital-gains taxes are not yet defined. The interaction with the previously explicit exclusions for stolen proceeds and members' personal illegal activity still needs confirmation; preserve those exclusions until clarified.
+
 **Why:** the user clarified that business creation, criminal access, credit, staffing, and taxation should form a distinct in-game economy rather than reuse the real-world Business Hub as-is, and clarified that tax base means daily gross earned income.
 
 **How to apply:** keep real-world organization records separate from game business records. Use server-authoritative eligibility and income sources, and preserve the distinct legal, fictional, and illegal rules when building registration, hiring, storefront, credit, or tax flows.
