@@ -2461,3 +2461,17 @@ mtime_ms = 1792335454252
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b1f503e7-c065-425e-9afc-8d87fa3febc3/905b6933-d41a-4a8e-b468-f5a555aec61e"
 storage_version_token = "1792335460322158"
 content_type = "image/png"
+
+[[outputs]]
+id = "IcpvmPXIlKjJxM6q-mB_E"
+uri = "file://generated-artifacts/avatar-proportion-review-c.png"
+type = "image"
+title = "SALARYMAN avatar — Candidate C"
+description = "Review-only adult-proportion 3D candidate inspired by the Pygame player palette, without sunglasses. Production avatars remain unchanged."
+logical_id = "114f9cb7-657e-44cf-9805-1dd871a6d300"
+content_hash = "sha256:dc1f528acd820fa92df689890b2a2f906339107a08f333ce1970fcb8a4113392"
+size = 271956
+mtime_ms = 1792337406367
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/114f9cb7-657e-44cf-9805-1dd871a6d300/25ed41d5-f260-45af-92ba-ae1977d15d6b"
+storage_version_token = "1792337412339273"
+content_type = "image/png"
