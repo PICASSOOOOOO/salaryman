@@ -60,6 +60,7 @@ export * from "./org-custom-apps";
 export * from "./org-websites";
 export * from "./world-kv";
 export * from "./business-transactions";
+export * from "./game-business-orgs";
 export * from "./business-snapshots";
 export * from "./enterprise-financials";
 export * from "./tickets";
