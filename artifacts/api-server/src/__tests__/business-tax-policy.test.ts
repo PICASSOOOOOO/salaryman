@@ -29,7 +29,7 @@ describe("daily game-business tax policy", () => {
     expect(getDailyBusinessTaxRateBps("fictional", FICTIONAL_TAX_DISCOUNT_NET_WORTH_CAP)).toBe(1_000);
   });
 
-  it("taxes stolen FIAT as illegal gross income at forty percent", () => {
+  it("taxes stolen FIAT belonging to an illegal business organization at forty percent", () => {
     expect(calculateDailyBusinessTax({
       businessKind: "illegal",
       netWorthFiat: 1_000_000,

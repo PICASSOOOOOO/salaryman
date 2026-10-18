@@ -18,6 +18,13 @@ its businesses; do not treat every floor as company-occupied. Pablo businesses
 should receive intentional economic and service priority over player businesses.
 Wealthier players should receive better treatment and more perks: more money
 should bring more benefits.
+
+Personal net worth is the player's total personal worth, not only the FIAT they
+carry in their wallet. Players may apply for checking and savings accounts so
+they do not need to keep all their FIAT in the wallet. Wallet FIAT can be stolen,
+but theft should be very difficult and carry security repercussions; victims may
+defend themselves without repercussions. The 40% gross-income tax applies only
+to illegal business organizations, not to an individual merely because they stole.
 Lower-income players should gain strength, stamina, power, attack and defense,
 better protection from weather and natural disasters, and heightened senses.
 They should have fewer opportunities, and everything should cost them more.
@@ -92,3 +99,10 @@ Pablo Corp is the villain.
 **How to apply:** Keep company occupancy selective, and design Tower investment,
 service priority, and business economics to favor Pablo Corp without removing
 player ownership or investment paths.
+
+**Why:** The user clarified how personal net worth, safer FIAT storage, theft
+difficulty, security consequences, and victim self-defense should work.
+
+**How to apply:** Use the player's total personal worth for net-worth eligibility,
+keep carried wallet FIAT distinct from checking and savings balances when
+modeling theft exposure, and do not penalize a victim for defending themselves.
