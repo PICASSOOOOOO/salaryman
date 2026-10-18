@@ -7,8 +7,8 @@ In-game business registration is separate from Business Hub organizations. Real 
 
 Credit is a game credit score affected by debt-to-income, income, work activity, and inactivity. Low credit should raise prices and close some opportunities while improving criminal abilities; high credit should favor conventional opportunities. Job qualification checks credit, experience, and work history. Job slots are finite and become available again after logout or timeout. Each business type should have its own operating tasks and strategies rather than a generic shop loop.
 
-The user's tax policy is daily: real businesses pay 5% on FIAT/GOLD, never service Credits; fictional businesses pay 10–20%, with higher net worth lowering the rate; illegal businesses pay 40% of daily dealings. Unpaid taxes enter collections; after three days the organization closes and its owner cannot qualify for another business for three days.
+The user's tax policy is daily on gross income, not net profit or income after expenses: real businesses pay 5% on FIAT/GOLD, never service Credits; fictional businesses pay 10–20%, with higher net worth lowering the rate; illegal businesses pay 40% of gross income, including stolen FIAT (ƒ100,000 stolen means ƒ40,000 tax). Unpaid taxes enter collections; after three days the organization closes and its owner cannot qualify for another business for three days.
 
-**Why:** the user clarified that business creation, criminal access, credit, staffing, and taxation should form a distinct in-game economy rather than reuse the real-world Business Hub as-is.
+**Why:** the user clarified that business creation, criminal access, credit, staffing, and taxation should form a distinct in-game economy rather than reuse the real-world Business Hub as-is, and clarified that tax base means daily gross earned income.
 
 **How to apply:** keep real-world organization records separate from game business records. Use server-authoritative eligibility and income sources, and preserve the distinct legal, fictional, and illegal rules when building registration, hiring, storefront, credit, or tax flows.

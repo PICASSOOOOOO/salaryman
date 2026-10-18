@@ -4,18 +4,18 @@ export type TaxCurrency = "fiat" | "gold";
 export interface DailyBusinessTaxInput {
   businessKind: GameBusinessKind;
   netWorthFiat: number;
-  fiatDealings: number;
-  goldDealings: number;
-  creditDealings?: number;
+  grossIncomeFiat: number;
+  grossIncomeGold: number;
+  grossIncomeCredits?: number;
 }
 
 export interface DailyBusinessTaxResult {
   rateBps: number;
-  taxableFiat: number;
-  taxableGold: number;
+  taxableGrossIncomeFiat: number;
+  taxableGrossIncomeGold: number;
   fiatTax: number;
   goldTax: number;
-  excludedCredits: number;
+  excludedGrossIncomeCredits: number;
 }
 
 export const REAL_BUSINESS_TAX_BPS = 500;
@@ -44,19 +44,20 @@ export function getDailyBusinessTaxRateBps(
 }
 
 /**
- * Tax FIAT and GOLD independently so neither currency is silently converted.
+ * Tax daily gross earned income in FIAT and GOLD independently so neither
+ * currency is silently converted. No expense or cost deductions are applied.
  * Service Credits are excluded from every business tax calculation.
  */
 export function calculateDailyBusinessTax(input: DailyBusinessTaxInput): DailyBusinessTaxResult {
   const rateBps = getDailyBusinessTaxRateBps(input.businessKind, input.netWorthFiat);
-  const taxableFiat = positiveWholeAmount(input.fiatDealings);
-  const taxableGold = positiveWholeAmount(input.goldDealings);
+  const taxableGrossIncomeFiat = positiveWholeAmount(input.grossIncomeFiat);
+  const taxableGrossIncomeGold = positiveWholeAmount(input.grossIncomeGold);
   return {
     rateBps,
-    taxableFiat,
-    taxableGold,
-    fiatTax: Math.floor((taxableFiat * rateBps) / 10_000),
-    goldTax: Math.floor((taxableGold * rateBps) / 10_000),
-    excludedCredits: positiveWholeAmount(input.creditDealings ?? 0),
+    taxableGrossIncomeFiat,
+    taxableGrossIncomeGold,
+    fiatTax: Math.floor((taxableGrossIncomeFiat * rateBps) / 10_000),
+    goldTax: Math.floor((taxableGrossIncomeGold * rateBps) / 10_000),
+    excludedGrossIncomeCredits: positiveWholeAmount(input.grossIncomeCredits ?? 0),
   };
 }

@@ -10,16 +10,16 @@ describe("daily game-business tax policy", () => {
     expect(calculateDailyBusinessTax({
       businessKind: "real",
       netWorthFiat: 0,
-      fiatDealings: 10_000,
-      goldDealings: 100,
-      creditDealings: 50_000,
+      grossIncomeFiat: 10_000,
+      grossIncomeGold: 100,
+      grossIncomeCredits: 50_000,
     })).toEqual({
       rateBps: 500,
-      taxableFiat: 10_000,
-      taxableGold: 100,
+      taxableGrossIncomeFiat: 10_000,
+      taxableGrossIncomeGold: 100,
       fiatTax: 500,
       goldTax: 5,
-      excludedCredits: 50_000,
+      excludedGrossIncomeCredits: 50_000,
     });
   });
 
@@ -29,22 +29,39 @@ describe("daily game-business tax policy", () => {
     expect(getDailyBusinessTaxRateBps("fictional", FICTIONAL_TAX_DISCOUNT_NET_WORTH_CAP)).toBe(1_000);
   });
 
-  it("charges illegal businesses forty percent of daily FIAT and GOLD dealings", () => {
+  it("taxes stolen FIAT as illegal gross income at forty percent", () => {
     expect(calculateDailyBusinessTax({
       businessKind: "illegal",
       netWorthFiat: 1_000_000,
-      fiatDealings: 1_000,
-      goldDealings: 50,
-      creditDealings: 900,
-    })).toMatchObject({ rateBps: 4_000, fiatTax: 400, goldTax: 20, excludedCredits: 900 });
+      grossIncomeFiat: 100_000,
+      grossIncomeGold: 50,
+      grossIncomeCredits: 900,
+    })).toMatchObject({
+      rateBps: 4_000,
+      taxableGrossIncomeFiat: 100_000,
+      fiatTax: 40_000,
+      goldTax: 20,
+      excludedGrossIncomeCredits: 900,
+    });
   });
 
-  it("ignores invalid and negative dealing amounts", () => {
+  it("taxes gross income without reducing it by expenses, and ignores invalid or negative income", () => {
     expect(calculateDailyBusinessTax({
       businessKind: "fictional",
       netWorthFiat: 0,
-      fiatDealings: -2,
-      goldDealings: Number.NaN,
-    })).toMatchObject({ taxableFiat: 0, taxableGold: 0, fiatTax: 0, goldTax: 0 });
+      grossIncomeFiat: 10_000,
+      grossIncomeGold: 0,
+    })).toMatchObject({ taxableGrossIncomeFiat: 10_000, fiatTax: 2_000 });
+    expect(calculateDailyBusinessTax({
+      businessKind: "fictional",
+      netWorthFiat: 0,
+      grossIncomeFiat: -2,
+      grossIncomeGold: Number.NaN,
+    })).toMatchObject({
+      taxableGrossIncomeFiat: 0,
+      taxableGrossIncomeGold: 0,
+      fiatTax: 0,
+      goldTax: 0,
+    });
   });
 });
