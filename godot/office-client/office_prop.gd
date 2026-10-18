@@ -6,6 +6,7 @@ const SUPPORTED_KINDS := [
 	"desk", "telephone", "pay_phone", "desk_lamp", "trash_can", "fire_extinguisher",
 	"temple_tree", "reflection_screen", "meditation_cushion", "temple_audio_control",
 	"chapel_pew", "chapel_altar", "library_shelf", "reading_table", "museum_case",
+	"furniture_lounge_chair", "furniture_sideboard", "furniture_display_shelf",
 ]
 var finish: StandardMaterial3D
 var surface_base := Color("#35574a")
@@ -66,6 +67,12 @@ func _build(kind: String, reception: bool, variant: int) -> void:
 			_reading_table(wood, brass, cream)
 		"museum_case":
 			_museum_case(wood, brass, cream, variant)
+		"furniture_lounge_chair":
+			_furniture_lounge_chair(wood, edge, brass)
+		"furniture_sideboard":
+			_furniture_sideboard(wood, edge, brass, cream)
+		"furniture_display_shelf":
+			_furniture_display_shelf(wood, edge, brass)
 	set_surface_state(100, 100)
 
 
@@ -343,6 +350,68 @@ func _museum_case(wood: Material, brass: Material, cream: Material, variant: int
 				)
 	_box("BrassEdge", Vector3(0, 0.60, 0.43), Vector3(1.62, 0.06, 0.04), brass)
 	_wear_detail(Vector3(0, 0.34, 0.428), Vector3(0.18, 0.004, 0.008), brass)
+
+
+func _furniture_lounge_chair(wood: Material, edge: Material, brass: Material) -> void:
+	finish = _finish("#35574a")
+	surface_base = Color("#35574a")
+	# Low, generous seat; the walnut frame and brass feet keep it in the
+	# approved mid-century Tower furniture language.
+	_box("SeatFrame", Vector3(0, 0.48, 0), Vector3(1.08, 0.20, 0.92), wood)
+	_box("UpholsteredSeat", Vector3(0, 0.66, 0.035), Vector3(0.98, 0.20, 0.80), finish)
+	_box("BackFrame", Vector3(0, 1.15, -0.34), Vector3(1.08, 0.94, 0.16), wood)
+	_box("UpholsteredBack", Vector3(0, 1.15, -0.235), Vector3(0.92, 0.78, 0.11), finish)
+	_box("BackSeam", Vector3(0, 1.14, -0.173), Vector3(0.035, 0.60, 0.012), edge)
+	for side in [-1.0, 1.0]:
+		_box("ArmSupport", Vector3(side * 0.49, 0.78, 0.02), Vector3(0.10, 0.54, 0.12), wood)
+		_box("WalnutArm", Vector3(side * 0.49, 1.07, 0.12), Vector3(0.16, 0.10, 0.92), edge)
+		for depth in [-0.34, 0.34]:
+			_box("ChairLeg", Vector3(side * 0.42, 0.22, depth), Vector3(0.085, 0.42, 0.085), wood)
+			_cylinder("BrassFoot", Vector3(side * 0.42, 0.025, depth), 0.058, 0.05, brass)
+	_wear_detail(Vector3(0, 0.56, 0.468), Vector3(0.18, 0.004, 0.008), brass)
+
+
+func _furniture_sideboard(wood: Material, edge: Material, brass: Material, cream: Material) -> void:
+	finish = _finish("#35574a")
+	surface_base = Color("#35574a")
+	_box("CabinetBody", Vector3(0, 0.62, 0), Vector3(2.05, 0.94, 0.70), finish)
+	_box("WalnutTop", Vector3(0, 1.13, 0), Vector3(2.16, 0.12, 0.79), wood)
+	_box("TopInlay", Vector3(0, 1.196, 0.398), Vector3(2.02, 0.018, 0.022), edge)
+	for index in range(3):
+		var x := -0.68 + float(index) * 0.68
+		_box("DoorInset", Vector3(x, 0.62, 0.358), Vector3(0.61, 0.77, 0.035), edge)
+		_box("DoorPanel", Vector3(x, 0.62, 0.382), Vector3(0.55, 0.71, 0.025), finish)
+		_cylinder("BrassPull", Vector3(x + 0.20, 0.62, 0.410), 0.035, 0.045, brass)
+	for side in [-1.0, 1.0]:
+		_box("CabinetFoot", Vector3(side * 0.82, 0.12, 0), Vector3(0.12, 0.24, 0.58), wood)
+		_box("FootCap", Vector3(side * 0.82, 0.025, 0), Vector3(0.14, 0.05, 0.60), brass)
+	_box("CeramicVase", Vector3(-0.54, 1.33, -0.04), Vector3(0.18, 0.26, 0.18), cream)
+	_cylinder("BrassDish", Vector3(0.42, 1.22, 0.08), 0.20, 0.035, brass)
+	_wear_detail(Vector3(0.0, 0.32, 0.365), Vector3(0.20, 0.004, 0.008), brass)
+
+
+func _furniture_display_shelf(wood: Material, edge: Material, brass: Material) -> void:
+	finish = _finish("#35574a")
+	surface_base = Color("#35574a")
+	_box("ShelfBack", Vector3(0, 1.30, -0.12), Vector3(2.25, 2.55, 0.12), finish)
+	for shelf in range(4):
+		var y := 0.43 + float(shelf) * 0.58
+		_box("WalnutShelf", Vector3(0, y, 0.06), Vector3(2.42, 0.10, 0.56), wood)
+		_box("BrassShelfEdge", Vector3(0, y + 0.015, 0.35), Vector3(2.40, 0.025, 0.035), brass)
+		for item_index in range(4):
+			var x := -0.78 + float(item_index) * 0.52
+			var height := 0.20 + float((shelf + item_index) % 3) * 0.06
+			var accent: Material = [edge, brass, wood, finish][(shelf + item_index) % 4]
+			_box(
+				"DisplayObject",
+				Vector3(x, y + 0.05 + height / 2.0, 0.06),
+				Vector3(0.18, height, 0.24),
+				accent,
+			)
+	for side in [-1.0, 1.0]:
+		_box("BrassUpright", Vector3(side * 1.13, 1.30, 0.13), Vector3(0.055, 2.62, 0.055), brass)
+		_box("WalnutFoot", Vector3(side * 1.13, 0.12, 0.04), Vector3(0.20, 0.20, 0.64), wood)
+	_wear_detail(Vector3(0, 0.28, 0.302), Vector3(0.18, 0.004, 0.008), brass)
 
 
 func _wear_detail(at: Vector3, size: Vector3, material: Material) -> void:

@@ -2433,3 +2433,17 @@ mtime_ms = 1791653171920
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/80f56f35-8a64-4956-ac41-48aad5e52dee/fa8f8088-8c9d-43cd-afb2-3c73fdf4bead"
 storage_version_token = "1791653845011630"
 content_type = "image/png"
+
+[[outputs]]
+id = "S4gGBdEYsX_ajjZX3f7x5"
+uri = "file://generated-artifacts/furniture-store-review.png"
+type = "image"
+title = "Godot furniture-store art review"
+description = "Three original native Godot furniture props in the approved walnut, brass, and green-enamel palette."
+logical_id = "06006ace-21dd-494d-927f-e47afa8403c1"
+content_hash = "sha256:c1e2963ef46c69dd477522ba58885e358a1dd5718c9012433057324f213469ac"
+size = 157802
+mtime_ms = 1792329083159
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/06006ace-21dd-494d-927f-e47afa8403c1/9ba3c1da-194c-4b65-9458-a2df4b258749"
+storage_version_token = "1792329090196767"
+content_type = "image/png"
