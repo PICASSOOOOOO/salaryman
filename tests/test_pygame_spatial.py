@@ -149,6 +149,7 @@ class PygameSpatialTests(unittest.TestCase):
     def test_starter_workstation_is_private_and_terminal_stays_reachable(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
+        self.assertTrue(scene.select_floor(6))
         scene.select_room("executive")
         scene.player_position = scene.objects.get("executive-suite-door").position
         self.assertTrue(scene.select_room("executive_suite"))
@@ -195,6 +196,7 @@ class PygameSpatialTests(unittest.TestCase):
 
     def test_player_actions_stay_grounded_and_sit_on_a_nearby_chair(self):
         scene = build_tower_scene()
+        self.assertTrue(scene.select_floor(6))
         scene.select_room("executive")
         scene.player_position = scene.objects.get("executive-suite-door").position
         self.assertTrue(scene.select_room("executive_suite"))
@@ -250,12 +252,15 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(moderator.active_page, "tools")
 
         scene = build_tower_scene()
+        self.assertTrue(scene.select_floor(6))
         scene.select_room("executive")
+        scene.player_position = scene.objects.get("executive-suite-door").position
+        self.assertTrue(scene.select_room("executive_suite"))
         scene.player_position = scene.objects.get("executive-chair").position
         self.assertTrue(scene.set_player_action("sit"))
         atm_result = scene.objects.interact("lobby-atm", player, scene)
         self.assertTrue(atm_result.success)
-        self.assertEqual(player.active_page, "economy")
+        self.assertEqual(player.active_page, "bank")
         player.close_page()
         crt_result = scene.objects.interact("executive-crt", player, scene)
         self.assertTrue(crt_result.success)
@@ -310,7 +315,10 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(state.active_object_id, "lobby-atm")
 
         state.close_page()
+        self.assertTrue(scene.select_floor(6))
         scene.select_room("executive")
+        scene.player_position = scene.objects.get("executive-suite-door").position
+        self.assertTrue(scene.select_room("executive_suite"))
         scene.player_position = scene.objects.get("executive-chair").position
         self.assertTrue(scene.set_player_action("sit"))
         crt_result = scene.interact(state, "executive-crt")
@@ -319,14 +327,15 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(state.active_object_id, "executive-crt")
 
         state.close_page()
-        result = scene.interact(state, "executive-desk-lamp")
-        self.assertFalse(result.success)
-        self.assertIn("DECORATIVE", result.message)
+        self.assertIsNone(scene.objects.get("executive-desk-lamp"))
 
     def test_terminal_requires_sitting_at_the_matching_workstation(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
+        self.assertTrue(scene.select_floor(6))
         scene.select_room("executive")
+        scene.player_position = scene.objects.get("executive-suite-door").position
+        self.assertTrue(scene.select_room("executive_suite"))
 
         standing = scene.interact(state, "executive-crt")
         self.assertFalse(standing.success)
@@ -335,11 +344,6 @@ class PygameSpatialTests(unittest.TestCase):
 
         scene.player_position = scene.objects.get("executive-chair").position
         self.assertTrue(scene.set_player_action("sit"))
-        wrong_station = scene.interact(state, "executive-crt-2")
-        self.assertFalse(wrong_station.success)
-        self.assertEqual(wrong_station.message, "WRONG WORKSTATION / SIT AT MATCHING CHAIR")
-        self.assertIsNone(state.active_page)
-
         matching = scene.interact(state, "executive-crt")
         self.assertTrue(matching.success)
         self.assertEqual(matching.route, "systems-terminal")

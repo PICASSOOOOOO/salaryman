@@ -200,6 +200,19 @@ describe("POST /items/buy", () => {
     expect((await ownedItemIds()).filter((i) => i === BAT.id)).toHaveLength(1);
   });
 
+  it("lets furniture be bought repeatedly and stacks owned quantity", async () => {
+    await seedFiat(100_000);
+
+    const first = await request(app).post("/api/items/buy").send({ itemId: "furn_couch" });
+    const second = await request(app).post("/api/items/buy").send({ itemId: "furn_couch" });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(second.body.quantity).toBe(2);
+    expect(await itemQuantity("furn_couch")).toBe(2);
+    expect(await fiatBalance()).toBe(100_000 - first.body.fiat - second.body.fiat);
+  });
+
   it("two real concurrent buys: item owned once, charged once", async () => {
     await seedFiat(20000);
     const [a, b] = await Promise.all([

@@ -297,6 +297,7 @@ router.post("/items/buy", async (req, res) => {
     res.status(400).json({ error: "Unknown item" });
     return;
   }
+  const repeatablePlacementItem = item.type === "furniture" || item.type === "decor";
   if (source === "tower_business") {
     const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
     if (!identity.desktopLink || !shop) {
@@ -408,7 +409,7 @@ router.post("/items/buy", async (req, res) => {
       eq(playerInventoryTable.itemId, item.id),
     ))
     .limit(1);
-  if (existing.length > 0) {
+  if (existing.length > 0 && !repeatablePlacementItem) {
     res.json({ owned: true, alreadyOwned: true });
     return;
   }
@@ -416,10 +417,15 @@ router.post("/items/buy", async (req, res) => {
   // Owners get everything granted free.
   const email = identity.email ?? undefined;
   if (isOwnerEmail(email)) {
-    await db.insert(playerInventoryTable)
-      .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "grant" })
-      .onConflictDoNothing();
-    res.json({ owned: true, granted: true });
+    const grant = db.insert(playerInventoryTable)
+      .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "grant" });
+    const rows = repeatablePlacementItem
+      ? await grant.onConflictDoUpdate({
+        target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+        set: { quantity: sql`${playerInventoryTable.quantity} + 1` },
+      }).returning({ quantity: playerInventoryTable.quantity })
+      : await grant.onConflictDoNothing().returning({ quantity: playerInventoryTable.quantity });
+    res.json({ owned: true, granted: true, quantity: rows[0]?.quantity ?? 1 });
     return;
   }
 
@@ -450,11 +456,15 @@ router.post("/items/buy", async (req, res) => {
         kind: "item_purchase",
       });
       if (!result.ok) return result;
-      const inserted = await tx
+      const inventoryInsert = tx
         .insert(playerInventoryTable)
-        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" })
-        .onConflictDoNothing()
-        .returning({ id: playerInventoryTable.id });
+        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" });
+      const inserted = repeatablePlacementItem
+        ? await inventoryInsert.onConflictDoUpdate({
+          target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+          set: { quantity: sql`${playerInventoryTable.quantity} + 1` },
+        }).returning({ quantity: playerInventoryTable.quantity })
+        : await inventoryInsert.onConflictDoNothing().returning({ quantity: playerInventoryTable.quantity });
       if (inserted.length === 0) throw new Error("ITEM_ALREADY_OWNED");
       if (source === "tower_business") {
         await recordTowerCompanyRevenueTx(tx, {
@@ -476,13 +486,13 @@ router.post("/items/buy", async (req, res) => {
           amountFiat: effectivePrice,
         });
       }
-      return result;
+      return { ...result, quantity: inserted[0]?.quantity ?? 1 };
     });
     if (!paid.ok) {
       res.status(402).json({ error: "insufficient_fiat", required: effectivePrice, spendable: paid.spendable });
       return;
     }
-    res.json({ owned: true, fiat: effectivePrice, newBalance: paid.newBalance });
+    res.json({ owned: true, fiat: effectivePrice, quantity: paid.quantity, newBalance: paid.newBalance });
   } catch (err: any) {
     if (err?.message === "ITEM_ALREADY_OWNED") {
       res.json({ owned: true, alreadyOwned: true });
