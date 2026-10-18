@@ -88,6 +88,32 @@ Without Prime, players ask the receptionist which Pixel Agent or NPC is
 available for work. Hiring and construction organizations are subject to
 regulations.
 
+## Secretary-led office command and delegation
+
+The secretary is the unified interface to SALARYMAN's technology and automation
+services. Real human employees can issue commands from their office terminals;
+the secretary identifies available capabilities, performs the work, and can
+coordinate or delegate suitable subtasks to NPC staff hired by the organization.
+She runs operations when the owner or human management is away, while also
+helping human managers learn how to use her and the available tools.
+
+NPCs hired to support this work receive a one-time signing bonus and recurring
+daily pay under a fixed-term contract lasting weeks or months. This is
+pay-as-you-go employment: organizations must keep funds available for payroll.
+Unfunded obligations can lead to debt collection and organization shutdown.
+Keep payroll obligations distinct from daily tax assessments, even if future
+collections share infrastructure.
+
+**Why:** The user wants actual human office workers to get work done through
+commands, the secretary to coordinate human and NPC labor, and NPC employment
+to create persistent financial obligations with consequences.
+
+**How to apply:** Route commands through real, existing capabilities; retain
+approval, permissions, and execution status. Let the secretary coordinate NPCs
+without turning them into generic duplicate agents. Track signing bonuses,
+contract terms, daily wages, and available organization funds separately from
+taxes; do not assume a specific collections grace period for payroll.
+
 **Why:** The user explicitly distinguishes paid game NPC labor, Pablo Corp's
 exclusive specialist rentals, Prime-triggered secretary onboarding, and an
 in-world secretary that physically performs real automation work and supports
