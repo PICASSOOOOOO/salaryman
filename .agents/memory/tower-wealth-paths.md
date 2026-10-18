@@ -24,9 +24,10 @@ carry in their wallet. Players may apply for checking and savings accounts so
 they do not need to keep all their FIAT in the wallet. Wallet FIAT can be stolen,
 but theft should be very difficult and carry security repercussions; victims may
 defend themselves without repercussions. Stolen money is not taxable. Illegal
-business organizations provide special abilities that make criminal activity
-easier; solo criminals have a harder time, and crimes such as safebreaking need
-the right tools and skills. Legitimate operators can build power by buying,
+business organizations provide special abilities and protection that make
+criminal activity easier; their members do not pay personal taxes on illegal
+activities. Solo criminals have a harder time, and crimes such as safebreaking
+need the right tools and skills. Legitimate operators can build power by buying,
 selling, controlling operations, and hiring an army, guards, and bodyguards.
 Lower-income players should gain strength, stamina, power, attack and defense,
 better protection from weather and natural disasters, and heightened senses.
@@ -117,3 +118,10 @@ legitimate business operators.
 **How to apply:** Exclude stolen proceeds from tax bases. Make organizational
 criminal advantages and law-abiding business/security capabilities meaningful;
 require tools and skills for specific crimes such as safebreaking.
+
+**Why:** The user clarified that illegal-organization members are not personally
+taxed on their illegal activities because the organization supplies abilities,
+power, and protection.
+
+**How to apply:** Keep any organization-level tax assessment separate from
+personal member taxes; never tax a member's illegal activity as personal income.
