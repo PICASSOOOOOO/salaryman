@@ -17,6 +17,7 @@ from time import monotonic
 from typing import Any
 
 from .automation import AUTOMATION_CHARACTERS
+from .business_services import PURCHASABLE_BUSINESSES
 from .pest_work import (
     MELEE_MOVES,
     MELEE_MOVE_BY_ID,
@@ -159,7 +160,7 @@ def validate_command(command: object) -> tuple[bool, str]:
         business_key = payload.get("business_key")
         if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
             return False, "SHOP ITEM ID NOT VALID"
-        if business_key not in {"fish-store", "furniture-store"}:
+        if business_key not in PURCHASABLE_BUSINESSES:
             return False, "SHOP IS NOT AVAILABLE"
     elif name == "basement_attack":
         move_id = payload.get("move_id")

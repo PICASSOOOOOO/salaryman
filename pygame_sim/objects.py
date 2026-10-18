@@ -15,7 +15,7 @@ from .approved_content import (
     APPROVED_CAMERA_FOCUS_KINDS,
     APPROVED_INTERACTIVE_OBJECT_KINDS,
 )
-from .business_services import actions_for_business
+from .business_services import PURCHASABLE_BUSINESSES, actions_for_business
 from .world_layout import FLOOR_PLAN, scale_legacy_position
 
 if TYPE_CHECKING:
@@ -401,7 +401,7 @@ class OfficeObjectRegistry:
                 "reception"
                 if item.business_key == "tower_reception_kiosk"
                 else "business_shop"
-                if item.business_key in {"fish-store", "furniture-store"}
+                if item.business_key in PURCHASABLE_BUSINESSES
                 else "business"
             )
             state.open_page(

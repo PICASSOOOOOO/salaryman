@@ -153,7 +153,7 @@ export const TOWER_BUSINESS_STOCK_LINES: readonly TowerBusinessStockLine[] = [
     valueDrivers: ["beauty"],
     npcProductFamily: "fish",
     npcVersion: 1,
-    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["quality", "care"] },
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["quality", "capacity"] },
   },
   {
     id: "water-coolers",
