@@ -80,6 +80,6 @@ nursing/care, and possible death or lethal harm.
 **Why:** The user explicitly wants a sandbox survival office sim RPG MMO where
 health consequences apply to all living beings, not only the player.
 
-**How to apply:** Reuse a coherent authoritative health model across entity
-types. New pets need compatible health and care behavior; do not give fish or
-companions a decorative-only health bar or a separate incompatible system.
+**How to apply:** See [Ecosystem condition, survival, and maintenance](asset-decay-scope.md)
+for differentiated human, replicant, and pet needs, and for how health fits into
+the wider world-condition system.

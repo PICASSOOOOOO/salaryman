@@ -139,7 +139,7 @@
 - [SALARYMAN company + support](salaryman-legal-entity.md) — Picasso AI, LLC is the legal entity; see [support routing](salaryman-support-routing.md).
 - [Tower floor previews](tower-floor-previews.md) — use Godot-native 3D for B1–B6/F1–F12; do not show Pygame Tower art, and treat layout/door/object/control tests as gameplay checks.
 - [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
-- [Current decay scope](asset-decay-scope.md) — existing assets age very slowly and gradually shift visually from solarpunk toward cyberpunk; vehicles remain out of scope until present.
+- [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is Dec 31, 2026; defer pledge offers until the asset catalog is decided and keep the base game free.
 - [Packaged game capture](desktop-game-capture.md) — on virtual Linux displays, XWD may return black for Godot/OpenGL; use the paired game's Movie Writer and verify input effects.
