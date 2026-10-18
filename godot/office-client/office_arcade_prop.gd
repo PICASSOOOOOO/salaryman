@@ -1,6 +1,9 @@
 extends Node3D
 ## Native recreation-hall cabinet art; Python owns all arcade interactions.
 
+var attract_clock := 0.0
+
+
 static func create(object_id: String, title: String) -> Node3D:
 	var cabinet := new()
 	cabinet.name = object_id
@@ -73,6 +76,24 @@ func _sphere(part: String, at: Vector3, radius: float, material: Material) -> Me
 	instance.position = at
 	add_child(instance)
 	return instance
+
+
+func _process(delta: float) -> void:
+	update_attract_mode(delta)
+
+
+func update_attract_mode(delta: float) -> void:
+	attract_clock = fposmod(attract_clock + delta, TAU)
+	var main_sprite := get_node_or_null("ScreenSpriteMain") as MeshInstance3D
+	var left_sprite := get_node_or_null("ScreenSpriteLeft") as MeshInstance3D
+	var right_sprite := get_node_or_null("ScreenSpriteRight") as MeshInstance3D
+	if main_sprite != null:
+		main_sprite.position.x = -0.06 + sin(attract_clock) * 0.09
+		main_sprite.rotation.z = sin(attract_clock * 0.7) * 0.10
+	if left_sprite != null:
+		left_sprite.position.y = 1.12 + sin(attract_clock * 1.4) * 0.055
+	if right_sprite != null:
+		right_sprite.position.y = 1.31 + cos(attract_clock * 1.1) * 0.055
 
 
 func _build(title: String, accent_color: Color) -> void:

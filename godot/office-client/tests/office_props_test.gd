@@ -68,6 +68,10 @@ func _run() -> void:
 		check(arcade.has_node("JoystickKnob"), "Arcade must have player controls")
 		check(arcade.get_node("GameTitle").text != "", "Arcade title cannot be blank")
 		arcade_accents[arcade.get_node("MarqueeFace").mesh.material.albedo_color] = true
+		var sprite := arcade.get_node("ScreenSpriteMain") as MeshInstance3D
+		var initial_sprite_position := sprite.position
+		arcade.update_attract_mode(0.4)
+		check(sprite.position != initial_sprite_position, "Arcade screen should animate in attract mode")
 		arcade.free()
 	check(arcade_accents.size() == 4, "Each approved arcade must have a distinct cabinet accent")
 	check(Client.museum_case_variant("floor-12-interior-prop-12") == 0, "First museum case must select exhibit one")
