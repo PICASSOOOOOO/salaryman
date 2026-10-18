@@ -87,6 +87,10 @@ func _run_tests() -> void:
 	assert(OfficeClient.terminal_choice_for_key(KEY_1) == 1)
 	assert(OfficeClient.terminal_choice_for_key(KEY_9) == 9)
 	assert(OfficeClient.terminal_choice_for_key(KEY_ESCAPE) == 0)
+	assert(
+		OfficeClient.basement_controls_hint()
+		== "WASD MOVE · F MELEE MENU · 1–9 SELECT · E PICK UP/USE · F1 ADVISER"
+	)
 	assert(OfficeClient.feature_panel_uses_command_style("phone"))
 	assert(OfficeClient.feature_panel_uses_command_style("reception"))
 	assert(OfficeClient.feature_panel_uses_command_style("systems"))

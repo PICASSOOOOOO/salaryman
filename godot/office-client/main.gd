@@ -3459,7 +3459,8 @@ func _update_hud() -> void:
 				carcasses += 1 if pest_status == "carcass" else 0
 		var stamina := clampi(int(office.get("pestStamina", 0)), 0, 100)
 		var uniform_label := "UNIFORM ON" if bool(office.get("pestUniformWorn", false)) else "UNIFORM OFF"
-		controls_label.text = "WASD MOVE · F MELEE · E PICK UP / USE · F1 ASK ADVISER\nSTAMINA %d%% · %s · %d ACTIVE PESTS · %d CARCASSES · MUSIC %s" % [
+		controls_label.text = "%s\nSTAMINA %d%% · %s · %d ACTIVE PESTS · %d CARCASSES · MUSIC %s" % [
+			basement_controls_hint(),
 			stamina,
 			uniform_label,
 			active_pests,
@@ -4133,6 +4134,10 @@ static func terminal_choice_for_key(keycode: int) -> int:
 		KEY_9:
 			return 9
 	return 0
+
+
+static func basement_controls_hint() -> String:
+	return "WASD MOVE · F MELEE MENU · 1–9 SELECT · E PICK UP/USE · F1 ADVISER"
 
 
 func _send_command(name: String, payload: Dictionary = {}) -> String:
