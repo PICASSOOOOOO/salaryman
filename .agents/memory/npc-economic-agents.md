@@ -75,18 +75,19 @@ wealth and compete with players and each other.
 A PABLO PRIME Stripe subscription automatically triggers an elaborate elevator
 cutscene delivering one distinctive secretary to the subscriber's office. This
 secretary combines the available skills and automations, with a unique name and
-costume, and requires a separate one-time real-money setup fee. Without Prime,
-players ask the receptionist which Pixel Agent or NPC is available for work.
-Hiring and construction organizations are subject to regulations.
+costume; the secretary is included in the Prime package, with no separate setup
+fee. Without Prime, players ask the receptionist which Pixel Agent or NPC is
+available for work. Hiring and construction organizations are subject to
+regulations.
 
 **Why:** The user explicitly distinguishes paid game NPC labor, Pablo Corp's
 exclusive specialist rentals, Prime-triggered secretary onboarding, and autonomous
 NPC economic lives.
 
 **How to apply:** Keep individual hiring costs and NPC rental exclusivity in the
-game economy; keep Prime entitlement, browser access, and the separately paid
-one-time secretary setup distinct. Never allow concurrent rentals of the same
-specialist. Pay the wage floor in FIAT; do not invent the secretary setup price.
+game economy; gate the automatic all-skills secretary and online workforce
+access on the existing Prime subscription, with no extra secretary fee. Never
+allow concurrent rentals of the same specialist. Pay the wage floor in FIAT.
 
 ## Fish pets and unique companions
 
