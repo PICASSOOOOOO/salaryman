@@ -91,7 +91,7 @@
 - [Global multi-broker trade bot](global-trade-bot.md) — Trade Bot supports multiple brokers and currencies; amounts use native major units and analysis uses POST.
 - [Real banking + net-worth overview](real-banking-overview.md) — Plaid stays view-only; external balances are separate from in-game FIAT.
 - [Office discovery onboarding](office-discovery-onboarding.md) — Story starts at the office elevator; reveal cues one at a time and list quarter scenes in Mission Menu.
-- [Game interaction visual language](no-crt-visual-language.md) — camera-transition feature panels and terminals may use crisp green-on-black keyboard commands; keep it out of the general HUD and builder.
+- [Godot game visual language](godot-game-visual-language.md) — ASCII motifs can extend into selected world art; confine CRT treatments to physical terminal and TV screens.
 - [Workspace light surfaces](workspace-light-surfaces.md) — browser/control-plane UI is strictly cream/white and black; all cyberpunk color belongs only to the downloadable game.
 - [SALARYMAN product manifesto](pablo-creation-workspace.md) — Gamified office automation; browser funnels users to desktop and free creator tools.
 - [Lab naming](lab-name-1999.md) — the lab is called 1999; preserve established project names and do not rename them.

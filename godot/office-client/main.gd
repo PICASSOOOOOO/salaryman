@@ -84,6 +84,8 @@ var native_app_title: Label
 var native_app_body: Label
 var native_app_footer: Label
 var native_app_accent: ColorRect
+var native_app_accent_target_width := 580.0
+var native_app_ascii_mark: Label
 var native_app_frame: Panel
 var native_app_inner_frame: Panel
 var native_app_frame_rail: ColorRect
@@ -175,6 +177,7 @@ func _build_materials() -> void:
 	materials["office_rug_field"] = _material(Color("#665247"), 0.94)
 	materials["office_rug_trim"] = _material(Color("#a18155"), 0.84)
 	materials["crt_screen"] = _material(Color("#9c733d"), 0.3, false, 0.0, Color("#9c733d"))
+	materials["crt_scanline"] = _material(Color(0.025, 0.07, 0.045, 0.32), 0.5, true)
 	materials["lamp_glow"] = _material(Color("#ffd28d"), 0.28, false, 0.0, Color("#ffd28d"))
 	materials["character_shadow"] = _material(Color(0.06, 0.09, 0.08, 0.28), 0.95, true)
 	materials["office_1"] = _material(Color("#8f6e8f"), 0.82)
@@ -1112,9 +1115,38 @@ func _build_lobby_decor(center: Vector3) -> void:
 	story_note.position = feature_wall + Vector3(0.0, -0.30, 0.17)
 	story_note.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	world_root.add_child(story_note)
+	_build_lobby_ascii_mural(feature_wall)
 
 	_add_lobby_plant("LobbyPlantWest", center + Vector3(-7.0, 0.0, 0.0))
 	_add_lobby_plant("LobbyPlantEast", center + Vector3(7.0, 0.0, 0.0))
+
+
+func _build_lobby_ascii_mural(feature_wall: Vector3) -> void:
+	var mural_center := feature_wall + Vector3(-3.35, 0.0, 0.16)
+	_add_box(
+		"LobbyAsciiMuralBacking",
+		mural_center,
+		Vector3(1.35, 1.50, 0.055),
+		materials["wall"],
+	)
+	_add_box(
+		"LobbyAsciiMuralTrim",
+		mural_center + Vector3(0.0, -0.70, 0.035),
+		Vector3(1.38, 0.045, 0.06),
+		materials["lobby_rug_trim"],
+	)
+	var mural := Label3D.new()
+	mural.name = "LobbyAsciiTower"
+	mural.text = "  ++  \n ++++ \n |||| \n|[][]|\n|[][]|\n+----+"
+	mural.font_size = 18
+	mural.pixel_size = 0.0065
+	mural.modulate = Color("#75ffa0")
+	mural.outline_size = 2
+	mural.outline_modulate = Color("#14211e")
+	mural.position = mural_center + Vector3(0.0, 0.02, 0.075)
+	mural.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mural.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	world_root.add_child(mural)
 
 
 func _add_lobby_plant(node_name: String, position: Vector3) -> void:
@@ -1633,10 +1665,22 @@ func _build_interface() -> void:
 
 	native_app_title = Label.new()
 	native_app_title.position = Vector2(28, 24)
-	native_app_title.size = Vector2(524, 34)
+	native_app_title.size = Vector2(465, 34)
 	native_app_title.add_theme_font_size_override("font_size", 21)
 	native_app_title.add_theme_color_override("font_color", Color("#eff8df"))
 	native_app_panel.add_child(native_app_title)
+
+	native_app_ascii_mark = Label.new()
+	native_app_ascii_mark.name = "FeaturePanelAsciiDetail"
+	native_app_ascii_mark.text = "+--+\n|::|\n+--+"
+	native_app_ascii_mark.position = Vector2(505, 19)
+	native_app_ascii_mark.size = Vector2(47, 48)
+	native_app_ascii_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	native_app_ascii_mark.add_theme_font_override("font", feature_command_font)
+	native_app_ascii_mark.add_theme_font_size_override("font_size", 10)
+	native_app_ascii_mark.add_theme_color_override("font_color", Color("#75ffa0"))
+	native_app_ascii_mark.visible = false
+	native_app_panel.add_child(native_app_ascii_mark)
 
 	native_app_template_label = Label.new()
 	native_app_template_label.position = Vector2(28, 56)
@@ -2322,6 +2366,8 @@ collision_extents: Array = [],
 		arcade.position = position
 		dynamic_root.add_child(arcade)
 		return arcade
+	if kind == "tv":
+		return _build_tv(position, object_id)
 	if kind == "business_suite" or kind == "business_kiosk":
 		return _build_business_prop(kind, position, object_id, label)
 	if kind == "yard_gate":
@@ -2352,8 +2398,6 @@ collision_extents: Array = [],
 				materials["wall_trim"],
 			)
 		return _add_box_to_dynamic(object_id, position + Vector3(0.0, 1.1, 0.0), partition_size, materials["wall_trim"])
-	elif kind == "tv":
-		return _add_box_to_dynamic("Terminal", position + Vector3(0, 0.45, 0), Vector3(0.65, 0.9, 0.55), materials["metal"])
 	return _add_box_to_dynamic("Object", position + Vector3(0, 0.35, 0), Vector3(0.7, 0.7, 0.7), materials["wall_trim"])
 
 
@@ -3020,7 +3064,94 @@ func _build_crt_terminal(position: Vector3, object_id: String) -> MeshInstance3D
 		Vector3(0.68, 0.06, 0.24),
 		materials["wall_trim"],
 	)
+	_add_crt_scanlines(
+		object_id + "-screen-scanline",
+		position + Vector3(0.0, 1.06, 0.216),
+		0.74,
+		0.46,
+		position.z + 0.228,
+		10,
+	)
 	return body
+
+
+func _build_tv(position: Vector3, object_id: String) -> MeshInstance3D:
+	var shell := _add_box_to_dynamic(
+		object_id,
+		position + Vector3(0.0, 0.90, 0.0),
+		Vector3(1.28, 1.0, 0.62),
+		materials["metal"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-wood-side-left",
+		position + Vector3(-0.57, 0.90, 0.325),
+		Vector3(0.12, 0.84, 0.045),
+		materials["office_rug_trim"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-wood-side-right",
+		position + Vector3(0.57, 0.90, 0.325),
+		Vector3(0.12, 0.84, 0.045),
+		materials["office_rug_trim"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-screen",
+		position + Vector3(-0.02, 0.94, 0.326),
+		Vector3(0.88, 0.64, 0.018),
+		materials["crt_screen"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-controls",
+		position + Vector3(0.50, 0.90, 0.33),
+		Vector3(0.10, 0.72, 0.035),
+		materials["metal"],
+	)
+	_add_box_to_dynamic(
+		object_id + "-speaker",
+		position + Vector3(0.51, 0.77, 0.354),
+		Vector3(0.06, 0.30, 0.012),
+		materials["wall_trim"],
+	)
+	for index in range(3):
+		var knob := CylinderMesh.new()
+		knob.top_radius = 0.035
+		knob.bottom_radius = 0.035
+		knob.height = 0.035
+		knob.material = materials["door"]
+		var knob_instance := MeshInstance3D.new()
+		knob_instance.name = object_id + "-control-knob-%d" % index
+		knob_instance.mesh = knob
+		knob_instance.rotation.x = PI / 2.0
+		knob_instance.position = position + Vector3(0.50, 1.19 - float(index) * 0.12, 0.36)
+		dynamic_root.add_child(knob_instance)
+	_add_crt_scanlines(
+		object_id + "-screen-scanline",
+		position + Vector3(-0.02, 0.94, 0.326),
+		0.86,
+		0.62,
+		position.z + 0.337,
+		12,
+	)
+	return shell
+
+
+func _add_crt_scanlines(
+	node_prefix: String,
+	screen_center: Vector3,
+	screen_width: float,
+	screen_height: float,
+	front_z: float,
+	line_count: int,
+) -> void:
+	for index in range(line_count):
+		var line_y := screen_center.y - screen_height / 2.0 \
+			+ screen_height * (float(index) + 0.5) / float(line_count)
+		_add_box_to_dynamic(
+			"%s-%02d" % [node_prefix, index],
+			Vector3(screen_center.x, line_y, front_z),
+			Vector3(screen_width, 0.0035, 0.003),
+			materials["crt_scanline"],
+		)
 
 
 func _build_door_visual(position: Vector3, object_id: String) -> Node3D:
@@ -3820,6 +3951,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_body.text = location + "\n\nThis view is rendered by the game client."
 			native_app_footer.text = "ESC CLOSE"
 	if feature_panel_uses_command_style(page):
+		native_app_ascii_mark.visible = true
 		native_app_panel.color = Color("#020905")
 		native_app_accent.color = Color("#3bff79")
 		native_app_title.add_theme_color_override("font_color", Color("#9cffb7"))
@@ -3836,6 +3968,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 		_apply_native_app_frame_template(page, page_source, office, scene_data)
 		_prepare_native_typewriter(page)
 	else:
+		native_app_ascii_mark.visible = false
 		native_app_frame.visible = false
 		native_app_inner_frame.visible = false
 		native_app_frame_rail.visible = false
@@ -3968,7 +4101,7 @@ func _apply_native_app_frame_template(
 		"operations": 500.0,
 		"field": 430.0,
 	}
-	native_app_accent.size.x = float(accent_widths.get(template, 430.0))
+	native_app_accent_target_width = float(accent_widths.get(template, 430.0))
 
 
 func _prepare_native_typewriter(page: String) -> void:
@@ -3999,11 +4132,15 @@ func _advance_feature_panel_animations(delta: float) -> void:
 			native_app_panel.modulate = Color(1.0, 1.0, 1.0, panel_ease)
 			native_app_panel.scale = Vector2.ONE * (0.975 + 0.025 * panel_ease)
 			native_app_panel.position = Vector2(300, 184) + Vector2(0, 12 * (1.0 - panel_ease))
+			if native_app_accent != null:
+				native_app_accent.size.x = native_app_accent_target_width * panel_ease
 		else:
 			native_app_animation_progress = 0.0
 			native_app_panel.modulate = Color.WHITE
 			native_app_panel.scale = Vector2.ONE
 			native_app_panel.position = Vector2(300, 184)
+			if native_app_accent != null:
+				native_app_accent.size.x = native_app_accent_target_width
 
 	if elevator_floor_panel != null:
 		if elevator_floor_panel.visible:
@@ -4076,9 +4213,12 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 		button.text = labels[index]
 		button.custom_minimum_size = Vector2(120, 34)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.focus_mode = Control.FOCUS_ALL
 		_style_feature_command_button(button)
 		button.pressed.connect(_on_native_app_action_pressed.bind(page, index + 1))
 		native_app_action_grid.add_child(button)
+		if index == 0:
+			button.grab_focus()
 
 
 func _style_feature_command_button(button: Button) -> void:
@@ -4097,10 +4237,14 @@ func _style_feature_command_button(button: Button) -> void:
 	hover.border_color = Color("#69ff91")
 	var pressed := normal.duplicate() as StyleBoxFlat
 	pressed.bg_color = Color("#144321")
+	var focus := normal.duplicate() as StyleBoxFlat
+	focus.bg_color = Color("#0a2712")
+	focus.border_color = Color("#f8b957")
+	focus.set_border_width_all(2)
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("focus", hover)
+	button.add_theme_stylebox_override("focus", focus)
 
 
 func _on_native_app_action_pressed(page: String, choice: int) -> void:

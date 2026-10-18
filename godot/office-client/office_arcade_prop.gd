@@ -25,6 +25,20 @@ static func _accent_for_id(object_id: String) -> Color:
 			return Color("#9abb83")
 
 
+static func _ascii_game_art(object_id: String) -> String:
+	match object_id:
+		"arcade-cyber-serpent":
+			return "~<>~\n  oo"
+		"arcade-void-invaders":
+			return "* [] *\n  ||"
+		"arcade-barrel-runner":
+			return "(O)\n ||"
+		"arcade-neon-breaker":
+			return "<+>\n|_|"
+		_:
+			return "+--+\n|::|"
+
+
 func _material(color: Color, roughness := 0.72, emission := false) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
@@ -132,6 +146,17 @@ func _build(title: String, accent_color: Color) -> void:
 	_box("ScreenSpriteMain", Vector3(-0.06, 1.22, 0.391), Vector3(0.12, 0.075, 0.009), accent_material)
 	_box("ScreenSpriteLeft", Vector3(-0.17, 1.12, 0.391), Vector3(0.055, 0.045, 0.009), button_material)
 	_box("ScreenSpriteRight", Vector3(0.17, 1.31, 0.391), Vector3(0.055, 0.045, 0.009), button_material)
+	var ascii_screen_art := Label3D.new()
+	ascii_screen_art.name = "ScreenAsciiArt"
+	ascii_screen_art.text = _ascii_game_art(name)
+	ascii_screen_art.font_size = 12
+	ascii_screen_art.pixel_size = 0.008
+	ascii_screen_art.modulate = Color("#f1e4c4")
+	ascii_screen_art.outline_size = 2
+	ascii_screen_art.outline_modulate = Color("#17221c")
+	ascii_screen_art.position = Vector3(0.0, 1.22, 0.405)
+	ascii_screen_art.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(ascii_screen_art)
 
 	_box("ControlPanel", Vector3(0.0, 0.79, 0.35), Vector3(0.68, 0.13, 0.34), dark_material)
 	_cylinder("JoystickBase", Vector3(-0.18, 0.875, 0.39), 0.07, 0.035, brass_material)

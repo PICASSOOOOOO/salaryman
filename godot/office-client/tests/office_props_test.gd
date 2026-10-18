@@ -67,6 +67,7 @@ func _run() -> void:
 		check(arcade.has_node("ScreenField"), "Arcade must have a distinct screen")
 		check(arcade.has_node("JoystickKnob"), "Arcade must have player controls")
 		check(arcade.get_node("GameTitle").text != "", "Arcade title cannot be blank")
+		check(arcade.has_node("ScreenAsciiArt"), "Arcade screens should use distinct ASCII art")
 		arcade_accents[arcade.get_node("MarqueeFace").mesh.material.albedo_color] = true
 		var sprite := arcade.get_node("ScreenSpriteMain") as MeshInstance3D
 		var initial_sprite_position := sprite.position
@@ -88,6 +89,7 @@ func _run() -> void:
 	tower_case.free()
 
 	var client := Client.new()
+	client._build_materials()
 	client.dynamic_root = Node3D.new()
 	client.add_child(client.dynamic_root)
 	var arcade_from_bridge := client._build_bridge_object(
@@ -98,6 +100,30 @@ func _run() -> void:
 	)
 	check(arcade_from_bridge.get_node("GameTitle").text == "CYBER SERPENT", "Bridge title reaches cabinet marquee")
 	check(arcade_from_bridge.position == Vector3(2.0, 0.0, 3.0), "Arcade cabinet keeps bridge position")
+	var terminal := client._build_bridge_object(
+		"crt_terminal",
+		Vector3.ZERO,
+		"terminal-art-test",
+	)
+	check(terminal != null, "CRT terminal keeps its physical monitor model")
+	check(
+		client.dynamic_root.has_node("terminal-art-test-screen-scanline-00"),
+		"CRT scanlines are attached to terminal displays",
+	)
+	var tv := client._build_bridge_object("tv", Vector3(3.0, 0.0, 0.0), "tv-art-test")
+	check(tv.name == "tv-art-test", "TVs use a distinct native model")
+	check(
+		client.dynamic_root.has_node("tv-art-test-screen-scanline-00"),
+		"CRT scanlines are attached to TV displays",
+	)
+	check(
+		not arcade_from_bridge.get_node("ScreenAsciiArt").text.is_empty(),
+		"Arcade display art remains ASCII",
+	)
+	check(
+		arcade_from_bridge.get_node_or_null("ScreenScanline") == null,
+		"Arcade screens must not receive CRT scanline overlays",
+	)
 	var objects := [
 		{"id": "office1-desk", "kind": "desk", "x": 1800, "y": 6250, "condition": 85, "cleanliness": 90},
 		{"id": "lobby-reception-desk", "kind": "desk", "x": 1900, "y": 2200, "condition": 50, "cleanliness": 40},
