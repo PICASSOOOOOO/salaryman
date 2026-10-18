@@ -103,10 +103,14 @@ missing cold-start dependency.
 preload constant when a runtime entry script needs the new controller type.
 
 The native downloadable game must support common Xbox- and PlayStation-style
-controllers, in addition to keyboard controls.
+controllers, but gameplay must not show control prompts or display settings.
+Keep those details in a menu that stays hidden until the player opens it.
 
-**Why:** The user explicitly asked to play the native game with a controller.
+**Why:** The user asked for controller play, then clarified that there should be
+no on-screen game controls and that controls, display, and other settings belong
+in a hidden menu.
 
 **How to apply:** Preserve standard Godot gamepad mappings in the native client
-and package them with the game. Do not claim physical-controller compatibility
-was verified unless an actual device is tested.
+and package them with the game. Put any control/display guidance inside the
+closed menu, never in the gameplay HUD. Do not claim physical-controller
+compatibility was verified unless an actual device is tested.

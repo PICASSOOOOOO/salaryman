@@ -3597,12 +3597,12 @@ func _update_hud() -> void:
 			"ON" if bool(office.get("musicEnabled", false)) else "OFF",
 		]
 		controls_label.add_theme_color_override("font_color", Color("#d9ddc7"))
-	controls_label.visible = not controls_label.text.is_empty()
 		mission_label.text = "TOWER SYSTEMS  ·  POWER %d%%  ·  WATER %d%%  ·  UPKEEP %d%%" % [
 			int(building.get("powerCondition", 0)),
 			int(building.get("plumbingCondition", 0)),
 			int(building.get("upkeepCondition", 0)),
 		]
+	controls_label.visible = not controls_label.text.is_empty()
 	var notice := transient_notice_text if transient_notice_remaining > 0.0 \
 		else str(office.get("notice", "WAITING FOR GAME SIMULATION"))
 	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), notice]
