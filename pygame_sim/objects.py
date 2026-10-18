@@ -582,18 +582,6 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("arcade-neon-breaker", "arcade", "NEON BREAKER", "recreation", (3_700, 4_300), "PLAY NEON BREAKER", arcade_game_id="neon_breaker"),
         OfficeObject("executive-elevator", "elevator", "ELEVATOR", "executive", (1_100, 6_400), "RETURN TO HALLWAY", destination_floor=1),
         OfficeObject("executive-stairs", "stairs", "STAIRS", "executive", (2_500, 6_400), "RETURN TO HALLWAY"),
-        OfficeObject("executive-desk", "desk", "WORKSTATION 01", "executive", (1_300, 6_100), "USE EXECUTIVE DESK"),
-        OfficeObject("executive-chair", "chair", "CHAIR", "executive", (1_300, 6_380), "SIT TO USE COMPUTER", parent_id="executive-desk"),
-        OfficeObject(
-            "executive-crt",
-            "crt_terminal",
-            "CRT TERMINAL",
-            "executive",
-            (1_750, 6_350),
-            "SIT TO USE COMPUTER",
-            display_position=(1_300, 6_070),
-            parent_id="executive-desk",
-        ),
         OfficeObject(
             "executive-telephone",
             "telephone",
@@ -607,29 +595,6 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("executive-vending", "vending_machine", "VENDING", "executive", (2_700, 6_950), "BUY OFFICE SUPPLIES"),
         OfficeObject("executive-window-west", "window", "WEST WINDOW", "executive", (1_400, 5_750), "LOOK OUT"),
         OfficeObject("executive-window-east", "window", "EAST WINDOW", "executive", (2_800, 5_750), "LOOK OUT"),
-        OfficeObject(
-            "executive-desk-lamp",
-            "desk_lamp",
-            "DESK LAMP",
-            "executive",
-            (1_200, 6_042),
-            "USE DESK LAMP",
-            interactive=False,
-            display_position=(1_200, 6_042),
-            parent_id="executive-desk",
-        ),
-        OfficeObject("executive-desk-2", "desk", "WORKSTATION 02", "executive", (2_300, 6_100), "WORKSTATION 02"),
-        OfficeObject("executive-chair-2", "chair", "CHAIR", "executive", (2_300, 6_380), "SIT TO USE COMPUTER", parent_id="executive-desk-2"),
-        OfficeObject("executive-crt-2", "crt_terminal", "COMPUTER", "executive", (2_300, 6_380), "SIT TO USE COMPUTER", display_position=(2_300, 6_070), parent_id="executive-desk-2"),
-        OfficeObject("executive-desk-lamp-2", "desk_lamp", "DESK LAMP", "executive", (2_200, 6_042), "DESK LAMP", interactive=False, display_position=(2_200, 6_042), parent_id="executive-desk-2"),
-        OfficeObject("executive-desk-3", "desk", "WORKSTATION 03", "executive", (1_300, 6_800), "WORKSTATION 03"),
-        OfficeObject("executive-chair-3", "chair", "CHAIR", "executive", (1_300, 7_080), "SIT TO USE COMPUTER", parent_id="executive-desk-3"),
-        OfficeObject("executive-crt-3", "crt_terminal", "COMPUTER", "executive", (1_300, 7_080), "SIT TO USE COMPUTER", display_position=(1_300, 6_770), parent_id="executive-desk-3"),
-        OfficeObject("executive-desk-lamp-3", "desk_lamp", "DESK LAMP", "executive", (1_200, 6_742), "DESK LAMP", interactive=False, display_position=(1_200, 6_742), parent_id="executive-desk-3"),
-        OfficeObject("executive-desk-4", "desk", "WORKSTATION 04", "executive", (2_300, 6_800), "WORKSTATION 04"),
-        OfficeObject("executive-chair-4", "chair", "CHAIR", "executive", (2_300, 7_080), "SIT TO USE COMPUTER", parent_id="executive-desk-4"),
-        OfficeObject("executive-crt-4", "crt_terminal", "COMPUTER", "executive", (2_300, 7_080), "SIT TO USE COMPUTER", display_position=(2_300, 6_770), parent_id="executive-desk-4"),
-        OfficeObject("executive-desk-lamp-4", "desk_lamp", "DESK LAMP", "executive", (2_200, 6_742), "DESK LAMP", interactive=False, display_position=(2_200, 6_742), parent_id="executive-desk-4"),
         OfficeObject("office4-elevator", "elevator", "ELEVATOR", "public", (3_200, 6_400), "RETURN TO HALLWAY", destination_floor=1),
         OfficeObject("office4-stairs", "stairs", "STAIRS", "public", (4_600, 6_400), "RETURN TO HALLWAY"),
         OfficeObject("office4-desk", "desk", "WORK DESK", "public", (3_900, 6_250), "USE WORK DESK"),
@@ -844,6 +809,35 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         "RETURN TO OFFICE",
         destination_room="executive",
         display_position=suite_door,
+    ), scale_legacy_coordinates=False)
+    # The starter office includes one private executive workstation. The open
+    # office floor stays clear until its owner buys and places furnishings.
+    registry.add(OfficeObject(
+        "executive-desk",
+        "desk",
+        "EXECUTIVE DESK",
+        "executive_suite",
+        (2_600, 14_500),
+        "USE EXECUTIVE DESK",
+    ), scale_legacy_coordinates=False)
+    registry.add(OfficeObject(
+        "executive-chair",
+        "chair",
+        "EXECUTIVE CHAIR",
+        "executive_suite",
+        (2_600, 14_780),
+        "SIT TO USE COMPUTER",
+        parent_id="executive-desk",
+    ), scale_legacy_coordinates=False)
+    registry.add(OfficeObject(
+        "executive-crt",
+        "crt_terminal",
+        "EXECUTIVE TERMINAL",
+        "executive_suite",
+        (3_050, 14_750),
+        "SIT TO USE COMPUTER",
+        display_position=(2_600, 14_470),
+        parent_id="executive-desk",
     ), scale_legacy_coordinates=False)
 
     for index, y in enumerate((31_350, 31_650), start=1):
