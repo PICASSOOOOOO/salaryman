@@ -56,6 +56,21 @@ func _run() -> void:
 			tie_restored = tie_restored or mesh.visible
 	assert(tie_restored, "Resetting a wardrobe must restore the default outfit.")
 
+	AVATAR_STYLE.set_wardrobe(model, AVATAR_STYLE.wardrobe_preset("shirt_only"))
+	var shirt_layer_visible := false
+	var jacket_removed := true
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		if not mesh.has_meta("wardrobe_slot"):
+			continue
+		if mesh.name == "shirt-torso":
+			shirt_layer_visible = mesh.visible
+		if mesh.get_meta("wardrobe_slot") == "jacket" and mesh.visible:
+			jacket_removed = false
+	assert(shirt_layer_visible, "The shirt-only outfit must reveal a complete shirt torso.")
+	assert(jacket_removed, "The shirt-only outfit must remove all jacket parts.")
+	AVATAR_STYLE.set_wardrobe(model, AVATAR_STYLE.wardrobe_preset("reference"))
+
 	var second_model := CHARACTER_SCENE.instantiate() as Node3D
 	root.add_child(second_model)
 	AVATAR_STYLE.apply(second_model)

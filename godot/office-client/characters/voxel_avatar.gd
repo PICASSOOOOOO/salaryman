@@ -45,11 +45,13 @@ static func apply(model: Node3D, wardrobe: Dictionary = {}) -> void:
 		_add_box(skeleton, limb_bone, Vector3(x, 0.025, 0.067), Vector3(0.052, 0.018, 0.034), "shoe_highlight", "shoe-toe")
 		_add_box(skeleton, limb_bone, Vector3(x, 0.039, 0.038), Vector3(0.025, 0.006, 0.035), "shoe_highlight", "shoe-lace")
 		_add_box(skeleton, limb_bone, Vector3(x, 0.008, 0.048), Vector3(0.058, 0.012, 0.066), "shoe", "shoe-sole")
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.244, 0), Vector3(0.041, 0.164, 0.048), "shirt", "shirt-sleeve")
 		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.244, 0), Vector3(0.048, 0.17, 0.057), "jacket", "sleeve")
 		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.287, 0.03), Vector3(0.035, 0.075, 0.009), "jacket_light", "sleeve-panel")
 		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.154, 0.005), Vector3(0.038, 0.034, 0.045), "skin", "hand")
 	_add_box(skeleton, "root", Vector3(0, 0.205, 0.002), Vector3(0.095, 0.045, 0.073), "pants", "belt")
 	_add_box(skeleton, "root", Vector3(0, 0.205, 0.041), Vector3(0.025, 0.018, 0.006), "shirt", "buckle")
+	_add_box(skeleton, "torso", Vector3(0, 0.283, 0), Vector3(0.136, 0.145, 0.076), "shirt", "shirt-torso")
 	_add_box(skeleton, "torso", Vector3(0, 0.283, 0), Vector3(0.16, 0.16, 0.086), "jacket", "blazer")
 	_add_box(skeleton, "torso", Vector3(-0.052, 0.342, 0), Vector3(0.07, 0.054, 0.092), "jacket_light", "left-shoulder")
 	_add_box(skeleton, "torso", Vector3(0.052, 0.342, 0), Vector3(0.07, 0.054, 0.092), "jacket_light", "right-shoulder")
@@ -133,6 +135,28 @@ static func set_wardrobe(model: Node3D, wardrobe: Dictionary) -> void:
 			if color_value is Color or (color_value is String and not color_value.is_empty())
 			else original_color
 		)
+
+
+static func wardrobe_preset(preset_name: String) -> Dictionary:
+	match preset_name:
+		"reference":
+			return {}
+		"open_collar":
+			return {"tie": {"visible": false}}
+		"shirt_only":
+			return {
+				"jacket": {"visible": false},
+				"tie": {"visible": false},
+			}
+		"charcoal_suit":
+			return {
+				"jacket": {"color": "#303944"},
+				"tie": {"color": "#732f36"},
+				"pants": {"color": "#25272a"},
+			}
+		_:
+			push_error("Unknown avatar wardrobe preset: " + preset_name)
+			return {}
 
 
 static func _wardrobe_slot_for_color(color_key: String) -> String:

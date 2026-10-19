@@ -108,6 +108,10 @@ func set_character_wardrobe(wardrobe: Dictionary) -> void:
 	AvatarStyle.set_wardrobe(visual_root, character_wardrobe)
 
 
+func set_character_wardrobe_preset(preset_name: String) -> void:
+	set_character_wardrobe(AvatarStyle.wardrobe_preset(preset_name))
+
+
 func _ready() -> void:
 	collision_layer = 2
 	collision_mask = 1
