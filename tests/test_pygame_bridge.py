@@ -674,6 +674,49 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "automation")
         self.assertEqual(self.scene.selected_automation_domain, "business_ops")
 
+    def test_systems_terminal_choice_8_opens_browser_meeting_launcher(self):
+        self.state.open_page(
+            "systems",
+            from_object=True,
+            source="SYSTEMS TERMINAL",
+            source_object_id="office3-crt",
+        )
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "id": "terminal-meeting",
+            "name": "terminal_choice",
+            "payload": {"choice": 8},
+        }
+        building_sync = SimpleNamespace(
+            link=SimpleNamespace(server_url="https://salaryman.example/")
+        )
+        with patch("pygame_sim.bridge.webbrowser.open", return_value=True) as open_browser:
+            result = apply_command(command, self.state, self.scene, building_sync)
+        self.assertTrue(result.ok)
+        open_browser.assert_called_once_with("https://salaryman.example/meet/new")
+        self.assertIsNone(self.state.active_page)
+
+    def test_video_meeting_table_opens_browser_meeting_launcher(self):
+        table = self.scene.objects.get("office3-video-meeting")
+        self.assertIsNotNone(table)
+        self.scene.current_room = "office_03"
+        self.scene.player_position = table.position
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "id": "table-meeting",
+            "name": "interact",
+            "payload": {"object_id": table.id},
+        }
+        building_sync = SimpleNamespace(
+            link=SimpleNamespace(server_url="https://salaryman.example")
+        )
+        with patch("pygame_sim.bridge.webbrowser.open", return_value=True) as open_browser:
+            result = apply_command(command, self.state, self.scene, building_sync)
+        self.assertTrue(result.ok)
+        open_browser.assert_called_once_with("https://salaryman.example/meet/new")
+
         self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
         command["payload"]["choice"] = 7
         result = apply_command(command, self.state, self.scene)

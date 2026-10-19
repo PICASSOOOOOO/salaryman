@@ -1737,6 +1737,12 @@ class SolarPunkRenderer:
                 self.font_sm,
                 profile.accent if status and status.enabled else Palette.MATRIX_DIM,
             )
+        self.text(
+            "8  OPEN VIDEO MEETING  /  9  CLOSE TERMINAL",
+            (panel.x + 32, panel.bottom - 24),
+            self.font_sm,
+            Palette.MATRIX_AMBER,
+        )
 
     def draw_player_service_page(self, state: OfficeState, scene: TowerScene) -> None:
         """Draw account/game controls on a neutral surface, separate from terminals."""

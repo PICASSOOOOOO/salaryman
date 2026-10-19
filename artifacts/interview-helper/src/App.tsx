@@ -146,6 +146,7 @@ function PledgeStoreRoute() {
 }
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
+const MeetLaunchPage = lazy(() => import("@/pages/MeetLaunchPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const ArtLibrary = lazy(() => import("@/pages/ArtLibrary"));
@@ -371,7 +372,7 @@ function AppShell() {
   //
   // Once authenticated, the open Tower lobby and legal pages are available
   // before any optional outside-world paperwork.
-  const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/pricing", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
+  const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/pricing", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api", "/meet"];
   // Onboarding is optional for basic job-seeking and browsing. Mutations and
   // paid/managed capabilities enforce the server-side onboarding record.
   // Powering on the landing cinematic's terminal sends visitors to /console
@@ -645,6 +646,7 @@ function AppShell() {
             <Route path="/terminal">{() => <MobileTerminal physicalTerminal />}</Route>
             <Route path="/device-link" component={DeviceLink} />
             <Route path="/theater" component={TheaterPage} />
+            <Route path="/meet/new">{() => <MeetLaunchPage />}</Route>
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
             {/* BUSINESS module */}

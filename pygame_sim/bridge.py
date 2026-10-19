@@ -511,6 +511,19 @@ def apply_command(
                 return CommandResult(False, "LOADING ZONE IS UNAVAILABLE / TOWER STAFF ONLY")
             state.notice = "RECEIVING TOWER SUPPLIES"
             return CommandResult(True, state.notice)
+        if nearby is not None and nearby.id == "office3-video-meeting" \
+            and requested_object_id in (None, nearby.id):
+            link = getattr(building_sync, "link", None)
+            if link is None:
+                return CommandResult(False, "LINK A GAME ACCOUNT TO OPEN VIDEO MEETINGS")
+            try:
+                opened = webbrowser.open(f"{link.server_url.rstrip('/')}/meet/new")
+            except Exception:
+                opened = False
+            if not opened:
+                return CommandResult(False, "COULD NOT OPEN THE VIDEO MEETING")
+            state.notice = "OPENING TOWER VIDEO MEETING"
+            return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "construction_task" \
             and requested_object_id in (None, nearby.id):
             if building_sync is None or not building_sync.queue_construction_work(
@@ -811,6 +824,19 @@ def apply_command(
         if choice == 9:
             state.close_page()
             return CommandResult(True, "SYSTEMS TERMINAL CLOSED")
+        if choice == 8:
+            link = getattr(building_sync, "link", None)
+            if link is None:
+                return CommandResult(False, "LINK A GAME ACCOUNT TO OPEN VIDEO MEETINGS")
+            try:
+                opened = webbrowser.open(f"{link.server_url.rstrip('/')}/meet/new")
+            except Exception:
+                opened = False
+            if not opened:
+                return CommandResult(False, "COULD NOT OPEN THE VIDEO MEETING")
+            state.close_page()
+            state.notice = "OPENING TOWER VIDEO MEETING"
+            return CommandResult(True, state.notice)
         if 1 <= choice <= len(AUTOMATION_CHARACTERS):
             profile = AUTOMATION_CHARACTERS[choice - 1]
             scene.selected_automation_domain = profile.domain

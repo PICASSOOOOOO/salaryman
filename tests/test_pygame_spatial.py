@@ -26,6 +26,7 @@ class PygameSpatialTests(unittest.TestCase):
                 "telephone",
                 "pay_phone",
                 "crt_terminal",
+                "desk",
                 "atm",
                 "vending_machine",
                 "elevator",
@@ -36,6 +37,9 @@ class PygameSpatialTests(unittest.TestCase):
             }.issubset(kinds)
         )
         self.assertNotIn("tv", kinds)
+        meeting_table = scene.objects.get("office3-video-meeting")
+        self.assertIsNotNone(meeting_table)
+        self.assertEqual(meeting_table.label, "VIDEO MEETING TABLE")
         self.assertEqual((scene.width, scene.height), (100_000_000, 100_000_000))
 
     def test_floor_plan_is_continuous_and_office_doors_land_on_boundary(self):

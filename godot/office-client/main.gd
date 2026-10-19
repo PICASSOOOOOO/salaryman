@@ -3870,7 +3870,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 				workers.size(),
 				float(office.get("funds", 0.0)),
 			]
-			native_app_footer.text = "1–8 OPEN MODULES  ·  9 OR ESC CLOSE"
+native_app_footer.text = "1–7 OPEN MODULES  ·  8 VIDEO MEETING  ·  9 OR ESC CLOSE"
 		"economy":
 			native_app_title.text = "BANCO OMBRA"
 			native_app_body.text = "%s\nGAME FIAT  ƒ%.2f\n\nThis is the Tower game wallet view. No transfer or payout is initiated from this screen." % [
