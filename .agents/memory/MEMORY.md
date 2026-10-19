@@ -4,6 +4,7 @@
 - [Browser onboarding work paths](browser-onboarding-work-path.md) — web onboarding offers real business or “LOOKING FOR WORK”; fictional business/immigration stays in the downloadable game.
 - [Site-wide popup boundary](site-wide-popup-boundary.md) — keep alerts opt-in; offer COMMS as a page and user-opened desktop dock, with badges and intentional dialogs preserved.
 - [Phone tests and voice](phone-system-daily-test.md) — Mocked and live tests differ; see the [harness](twilio-phone-tests.md), [bridge](browser-phone-bridge.md), and [toll-free retry](twilio-tollfree-resubmission.md).
+- [Shared demo phone number](shared-demo-phone-number.md) — the shared SALARYMAN number is for tester/admin checks and tightly limited demos to new users.
 - [Composite workspace-library declarations](composite-workspace-library-builds.md) — consumers may read stale emitted types; rebuild composite libraries after adding exports or schemas.
 - [DB migration mechanism](db-migration-mechanism.md) — dev schema uses push-force; production schema is applied by Publish, never a deployment post-build hook. Drizzle generate is broken.
 - [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.
