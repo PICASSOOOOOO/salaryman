@@ -9,6 +9,7 @@ import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
+import { useLocation } from 'wouter';
 import {
   classifyPhoneSystemResponse,
   getPhoneSystemStatusRetryDelay,
@@ -150,6 +151,7 @@ export default function CalllHomePage() {
   const { features, trials, isOwner, loading: planLoading } = usePlan();
   const { openPledgePopup } = usePledgePopup();
   const { deviceState, deviceError, ensureDeviceReady, reconnect, incomingCall, acceptIncomingCall, rejectIncomingCall } = useTwilioDeviceContext();
+  const [, navigate] = useLocation();
 
   const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
   const telephonyLocked = !hasPhoneAccess;
@@ -161,6 +163,7 @@ export default function CalllHomePage() {
     if (planLoading) return;
     if (!hasPhoneAccess) {
       setSystemStatus('no_subscription');
+      navigate('/pricing');
       return;
     }
 
@@ -190,6 +193,7 @@ export default function CalllHomePage() {
         const result = classifyPhoneSystemResponse(response.status, payload);
         if (stopped) return;
         setSystemStatus(result.status);
+        if (result.status === 'no_subscription') navigate('/pricing');
         if (result.retry) scheduleRetry();
       } catch {
         if (stopped) return;
@@ -207,7 +211,7 @@ export default function CalllHomePage() {
       activeController?.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [apiUrl, authLoading, hasPhoneAccess, isAuthenticated, planLoading, statusRetryKey]);
+  }, [apiUrl, authLoading, hasPhoneAccess, isAuthenticated, navigate, planLoading, statusRetryKey]);
 
   useEffect(() => {
     if (!hasPhoneAccess || planLoading || systemStatus !== 'online') return;

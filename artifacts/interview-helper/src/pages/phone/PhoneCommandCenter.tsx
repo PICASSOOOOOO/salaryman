@@ -152,8 +152,8 @@ export default function PhoneCommandCenter({ systemStatus }: { systemStatus: Pho
 
   const readFetchError = useCallback(async (r: Response): Promise<string | null> => {
     if (r.ok) return null;
-    if (r.status === 403) rawNavigate('/pricing?view=prime');
     const d = await r.json().catch(() => ({}));
+    if (r.status === 403 && d?.feature === 'phone_system') rawNavigate('/pricing');
     return d.error || `Request failed (${r.status})`;
   }, [rawNavigate]);
 
