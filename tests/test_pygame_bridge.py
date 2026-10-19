@@ -674,6 +674,19 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "automation")
         self.assertEqual(self.scene.selected_automation_domain, "business_ops")
 
+        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
+        command["payload"]["choice"] = 7
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "bank")
+
+        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
+        command["payload"]["choice"] = 9
+        result = apply_command(command, self.state, self.scene)
+        self.assertTrue(result.ok)
+        self.assertIsNone(self.state.active_page)
+        self.assertFalse(apply_command(command, self.state, self.scene).ok)
+
     def test_systems_terminal_choice_8_opens_browser_meeting_launcher(self):
         self.state.open_page(
             "systems",
@@ -717,27 +730,6 @@ class PygameBridgeTests(unittest.TestCase):
             result = apply_command(command, self.state, self.scene, building_sync)
         self.assertTrue(result.ok)
         open_browser.assert_called_once_with("https://salaryman.example/meet/new")
-
-        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
-        command["payload"]["choice"] = 7
-        result = apply_command(command, self.state, self.scene)
-        self.assertTrue(result.ok)
-        self.assertEqual(self.state.active_page, "bank")
-
-        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
-        command["payload"]["choice"] = 8
-        result = apply_command(command, self.state, self.scene)
-        self.assertTrue(result.ok)
-        self.assertEqual(self.state.active_page, "phone")
-
-        self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
-        command["payload"]["choice"] = 9
-        result = apply_command(command, self.state, self.scene)
-        self.assertTrue(result.ok)
-        self.assertIsNone(self.state.active_page)
-
-        result = apply_command(command, self.state, self.scene)
-        self.assertFalse(result.ok)
 
     def test_unknown_or_wrong_version_commands_do_not_mutate_state(self):
         before = self.state.running
