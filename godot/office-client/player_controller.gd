@@ -14,6 +14,7 @@ const GAMEPAD_DEADZONE := 0.22
 const AvatarStyle = preload("res://characters/voxel_avatar.gd")
 
 var character_scene: PackedScene
+var character_wardrobe: Dictionary = {}
 var visual_root: Node3D
 var animation_player: AnimationPlayer
 var bridge_connected := false
@@ -100,6 +101,13 @@ func configure_character(scene: PackedScene) -> void:
 	character_scene = scene
 
 
+func set_character_wardrobe(wardrobe: Dictionary) -> void:
+	character_wardrobe = wardrobe.duplicate(true)
+	if visual_root == null or not is_instance_valid(visual_root):
+		return
+	AvatarStyle.set_wardrobe(visual_root, character_wardrobe)
+
+
 func _ready() -> void:
 	collision_layer = 2
 	collision_mask = 1
@@ -124,13 +132,17 @@ func _ready() -> void:
 		return
 	visual_root.name = "CharacterModel"
 	add_child(visual_root)
-	animation_player = configure_character_model(visual_root)
+	animation_player = configure_character_model(visual_root, MODEL_SCALE, character_wardrobe)
 	_play_animation("idle")
 
 
-static func configure_character_model(model: Node3D, scale_value: float = MODEL_SCALE) -> AnimationPlayer:
+static func configure_character_model(
+	model: Node3D,
+	scale_value: float = MODEL_SCALE,
+	wardrobe: Dictionary = {},
+) -> AnimationPlayer:
 	model.scale = Vector3.ONE * scale_value
-	AvatarStyle.apply(model)
+	AvatarStyle.apply(model, wardrobe)
 	var animation_nodes := model.find_children("*", "AnimationPlayer", true, false)
 	if animation_nodes.is_empty():
 		return null

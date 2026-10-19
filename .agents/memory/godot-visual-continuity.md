@@ -42,6 +42,12 @@ The source humanoid rig can serve as an animation skeleton while all original me
 
 **How to apply:** Keep attachment centers in the rig's native coordinate frame, verify arm and leg parts follow their individual bones, and test the visible avatar with the source animation library.
 
+Characters can change wardrobe; generated outfit parts must be independently configurable per character rather than permanently fixed to the initial outfit.
+
+**Why:** The user said characters can change wardrobe and asked to build that into the avatar work.
+
+**How to apply:** Keep garment slots modular and allow wardrobe appearance/visibility to change without rebuilding or sharing materials across characters; preserve body identity and animation separately.
+
 For the Floor 1/6 Tower game, elevator travel needs a camera push-in, and manual zoom-in/zoom-out controls need sound effects.
 
 **Why:** The user explicitly said the camera zoom at transitions is important for making travel feel like a game, and requested sound effects for zooming in and out.

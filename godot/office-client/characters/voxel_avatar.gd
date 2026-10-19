@@ -21,7 +21,10 @@ const COLORS := {
 	"eye_white": "#fffaf0",
 	"button": "#b7a98a",
 }
-static func apply(model: Node3D) -> void:
+static func apply(model: Node3D, wardrobe: Dictionary = {}) -> void:
+	if model.has_meta("voxel_avatar_built"):
+		set_wardrobe(model, wardrobe)
+		return
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		(node as MeshInstance3D).visible = false
 	var skeletons := model.find_children("*", "Skeleton3D", true, false)
@@ -94,6 +97,75 @@ static func apply(model: Node3D) -> void:
 		var arm_bone := "arm-left" if side > 0 else "arm-right"
 		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.172, 0.03), Vector3(0.049, 0.018, 0.064), "shirt", "shirt-cuff")
 		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.185, 0.03), Vector3(0.05, 0.012, 0.065), "jacket_shadow", "sleeve-cuff")
+	model.set_meta("voxel_avatar_built", true)
+	set_wardrobe(model, wardrobe)
+
+
+## Wardrobe values are keyed by garment slot. Each slot accepts a color string
+## or {"color": "#hex", "visible": true/false}; omitted slots use the base outfit.
+static func set_wardrobe(model: Node3D, wardrobe: Dictionary) -> void:
+	model.set_meta("voxel_wardrobe", wardrobe.duplicate(true))
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var part := node as MeshInstance3D
+		if not part.has_meta("wardrobe_slot"):
+			continue
+		var slot: String = part.get_meta("wardrobe_slot")
+		var option: Variant = wardrobe.get(slot, {})
+		var color_value: Variant = option
+		var part_visible := true
+		if option is Dictionary:
+			color_value = option.get("color", "")
+			part_visible = bool(option.get("visible", true))
+		part.visible = part_visible
+		var original_color: Color = part.get_meta("wardrobe_base_color")
+		var base_color := _wardrobe_slot_default_color(slot)
+		if color_value is Color:
+			base_color = color_value
+		elif color_value is String and not color_value.is_empty():
+			if Color.html_is_valid(color_value):
+				base_color = Color(color_value)
+			else:
+				push_warning("Ignoring invalid wardrobe color for slot '%s': %s" % [slot, color_value])
+		var color_key: String = part.get_meta("wardrobe_color_key")
+		var material := part.material_override as StandardMaterial3D
+		material.albedo_color = (
+			_shade_wardrobe_color(slot, color_key, base_color)
+			if color_value is Color or (color_value is String and not color_value.is_empty())
+			else original_color
+		)
+
+
+static func _wardrobe_slot_for_color(color_key: String) -> String:
+	if color_key.begins_with("jacket") or color_key == "button":
+		return "jacket"
+	if color_key == "shirt":
+		return "shirt"
+	if color_key == "tie":
+		return "tie"
+	if color_key.begins_with("pants") or color_key == "buckle":
+		return "pants"
+	if color_key.begins_with("shoe"):
+		return "shoes"
+	return ""
+
+
+static func _wardrobe_slot_default_color(slot: String) -> Color:
+	var color_key: String = {
+		"jacket": "jacket",
+		"shirt": "shirt",
+		"tie": "tie",
+		"pants": "pants",
+		"shoes": "shoe",
+	}.get(slot, "")
+	return Color(COLORS[color_key]) if not color_key.is_empty() else Color.WHITE
+
+
+static func _shade_wardrobe_color(slot: String, color_key: String, base_color: Color) -> Color:
+	if color_key.ends_with("_light") or color_key == "pants_highlight" or color_key == "shoe_highlight":
+		return base_color.lightened(0.16 if slot == "jacket" else 0.11)
+	if color_key.ends_with("_shadow") or color_key == "pants_shadow":
+		return base_color.darkened(0.22)
+	return base_color
 
 
 static func _add_face_texture(skeleton: Skeleton3D) -> void:
@@ -182,6 +254,11 @@ static func _add_box(
 	material.roughness = 0.92
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	part.material_override = material
+	var wardrobe_slot := _wardrobe_slot_for_color(color_key)
+	if not wardrobe_slot.is_empty():
+		part.set_meta("wardrobe_slot", wardrobe_slot)
+		part.set_meta("wardrobe_color_key", color_key)
+		part.set_meta("wardrobe_base_color", Color(COLORS[color_key]))
 	var target := Transform3D(Basis.IDENTITY, center)
 	part.transform = skeleton.get_bone_global_rest(bone_index).affine_inverse() * target
 	attachment.add_child(part)
