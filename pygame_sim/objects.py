@@ -605,7 +605,6 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         OfficeObject("office3-desk", "desk", "WORK DESK", "office_03", (6_000, 6_250), "USE WORK DESK"),
         OfficeObject("office3-chair", "chair", "CHAIR", "office_03", (6_000, 6_950), "SIT / REST"),
         OfficeObject("office3-crt", "crt_terminal", "SYSTEMS TERMINAL", "office_03", (6_000, 6_500), "SIT TO USE COMPUTER", display_position=(6_000, 6_100), parent_id="office3-desk"),
-        OfficeObject("office3-video-meeting", "desk", "VIDEO MEETING TABLE", "office_03", (6_800, 5_500), "START VIDEO MEETING", solid_half_extents=(520, 300)),
         OfficeObject("office3-telephone", "telephone", "TELEPHONE", "office_03", (5_600, 6_250), "OPEN PHONE CENTER"),
         OfficeObject("office4b-desk", "desk", "WORK DESK", "office_04", (8_100, 6_250), "USE WORK DESK"),
         OfficeObject("office4b-chair", "chair", "CHAIR", "office_04", (8_100, 6_950), "SIT / REST"),
@@ -1068,6 +1067,18 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             "south" if y == 0 else "north",
             build_walls=False,
         )
+    registry.add(
+        OfficeObject(
+            "floor-06-meeting-table",
+            "desk",
+            "VIDEO MEETING TABLE",
+            "office_03",
+            (11_500, 52_000),
+            "START VIDEO MEETING",
+            solid_half_extents=(520, 300),
+        ),
+        scale_legacy_coordinates=False,
+    )
     for office_id, bounds in office_bounds.items():
         x, y, width, height = bounds
         divider_x = x + width // 2

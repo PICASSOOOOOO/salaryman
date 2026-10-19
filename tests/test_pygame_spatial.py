@@ -37,7 +37,7 @@ class PygameSpatialTests(unittest.TestCase):
             }.issubset(kinds)
         )
         self.assertNotIn("tv", kinds)
-        meeting_table = scene.objects.get("office3-video-meeting")
+        meeting_table = scene.objects.get("floor-06-meeting-table")
         self.assertIsNotNone(meeting_table)
         self.assertEqual(meeting_table.label, "VIDEO MEETING TABLE")
         self.assertEqual((scene.width, scene.height), (100_000_000, 100_000_000))

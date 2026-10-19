@@ -511,7 +511,7 @@ def apply_command(
                 return CommandResult(False, "LOADING ZONE IS UNAVAILABLE / TOWER STAFF ONLY")
             state.notice = "RECEIVING TOWER SUPPLIES"
             return CommandResult(True, state.notice)
-        if nearby is not None and nearby.id == "office3-video-meeting" \
+        if nearby is not None and nearby.id == "floor-06-meeting-table" \
             and requested_object_id in (None, nearby.id):
             link = getattr(building_sync, "link", None)
             if link is None:

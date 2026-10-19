@@ -679,7 +679,7 @@ class PygameBridgeTests(unittest.TestCase):
             "systems",
             from_object=True,
             source="SYSTEMS TERMINAL",
-            source_object_id="office3-crt",
+            source_object_id="floor-06-crt",
         )
         command = {
             "type": "command",
@@ -698,8 +698,9 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertIsNone(self.state.active_page)
 
     def test_video_meeting_table_opens_browser_meeting_launcher(self):
-        table = self.scene.objects.get("office3-video-meeting")
+        table = self.scene.objects.get("floor-06-meeting-table")
         self.assertIsNotNone(table)
+        self.scene.current_floor = 6
         self.scene.current_room = "office_03"
         self.scene.player_position = table.position
         command = {
