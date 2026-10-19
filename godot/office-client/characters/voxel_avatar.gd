@@ -21,6 +21,7 @@ const COLORS := {
 	"eye_white": "#fffaf0",
 	"button": "#b7a98a",
 }
+const NPC_WARDROBE_PRESETS := ["reference", "open_collar", "charcoal_suit"]
 static func apply(model: Node3D, wardrobe: Dictionary = {}) -> void:
 	if model.has_meta("voxel_avatar_built"):
 		set_wardrobe(model, wardrobe)
@@ -157,6 +158,21 @@ static func wardrobe_preset(preset_name: String) -> Dictionary:
 		_:
 			push_error("Unknown avatar wardrobe preset: " + preset_name)
 			return {}
+
+
+static func wardrobe_for_npc(identity: String, wardrobe_override: Variant = null) -> Dictionary:
+	if wardrobe_override is Dictionary:
+		return wardrobe_override.duplicate(true)
+	if wardrobe_override is String and not wardrobe_override.is_empty():
+		return wardrobe_preset(wardrobe_override)
+	if wardrobe_override != null:
+		push_error("NPC wardrobe must be a preset name or a garment-slot dictionary.")
+		return {}
+	if identity.strip_edges().is_empty():
+		push_error("An NPC identity is required for a stable wardrobe choice.")
+		return {}
+	var preset_index := posmod(identity.hash(), NPC_WARDROBE_PRESETS.size())
+	return wardrobe_preset(NPC_WARDROBE_PRESETS[preset_index])
 
 
 static func _wardrobe_slot_for_color(color_key: String) -> String:

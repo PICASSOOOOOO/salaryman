@@ -7,6 +7,7 @@ extends Node3D
 
 const PROTOCOL_VERSION := 1
 const PlayerController = preload("res://player_controller.gd")
+const AvatarStyle = preload("res://characters/voxel_avatar.gd")
 const OfficeProp = preload("res://office_prop.gd")
 const ArcadeProp = preload("res://office_arcade_prop.gd")
 const ServiceProp = preload("res://office_service_prop.gd")
@@ -1424,6 +1425,10 @@ func _sync_automation_characters(characters: Array) -> void:
 		var domain := str(character.get("domain", ""))
 		if domain.is_empty():
 			continue
+		var wardrobe_override: Variant = character.get(
+			"wardrobe", character.get("wardrobePreset", null)
+		)
+		var wardrobe := AvatarStyle.wardrobe_for_npc(domain, wardrobe_override)
 		active_domains[domain] = true
 		var target := _pygame_to_world(float(character.get("x", 0)), float(character.get("y", 0)))
 		var actor_root: Node3D = automation_actors.get(domain)
@@ -1438,7 +1443,9 @@ func _sync_automation_characters(characters: Array) -> void:
 			var model := packed.instantiate() as Node3D
 			model.name = "CharacterModel"
 			actor_root.add_child(model)
-			var actor_animation := PlayerController.configure_character_model(model)
+			var actor_animation := PlayerController.configure_character_model(
+				model, PlayerController.MODEL_SCALE, wardrobe
+			)
 			if actor_animation != null:
 				actor_animation.play("idle")
 			_add_character_shadow(actor_root, 0.34)
@@ -1460,6 +1467,9 @@ func _sync_automation_characters(characters: Array) -> void:
 			automation_actors[domain] = actor_root
 			automation_animations[domain] = actor_animation
 		automation_targets[domain] = target
+		var character_model := actor_root.get_node_or_null("CharacterModel") as Node3D
+		if character_model != null:
+			AvatarStyle.set_wardrobe(character_model, wardrobe)
 
 	for domain in automation_actors.keys():
 		if active_domains.has(domain):
@@ -2575,7 +2585,10 @@ func _build_receptionist(position: Vector3, object_id: String) -> Node3D:
 	receptionist.position = position
 	receptionist.scale = Vector3.ONE * 0.72
 	dynamic_root.add_child(receptionist)
-	var receptionist_animation := PlayerController.configure_character_model(receptionist)
+	var receptionist_wardrobe := AvatarStyle.wardrobe_for_npc(object_id)
+	var receptionist_animation := PlayerController.configure_character_model(
+		receptionist, PlayerController.MODEL_SCALE, receptionist_wardrobe
+	)
 	if receptionist_animation != null and receptionist_animation.has_animation("idle"):
 		receptionist_animation.play("idle")
 	return receptionist

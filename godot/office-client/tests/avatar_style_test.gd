@@ -71,6 +71,18 @@ func _run() -> void:
 	assert(jacket_removed, "The shirt-only outfit must remove all jacket parts.")
 	AVATAR_STYLE.set_wardrobe(model, AVATAR_STYLE.wardrobe_preset("reference"))
 
+	var first_npc_outfit := AVATAR_STYLE.wardrobe_for_npc("npc-domain-01")
+	var repeated_npc_outfit := AVATAR_STYLE.wardrobe_for_npc("npc-domain-01")
+	assert(
+		first_npc_outfit == repeated_npc_outfit,
+		"The same NPC identity must resolve to the same outfit across syncs."
+	)
+	var explicit_npc_outfit := AVATAR_STYLE.wardrobe_for_npc("npc-domain-02", "shirt_only")
+	assert(
+		not bool(explicit_npc_outfit["jacket"]["visible"]),
+		"NPC wardrobe data must be able to override the generated outfit."
+	)
+
 	var second_model := CHARACTER_SCENE.instantiate() as Node3D
 	root.add_child(second_model)
 	AVATAR_STYLE.apply(second_model)
