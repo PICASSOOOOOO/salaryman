@@ -5,14 +5,21 @@ import path from "node:path";
 const PHONE_HEALTH_INTERVAL_MS = 19 * 60 * 1000;
 const FIRST_CHECK_DELAY_MS = 60 * 1000;
 
-function runPhoneHealthCheck(apiRoot: string): Promise<void> {
+function runPhoneHealthCheck(healthCheckPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
-      ["--import", "tsx", "src/scripts/phone-health-check.ts"],
+      [healthCheckPath],
       {
-        cwd: apiRoot,
-        env: { ...process.env, PHONE_HEALTH_ALWAYS_EMAIL: "0" },
+        cwd: path.dirname(healthCheckPath),
+        env: {
+          ...process.env,
+          NODE_PATH: [
+            path.resolve(path.dirname(healthCheckPath), "runtime/node_modules"),
+            process.env.NODE_PATH,
+          ].filter(Boolean).join(path.delimiter),
+          PHONE_HEALTH_ALWAYS_EMAIL: "0",
+        },
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
@@ -51,9 +58,15 @@ export function startPhoneHealthScheduler(
   );
 
   if (!apiRoot) {
-    console.error("[Phone Health Scheduler] Could not locate phone-health-check.ts");
+    console.error("[Phone Health Scheduler] Could not locate the phone health check");
     return;
   }
+  const healthCheckPath = path.join(apiRoot, "dist/phone-health-check.cjs");
+  if (runCheckImpl === runPhoneHealthCheck && !existsSync(healthCheckPath)) {
+    console.error("[Phone Health Scheduler] Could not locate the built phone health check");
+    return;
+  }
+  const checkTarget = existsSync(healthCheckPath) ? healthCheckPath : apiRoot;
 
   let running = false;
   const runCheck = () => {
@@ -64,7 +77,7 @@ export function startPhoneHealthScheduler(
 
     running = true;
     console.log("[Phone Health Scheduler] Starting Twilio health check");
-    void runCheckImpl(apiRoot)
+    void runCheckImpl(checkTarget)
       .then(
         () => {
           running = false;

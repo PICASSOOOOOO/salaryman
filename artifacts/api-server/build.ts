@@ -121,6 +121,19 @@ async function buildAll() {
     logLevel: "info",
   });
 
+  // The production phone-health scheduler must not depend on tsx at runtime.
+  // Bundle the TypeScript check to CommonJS and resolve its remaining
+  // production dependencies from the staged runtime node_modules directory.
+  await esbuild({
+    entryPoints: [path.resolve(__dirname, "src/scripts/phone-health-check.ts")],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: path.resolve(distDir, "phone-health-check.cjs"),
+    external: externals,
+    logLevel: "info",
+  });
+
   // Keep the published image lean: the workspace root node_modules includes
   // every artifact and development tool. Stage only this API's production
   // dependency tree, then copy it under dist so it can be selectively retained.
