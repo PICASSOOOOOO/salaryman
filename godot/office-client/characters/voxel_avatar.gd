@@ -13,7 +13,10 @@ const COLORS := {
 	"shirt": "#f4f0e7",
 	"tie": "#17191c",
 	"pants": "#28292b",
+	"pants_highlight": "#343638",
+	"pants_shadow": "#202123",
 	"shoe": "#151719",
+	"shoe_highlight": "#292b2d",
 	"eye": "#202124",
 	"eye_white": "#fffaf0",
 	"button": "#b7a98a",
@@ -32,21 +35,33 @@ static func apply(model: Node3D) -> void:
 		var limb_bone := "leg-left" if side > 0 else "leg-right"
 		var arm_bone := "arm-left" if side > 0 else "arm-right"
 		_add_box(skeleton, limb_bone, Vector3(x, 0.112, 0), Vector3(0.05, 0.22, 0.057), "pants", "trouser")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.152, 0.031), Vector3(0.032, 0.11, 0.009), "pants_highlight", "trouser-front-panel")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.075, 0.031), Vector3(0.052, 0.012, 0.01), "pants_shadow", "trouser-knee-fold")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.013, 0.029), Vector3(0.055, 0.022, 0.063), "pants_shadow", "trouser-cuff")
 		_add_box(skeleton, limb_bone, Vector3(x, 0.018, 0.018), Vector3(0.058, 0.032, 0.092), "shoe", "shoe")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.025, 0.067), Vector3(0.052, 0.018, 0.034), "shoe_highlight", "shoe-toe")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.039, 0.038), Vector3(0.025, 0.006, 0.035), "shoe_highlight", "shoe-lace")
 		_add_box(skeleton, limb_bone, Vector3(x, 0.008, 0.048), Vector3(0.058, 0.012, 0.066), "shoe", "shoe-sole")
 		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.244, 0), Vector3(0.048, 0.17, 0.057), "jacket", "sleeve")
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.287, 0.03), Vector3(0.035, 0.075, 0.009), "jacket_light", "sleeve-panel")
 		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.154, 0.005), Vector3(0.038, 0.034, 0.045), "skin", "hand")
 	_add_box(skeleton, "root", Vector3(0, 0.205, 0.002), Vector3(0.095, 0.045, 0.073), "pants", "belt")
 	_add_box(skeleton, "root", Vector3(0, 0.205, 0.041), Vector3(0.025, 0.018, 0.006), "shirt", "buckle")
 	_add_box(skeleton, "torso", Vector3(0, 0.283, 0), Vector3(0.16, 0.16, 0.086), "jacket", "blazer")
 	_add_box(skeleton, "torso", Vector3(-0.052, 0.342, 0), Vector3(0.07, 0.054, 0.092), "jacket_light", "left-shoulder")
 	_add_box(skeleton, "torso", Vector3(0.052, 0.342, 0), Vector3(0.07, 0.054, 0.092), "jacket_light", "right-shoulder")
+	_add_box(skeleton, "torso", Vector3(-0.07, 0.286, 0.018), Vector3(0.019, 0.13, 0.071), "jacket_shadow", "left-jacket-side")
+	_add_box(skeleton, "torso", Vector3(0.07, 0.286, 0.018), Vector3(0.019, 0.13, 0.071), "jacket_light", "right-jacket-edge")
 	_add_box(skeleton, "torso", Vector3(0, 0.211, 0), Vector3(0.145, 0.034, 0.088), "jacket_shadow", "jacket-hem")
 	_add_box(skeleton, "torso", Vector3(0, 0.285, 0.045), Vector3(0.05, 0.15, 0.01), "shirt", "shirt-front")
 	_add_box(skeleton, "torso", Vector3(0, 0.262, 0.052), Vector3(0.024, 0.105, 0.012), "tie", "tie")
 	_add_box(skeleton, "torso", Vector3(0, 0.333, 0.055), Vector3(0.026, 0.022, 0.018), "tie", "tie-knot")
 	_add_box(skeleton, "torso", Vector3(0, 0.35, 0.047), Vector3(0.064, 0.022, 0.021), "shirt", "collar")
+	_add_box(skeleton, "torso", Vector3(-0.019, 0.34, 0.056), Vector3(0.021, 0.031, 0.016), "shirt", "left-collar-point")
+	_add_box(skeleton, "torso", Vector3(0.019, 0.34, 0.056), Vector3(0.021, 0.031, 0.016), "shirt", "right-collar-point")
 	_add_box(skeleton, "torso", Vector3(-0.052, 0.309, 0.044), Vector3(0.028, 0.022, 0.006), "jacket_shadow", "jacket-pocket")
+	_add_box(skeleton, "torso", Vector3(-0.052, 0.321, 0.045), Vector3(0.03, 0.004, 0.007), "jacket_light", "pocket-welt")
+	_add_box(skeleton, "torso", Vector3(0.056, 0.307, 0.046), Vector3(0.025, 0.02, 0.006), "jacket_shadow", "lower-jacket-pocket")
 	for button_y in [0.305, 0.282, 0.259]:
 		_add_box(skeleton, "torso", Vector3(0.043, button_y, 0.045), Vector3(0.006, 0.006, 0.004), "button", "jacket-button")
 	_add_box(skeleton, "head", Vector3(0, 0.399, 0.052), Vector3(0.08, 0.085, 0.054), "skin", "face")
@@ -62,6 +77,16 @@ static func apply(model: Node3D) -> void:
 	_add_box(skeleton, "head", Vector3(-0.043, 0.424, 0.004), Vector3(0.012, 0.024, 0.042), "hair_dark", "hair-side-shadow")
 	_add_box(skeleton, "head", Vector3(0.02, 0.438, 0.035), Vector3(0.027, 0.012, 0.026), "hair_light", "hair-lock")
 	_add_box(skeleton, "head", Vector3(-0.018, 0.432, 0.048), Vector3(0.023, 0.011, 0.022), "hair", "hair-lock")
+	# Layered swept fringe, crown ridges, and nape blocks follow the reference's
+	# distinct voxel clumps instead of reading as one flat cap.
+	_add_box(skeleton, "head", Vector3(0.025, 0.423, 0.052), Vector3(0.029, 0.022, 0.022), "hair", "front-swept-lock")
+	_add_box(skeleton, "head", Vector3(-0.012, 0.419, 0.059), Vector3(0.025, 0.02, 0.018), "hair_light", "front-highlight-lock")
+	_add_box(skeleton, "head", Vector3(0.048, 0.414, 0.022), Vector3(0.012, 0.034, 0.039), "hair_dark", "right-temple-lock")
+	_add_box(skeleton, "head", Vector3(-0.049, 0.414, 0.021), Vector3(0.012, 0.034, 0.039), "hair_light", "left-temple-lock")
+	_add_box(skeleton, "head", Vector3(-0.026, 0.448, 0.005), Vector3(0.027, 0.01, 0.048), "hair_light", "crown-ridge")
+	_add_box(skeleton, "head", Vector3(0.024, 0.448, 0.004), Vector3(0.026, 0.01, 0.047), "hair_dark", "crown-part")
+	_add_box(skeleton, "head", Vector3(0, 0.405, -0.034), Vector3(0.064, 0.038, 0.023), "hair_dark", "back-hair")
+	_add_box(skeleton, "head", Vector3(0, 0.385, -0.019), Vector3(0.058, 0.016, 0.022), "hair", "nape")
 	_add_box(skeleton, "torso", Vector3(-0.058, 0.359, 0.022), Vector3(0.032, 0.022, 0.09), "jacket_light", "left-lapel")
 	_add_box(skeleton, "torso", Vector3(0.058, 0.359, 0.022), Vector3(0.032, 0.022, 0.09), "jacket_light", "right-lapel")
 	_add_box(skeleton, "torso", Vector3(-0.07, 0.335, 0.032), Vector3(0.025, 0.054, 0.014), "jacket_shadow", "lapel-shadow")
@@ -79,13 +104,21 @@ static func _add_face_texture(skeleton: Skeleton3D) -> void:
 	_fill_rect(image, 0, 48, 64, 64, Color("#c77e60"))
 	_fill_rect(image, 8, 8, 56, 20, Color("#f0bb91"))
 	for eye_x in [14, 38]:
-		_fill_rect(image, eye_x - 4, 25, eye_x + 5, 29, Color("#fff7e8"))
-		_fill_rect(image, eye_x - 1, 25, eye_x + 2, 30, Color("#252327"))
-		_fill_rect(image, eye_x - 5, 21, eye_x + 6, 23, Color("#4a2c20"))
-	_fill_rect(image, 29, 30, 35, 37, Color("#e5a17b"))
-	_fill_rect(image, 32, 35, 36, 38, Color("#b96f50"))
-	_fill_rect(image, 24, 44, 40, 46, Color("#8e4c43"))
+		_fill_rect(image, eye_x - 5, 24, eye_x + 5, 29, Color("#fff7e8"))
+		_fill_rect(image, eye_x - 1, 24, eye_x + 3, 30, Color("#252327"))
+		_fill_rect(image, eye_x, 25, eye_x + 1, 26, Color("#fff7e8"))
+	# Thick stepped brows and small nose/mouth pixels keep the face legible at
+	# gameplay scale without glasses or an oversized cartoon expression.
+	_fill_rect(image, 8, 20, 21, 23, Color("#4a2c20"))
+	_fill_rect(image, 32, 20, 45, 23, Color("#4a2c20"))
+	_fill_rect(image, 28, 30, 34, 36, Color("#e5a17b"))
+	_fill_rect(image, 31, 35, 36, 38, Color("#b96f50"))
+	_fill_rect(image, 29, 37, 34, 39, Color("#f0bb91"))
+	_fill_rect(image, 25, 44, 39, 46, Color("#8e4c43"))
+	_fill_rect(image, 28, 46, 36, 47, Color("#fff0df"))
 	_fill_rect(image, 20, 48, 44, 53, Color("#b96f50"))
+	_fill_rect(image, 10, 32, 13, 36, Color("#e7a27d"))
+	_fill_rect(image, 42, 32, 45, 36, Color("#e7a27d"))
 	var texture := ImageTexture.create_from_image(image)
 	var bone_index := skeleton.find_bone("head")
 	if bone_index < 0:
