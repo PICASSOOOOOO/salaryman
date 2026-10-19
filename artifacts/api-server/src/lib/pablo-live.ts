@@ -42,7 +42,9 @@ export function liveDateLine(now: Date = new Date()): string {
  * false negative just falls back to the model's own knowledge + the date line.
  */
 const LIVE_SIGNAL =
-  /\b(today|tonight|tomorrow|yesterday|right now|currently|current|latest|recent|news|headline|happening|this (?:week|month|year|morning|afternoon|evening)|as of|up to date|price|prices|cost of|stock|stocks|share price|market|crypto|bitcoin|ethereum|exchange rate|weather|forecast|temperature|score|who won|winner|election|released?|launch(?:ed|ing)?|announced?|update|version|202[4-9]|203\d|who is the|what year|how old is)\b/i;
+  /\b(today|tonight|tomorrow|yesterday|right now|currently|current|latest|recent|news|headline|happening|this (?:week|month|year|morning|afternoon|evening)|as of|up to date|price|prices|cost of|stock|stocks|share price|market|crypto|bitcoin|ethereum|exchange rate|weather|forecast|temperature|rain|raining|snow|wind|humid(?:ity)?|sunny|cloudy|thunderstorm|score|who won|winner|election|released?|launch(?:ed|ing)?|announced?|update|version|202[4-9]|203\d|who is the|what year|how old is)\b/i;
+const WEATHER_SIGNAL =
+  /\b(weather|forecast|temperature|rain|raining|snow|wind|humid(?:ity)?|sunny|cloudy|thunderstorm)\b/i;
 
 export function needsLiveSearch(text: string): boolean {
   return LIVE_SIGNAL.test(text);
@@ -55,7 +57,7 @@ export function needsLiveSearch(text: string): boolean {
  */
 export async function pabloWebSearch(
   query: string,
-  timeoutMs = 12000,
+  timeoutMs = 6000,
 ): Promise<string | null> {
   try {
     const r = await openai.responses.create(
@@ -68,7 +70,9 @@ export async function pabloWebSearch(
           `"${query}". If you cannot find reliable current information, say so plainly in one line. ` +
           `Return only the brief — no preamble, no commentary.`,
       },
-      { timeout: timeoutMs, maxRetries: 1 } as any,
+      // This runs inline before chat generation. A retry can add another full
+      // timeout to every interactive turn, so fail fast and let chat continue.
+      { timeout: timeoutMs, maxRetries: 0 } as any,
     );
     const text = ((r as any).output_text ?? "").toString().trim();
     return text || null;
@@ -116,6 +120,138 @@ export async function pabloWebSearchWithSources(
   }
 }
 
+function extractWeatherLocation(query: string): string | null {
+  const weatherTerm = WEATHER_SIGNAL.exec(query);
+  if (!weatherTerm) return null;
+  const remainder = query.slice(weatherTerm.index + weatherTerm[0].length);
+  const placeMatch = remainder.match(/\b(?:in|for|around|near)\s+(.+)$/i);
+  if (!placeMatch) return null;
+
+  let place = placeMatch[1]
+    .replace(/[?!.,;:]+$/g, "")
+    .replace(/\s+\b(?:today|tonight|tomorrow|now|right now|this morning|this afternoon|this evening|this week)\b.*$/i, "")
+    .trim();
+  if (!place || /^(here|there|me|my area|local|today|tonight|tomorrow)$/i.test(place)) {
+    return null;
+  }
+  return place.length <= 120 ? place : null;
+}
+
+function weatherDescription(code: unknown): string {
+  const descriptions: Record<number, string> = {
+    0: "clear",
+    1: "mainly clear",
+    2: "partly cloudy",
+    3: "overcast",
+    45: "fog",
+    48: "freezing fog",
+    51: "light drizzle",
+    53: "drizzle",
+    55: "heavy drizzle",
+    56: "freezing drizzle",
+    57: "heavy freezing drizzle",
+    61: "light rain",
+    63: "rain",
+    65: "heavy rain",
+    66: "freezing rain",
+    67: "heavy freezing rain",
+    71: "light snow",
+    73: "snow",
+    75: "heavy snow",
+    77: "snow grains",
+    80: "light rain showers",
+    81: "rain showers",
+    82: "heavy rain showers",
+    85: "light snow showers",
+    86: "heavy snow showers",
+    95: "thunderstorm",
+    96: "thunderstorm with light hail",
+    99: "thunderstorm with heavy hail",
+  };
+  return typeof code === "number" ? descriptions[code] ?? "conditions unavailable" : "conditions unavailable";
+}
+
+async function fetchWeatherJson(url: URL): Promise<any> {
+  const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+  if (!response.ok) throw new Error(`weather provider returned HTTP ${response.status}`);
+  return response.json();
+}
+
+/** Fetch current conditions and a short forecast directly from Open-Meteo. */
+export async function pabloWeatherContext(query: string): Promise<string> {
+  const location = extractWeatherLocation(query);
+  if (!location) {
+    return "LIVE WEATHER: The user did not specify a location. Ask which city or area they mean; do not guess or claim current conditions.";
+  }
+
+  try {
+    const geocodeUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
+    geocodeUrl.search = new URLSearchParams({
+      name: location,
+      count: "1",
+      language: "en",
+      format: "json",
+    }).toString();
+    const geocoding = await fetchWeatherJson(geocodeUrl);
+    const place = geocoding.results?.[0];
+    if (!place || !Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) {
+      return `LIVE WEATHER: No matching location was found for "${location}". Ask the user to check the city or add its country; do not guess conditions.`;
+    }
+
+    const forecastUrl = new URL("https://api.open-meteo.com/v1/forecast");
+    forecastUrl.search = new URLSearchParams({
+      latitude: String(place.latitude),
+      longitude: String(place.longitude),
+      current: "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m",
+      daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+      forecast_days: "3",
+      temperature_unit: "celsius",
+      timezone: "auto",
+    }).toString();
+    const forecast = await fetchWeatherJson(forecastUrl);
+    const current = forecast.current;
+    if (!current || typeof current.time !== "string" || !Number.isFinite(current.temperature_2m)) {
+      throw new Error("weather provider returned incomplete current conditions");
+    }
+
+    const placeName = [place.name, place.admin1, place.country]
+      .filter((part: unknown, index: number, all: unknown[]) =>
+        typeof part === "string" && part.trim() && all.indexOf(part) === index,
+      )
+      .join(", ");
+    const parts = [
+      `LIVE WEATHER from Open-Meteo for ${placeName} at ${current.time} (${forecast.timezone ?? "local time"}): ${weatherDescription(current.weather_code)}, ${current.temperature_2m}°C`,
+    ];
+    if (Number.isFinite(current.apparent_temperature)) parts[0] += `, feels like ${current.apparent_temperature}°C`;
+    if (Number.isFinite(current.relative_humidity_2m)) parts[0] += `, humidity ${current.relative_humidity_2m}%`;
+    if (Number.isFinite(current.precipitation)) parts[0] += `, precipitation ${current.precipitation} mm`;
+    if (Number.isFinite(current.wind_speed_10m)) parts[0] += `, wind ${current.wind_speed_10m} km/h`;
+
+    const daily = forecast.daily;
+    if (Array.isArray(daily?.time)) {
+      const days = daily.time.slice(0, 3).map((date: string, index: number) => {
+        const values = [`${date}: ${weatherDescription(daily.weather_code?.[index])}`];
+        if (Number.isFinite(daily.temperature_2m_min?.[index]) && Number.isFinite(daily.temperature_2m_max?.[index])) {
+          values.push(`${daily.temperature_2m_min[index]}–${daily.temperature_2m_max[index]}°C`);
+        }
+        if (Number.isFinite(daily.precipitation_probability_max?.[index])) {
+          values.push(`${daily.precipitation_probability_max[index]}% precipitation chance`);
+        }
+        return values.join(", ");
+      });
+      if (days.length) parts.push(`Three-day forecast: ${days.join("; ")}.`);
+    }
+    parts.push("Use these live values and identify the local time. Do not invent missing weather details.");
+    return parts.join("\n");
+  } catch (error) {
+    console.error(
+      "[pablo-live] weather lookup failed:",
+      error instanceof Error ? error.message : error,
+    );
+    return `LIVE WEATHER: The live lookup for "${location}" failed. Tell the user you could not fetch current conditions; do not substitute stale model knowledge.`;
+  }
+}
+
 /**
  * Build the live-context block to append to Pablo's/Mila's system prompt for a
  * given user turn. Always includes the current date; adds a fresh web brief
@@ -124,6 +260,10 @@ export async function pabloWebSearchWithSources(
 export async function buildLiveContext(userText: string): Promise<string> {
   const parts = [liveDateLine()];
   if (userText && needsLiveSearch(userText)) {
+    if (WEATHER_SIGNAL.test(userText)) {
+      parts.push(await pabloWeatherContext(userText));
+      return parts.join("\n\n");
+    }
     const brief = await pabloWebSearch(userText);
     if (brief) {
       // The brief is fetched from the open web and is UNTRUSTED. Fence it and
