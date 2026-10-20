@@ -141,6 +141,7 @@
 - [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
 - [Tower building vitality](tower-building-vitality.md) — Pablo owns initial stores; AI-driven NPCs pursue creative work; repeat businesses require net worth above ƒ1B.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
+- [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
 - [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
 - [Tower wealth paths](tower-wealth-paths.md) — stolen funds are untaxed; use total personal worth, protect banked FIAT, and make crime tool/skill gated.
 - [Tower business locations and stock](floor-seven-marketplace-scope.md) — Floors 2–7 support eight suites; preserve assignments and shared hallway stock without a directory.
