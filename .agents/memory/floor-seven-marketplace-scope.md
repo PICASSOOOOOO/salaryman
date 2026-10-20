@@ -11,8 +11,40 @@ Pablo Corp is the initial operator of the lobby, Floors 1–7, and basements B1�
 - Floor 6: radio, music studio, school, art supply, meeting room, public workspace, study hall, and flower shop.
 - Floor 7 has Rinse 67 only.
 
-The Tower has no marketplace or directory. Do not invent tenants, stock, or purchases. ATM and vending machines are shared hallway fixtures, not copies in each suite. Vending stock remains read-only and appears only where confirmed. The Ghost has no published item-level inventory or prices; contact and trade require direct, proximity-verified interaction. Mila's lobby menu offers existing job, contract, and real-estate services, not a Tower marketplace. Keep unrelated browser features unchanged.
+The Tower has no marketplace or directory. Preserve confirmed core economy,
+infrastructure, niche, and specialized shops as unique rather than duplicating
+their primary role. ATM and vending machines are shared hallway fixtures, not
+copies in each suite. Vending stock remains read-only and appears only where
+confirmed. The Ghost has no published item-level inventory or prices; contact
+and trade require direct, proximity-verified interaction. Mila's lobby menu
+offers existing job, contract, and real-estate services, not a Tower
+marketplace. Keep unrelated browser features unchanged.
 
 **Why:** The user corrected the Tower business model and explicitly limited known assignments to confirmed locations.
 
-**How to apply:** Keep each listed business in its assigned physical suite, preserve the unnamed Floor 4 unit as unnamed, and do not add a Tower directory or marketplace. Maintain the shared-fixture, read-only-stock, and Ghost-proximity boundaries.
+**How to apply:** Keep each listed business in its assigned physical suite,
+preserve the unnamed Floor 4 unit as unnamed, and do not add a Tower directory
+or marketplace. Maintain the shared-fixture, read-only-stock, and
+Ghost-proximity boundaries.
+
+## Updated vertical competition and property tiers
+
+Add the new NPC shop competitors on higher floors, staggered across the Tower.
+Aim for 2–3 competitors, with at least one as the initial minimum. They should
+be distinct competitors rather than duplicate versions of the unique core
+economy, infrastructure, niche, or specialized shops; players must be able to
+compete with them.
+
+As floor height increases, real estate becomes more expensive and spaces become
+larger, with fewer suites per floor and room for larger operations. Large
+operators pay higher rent, have tighter margins, and pass more cost to consumers
+through higher prices. Smaller shops have less space and operational scale, but
+can compete with lower prices. The prior eight-suite capacity is a baseline to
+revisit where it conflicts with this vertical tiering.
+
+**Why:** the user wants staggered NPC competitors on higher floors and a
+tradeoff between large, expensive operations and small, lower-priced shops.
+
+**How to apply:** preserve unique main shops, place only distinct new rivals on
+higher floors, reduce suite count as floor size and rent rise, and let players
+compete on price and business model.

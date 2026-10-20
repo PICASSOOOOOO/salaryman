@@ -115,7 +115,7 @@
 - [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
 - [NPC economic agents](npc-economic-agents.md) — unique NPCs have autonomous economic lives; Prime unlocks exclusive rentals and a separately paid secretary.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
-- [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — NPC shops can fail, rivals cooperate and compete, and Pablo's story stays rare and player-led.
+- [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — Use the added RDR2 Nemesis Rage mod for NPC shop rivals who cooperate and compete.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — Keep reset-independent purchase snapshots outside wipe tables; restore monotonically under identity-safe locking.
 - [Business data platform](business-data-platform.md) — Store canonical business data in Postgres and binary files in App Storage.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
@@ -144,7 +144,7 @@
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
 - [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
 - [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp prioritizes profit; stamina recovery revenue goes directly to the Picasso org.
-- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Floors 2–7 support eight suites; preserve assignments and shared hallway stock without a directory.
+- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Keep core shops unique; stagger rivals on higher floors, where larger suites cost more and favor big, higher-priced operators.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.
 - [Game-only rivalries](game-only-rivalries.md) — fictional coworker competition stays in the downloadable-game simulation and never calls real business APIs.

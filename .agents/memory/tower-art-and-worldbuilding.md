@@ -20,9 +20,10 @@ immersive, lived-in world and pacing, not as a source to copy.
 The shop ecosystem needs a small roster of new NPC competitors: aim for 2–3,
 with at least one required for an initial implementation. They must compete with
 one another and with player shops, while also being able to cooperate. Use a
-Nemesis-style persistent relationship model so cooperation and rivalry change
-business behavior and create relevant opportunities. Source search found only
-a disposition-data reference to "nemesis," not an implemented engine.
+persistent Nemesis-style relationship model so cooperation and rivalry change
+business behavior and create relevant opportunities. The user says an RDR2
+Nemesis Rage mod was added for NPCs; use that as the intended foundation and
+inspect its actual project integration before building competitors.
 
 **Why:** The user wants balanced NPC and player opportunities, a dystopian
 corporate power structure, and a substantial but seldom-forced story path.
@@ -35,6 +36,6 @@ player-led within the persistent world.
 **Why:** the user wants 2–3 NPC shop competitors (one is the minimum), with
 meaningful cooperation and competition between them.
 
-**How to apply:** implement persistent rival/cooperation relationships for NPC
-shop owners; do not assume a Nemesis engine already exists or make rivalry a
-cosmetic label.
+**How to apply:** integrate the added RDR2 Nemesis Rage mod with NPC shop owners
+so their rivalries and cooperation affect shop behavior; do not make the system
+a cosmetic label or build a duplicate before checking the mod.
