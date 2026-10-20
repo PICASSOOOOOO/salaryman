@@ -16,6 +16,15 @@ and support ATM-transferred income, FIAT, and GOLD.
 Pablo Corp may also take possession of a selective set of additional floors for
 its businesses; do not treat every floor as company-occupied. Pablo businesses
 should receive intentional economic and service priority over player businesses.
+Pablo Corp's master operational priority is making profit. Revenue from stamina
+recovery items and rest must flow directly to the Picasso org.
+
+**Why:** the user explicitly set profit as Pablo Corp's master priority and
+directed stamina-recovery income to the Picasso organization.
+
+**How to apply:** make Pablo Corp-owned recovery goods and services profitable,
+and credit their revenue directly to the Picasso org rather than a generic
+company pool.
 Wealthier players should receive better treatment and more perks: more money
 should bring more benefits.
 

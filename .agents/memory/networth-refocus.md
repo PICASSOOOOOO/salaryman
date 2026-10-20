@@ -16,7 +16,7 @@ tradeoffs. High-powered corporate characters also lose stamina hearts faster
 than poorer characters; wealth therefore reduces both stamina capacity and
 stamina endurance. Wealthy characters need more replenishing items or rest to
 recover, limiting how long they can adventure primarily to make money.
-Stamina recovery spending should also feed Pablo Corp's economy.
+Stamina recovery revenue must flow directly to the Picasso org.
 
 Credit score represents the establishment's assessment and affects financial
 systems. Net worth is the player's actual personal worth. Poorer players gain
@@ -38,7 +38,7 @@ net worth, credit, and stamina distinct; balance poorer physical resilience and
 slower stamina drain against wealthy corporate influence, with items as
 counterweights. Give wealthy adventurers meaningful recovery costs and rest
 needs so wealth does not also create unlimited adventure stamina; route recovery
-item and rest spending into Pablo Corp's economy.
+item and rest revenue directly to the Picasso org.
 
 ## Legacy implementation risks
 
