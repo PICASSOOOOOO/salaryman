@@ -124,6 +124,7 @@ var elevator_transition_fog_panels: Array[MeshInstance3D] = []
 var elevator_transition_fog_material: StandardMaterial3D
 
 var materials: Dictionary = {}
+var store_finish_materials: Dictionary = {}
 var floor_plan_data: Dictionary = {}
 var imported_scenes: Dictionary = {}
 var automation_actors: Dictionary = {}
@@ -623,6 +624,12 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 					str(unit.get("doorSide", "south")),
 					wall_keys,
 				)
+				_add_business_suite_finish(
+					room,
+					"Floor%02dUnit%02d" % [floor_number, unit_number],
+					bounds,
+					business,
+				)
 				_add_business_suite_sign(room, business, bounds)
 				break
 
@@ -643,6 +650,12 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 		if str(business.get("officeHalf", "west")) == "east":
 			half_x += half_width
 		var half_bounds: Array = [half_x, bounds[1], half_width, bounds[3]]
+		_add_business_suite_finish(
+			room,
+			"Floor06Unit%02d" % int(business.get("unitNumber", 0)),
+			half_bounds,
+			business,
+		)
 		_add_business_suite_sign(room, business, half_bounds)
 
 	for room in ["executive", "public", "office_03", "office_04"]:
@@ -696,6 +709,109 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 			)
 			_add_business_suite_sign("basement_b1", business, bounds)
 			break
+
+
+func _business_finish_style(business_key: String) -> String:
+	if business_key in ["shadow_cafeteria", "tower_restaurant", "tower_cafe", "tea_shop", "juice_bar", "soda_candy", "grocery_store", "liquor_store"]:
+		return "food"
+	if business_key in ["tower_clinic", "tower_doctor", "tower_dentist", "tower_pharmacy"]:
+		return "care"
+	if business_key in ["tower_tailor", "formal_clothing", "shoe_store", "lobby_gift_shop", "tower_florist", "jewelry_store"]:
+		return "atelier"
+	if business_key in ["tower_terminal_repair", "computer_store", "office_equipment", "tool_store", "tower_print", "record_store", "book_store"]:
+		return "workshop"
+	if business_key in ["tower_law", "tower_realty", "tower_accounting", "tower_stock_broker", "tower_gold_exchange", "tower_insurance"]:
+		return "executive"
+	if business_key in ["tower_laundry", "tower_massage", "tower_childcare", "hostel", "hotel", "salon", "barber"]:
+		return "comfort"
+	if business_key in ["tower_import_export", "tower_mineral_rights", "tower_security", "tower_construction", "tower_power", "tower_water"]:
+		return "industrial"
+	return "retail"
+
+
+func _store_finish_pair(style: String) -> Dictionary:
+	if store_finish_materials.has(style):
+		return store_finish_materials[style]
+	var floor_hex := "#a28762"
+	var wall_hex := "#d2c1a4"
+	match style:
+		"food":
+			floor_hex = "#805b45"
+			wall_hex = "#d8bd8c"
+		"care":
+			floor_hex = "#71877a"
+			wall_hex = "#ced8c5"
+		"atelier":
+			floor_hex = "#795963"
+			wall_hex = "#d7b5b1"
+		"workshop":
+			floor_hex = "#58676a"
+			wall_hex = "#aeb9ae"
+		"executive":
+			floor_hex = "#665642"
+			wall_hex = "#c8b68e"
+		"comfort":
+			floor_hex = "#63756a"
+			wall_hex = "#c4bca0"
+		"industrial":
+			floor_hex = "#64645a"
+			wall_hex = "#b4a888"
+	var finish := {
+		"floor": _material(Color(floor_hex), 0.82),
+		"wall": _material(Color(wall_hex), 0.9),
+		"trim": _material(Color(floor_hex).darkened(0.22), 0.72),
+	}
+	store_finish_materials[style] = finish
+	return finish
+
+
+func _add_business_suite_finish(room: String, tag: String, bounds: Array, business: Dictionary) -> void:
+	if bounds.size() < 4:
+		return
+	var x := int(bounds[0])
+	var y := int(bounds[1])
+	var width := int(bounds[2])
+	var height := int(bounds[3])
+	var span_x := float(width) * WORLD_SCALE
+	var span_z := float(height) * WORLD_SCALE
+	if span_x < 2.0 or span_z < 2.0:
+		return
+	var center := _pygame_to_world(x + width / 2.0, y + height / 2.0, room)
+	var finish := _store_finish_pair(_business_finish_style(str(business.get("businessKey", ""))))
+	_add_box(
+		"%sStoreFinishFloor" % tag,
+		Vector3(center.x, FLOOR_HEIGHT + 0.102, center.z),
+		Vector3(maxf(span_x - 0.22, 0.2), 0.025, maxf(span_z - 0.22, 0.2)),
+		finish["floor"],
+	)
+
+	# Low wall panels and a colored entry threshold distinguish fitted stores
+	# from the shared public corridor without changing structural collision.
+	var panel_height := 1.05
+	var panel_y := 0.68
+	var panel_depth := 0.055
+	var half_x := span_x / 2.0
+	var half_z := span_z / 2.0
+	var north := _pygame_to_world(x + width / 2.0, y + 24, room)
+	north.y = panel_y
+	_add_box("%sStoreWallNorth" % tag, north, Vector3(span_x - 0.12, panel_height, panel_depth), finish["wall"])
+	var west := _pygame_to_world(x + 24, y + height / 2.0, room)
+	west.y = panel_y
+	_add_box("%sStoreWallWest" % tag, west, Vector3(panel_depth, panel_height, span_z - 0.12), finish["wall"])
+	var east := _pygame_to_world(x + width - 24, y + height / 2.0, room)
+	east.y = panel_y
+	_add_box("%sStoreWallEast" % tag, east, Vector3(panel_depth, panel_height, span_z - 0.12), finish["wall"])
+	var south_z := y + height - 24
+	var south_left := _pygame_to_world(x + width * 0.25 - 1.5 / WORLD_SCALE, south_z, room)
+	var south_right := _pygame_to_world(x + width * 0.75 + 1.5 / WORLD_SCALE, south_z, room)
+	south_left.y = panel_y
+	south_right.y = panel_y
+	var side_span := maxf((span_x - 6.2) / 2.0, 0.2)
+	_add_box("%sStoreWallSouthL" % tag, south_left, Vector3(side_span, panel_height, panel_depth), finish["wall"])
+	_add_box("%sStoreWallSouthR" % tag, south_right, Vector3(side_span, panel_height, panel_depth), finish["wall"])
+	var threshold := _pygame_to_world(x + width / 2.0, south_z, room)
+	threshold.y = FLOOR_HEIGHT + 0.12
+	_add_box("%sStoreThreshold" % tag, threshold, Vector3(minf(span_x * 0.35, 2.4), 0.025, 0.16), finish["trim"])
 
 func _add_yard_fence_horizontal(node_prefix: String, left: float, right: float, z: float) -> void:
 	var length := right - left
