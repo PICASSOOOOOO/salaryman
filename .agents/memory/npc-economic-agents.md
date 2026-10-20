@@ -137,12 +137,15 @@ supplier orders when stock is needed. Shops pay shipping companies for those
 orders, and shipping companies use the money to procure goods from outside the
 building; keep this order flow economically balanced. Wholesale rates plus
 delivery fees should be tunable and respond to supply and demand. Tower funds
-provide each shop's initial working capital.
+provide each shop's initial working capital. FIAT buying power follows the live
+Bitcoin market multiplier already used by the game's commerce pricing.
 
 **Why:** the user specified the manual restocking and dock-to-store flow, then
 clarified that staff orders trigger shipments and shops pay shipping companies,
 which in turn purchase goods from outside the building. The user also selected
 supply-and-demand pricing and initial working capital from Tower funds.
+The user further clarified that FIAT's purchasing power is based on Bitcoin and
+must influence supply-and-demand commerce.
 
 **How to apply:** connect per-business storage capacity and stock to a visible
 shipping-dock-to-store delivery flow; do not model restocking as an instant
@@ -150,7 +153,8 @@ inventory refill. Settle supplier orders as explicit shop expenses and shipper
 income, then represent outside procurement as a distinct cost so the shipping
 company's economy depends on real order volume. Keep wholesale rates,
 delivery fees, and starting capital configurable so the market can be balanced
-without rewriting settlement logic.
+without rewriting settlement logic. Apply the same live BTC multiplier used by
+existing game commerce to FIAT-denominated supplier quotes.
 
 When shop employees participate in the NPC mod, at least half of each shop's
 employees should be part of the mod while the other half continue working so the

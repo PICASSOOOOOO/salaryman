@@ -96,7 +96,7 @@
 - [Release build heap cap](release-build-heap-cap.md) — keep the 3 GiB Node heap and single-worker Terser; use tracked background builds because legacy minification is slow and memory-heavy.
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
-- [Currency boundaries](fiat-gold-rail.md) — Keep FIAT, GOLD, and Credits separate; Credits cannot cash out or pay subscriptions.
+- [Currency boundaries](fiat-gold-rail.md) — Keep FIAT, GOLD, and Credits separate; live BTC reference adjusts FIAT buying power without making BTC owned currency.
 - [Subscription pricing and localization](subscription-pricing.md) — PABLO PRIME includes CALLL HOME; currency conversion is display-only and does not change USD billing.
 - [Cross-client economy](cross-client-economy.md) — desktop/browser game FIAT shares server ledgers; browser Credits are distinct from FIAT and GOLD and remain a separate service-use balance.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
@@ -113,7 +113,7 @@
 - [Game capture workflows](godot-movie-capture-paths.md) — `--write-movie` resolves under the Godot project root; see [packaged capture](desktop-game-capture.md) for virtual-display pitfalls.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
 - [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
-- [NPC economic agents](npc-economic-agents.md) — shops order supplies when needed, pay shippers who procure externally, and staff manually restock from animated deliveries.
+- [NPC economic agents](npc-economic-agents.md) — Shops pay shippers for external procurement; supply-demand quotes follow the BTC-indexed FIAT buying power.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — Use the added RDR2 Nemesis Rage mod for NPC shop rivals who cooperate and compete.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — Keep reset-independent purchase snapshots outside wipe tables; restore monotonically under identity-safe locking.
