@@ -12,7 +12,9 @@ do not actually die: exhaustion makes them tired. Show stamina in the
 Health/Inventory area using Zelda-like quarter-heart increments. Stamina capacity
 should rise with better credit, experience, skills, item powers, and low net
 worth; poor credit and high net worth reduce it. Items help balance those
-tradeoffs.
+tradeoffs. High-powered corporate characters also lose stamina hearts faster
+than poorer characters; wealth therefore reduces both stamina capacity and
+stamina endurance.
 
 Credit score represents the establishment's assessment and affects financial
 systems. Net worth is the player's actual personal worth. Poorer players gain
@@ -30,8 +32,9 @@ wealth, establishment credit, skills, items, access, power, and influence form
 one connected progression system.
 
 **How to apply:** do not add a separate HP/death model. Keep wallet, bank balance,
-net worth, credit, and stamina distinct; balance poorer physical resilience
-against wealthy corporate influence, with items as counterweights.
+net worth, credit, and stamina distinct; balance poorer physical resilience and
+slower stamina drain against wealthy corporate influence, with items as
+counterweights.
 
 ## Legacy implementation risks
 
