@@ -31,6 +31,22 @@ events affect ongoing routines and relationships rather than reducing life
 systems to one-off decorative dialogue. Connect housing, services, rent,
 ownership, and citizenship to the same persistent life simulation.
 
+Education is a major progression meter. Schools are the only source of formal
+education growth. "School of hard knocks" experiences can award XP only when
+they teach a real lesson about commerce, finance, or capitalism; that XP is not
+itself formal education.
+More education should provide stronger skill boosts and business advantages.
+
+**Why:** the user wants education to be substantial, school-led progression,
+while allowing practical business lessons to count as experience only when they
+actually teach something. Higher education should improve skills and business
+outcomes.
+
+**How to apply:** keep formal education separate from XP. Award practical XP for
+meaningful commerce, finance, or capitalism learning, but do not let other
+activities raise the education meter. Let higher education increase relevant
+skill bonuses and business advantages without assuming specific formulas.
+
 ## Public maintenance workforce
 
 Keep the maintenance NPC group small and believable. Give workers routes, breaks,
