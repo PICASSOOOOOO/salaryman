@@ -115,7 +115,7 @@
 - [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
 - [NPC economic agents](npc-economic-agents.md) — unique NPCs have autonomous economic lives; Prime unlocks exclusive rentals and a separately paid secretary.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
-- [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — polish existing interiors and connect a small cast of purposeful NPCs through grounded stories inside the Tower.
+- [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — NPC shops may fail and open player opportunities; Pablo controls the dystopian system while story stays rare and player-led.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — Keep reset-independent purchase snapshots outside wipe tables; restore monotonically under identity-safe locking.
 - [Business data platform](business-data-platform.md) — Store canonical business data in Postgres and binary files in App Storage.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
