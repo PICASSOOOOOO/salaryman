@@ -146,15 +146,15 @@ Pablo Corp's rental roster may grow into many such characters, not generic backg
 headcount. The Prime office secretary is the explicit all-skills/all-automations
 exception, but must still reuse the existing automation systems.
 
-NPCs usually have unique personalities, for better or worse. Personality should
+All NPCs have unique personalities, for better or worse. Personality should
 distinguish individuals beyond their names, jobs, and skill profiles.
 
 Only 5% of NPCs can be recruited. A player needs sufficient reputation with the
 individual NPC, and each recruit is unique based on their skills.
 
 **Why:** the user wants recruits to be rare, earned through NPC-specific
-reputation, and differentiated by skill. NPCs should usually also have
-individual personalities, including strengths and flaws.
+reputation, and differentiated by skill. All NPCs should have individual
+personalities, including strengths and flaws.
 
 **How to apply:** keep recruitability within the 5% limit, check reputation with
 the specific NPC, and make each recruit's skill profile meaningful and unique.
