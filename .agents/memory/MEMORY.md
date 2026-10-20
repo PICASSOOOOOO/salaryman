@@ -133,7 +133,7 @@
 - [Marketing SMS consent boundary](marketing-sms-consent.md) — explicit per-contact SMS permission and an active user/org-owned Twilio sender; campaigns remain explicitly started.
 - [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
 - [SALARYMAN company + support](salaryman-legal-entity.md) — Picasso AI, LLC is the legal entity; see [support routing](salaryman-support-routing.md).
-- [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
+- [Room privacy gameplay](room-privacy-gameplay.md) — camera incidents route to understaffed security/collections; privacy and evidence rules still apply.
 - [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is Dec 31, 2026; defer pledge offers until the asset catalog is decided and keep the base game free.
@@ -144,7 +144,7 @@
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
 - [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
 - [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp prioritizes profit; stamina recovery revenue goes directly to the Picasso org.
-- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Higher floors offer better quality at prices that disadvantage poorer players; keep shops unique and rivals staggered.
+- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Keep floor area fixed; rearrange existing space for larger, fewer, pricier upper-floor suites.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.
 - [Game-only rivalries](game-only-rivalries.md) — NPC corporations use persistent cooperation, greed, and sabotage in the fictional live MMO, never real business APIs.

@@ -36,13 +36,15 @@ economy, infrastructure, niche, or specialized shops; players must be able to
 compete with them.
 
 As floor height increases, real estate becomes more expensive and spaces become
-larger, with fewer suites per floor and room for larger operations. Large
+larger, with fewer suites per floor and room for larger operations. Keep the
+existing floor footprint and total floor space fixed: create larger suites and
+fewer partitions only by rearranging the space already available. Large
 operators pay higher rent, have tighter margins, and pass more cost to consumers
 through higher prices. Smaller shops have less space and operational scale, but
 can compete with lower prices. Higher floors offer better quality and create a
 disadvantage for poorer players because of their cost; they are better suited to
 wealthier players and larger operations. The prior eight-suite capacity is a
-baseline to revisit where it conflicts with this vertical tiering.
+baseline to revisit only through rearrangement within the existing floor area.
 
 **Why:** the user wants staggered NPC competitors on higher floors and a
 tradeoff between large, expensive operations and small, lower-priced shops, with
@@ -50,4 +52,5 @@ higher-quality floors favoring wealthier players.
 
 **How to apply:** preserve unique main shops, place only distinct new rivals on
 higher floors, reduce suite count as floor size and rent rise, and let players
-compete on price and business model.
+compete on price and business model. Do not change the floorplate; achieve any
+suite-size or count changes through interior rearrangement alone.
