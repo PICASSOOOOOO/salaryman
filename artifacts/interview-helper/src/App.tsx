@@ -129,6 +129,7 @@ const OrgAccounts = lazy(() => import("@/pages/OrgAccounts"));
 const MyApps = lazy(() => import("@/pages/MyApps"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
+const MeshtasticCommsPage = lazy(() => import("@/pages/MeshtasticCommsPage"));
 
 // /phone opens CALLL HOME directly. Entitlement UX stays inside the product.
 function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
@@ -759,6 +760,7 @@ function AppShell() {
             {/* PHONE module — one hub; free comms stay open while paid tabs
                 render their Stripe-backed access options in-shell. */}
             <Route path="/phone">{() => <PhoneGate />}</Route>
+            <Route path="/phone/mesh" component={MeshtasticCommsPage} />
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
               // Wouter's wildcard parameter shape differs across versions.
               // The browser pathname is authoritative for these legacy links.

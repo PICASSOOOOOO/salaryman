@@ -16,8 +16,8 @@ interface MembershipItem {
 
 const PLAN_COPY: Record<FeatureKey, { summary: string; bullets: string[] }> = {
   phone_system: {
-    summary: "CALLL HOME calling and messaging, connected to your CRM.",
-    bullets: ["Business calling and two-way SMS", "Calls and messages connect to CRM contacts", "Default platform number included"],
+    summary: "CALLL HOME's paid Twilio calling service, connected to your CRM.",
+    bullets: ["Basic business calling and two-way SMS", "Calls and messages connect to CRM contacts", "Default platform number included; no auto/predictive dialing or SMS marketing"],
   },
   claw_bot: {
     summary: "Pablo AI brings chat and business automation together.",
@@ -195,7 +195,7 @@ export default function PledgeStore() {
               </div>
               <p className="text-2xl font-black">Client-specific</p>
               <p className="mt-1 text-xs font-bold uppercase tracking-wider text-black/50">Terms set for each client</p>
-              <p className="mt-5 text-sm leading-relaxed text-black/70">A tailored plan for organizations with specific needs. Contact SALARYMAN for details.</p>
+              <p className="mt-5 text-sm leading-relaxed text-black/70">A tailored plan for organizations with specific needs, including advanced auto/predictive dialing and SMS marketing. Contact SALARYMAN for terms.</p>
               <div className="mt-auto pt-6">
                 <span className="block border border-black/20 px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-black/55">
                   Custom terms

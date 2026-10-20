@@ -262,7 +262,7 @@ export default function Pricing() {
                   className="h-10 w-32 object-contain object-left"
                 />
                 <p className="mt-1 text-xs text-slate-400 max-w-xl">
-                  Business calling, SMS, phone numbers, call campaigns, recordings, and the AI secretary. Locked until this separate USD subscription is active.
+                  Basic business calling and two-way SMS, connected to your CRM. Automated/predictive dialing and SMS marketing are reserved for Custom terms.
                 </p>
               </div>
             </div>

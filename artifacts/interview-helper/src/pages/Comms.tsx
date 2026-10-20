@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { MessageSquare, Users, Shield, Mic, VolumeX, Bell, Settings2 } from 'lucide-react';
+import { MessageSquare, Users, Shield, Mic, VolumeX, Bell, Settings2, Radio } from 'lucide-react';
 import { useCommsSummary } from '@/hooks/use-comms-summary';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
@@ -10,8 +10,9 @@ import Colleagues from './Colleagues';
 import { apiFetch } from '@/lib/api-client';
 import { takePendingCommsDmUserId } from '@/lib/comms-navigation';
 import { ChatPanel } from '@/components/ChatPanel';
+import { MeshtasticCommsPanel } from '@/components/MeshtasticCommsPanel';
 
-export type CommsSection = 'chat' | 'sms' | 'associates' | 'responders';
+export type CommsSection = 'chat' | 'sms' | 'associates' | 'responders' | 'mesh';
 
 interface ResponderEntry {
   rank: number;
@@ -26,6 +27,7 @@ const TABS: { id: CommsSection; label: string; icon: typeof MessageSquare }[] = 
   { id: 'sms', label: 'SMS', icon: MessageSquare },
   { id: 'associates', label: 'ASSOCIATES', icon: Users },
   { id: 'responders', label: 'RESPONDERS', icon: Shield },
+  { id: 'mesh', label: 'MESH BRIDGE', icon: Radio },
 ];
 
 function PabloVoiceControl() {
@@ -153,6 +155,7 @@ export function CommsEmbedded({
           initialDmRequestId={initialDmRequestId}
         />
       )}
+      {section === 'mesh' && <MeshtasticCommsPanel />}
       {section === 'sms' && (
         <div className="flex-1 grid place-items-center p-6">
           <a
@@ -213,7 +216,9 @@ export function CommsEmbedded({
 }
 
 export default function Comms() {
-  const [section, setSection] = useState<CommsSection>('chat');
+  const [section, setSection] = useState<CommsSection>(() =>
+    new URLSearchParams(window.location.search).get('section') === 'mesh' ? 'mesh' : 'chat'
+  );
   const [initialDmUserId, setInitialDmUserId] = useState<string>();
   const [initialDmRequestId, setInitialDmRequestId] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
