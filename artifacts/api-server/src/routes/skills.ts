@@ -1,7 +1,14 @@
 import { Router, type Request, type Response } from "express";
 import { db, salarymanSavesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { SKILL_CATALOG, getSkillById, canUnlock } from "../lib/skill-catalog";
+import {
+  SKILL_CATALOG,
+  SKILL_TREES,
+  canonicalSkillId,
+  canonicalSkillIds,
+  getSkillById,
+  canUnlock,
+} from "../lib/skill-catalog";
 
 const router = Router();
 
@@ -41,11 +48,12 @@ router.get("/skills", async (req: Request, res: Response) => {
       .limit(1);
 
     const data = (row?.data ?? {}) as Record<string, unknown>;
-    const unlocked: string[] = Array.isArray(data.skills) ? (data.skills as string[]) : [];
+    const unlocked: string[] = Array.isArray(data.skills) ? canonicalSkillIds(data.skills as string[]) : [];
     const skillPoints: number = typeof data.skill_points === "number" ? data.skill_points : 0;
 
     res.json({
       catalog: SKILL_CATALOG,
+      trees: SKILL_TREES,
       unlocked,
       skillPoints,
     });
@@ -63,7 +71,8 @@ router.post("/skills/unlock", async (req: Request, res: Response) => {
   if (!userId) return;
 
   const slot = parseSlot(req.body?.slot);
-  const skillId = typeof req.body?.skillId === "string" ? req.body.skillId.trim() : "";
+  const requestedSkillId = typeof req.body?.skillId === "string" ? req.body.skillId.trim() : "";
+  const skillId = canonicalSkillId(requestedSkillId);
 
   const skillDef = getSkillById(skillId);
   if (!skillDef) {
@@ -87,7 +96,7 @@ router.post("/skills/unlock", async (req: Request, res: Response) => {
     }
 
     const data = (row.data ?? {}) as Record<string, unknown>;
-    const unlocked: string[] = Array.isArray(data.skills) ? [...(data.skills as string[])] : [];
+    const unlocked: string[] = Array.isArray(data.skills) ? canonicalSkillIds(data.skills as string[]) : [];
     let skillPoints: number = typeof data.skill_points === "number" ? data.skill_points : 0;
 
     if (unlocked.includes(skillId)) {
