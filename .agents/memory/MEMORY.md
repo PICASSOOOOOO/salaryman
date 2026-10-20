@@ -82,7 +82,7 @@
 - [Consumables + install slots](consumables-install-system.md) — Stack consumables; resolve install targets on the server, never from client IDs.
 - [Battery running-cost system](battery-running-cost.md) — Battery powers AI/electrical costs; installation charges fully and refunds require a full charge.
 - [Crafting system](crafting-system.md) — Crafting is atomic and faction-agnostic; utility outputs like batteries and fuel are forbidden.
-- [SALARYMAN net-worth refocus](networth-refocus.md) — Keep voluntary debt; XP removal is a no-op, while HP is entangled with hazards and death.
+- [Character status and net-worth balance](networth-refocus.md) — Separate wallet, net worth, credit, stamina, and health; poorer characters gain quarter-heart capacity while wealth brings access and influence.
 - [Global multi-broker trade bot](global-trade-bot.md) — Trade Bot supports multiple brokers and currencies; amounts use native major units and analysis uses POST.
 - [Real banking + net-worth overview](real-banking-overview.md) — Plaid stays view-only; external balances are separate from in-game FIAT.
 - [Godot game visual language](godot-game-visual-language.md) — ASCII motifs can extend into selected world art; confine CRT treatments to physical terminal and TV screens.

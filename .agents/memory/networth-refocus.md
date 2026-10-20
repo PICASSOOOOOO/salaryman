@@ -5,6 +5,27 @@ description: What "financial game on net worth + stamina" actually required in W
 
 # SALARYMAN net-worth / stamina refocus
 
+## Current character-status and economy HUD direction
+
+The compact status system should show credit score, stamina, wallet, and net
+worth. Wallet FIAT and net worth are distinct. Clicking credit score or net
+worth should shortcut to the relevant economy pages. Stamina belongs in the
+Health/Inventory section.
+
+Health capacity should use Zelda-like quarter-heart increments. Heart capacity
+should rise with better credit, experience, skills, and item powers; it should
+also rise with low net worth and fall with high net worth. This balances wealth's
+influence and economic/job access with greater physical resilience for poorer
+players. Keep the quarter-heart display's exact relationship to stamina
+unconfirmed until the user clarifies it.
+
+**Why:** the user described health, skills, credit, wealth, wallet money, job
+access, power, and influence as one connected progression system.
+
+**How to apply:** keep wallet, net worth, credit, stamina, and health as separate
+concepts; use quarter-heart granularity for health capacity, and route the
+credit/net-worth controls to economy pages.
+
 The push to make SALARYMAN a pure financial game (net worth + stamina, no
 wallet/levels/XP/HP) splits cleanly into a SAFE set and an ENTANGLED set.
 
