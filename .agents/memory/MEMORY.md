@@ -144,7 +144,7 @@
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
 - [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
 - [Tower wealth paths](tower-wealth-paths.md) — Pablo Corp prioritizes profit; stamina recovery revenue goes directly to the Picasso org.
-- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Keep floor area fixed; flex suite layouts with demand to support player networking and viable businesses.
+- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Lower floors are cheaper entry points; higher floors offer better quality and larger, pricier operations.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.
 - [Game-only rivalries](game-only-rivalries.md) — NPC corporations use persistent cooperation, greed, and sabotage in the fictional live MMO, never real business APIs.

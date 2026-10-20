@@ -43,7 +43,9 @@ operators pay higher rent, have tighter margins, and pass more cost to consumers
 through higher prices. Smaller shops have less space and operational scale, but
 can compete with lower prices. Higher floors offer better quality and create a
 disadvantage for poorer players because of their cost; they are better suited to
-wealthier players and larger operations. The prior eight-suite capacity is a
+wealthier players and larger operations. Lower floors are cheaper and provide
+the more affordable entry point for smaller operators and players. The prior
+eight-suite capacity is a
 baseline to revisit only through rearrangement within the existing floor area.
 
 If the economy is struggling, suites may be moved upward and higher floors may
