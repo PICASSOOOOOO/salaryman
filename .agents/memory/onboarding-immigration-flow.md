@@ -40,13 +40,17 @@ register there before exploring beyond the lobby, including people who are
 unemployed. Unregistered entrants are stopped by security or kept out by locked
 doors; registration is a building-security gate, not an employment requirement.
 Unregistered entrants cannot use free lobby features before registering.
+Reception is the in-world equivalent of signing in to use SALARYMAN: it
+identifies the person but does not require organization membership or a job.
 
 **Why:** new players are strangers on arrival; reception registration lets
 building security know who entered. The user wants this for security, regardless
-of employment status.
+of employment status, and an unemployed person must be able to register without
+joining an organization.
 
 **How to apply:** make receptionist registration mandatory, with no alternate
-onboarding path that grants building access. Register and identify entrants at
-reception before granting access to lobby features or any other part of the
-building. Use security or locked doors to deny unregistered entry, with
+onboarding path that grants building access. Require account sign-in and
+reception registration, but do not require an org. Register and identify
+entrants at reception before granting access to lobby features or any other part
+of the building. Use security or locked doors to deny unregistered entry, with
 server-authoritative checks rather than relying only on visible door state.
