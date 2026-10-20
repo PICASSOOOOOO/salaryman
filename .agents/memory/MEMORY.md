@@ -143,7 +143,7 @@
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
 - [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
-- [Tower wealth paths](tower-wealth-paths.md) — stolen funds are untaxed; use total personal worth, protect banked FIAT, and make crime tool/skill gated.
+- [Tower wealth paths](tower-wealth-paths.md) — Crime affects network credit and social/financial standing; stolen funds are untaxed, and crime remains tool/skill gated.
 - [Tower business locations and stock](floor-seven-marketplace-scope.md) — Floors 2–7 support eight suites; preserve assignments and shared hallway stock without a directory.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.

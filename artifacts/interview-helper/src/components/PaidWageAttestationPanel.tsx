@@ -55,6 +55,7 @@ export function PaidWageAttestationPanel() {
           businessId: selected.businessId,
           paidAmount,
           currencyCode,
+          ownerConfirmed,
           paidAt,
           payPeriodStart: periodStart,
           payPeriodEnd: periodEnd,

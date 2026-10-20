@@ -157,6 +157,18 @@ never stolen; impossible items are unobtainable, rare-item chances stay below
 1%, and very-rare, expensive, or hard-to-find items must remain exceptionally
 unlikely.
 
+In-game fraud is a serious crime. Track criminal activity and make established
+crime affect the player's network credit score, which feeds social and financial
+systems. Do not copy GTA's wanted-star presentation; use SALARYMAN's credit score
+as the consequence language.
+
+**Why:** the user explicitly said in-game fraud is serious, crime stats should
+affect social and financial systems, and credit score should reflect crime.
+
+**How to apply:** record server-confirmed crime events and reflect their severity
+in the existing credit-score system. Avoid punishing an unproven attempt or
+victim self-defense; distinguish an allegation from an established offense.
+
 **Why:** The user explicitly limited pickpocket rewards, named the inventory
 rarity tiers, and protected legendary items while keeping rare-item theft
 exceptionally unlikely.
