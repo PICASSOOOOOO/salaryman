@@ -165,6 +165,21 @@ Give NPCs consistent individual personalities that can help or hinder them.
 Develop recruitable characters with extensive dialogue/backstories and unique
 powers available for player use.
 
+Recruitment is earned and memorable. Once recruited, an NPC remains with the
+player and their organization permanently. Dismissal changes their active
+assignment; it does not remove them from the organization. They return to an
+organizational role that fits their skills. Recruited NPCs can fill roles in the
+paid automation suite and increase the speed of Pablo Prime automation. These
+effects must remain balanced, controlled, and accurate.
+
+**Why:** the user wants recruitment to create lasting relationships and
+organization membership, with dismissed NPCs continuing useful work and
+contributing to paid automation.
+
+**How to apply:** treat dismissal as reassignment, not deletion or release to
+another player. Match each NPC to skill-appropriate organization work and make
+measured, bounded changes to Pablo Prime automation speed.
+
 NPC-operated businesses may grow into
 specialized sellers and develop improved versions of their products; do not imply
 that this progression is active until it has a real simulation.
