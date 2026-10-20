@@ -25,14 +25,16 @@ describe("unified marketplace route contract", () => {
     expect(route).toContain("nextOffset");
   });
 
-  it("requires login and validates item ownership and available quantity", () => {
+  it("requires login and escrows only item quantities owned by the selected character", () => {
     const route = routeSource('router.post("/marketplace/items"', '// DELETE /marketplace/items');
     expect(route).toContain("requireAuth(req, res)");
     expect(route).toContain("findCatalogItem(itemId)");
     expect(route).toContain("eq(playerInventoryTable.userId, userId)");
     expect(route).toContain("eq(playerInventoryTable.slotIndex, slotIndex)");
     expect(route).toContain("inventory.quantity < quantity");
-    expect(route).toContain("alreadyListed + quantity > inventory.quantity");
+    expect(route).toContain("status: \"active\"");
+    expect(route).toContain("escrowed: true");
+    expect(route).toContain("sellerSlot: slotIndex");
   });
 
   it("only lets the item seller cancel an active listing", () => {
@@ -41,5 +43,15 @@ describe("unified marketplace route contract", () => {
     expect(route).toContain("eq(marketplaceItemListingsTable.sellerId, userId)");
     expect(route).toContain('eq(marketplaceItemListingsTable.status, "active")');
     expect(route).toContain('status: "cancelled"');
+    expect(route).toContain("restoreEscrowedItem");
+  });
+
+  it("settles item purchases atomically between buyer, seller, listing, and inventory", () => {
+    const route = routeSource('router.post("/marketplace/items/:id/buy"', "export default router");
+    expect(route).toContain("spendFiat(tx");
+    expect(route).toContain("creditFiat(tx");
+    expect(route).toContain('set({ status: "sold"');
+    expect(route).toContain("ITEM_CAPACITY");
+    expect(route).toContain("listing.sellerSlot");
   });
 });

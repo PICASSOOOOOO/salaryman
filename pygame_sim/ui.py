@@ -1839,18 +1839,24 @@ class SolarPunkRenderer:
             if entries is None:
                 message = "LOADING INVENTORY…" if "inventory" in state.game_service_loading else "CONNECT A LINKED GAME ACCOUNT TO LOAD INVENTORY"
                 self.text(message, (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
-            elif not entries:
-                self.text("NO ITEMS IN THIS CHARACTER SLOT", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
             else:
-                for index, entry in enumerate(entries[:8]):
+                self.text(f"CARRIED SLOTS  {len(entries)}/{state.game_inventory_capacity}", (panel.x + 28, content_y + 10), self.font_sm, (61, 100, 74))
+                if not entries:
+                    self.text("NO ITEMS IN THIS CHARACTER SLOT", (panel.x + 28, content_y + 39), self.font_md, (75, 96, 84))
+                for index, entry in enumerate(entries[:7]):
                     raw_item_id = str(entry.get("itemId", "unknown"))
                     item_id = raw_item_id.replace("_", " ").upper()
                     quantity = max(1, int(entry.get("quantity", 1) or 1))
-                    row = pygame.Rect(panel.x + 26, content_y + index * 39, panel.width - 52, 32)
+                    row = pygame.Rect(panel.x + 26, content_y + 34 + index * 39, panel.width - 52, 32)
                     pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=4)
                     if raw_item_id in STAMINA_SUPPLY_ITEMS:
                         self.text(item_id[:32], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
                         self.text(f"×{quantity}", (row.right - 128, row.y + 9), self.font_sm, (61, 100, 74))
+                        button(
+                            f"sell:{raw_item_id}",
+                            "SELL",
+                            pygame.Rect(row.right - 158, row.y + 3, 60, 26),
+                        )
                         button(
                             f"supply:{raw_item_id}",
                             "USE",
@@ -1858,7 +1864,12 @@ class SolarPunkRenderer:
                         )
                     else:
                         self.text(item_id[:54], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
-                        self.text(f"×{quantity}", (row.right - 42, row.y + 9), self.font_sm, (61, 100, 74))
+                        self.text(f"×{quantity}", (row.right - 128, row.y + 9), self.font_sm, (61, 100, 74))
+                        button(
+                            f"sell:{raw_item_id}",
+                            "SELL",
+                            pygame.Rect(row.right - 82, row.y + 3, 70, 26),
+                        )
         elif state.active_page == "vending":
             entries = state.vending_catalog
             if entries is None:
@@ -1867,10 +1878,19 @@ class SolarPunkRenderer:
             elif not entries:
                 self.text("NO VENDING STOCK AVAILABLE", (panel.x + 28, content_y + 15), self.font_md, (75, 96, 84))
             else:
-                for index, entry in enumerate(entries[:5]):
+                page_start = (state.selected_vending_index // 5) * 5
+                for index, entry in enumerate(entries[page_start:page_start + 5]):
+                    catalog_index = page_start + index
                     y = content_y + index * 51
                     row = pygame.Rect(panel.x + 24, y, panel.width - 48, 44)
                     pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=5)
+                    pygame.draw.rect(
+                        self.screen,
+                        (61, 100, 74) if catalog_index == state.selected_vending_index else (191, 201, 188),
+                        row,
+                        width=2 if catalog_index == state.selected_vending_index else 1,
+                        border_radius=5,
+                    )
                     name = str(entry.get("name", entry.get("id", "Item")))
                     description = str(entry.get("blurb", ""))
                     price = int(entry.get("priceFiat", 0) or 0)
@@ -1878,6 +1898,8 @@ class SolarPunkRenderer:
                     self.text(description[:58], (row.x + 10, row.y + 25), self.font_sm, (91, 107, 97))
                     buy_rect = pygame.Rect(row.right - 126, row.y + 6, 116, 32)
                     button(f"buy:{entry.get('id', '')}", f"BUY ƒ{price:,}", buy_rect)
+                button("vending:prev", "◀ PREV", pygame.Rect(panel.x + 26, panel.bottom - 112, 104, 30))
+                button("vending:next", "NEXT ▶", pygame.Rect(panel.right - 130, panel.bottom - 112, 104, 30))
             button(
                 "vending:business-stock",
                 "B  BUSINESS STOCK + GHOST CONTACT",
@@ -2010,6 +2032,11 @@ class SolarPunkRenderer:
         scene: TowerScene,
         page: pygame.Rect,
     ) -> None:
+        def nav_button(action: str, label: str, rect: pygame.Rect) -> None:
+            self.game_page_actions[action] = rect
+            self.panel(rect, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
+            self.text(label, (rect.x + 12, rect.y + 9), self.font_md, Palette.MATRIX_BRIGHT)
+
         item = scene.objects.get(state.active_object_id or "")
         if item is None:
             item = scene.nearby_object
@@ -2034,27 +2061,40 @@ class SolarPunkRenderer:
                 if isinstance(listing, dict)
                 and listing.get("sellerBusinessKey") == business_key
             ]
-            product_index = 0
+            products: list[dict[str, object]] = []
             for listing in listings:
                 for product in listing.get("items", []):
-                    if not isinstance(product, dict) or product_index >= 8:
-                        continue
+                    if isinstance(product, dict) and str(product.get("id", "")) not in {
+                        str(existing.get("id", "")) for existing in products
+                    }:
+                        products.append(product)
+            page_start = (state.selected_vending_index // 8) * 8
+            visible_products = products[page_start:page_start + 8]
+            for product_index, product in enumerate(visible_products):
                     item_id = str(product.get("id", ""))
-                    if not item_id:
-                        continue
-                    y = page.y + 180 + product_index * 48
-                    button = pygame.Rect(page.x + 26, y, min(page.width - 52, 590), 40)
-                    self.game_page_actions[f"shopbuy:{business_key}:{item_id}"] = button
-                    self.panel(button, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
+                    y = page.y + 180 + product_index * 38
+                    buy_button = pygame.Rect(page.x + 26, y, min(page.width - 52, 590), 40)
+                    self.game_page_actions[f"shopbuy:{business_key}:{item_id}"] = buy_button
+                    self.panel(buy_button, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
                     self.text(
-                        f"{product_index + 1}  {product.get('name', 'ITEM')}  /  ƒ{int(product.get('priceFiat', 0)):,}",
-                        (button.x + 14, button.y + 12),
+                        f"{page_start + product_index + 1}  {product.get('name', 'ITEM')}  /  ƒ{int(product.get('priceFiat', 0)):,}",
+                        (buy_button.x + 14, buy_button.y + 12),
                         self.font_md,
                         Palette.MATRIX_BRIGHT,
                     )
-                    product_index += 1
-            if product_index == 0:
+            if not products:
                 self.text("NO SERVER-PRICED STOCK IS AVAILABLE", (page.x + 26, page.y + 193), self.font_lg, Palette.MATRIX_AMBER)
+            else:
+                nav_button(
+                    "shop:prev",
+                    "◀ PREV",
+                    pygame.Rect(page.x + 26, page.bottom - 78, 104, 30),
+                )
+                nav_button(
+                    "shop:next",
+                    "NEXT ▶",
+                    pygame.Rect(page.right - 130, page.bottom - 78, 104, 30),
+                )
             self.text(
                 "Prices and purchases are confirmed by the Tower server.",
                 (page.x + 26, page.bottom - 36),

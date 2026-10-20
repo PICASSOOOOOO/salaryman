@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   db,
   businessListingsTable,
@@ -10,6 +10,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import { findCatalogItem } from "../lib/item-catalog";
+import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 
 const router = Router();
 const VALID_CATEGORIES = new Set(["all", "businesses", "properties", "vehicles", "items"]);
@@ -21,6 +22,20 @@ const CITY_ALIASES: Record<string, string[]> = {
   huda_city: ["huda", "huda_city", "huda_prime"],
   huda_prime: ["huda", "huda_city", "huda_prime"],
 };
+const ITEM_CAPACITY = 24;
+
+async function restoreEscrowedItem(tx: any, listing: typeof marketplaceItemListingsTable.$inferSelect) {
+  await tx.insert(playerInventoryTable).values({
+    userId: listing.sellerId,
+    slotIndex: listing.sellerSlot,
+    itemId: listing.itemId,
+    quantity: listing.quantity,
+    acquiredVia: "market",
+  }).onConflictDoUpdate({
+    target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+    set: { quantity: sql`${playerInventoryTable.quantity} + ${listing.quantity}` },
+  });
+}
 
 function requireAuth(req: Request, res: Response): string | null {
   if (!req.isAuthenticated?.() || !req.user) {
@@ -159,40 +174,42 @@ router.post("/marketplace/items", async (req: Request, res: Response) => {
     if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 1_000_000) { res.status(400).json({ error: "Quantity must be positive" }); return; }
     if (!Number.isInteger(priceFiat) || priceFiat <= 0 || priceFiat > 2_000_000_000) { res.status(400).json({ error: "Price must be positive" }); return; }
 
-    const [inventory] = await db.select({ quantity: playerInventoryTable.quantity })
-      .from(playerInventoryTable)
-      .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slotIndex), eq(playerInventoryTable.itemId, itemId)))
-      .limit(1);
-    if (!inventory || inventory.quantity < quantity) {
-      res.status(400).json({ error: "You do not have that quantity in this save slot" }); return;
-    }
-
-    const existing = await db.select({ quantity: marketplaceItemListingsTable.quantity })
-      .from(marketplaceItemListingsTable)
-      .where(and(eq(marketplaceItemListingsTable.sellerId, userId), eq(marketplaceItemListingsTable.itemId, itemId), eq(marketplaceItemListingsTable.status, "active")));
-    const alreadyListed = existing.reduce((sum, row) => sum + row.quantity, 0);
-    if (alreadyListed + quantity > inventory.quantity) {
-      res.status(400).json({ error: "That quantity is already listed" }); return;
-    }
-
     const rawCity = String(req.body?.cityId || "minx_prime").trim();
     const cityId = CITY_ALIASES[rawCity]?.find((value) => value.endsWith("_prime")) || (rawCity === "huda" ? "huda_prime" : rawCity === "minx" ? "minx_prime" : rawCity);
     if (!/^[a-z0-9_]{1,32}$/.test(cityId)) { res.status(400).json({ error: "Invalid city" }); return; }
     const user = await db.select({ firstName: usersTable.firstName, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-    const [created] = await db.insert(marketplaceItemListingsTable).values({
-      sellerId: userId,
-      sellerName: userDisplayName(user[0]),
-      itemId,
-      itemName: item.name,
-      quantity,
-      priceFiat,
-      cityId,
-      description: typeof req.body?.description === "string" ? req.body.description.trim().slice(0, 1000) : item.blurb,
-      artKey: typeof req.body?.artKey === "string" ? req.body.artKey.trim().slice(0, 256) || null : itemId,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    }).returning();
+    const created = await db.transaction(async (tx) => {
+      const [inventory] = await tx.select().from(playerInventoryTable)
+        .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slotIndex), eq(playerInventoryTable.itemId, itemId)))
+        .for("update").limit(1);
+      if (!inventory || inventory.quantity < quantity) throw new Error("ITEM_QUANTITY_UNAVAILABLE");
+      const [row] = await tx.update(playerInventoryTable)
+        .set({ quantity: sql`${playerInventoryTable.quantity} - ${quantity}` })
+        .where(and(eq(playerInventoryTable.id, inventory.id), sql`${playerInventoryTable.quantity} >= ${quantity}`))
+        .returning({ quantity: playerInventoryTable.quantity });
+      if (!row) throw new Error("ITEM_QUANTITY_UNAVAILABLE");
+      if (row.quantity === 0) await tx.delete(playerInventoryTable).where(eq(playerInventoryTable.id, inventory.id));
+      const [listing] = await tx.insert(marketplaceItemListingsTable).values({
+        sellerId: userId,
+        sellerSlot: slotIndex,
+        sellerName: userDisplayName(user[0]),
+        itemId,
+        itemName: item.name,
+        quantity,
+        priceFiat,
+        cityId,
+        description: typeof req.body?.description === "string" ? req.body.description.trim().slice(0, 1000) : item.blurb,
+        artKey: typeof req.body?.artKey === "string" ? req.body.artKey.trim().slice(0, 256) || null : itemId,
+        escrowed: true,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }).returning();
+      return listing;
+    });
     res.status(201).json({ listing: created });
   } catch (error) {
+    if (error instanceof Error && error.message === "ITEM_QUANTITY_UNAVAILABLE") {
+      res.status(409).json({ error: "You do not have that quantity available to list." }); return;
+    }
     console.error("[marketplace] item create error", error);
     res.status(500).json({ error: "Failed to create item listing" });
   }
@@ -205,15 +222,107 @@ router.delete("/marketplace/items/:id", async (req: Request, res: Response) => {
   const id = Number.parseInt(String(req.params.id), 10);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid listing id" }); return; }
   try {
-    const [deleted] = await db.update(marketplaceItemListingsTable)
-      .set({ status: "cancelled", updatedAt: new Date() })
-      .where(and(eq(marketplaceItemListingsTable.id, id), eq(marketplaceItemListingsTable.sellerId, userId), eq(marketplaceItemListingsTable.status, "active")))
-      .returning({ id: marketplaceItemListingsTable.id });
-    if (!deleted) { res.status(404).json({ error: "Listing not found" }); return; }
-    res.json({ ok: true, id: deleted.id });
+    const cancelled = await db.transaction(async (tx) => {
+      const [listing] = await tx.select().from(marketplaceItemListingsTable)
+        .where(and(eq(marketplaceItemListingsTable.id, id), eq(marketplaceItemListingsTable.sellerId, userId), eq(marketplaceItemListingsTable.status, "active")))
+        .for("update").limit(1);
+      if (!listing) return null;
+      const [changed] = await tx.update(marketplaceItemListingsTable)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(and(eq(marketplaceItemListingsTable.id, id), eq(marketplaceItemListingsTable.status, "active")))
+        .returning({ id: marketplaceItemListingsTable.id });
+      if (!changed) return null;
+      if (listing.escrowed) await restoreEscrowedItem(tx, listing);
+      return changed;
+    });
+    if (!cancelled) { res.status(404).json({ error: "Listing not found" }); return; }
+    res.json({ ok: true, id: cancelled.id, returned: true });
   } catch (error) {
     console.error("[marketplace] item delete error", error);
     res.status(500).json({ error: "Failed to unlist item" });
+  }
+});
+
+// POST /marketplace/items/:id/buy — buy the full escrowed player-character listing.
+router.post("/marketplace/items/:id/buy", async (req: Request, res: Response) => {
+  const buyerId = requireAuth(req, res);
+  if (!buyerId) return;
+  const id = Number.parseInt(String(req.params.id), 10);
+  const buyerSlot = Number.parseInt(String(req.body?.slotIndex ?? "0"), 10);
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(buyerSlot) || buyerSlot < 0 || buyerSlot > 64) {
+    res.status(400).json({ error: "Invalid listing or save slot" }); return;
+  }
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [listing] = await tx.select().from(marketplaceItemListingsTable)
+        .where(eq(marketplaceItemListingsTable.id, id)).for("update").limit(1);
+      if (!listing || listing.status !== "active" || (listing.expiresAt && listing.expiresAt <= new Date())) {
+        return { status: 404 as const, body: { error: "Listing is no longer available." } };
+      }
+      if (listing.sellerId === buyerId) return { status: 400 as const, body: { error: "You cannot buy your own listing." } };
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${buyerId}), ${buyerSlot})`);
+      const [buyerItem] = await tx.select({ quantity: playerInventoryTable.quantity })
+        .from(playerInventoryTable)
+        .where(and(eq(playerInventoryTable.userId, buyerId), eq(playerInventoryTable.slotIndex, buyerSlot), eq(playerInventoryTable.itemId, listing.itemId)))
+        .limit(1);
+      const buyerRows = await tx.select({ itemId: playerInventoryTable.itemId })
+        .from(playerInventoryTable)
+        .where(and(eq(playerInventoryTable.userId, buyerId), eq(playerInventoryTable.slotIndex, buyerSlot)));
+      if (!buyerItem && buyerRows.length >= ITEM_CAPACITY) {
+        return { status: 409 as const, body: { error: "Inventory full. Store an item in your home locker first.", usedSlots: buyerRows.length, capacity: ITEM_CAPACITY } };
+      }
+      let legacySellerItem: typeof playerInventoryTable.$inferSelect | undefined;
+      if (!listing.escrowed) {
+        const [sellerItem] = await tx.select().from(playerInventoryTable)
+          .where(and(
+            eq(playerInventoryTable.userId, listing.sellerId),
+            eq(playerInventoryTable.slotIndex, listing.sellerSlot),
+            eq(playerInventoryTable.itemId, listing.itemId),
+          )).for("update").limit(1);
+        if (!sellerItem || sellerItem.quantity < listing.quantity) {
+          return { status: 409 as const, body: { error: "Seller no longer has the listed quantity." } };
+        }
+        legacySellerItem = sellerItem;
+      }
+      for (const walletId of [buyerId, listing.sellerId].sort()) {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${walletId}), 41001)`);
+      }
+      const paid = await spendFiat(tx, {
+        userId: buyerId,
+        amountFiat: listing.priceFiat,
+        description: `Player market: ${listing.quantity} × ${listing.itemName}`,
+        kind: "marketplace_item_buy",
+      });
+      if (!paid.ok) return { status: 402 as const, body: { error: "insufficient_fiat", required: listing.priceFiat, spendable: paid.spendable } };
+      if (legacySellerItem) {
+        const remaining = legacySellerItem.quantity - listing.quantity;
+        if (remaining === 0) await tx.delete(playerInventoryTable).where(eq(playerInventoryTable.id, legacySellerItem.id));
+        else await tx.update(playerInventoryTable).set({ quantity: remaining }).where(eq(playerInventoryTable.id, legacySellerItem.id));
+      }
+      const flipped = await tx.update(marketplaceItemListingsTable)
+        .set({ status: "sold", updatedAt: new Date() })
+        .where(and(eq(marketplaceItemListingsTable.id, id), eq(marketplaceItemListingsTable.status, "active")))
+        .returning({ id: marketplaceItemListingsTable.id });
+      if (flipped.length === 0) return { status: 409 as const, body: { error: "Listing was already purchased." } };
+      await tx.insert(playerInventoryTable).values({
+        userId: buyerId, slotIndex: buyerSlot, itemId: listing.itemId,
+        quantity: listing.quantity, acquiredVia: "market",
+      }).onConflictDoUpdate({
+        target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+        set: { quantity: sql`${playerInventoryTable.quantity} + ${listing.quantity}` },
+      });
+      await creditFiat(tx, {
+        userId: listing.sellerId,
+        amountFiat: listing.priceFiat,
+        description: `Player market sale: ${listing.quantity} × ${listing.itemName}`,
+        kind: "marketplace_item_sale",
+      });
+      return { status: 200 as const, body: { ok: true, itemId: listing.itemId, quantity: listing.quantity, priceFiat: listing.priceFiat, newBalance: paid.newBalance } };
+    });
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error("[marketplace] item buy error", error);
+    res.status(500).json({ error: "Failed to settle item listing." });
   }
 });
 

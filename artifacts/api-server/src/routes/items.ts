@@ -5,6 +5,7 @@ import {
   playerInventoryTable,
   playerLoadoutTable,
   playerStorageTable,
+  publicLockerStorageTable,
   playerInstalledItemsTable,
   resourceInventoryTable,
   bankAccountsTable,
@@ -21,14 +22,13 @@ import Stripe from "stripe";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
-import { spendFiat } from "../lib/fiat-wallet";
+import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 import { recordLegacyRecoveryEventTx, restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
 import {
   ITEM_CATALOG,
   ITEM_TYPES,
   findCatalogItem,
   computeGearStats,
-  PUBLIC_VENDING_ITEM_IDS,
   requiresPhysicalBlackMarket,
   isConsumable,
   canInstallInto,
@@ -57,6 +57,7 @@ import {
 const router: IRouter = Router();
 // Keep aligned with the 6×4 inventory grid used by the native game.
 const CARRIED_ITEM_CAPACITY = 24;
+const PUBLIC_LOCKER_CAPACITY = 12;
 
 const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; y: number }> = {
   "fish-store": { floor: 2, x: 22_884, y: 47_470 },
@@ -210,24 +211,22 @@ router.get("/items/catalog", async (_req, res) => {
 });
 
 router.get("/items/vending-catalog", async (_req, res) => {
-  const allowed = new Set<string>(PUBLIC_VENDING_ITEM_IDS);
   const catalog = await marketCatalogItems();
-  const catalogById = new Map(catalog.items.map((item) => [item.id, item] as const));
   const lines = TOWER_BUSINESS_STOCK_LINES.map((listing) => ({
     ...listing,
-    items: listing.itemIds
-      .map((itemId) => catalogById.get(itemId))
-      .filter((item): item is NonNullable<typeof item> => item != null),
+    items: catalog.items.map((item) => ({
+      ...item,
+      sellerBusinessKey: listing.sellerBusinessKey,
+      sellerName: listing.sellerName,
+    })),
   }));
   res.json({
     market: catalog.market,
-    items: catalog.items
-      .filter((item) => allowed.has(item.id))
-      .map((item) => ({
-        ...item,
-        sellerBusinessKey: "tower_vending",
-        sellerName: "NIGHT PANTRY NETWORK",
-      })),
+    items: catalog.items.map((item) => ({
+      ...item,
+      sellerBusinessKey: "tower_vending",
+      sellerName: "NIGHT PANTRY NETWORK",
+    })),
     businessStock: { lines },
     ghost: TOWER_GHOST_LISTING,
   });
@@ -331,10 +330,6 @@ router.post("/items/buy", async (req, res) => {
     const listing = TOWER_BUSINESS_STOCK_LINES.find(
       (entry) => entry.sellerBusinessKey === businessKey && entry.itemIds.includes(item.id),
     );
-    if (!listing) {
-      res.status(403).json({ error: "This item is not sold by that Tower business." });
-      return;
-    }
     const [presence] = await db.select().from(desktopOfficePresenceTable)
       .where(eq(desktopOfficePresenceTable.userId, userId))
       .limit(1);
@@ -348,14 +343,10 @@ router.post("/items/buy", async (req, res) => {
       res.status(403).json({ error: "Approach this Tower shop before purchasing." });
       return;
     }
-    businessName = listing.sellerName ?? "Tower shop";
+     businessName = listing?.sellerName ?? "Tower shop";
   }
-  if (requiresPhysicalBlackMarket(item) && source !== "black_market") {
+  if (requiresPhysicalBlackMarket(item) && source !== "black_market" && source !== "tower_business") {
     res.status(403).json({ error: "Find the physical black-market dealer in Shadow Tower." });
-    return;
-  }
-  if (source === "tower_vending" && !PUBLIC_VENDING_ITEM_IDS.includes(item.id as typeof PUBLIC_VENDING_ITEM_IDS[number])) {
-    res.status(403).json({ error: "This item is not stocked in the Tower vending machine." });
     return;
   }
   const market = await getMarketIndex();
@@ -386,14 +377,14 @@ router.post("/items/buy", async (req, res) => {
     try {
       const paid = await db.transaction(async (tx) => {
         const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
-        if (!capacity.ok) return { ok: false as const, capacity };
+        if (!capacity.ok) return { kind: "capacity" as const, capacity };
         const result = await spendFiat(tx, {
           userId,
           amountFiat: totalPrice,
           description: `Armory: ${item.name} ×${qty}`,
           kind: "item_purchase",
         });
-        if (!result.ok) return result;
+        if (!result.ok) return { kind: "fiat" as const, spendable: result.spendable };
         await addConsumable(tx, userId, slot, item.id, qty, "fiat");
         if (source === "tower_vending") {
           await recordLegacyRecoveryEventTx(tx, {
@@ -406,13 +397,13 @@ router.post("/items/buy", async (req, res) => {
             amountFiat: totalPrice,
           });
         }
-        return { ...result, capacity: null };
+        return { kind: "success" as const, ...result };
       });
-      if (!paid.ok && paid.capacity) {
+      if (paid.kind === "capacity") {
         res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
         return;
       }
-      if (!paid.ok) {
+      if (paid.kind === "fiat") {
         res.status(402).json({ error: "insufficient_fiat", required: totalPrice, spendable: paid.spendable });
         return;
       }
@@ -497,14 +488,14 @@ router.post("/items/buy", async (req, res) => {
   try {
     const paid = await db.transaction(async (tx) => {
       const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
-      if (!capacity.ok) return { ok: false as const, capacity };
+      if (!capacity.ok) return { kind: "capacity" as const, capacity };
       const result = await spendFiat(tx, {
         userId,
         amountFiat: effectivePrice,
         description: `Armory: ${item.name}`,
         kind: "item_purchase",
       });
-      if (!result.ok) return result;
+      if (!result.ok) return { kind: "fiat" as const, spendable: result.spendable };
       const inventoryInsert = tx
         .insert(playerInventoryTable)
         .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" });
@@ -535,13 +526,13 @@ router.post("/items/buy", async (req, res) => {
           amountFiat: effectivePrice,
         });
       }
-      return { ...result, capacity: null, quantity: inserted[0]?.quantity ?? 1 };
+      return { kind: "success" as const, ...result, quantity: inserted[0]?.quantity ?? 1 };
     });
-    if (!paid.ok && paid.capacity) {
+    if (paid.kind === "capacity") {
       res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
       return;
     }
-    if (!paid.ok) {
+    if (paid.kind === "fiat") {
       res.status(402).json({ error: "insufficient_fiat", required: effectivePrice, spendable: paid.spendable });
       return;
     }
@@ -554,6 +545,68 @@ router.post("/items/buy", async (req, res) => {
     console.error("[Items] atomic buy failed:", err?.message);
     res.status(500).json({ error: "Purchase failed — no florins were charged." });
     return;
+  }
+});
+
+// Any shop can buy any catalog item back. The seller gets the configured
+// buyback markup over the live catalog-market value.
+router.post("/items/sell", async (req, res) => {
+  const identity = await resolveGameItemsIdentity(req, res);
+  if (!identity) return;
+  if (identity.desktopLink && req.body?.slot !== undefined && parseSlot(req.body.slot) !== 0) {
+    res.status(403).json({ error: "The linked game can sell only from the primary character." });
+    return;
+  }
+  const userId = identity.userId;
+  const slot = identity.desktopLink ? 0 : parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  const qtyRaw = Number(req.body?.qty ?? 1);
+  const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.min(99, Math.floor(qtyRaw))) : 1;
+  try {
+    const market = await getMarketIndex();
+    const unitPayout = Math.max(1, Math.round(item.priceFiat * market.multiplier * 1.2));
+    const result = await db.transaction(async (tx) => {
+      const [held] = await tx.select().from(playerInventoryTable)
+        .where(and(
+          eq(playerInventoryTable.userId, userId),
+          eq(playerInventoryTable.slotIndex, slot),
+          eq(playerInventoryTable.itemId, item.id),
+        ))
+        .for("update").limit(1);
+      if (!held || held.quantity < qty) return { error: "quantity" as const };
+      if (!isConsumable(item)) {
+        const equipped = await tx.select({ id: playerLoadoutTable.id }).from(playerLoadoutTable)
+          .where(and(
+            eq(playerLoadoutTable.userId, userId),
+            eq(playerLoadoutTable.slotIndex, slot),
+            eq(playerLoadoutTable.itemId, item.id),
+          )).limit(1);
+        if (equipped.length) return { error: "equipped" as const };
+      }
+      const remaining = held.quantity - qty;
+      if (remaining === 0) {
+        await tx.delete(playerInventoryTable).where(eq(playerInventoryTable.id, held.id));
+      } else {
+        await tx.update(playerInventoryTable).set({ quantity: remaining })
+          .where(eq(playerInventoryTable.id, held.id));
+      }
+      const credited = await creditFiat(tx, {
+        userId,
+        amountFiat: unitPayout * qty,
+        description: `Shop buyback: ${item.name} ×${qty}`,
+        kind: "item_buyback",
+      });
+      return { ok: true as const, remaining, payout: unitPayout * qty, newBalance: credited.newBalance };
+    });
+    if ("error" in result) {
+      res.status(409).json({ error: result.error === "equipped" ? "Unequip this item before selling it." : "You don't have that quantity to sell." });
+      return;
+    }
+    res.json({ ok: true, itemId: item.id, quantity: qty, remaining: result.remaining, payoutFiat: result.payout, newBalance: result.newBalance });
+  } catch (error) {
+    console.error("[Items] buyback failed:", error);
+    res.status(500).json({ error: "Shop buyback failed." });
   }
 });
 
@@ -788,6 +841,115 @@ router.post("/items/storage/withdraw", async (req, res) => {
   }
 });
 
+// Publicly located lockers are still owner-private; user and character scope
+// always come from the authenticated session, never from the request body.
+router.get("/items/public-locker", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.query.slot);
+  try {
+    const rows = await db.select().from(publicLockerStorageTable)
+      .where(and(eq(publicLockerStorageTable.userId, userId), eq(publicLockerStorageTable.slotIndex, slot)));
+    res.json({ slot, rows, itemIds: rows.map((row) => row.itemId), usedSlots: rows.length, capacity: PUBLIC_LOCKER_CAPACITY });
+  } catch {
+    res.status(500).json({ error: "Failed to load public locker" });
+  }
+});
+
+router.post("/items/public-locker/deposit", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${slot})`);
+      const [held] = await tx.select().from(playerInventoryTable).where(and(
+        eq(playerInventoryTable.userId, userId),
+        eq(playerInventoryTable.slotIndex, slot),
+        eq(playerInventoryTable.itemId, item.id),
+      )).for("update").limit(1);
+      if (!held) return { error: "not_owned" as const };
+      if (!isConsumable(item)) {
+        const equipped = await tx.select({ id: playerLoadoutTable.id }).from(playerLoadoutTable).where(and(
+          eq(playerLoadoutTable.userId, userId),
+          eq(playerLoadoutTable.slotIndex, slot),
+          eq(playerLoadoutTable.itemId, item.id),
+        )).limit(1);
+        if (equipped.length) return { error: "equipped" as const };
+      }
+      const lockerRows = await tx.select({ itemId: publicLockerStorageTable.itemId }).from(publicLockerStorageTable)
+        .where(and(eq(publicLockerStorageTable.userId, userId), eq(publicLockerStorageTable.slotIndex, slot)));
+      const alreadyStored = lockerRows.some((row) => row.itemId === item.id);
+      if (!alreadyStored && lockerRows.length >= PUBLIC_LOCKER_CAPACITY) return { error: "full" as const };
+      await tx.delete(playerInventoryTable).where(eq(playerInventoryTable.id, held.id));
+      await tx.insert(publicLockerStorageTable).values({
+        userId, slotIndex: slot, itemId: item.id, quantity: held.quantity, acquiredVia: held.acquiredVia,
+      }).onConflictDoUpdate({
+        target: [publicLockerStorageTable.userId, publicLockerStorageTable.slotIndex, publicLockerStorageTable.itemId],
+        set: { quantity: sql`${publicLockerStorageTable.quantity} + ${held.quantity}` },
+      });
+      return { ok: true as const, quantity: held.quantity };
+    });
+    if ("error" in result) {
+      const status = result.error === "not_owned" ? 404 : 409;
+      res.status(status).json({ error: result.error === "full" ? "Public locker is full." : result.error === "equipped" ? "Unequip this item before storing it." : "You don't carry that item.", capacity: PUBLIC_LOCKER_CAPACITY });
+      return;
+    }
+    res.json({ ok: true, stored: item.id, quantity: result.quantity });
+  } catch (error) {
+    console.error("[Items] public locker deposit failed:", error);
+    res.status(500).json({ error: "Failed to store item" });
+  }
+});
+
+router.post("/items/public-locker/withdraw", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${slot})`);
+      const [stored] = await tx.select().from(publicLockerStorageTable).where(and(
+        eq(publicLockerStorageTable.userId, userId),
+        eq(publicLockerStorageTable.slotIndex, slot),
+        eq(publicLockerStorageTable.itemId, item.id),
+      )).for("update").limit(1);
+      if (!stored) return { error: "not_stored" as const };
+      const carried = await tx.select({ itemId: playerInventoryTable.itemId }).from(playerInventoryTable).where(and(
+        eq(playerInventoryTable.userId, userId),
+        eq(playerInventoryTable.slotIndex, slot),
+      ));
+      const alreadyHeld = carried.some((row) => row.itemId === item.id);
+      if (!alreadyHeld && carried.length >= CARRIED_ITEM_CAPACITY) {
+        return { error: "full" as const, usedSlots: carried.length };
+      }
+      await tx.delete(publicLockerStorageTable).where(eq(publicLockerStorageTable.id, stored.id));
+      await tx.insert(playerInventoryTable).values({
+        userId, slotIndex: slot, itemId: item.id, quantity: stored.quantity, acquiredVia: stored.acquiredVia,
+      }).onConflictDoUpdate({
+        target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+        set: { quantity: sql`${playerInventoryTable.quantity} + ${stored.quantity}` },
+      });
+      return { ok: true as const, quantity: stored.quantity };
+    });
+    if ("error" in result) {
+      res.status(result.error === "not_stored" ? 404 : 409).json({
+        error: result.error === "full" ? "Inventory full. Store an item first." : "That item isn't in your public locker.",
+        ...(result.error === "full" ? { usedSlots: result.usedSlots, capacity: CARRIED_ITEM_CAPACITY } : {}),
+      });
+      return;
+    }
+    res.json({ ok: true, withdrawn: item.id, quantity: result.quantity });
+  } catch (error) {
+    console.error("[Items] public locker withdrawal failed:", error);
+    res.status(500).json({ error: "Failed to withdraw item" });
+  }
+});
+
 // ─── Consume a stackable item (use / craft primitive) ────────────────────────
 // Applies declared gameplay effects and decrements stock in one transaction.
 router.post("/items/consume", async (req, res) => {
@@ -904,6 +1066,10 @@ router.post("/items/craft", async (req, res) => {
       // Decrement every input atomically. resource inputs hit resource_inventory;
       // item inputs hit the stackable consumable helper. Any shortfall throws so
       // the whole transaction rolls back — crafting is all-or-nothing.
+      const capacity = await checkCarriedCapacity(tx, userId, slot, recipe.output.itemId);
+      if (!capacity.ok) {
+        return { status: 409 as const, body: { error: "Inventory full. Store an item in your home locker first.", ...capacity } };
+      }
       for (const inp of recipe.inputs) {
         if (inp.kind === "resource") {
           const dec = await tx.update(resourceInventoryTable)
@@ -1132,6 +1298,22 @@ router.post("/items/uninstall", async (req, res) => {
   const slotNo = Math.max(0, Math.floor(Number(req.body?.slotNo ?? 0)) || 0);
   try {
     const result = await db.transaction(async (tx) => {
+      const [installed] = await tx.select().from(playerInstalledItemsTable)
+        .where(and(
+          eq(playerInstalledItemsTable.userId, userId),
+          eq(playerInstalledItemsTable.slotIndex, slot),
+          eq(playerInstalledItemsTable.targetType, targetType),
+          eq(playerInstalledItemsTable.targetId, targetId),
+          eq(playerInstalledItemsTable.slotNo, slotNo),
+        ))
+        .for("update").limit(1);
+      if (!installed) return { error: "not_installed" as const };
+      const cap = batteryCapacity(installed.itemId);
+      const willReturn = cap === 0 || Math.round(Number(installed.currentCharge ?? 0)) >= cap;
+      if (willReturn) {
+        const capacity = await checkCarriedCapacity(tx, userId, slot, installed.itemId);
+        if (!capacity.ok) return { error: "full" as const, capacity };
+      }
       const removed = await tx
         .delete(playerInstalledItemsTable)
         .where(and(
@@ -1144,7 +1326,6 @@ router.post("/items/uninstall", async (req, res) => {
         .returning({ itemId: playerInstalledItemsTable.itemId, currentCharge: playerInstalledItemsTable.currentCharge });
       if (removed.length === 0) return { error: "not_installed" as const };
       const itemId = removed[0].itemId;
-      const cap = batteryCapacity(itemId);
       // Batteries only return to the stack if FULL. A partially-drained cell is
       // discarded on uninstall — otherwise a player could dodge recharge costs
       // by pulling a near-empty battery and re-buying/swapping a fresh one for
@@ -1156,7 +1337,14 @@ router.post("/items/uninstall", async (req, res) => {
       if (returned) await addConsumable(tx, userId, slot, itemId, 1, "grant");
       return { ok: true as const, itemId, returned };
     });
-    if ("error" in result) { res.status(404).json({ error: "Nothing installed in that slot." }); return; }
+    if ("error" in result) {
+      if (result.error === "full") {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...result.capacity });
+        return;
+      }
+      res.status(404).json({ error: "Nothing installed in that slot." });
+      return;
+    }
     res.json({ ok: true, uninstalled: result.itemId, returned: result.returned, targetType, targetId, slotNo });
   } catch (e: any) {
     console.error("[Items] uninstall failed:", e?.message);

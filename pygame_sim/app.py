@@ -257,6 +257,22 @@ def run(argv: list[str] | None = None) -> int:
             dispatch_game_command("toggle_pest_uniform")
         elif action.startswith("supply:"):
             dispatch_game_command("use_pest_supply", {"item_id": action.split(":", 1)[1]})
+        elif action.startswith("sell:"):
+            dispatch_game_command("sell_game_item", {"item_id": action.split(":", 1)[1]})
+        elif action == "vending:prev":
+            state.selected_vending_index = max(0, state.selected_vending_index - 5)
+        elif action == "vending:next":
+            state.selected_vending_index = min(
+                max(0, len(state.vending_catalog or []) - 1),
+                state.selected_vending_index + 5,
+            )
+        elif action == "shop:prev":
+            state.selected_vending_index = max(0, state.selected_vending_index - 8)
+        elif action == "shop:next":
+            state.selected_vending_index = min(
+                max(0, len(state.vending_catalog or []) - 1),
+                state.selected_vending_index + 8,
+            )
         elif action.startswith("reception:"):
             try:
                 choice = int(action.split(":", 1)[1])
@@ -701,7 +717,8 @@ def run(argv: list[str] | None = None) -> int:
                     if action == "inventory":
                         rows = payload.get("rows", [])
                         state.game_inventory = [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
-                        state.notice = f"INVENTORY LOADED / {len(state.game_inventory)} ENTRIES"
+                        state.game_inventory_capacity = max(1, int(payload.get("capacity", 24) or 24))
+                        state.notice = f"INVENTORY LOADED / {len(state.game_inventory)} SLOTS USED"
                     elif action == "vending_catalog":
                         items = payload.get("items", [])
                         state.vending_catalog = [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []

@@ -77,6 +77,7 @@ COMMANDS = {
     "start_pest_job",
     "toggle_pest_uniform",
     "use_pest_supply",
+    "sell_game_item",
 }
 
 RECEPTION_SERVICE_ROUTES = {
@@ -184,6 +185,10 @@ def validate_command(command: object) -> tuple[bool, str]:
         item_id = payload.get("item_id")
         if not isinstance(item_id, str) or item_id not in STAMINA_SUPPLY_ITEMS:
             return False, "SUPPLY NOT ALLOWED"
+    elif name == "sell_game_item":
+        item_id = payload.get("item_id")
+        if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
+            return False, "ITEM NOT ALLOWED"
     elif name == "interact":
         object_id = payload.get("object_id")
         if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
@@ -768,6 +773,15 @@ def apply_command(
             return CommandResult(False, "SUPPLY USE UNAVAILABLE / CHECK GAME LINK")
         state.game_service_loading.add("consume_supply")
         state.notice = "SUPPLY USE REQUESTED"
+        return CommandResult(True, state.notice)
+    if name == "sell_game_item":
+        if state.active_page != "inventory":
+            return CommandResult(False, "OPEN INVENTORY TO SELL AN ITEM")
+        item_id = payload["item_id"]
+        if building_sync is None or not building_sync.queue_game_request("sell_item", item_id):
+            return CommandResult(False, "SHOP BUYBACK UNAVAILABLE / CHECK GAME LINK")
+        state.game_service_loading.add("sell_item")
+        state.notice = "SHOP BUYBACK REQUESTED"
         return CommandResult(True, state.notice)
     if name == "toggle_business_stock":
         if state.active_page not in {"vending", "business_stock"}:

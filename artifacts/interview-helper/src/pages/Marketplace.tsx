@@ -162,6 +162,29 @@ export default function Marketplace() {
     }
   }
 
+  async function buyItemListing(listing: Listing) {
+    if (listing.category !== "items") return;
+    const rawId = listing.id.replace(/^item:/, "");
+    const characterSlot = Number.parseInt(slotIndex, 10);
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await apiFetch(`/api/marketplace/items/${rawId}/buy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slotIndex: Number.isInteger(characterSlot) ? characterSlot : 0 }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not buy item");
+      setNotice(`${listing.title} bought for ${fiat(data.priceFiat)}.`);
+      await load();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Could not buy item");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-full bg-[#05070b] px-4 py-6 text-slate-100 sm:px-6">
       <div className="mx-auto max-w-7xl">
@@ -222,7 +245,7 @@ export default function Marketplace() {
                   <p className="mb-4 min-h-8 text-xs leading-relaxed text-slate-400">{listing.description || "No description provided."}</p>
                   <div className="mb-3 flex items-end justify-between"><div><div className="font-mono text-lg font-bold text-emerald-300">{fiat(listing.priceFiat)}<span className="ml-1 text-[10px] font-normal text-slate-500">{listing.listingType === "rent" || listing.listingType === "lease" ? "/ HR / MO" : ""}</span></div><div className="text-[10px] text-slate-500">≈ {localMoney(listing.priceFiat, listing.cityId)} local</div></div>{listing.quantity != null && <span className="text-[10px] text-slate-500">QTY {listing.quantity}</span>}</div>
                   <div className="mb-3 flex items-center justify-between border-t border-slate-800 pt-3 text-[10px] text-slate-500"><span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {cityLabel(listing.cityId)}</span><span>by {listing.sellerName}</span></div>
-                  {listing.mine && listing.category !== "vehicles" ? <button onClick={() => void unlist(listing)} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded border border-rose-900 py-2 text-xs font-bold text-rose-300 hover:bg-rose-950/30 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> UNLIST</button> : <button onClick={() => navigate(categoryRoute(listing))} className="flex w-full items-center justify-center gap-2 rounded border border-slate-700 py-2 text-xs font-bold text-slate-300 hover:border-sky-600 hover:text-sky-300"><ArrowRight className="h-3.5 w-3.5" /> {listing.category === "vehicles" ? "RENTAL DESK" : "OPEN MARKET"}</button>}
+                  {listing.mine && listing.category !== "vehicles" ? <button onClick={() => void unlist(listing)} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded border border-rose-900 py-2 text-xs font-bold text-rose-300 hover:bg-rose-950/30 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> UNLIST</button> : listing.category === "items" ? <button onClick={() => void buyItemListing(listing)} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded border border-emerald-700 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-950/40 disabled:opacity-50"><CircleDollarSign className="h-3.5 w-3.5" /> BUY ITEM</button> : <button onClick={() => navigate(categoryRoute(listing))} className="flex w-full items-center justify-center gap-2 rounded border border-slate-700 py-2 text-xs font-bold text-slate-300 hover:border-sky-600 hover:text-sky-300"><ArrowRight className="h-3.5 w-3.5" /> {listing.category === "vehicles" ? "RENTAL DESK" : "OPEN MARKET"}</button>}
                 </div>
               </article>
             ))}
@@ -232,7 +255,7 @@ export default function Marketplace() {
 
       {showSell && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowSell(false); }}>
         <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-[#0a0f17] p-5 shadow-2xl">
-          <div className="mb-5 flex items-center justify-between"><div><h2 className="font-mono text-lg font-bold tracking-widest text-white">LIST ON EXCHANGE</h2><p className="mt-1 text-xs text-slate-500">Item references are validated against your inventory.</p></div><button onClick={() => setShowSell(false)} className="text-slate-500 hover:text-white"><X /></button></div>
+          <div className="mb-5 flex items-center justify-between"><div><h2 className="font-mono text-lg font-bold tracking-widest text-white">LIST ON EXCHANGE</h2><p className="mt-1 text-xs text-slate-500">Listed items are held securely until sale or cancellation.</p></div><button onClick={() => setShowSell(false)} className="text-slate-500 hover:text-white"><X /></button></div>
           <div className="mb-4 grid grid-cols-3 gap-2">
             <button className="rounded border border-sky-500 bg-sky-500/10 p-2 text-[10px] font-bold text-sky-300">ITEM</button>
             <button onClick={() => navigate("/business/marketplace")} className="rounded border border-slate-700 p-2 text-[10px] font-bold text-slate-400">BUSINESS</button>

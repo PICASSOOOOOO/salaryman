@@ -160,6 +160,14 @@ class DesktopBuildingSync:
                 "/items/consume",
                 {"slot": 0, "itemId": item_id, "qty": 1},
             )
+        elif action == "sell_item":
+            if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
+                return False
+            request = (
+                "POST",
+                "/items/sell",
+                {"slot": 0, "itemId": item_id, "qty": 1, "source": "tower_vending"},
+            )
         else:
             request = requests.get(action)
             if request is None:

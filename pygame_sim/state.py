@@ -121,6 +121,7 @@ class OfficeState:
     sprint_toggled: bool = False
     movement_speed_preset: int = 1
     game_inventory: list[dict[str, object]] | None = None
+    game_inventory_capacity: int = 24
     vending_catalog: list[dict[str, object]] | None = None
     business_stock_lines: list[dict[str, object]] | None = None
     ghost_listing: dict[str, object] | None = None
