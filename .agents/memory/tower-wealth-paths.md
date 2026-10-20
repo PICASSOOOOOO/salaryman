@@ -138,3 +138,15 @@ power, and protection.
 
 **How to apply:** Keep any organization-level tax assessment separate from
 personal member taxes; never tax a member's illegal activity as personal income.
+
+Pickpocketing belongs in the shared MMO world, not a battle-team mode. Players
+may attempt it, but the skill should be very difficult and progression should
+use both network credit score and experience. Building halls should retain a
+friendly social tone; victim responses should stay within the theft encounter.
+
+**Why:** The user clarified that pickpocketing is an MMO activity open to players,
+not a battle-team encounter, and that halls should feel friendly.
+
+**How to apply:** Keep theft attempts server-validated and high-risk/low-reward;
+tie skill unlocks to both network credit score and XP, and avoid creating a
+separate battle-team mode or broad combat escalation for a theft response.
