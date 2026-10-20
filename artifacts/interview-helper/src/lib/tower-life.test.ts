@@ -105,13 +105,23 @@ describe("Tower Life operating catalog", () => {
     expect(firstDay).not.toEqual(nextDay);
 
     for (let offset = 0; offset < 4; offset += 1) {
-      const scene = getTowerRivalryUpdate(new Date(Date.UTC(2026, 0, 1 + offset)));
+      const at = new Date(Date.UTC(2026, 0, 1 + offset));
+      const scene = getTowerRivalryUpdate(at);
       expect(scene.agencyShare).toBe(0.5);
       expect(scene.operatingShare).toBe(0.5);
       expect(scene.salesAvailable).toBe(true);
       expect(scene.participants.length).toBeGreaterThanOrEqual(2);
       expect(scene.businesses.length).toBeGreaterThanOrEqual(2);
       expect(scene.playerOpportunity.length).toBeGreaterThan(0);
+      const ambientOwners = [
+        ...getTowerAmbientOccupants("lobby", [], at),
+        ...getTowerAmbientOccupants(7, [], at),
+      ];
+      for (const [residentName, task] of Object.entries(scene.workByResident)) {
+        const owner = ambientOwners.find((resident) => resident.name === residentName);
+        expect(owner?.workLabel).toBe(task);
+        expect(owner?.routine.tasks).toContain(task);
+      }
     }
 
     const incident = Array.from({ length: 4 }, (_, offset) =>

@@ -366,6 +366,9 @@ function ambientArtSrc(id: number): string | undefined {
 
 function projectAmbientResident(resident: TowerResident, at = new Date()): TowerAmbientOccupant {
   const rivalryTask = getTowerRivalryUpdate(at).workByResident[resident.name];
+  const routineTasks = rivalryTask
+    ? [rivalryTask, ...resident.errands.filter((task) => task !== rivalryTask)]
+    : resident.errands;
   return {
     id: resident.id,
     name: resident.name,
@@ -377,7 +380,7 @@ function projectAmbientResident(resident: TowerResident, at = new Date()): Tower
     role: resident.role,
     errands: resident.errands,
     workLabel: rivalryTask ?? resident.errands[0] ?? resident.role,
-    routine: createTowerDailyRoutine(resident.id, resident.errands),
+    routine: createTowerDailyRoutine(resident.id, routineTasks),
     artSrc: ambientArtSrc(resident.id),
   };
 }
@@ -388,7 +391,11 @@ export function getTowerAmbientOccupants(
   at = new Date(),
 ): TowerAmbientOccupant[] {
   if (typeof floor === "number" && floor >= 5) {
-    return getShadowTowerCommercialTenants(floor).map(({ resident, business }) => ({
+    const locationResidents = TOWER_RESIDENTS
+      .filter((resident) => resident.floor === floor)
+      .map((resident) => projectAmbientResident(resident, at));
+    const locationResidentIds = new Set(locationResidents.map((resident) => resident.id));
+    const tenantResidents = getShadowTowerCommercialTenants(floor).map(({ resident, business }) => ({
       id: resident.id,
       name: resident.name,
       col: resident.col,
@@ -402,6 +409,10 @@ export function getTowerAmbientOccupants(
       routine: createTowerDailyRoutine(resident.id, [business.service]),
       artSrc: ambientArtSrc(resident.id),
     }));
+    return [
+      ...locationResidents,
+      ...tenantResidents.filter((resident) => !locationResidentIds.has(resident.id)),
+    ];
   }
   return TOWER_RESIDENTS
     .filter((resident) => resident.serviceFloors
@@ -442,6 +453,7 @@ export type TowerRivalryUpdate = {
   headline: string;
   businessEffect: string;
   playerOpportunity: string;
+  workByResident: Readonly<Record<string, string>>;
   agencyShare: 0.5;
   operatingShare: 0.5;
   salesAvailable: true;
@@ -455,6 +467,10 @@ const TOWER_RIVALRY_UPDATES: readonly TowerRivalryUpdate[] = [
     headline: "Two lobby counters are competing for the same apology order.",
     businessEffect: "Both shops keep taking orders; each is offering a different same-day bundle.",
     playerOpportunity: "Compare the bundles, then carry the buyer's choice to the correct counter.",
+    workByResident: {
+      "ADA BLOM": "Preparing a same-day arrangement to match the gift counter's offer",
+      "MARA QUILL": "Building a visitor bundle to compete with the florist's delivery",
+    },
     agencyShare: 0.5,
     operatingShare: 0.5,
     salesAvailable: true,
@@ -466,6 +482,10 @@ const TOWER_RIVALRY_UPDATES: readonly TowerRivalryUpdate[] = [
     headline: "A petty label swap has sent several gift sleeves to the wrong display.",
     businessEffect: "Black Glass has a short preparation backlog, but its counter stays open and accepts orders.",
     playerOpportunity: "Sort the mislabeled sleeves and deliver the corrected display list.",
+    workByResident: {
+      "MARA QUILL": "Checking the public display list after a petty label swap",
+      "ADA BLOM": "Rechecking gift sleeves before preparing the next flower order",
+    },
     agencyShare: 0.5,
     operatingShare: 0.5,
     salesAvailable: true,
@@ -477,6 +497,10 @@ const TOWER_RIVALRY_UPDATES: readonly TowerRivalryUpdate[] = [
     headline: "Ada and Ilya are coordinating clean table linens for a lobby event.",
     businessEffect: "The florist can prepare larger arrangements without pausing its walk-in service.",
     playerOpportunity: "Run the tagged linen bundle between the service corridor and gift arcade.",
+    workByResident: {
+      "ADA BLOM": "Matching table linens to the lobby event arrangement",
+      "ILYA SENN": "Preparing a tagged clean-linen pickup for the florist",
+    },
     agencyShare: 0.5,
     operatingShare: 0.5,
     salesAvailable: true,
@@ -488,6 +512,10 @@ const TOWER_RIVALRY_UPDATES: readonly TowerRivalryUpdate[] = [
     headline: "Ilya is checking the public delivery board after Mara's courier schedule changed.",
     businessEffect: "Rinse 67 is adjusting its pickup timing using posted business notices, not private records.",
     playerOpportunity: "Confirm the updated public pickup window with both counters.",
+    workByResident: {
+      "ILYA SENN": "Checking the public delivery board for the updated pickup window",
+      "MARA QUILL": "Posting the revised courier schedule for lobby orders",
+    },
     agencyShare: 0.5,
     operatingShare: 0.5,
     salesAvailable: true,
