@@ -70,22 +70,31 @@ distinct, and do not create separate game-only assistant backends.
 
 ## Shop staffing, schedules, and personal lives
 
-Shops operate 24/7 with four staggered shifts. Each shift averages 3–5 NPC
-employees, with headcount varying. A shift has eight hours with two 15-minute
-breaks plus a one-hour lunch, for nine hours elapsed. Stagger breaks and lunch
-so coworkers cover the shop; NPCs can discuss and trade shifts.
+Shops operate 24/7 with four staggered nine-hour shifts, including a one-hour
+lunch and two 15-minute breaks. Overlapping coverage is intentional and is
+funded by the shop's budget. Up to 3–5 employees per shift is the maximum
+staffing example, not a requirement for every shop; staffing needs vary by
+business.
 
 NPCs have routines and family obligations that shape their work and choices.
 They can get sick, marry, feel sadness or depression, and commit suicide, among
 other human life events. NPCs walking around can talk about their routines,
 shift trades, and gossip through in-world dialogue boxes.
 
-**Why:** the user wants 24/7 businesses with realistic staffing and coverage,
-and NPC lives that include personal obligations, wellbeing, and social behavior.
+Shop work should be more difficult than ordinary labor, and players can help.
+Keep a continuing need for shop workers available. Some businesses may remain
+short-staffed for months or employ incompetent NPCs who are later fired, leaving
+the shop short-staffed again.
+
+**Why:** the user wants 24/7 businesses with budgeted overlap, variable staffing
+demand, player-help opportunities, ongoing worker openings, and realistic labor
+shortages, alongside NPC personal obligations and wellbeing.
 
 **How to apply:** model each location's shift coverage and each employee's
-routine and personal obligations together. Keep the stated shift timing,
-staggered handoffs, and human life events visible through walking NPC dialogue.
+routine, family obligations, and competence together. Keep staffing levels
+business-specific, allow long vacancies and repeated firings, and make the
+maximum four-shift staffing example affordable to the shop. Keep handoffs,
+trades, and life events visible through walking NPC dialogue.
 
 Public maintenance payouts are issued by receptionist Mila from the game reward
 pool. Private organization work is paid by that organization's receptionist only
