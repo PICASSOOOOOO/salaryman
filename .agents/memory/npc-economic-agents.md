@@ -145,6 +145,16 @@ a unique identity, story, purpose, job, destination or route, and bounded author
 Pablo Corp's rental roster may grow into many such characters, not generic background
 headcount. The Prime office secretary is the explicit all-skills/all-automations
 exception, but must still reuse the existing automation systems.
+
+Only 5% of NPCs can be recruited. A player needs sufficient reputation with the
+individual NPC, and each recruit is unique based on their skills.
+
+**Why:** the user wants recruits to be rare, earned through NPC-specific
+reputation, and differentiated by skill.
+
+**How to apply:** keep recruitability within the 5% limit, check reputation with
+the specific NPC, and make each recruit's skill profile meaningful and unique.
+
 NPC-operated businesses may grow into
 specialized sellers and develop improved versions of their products; do not imply
 that this progression is active until it has a real simulation.
