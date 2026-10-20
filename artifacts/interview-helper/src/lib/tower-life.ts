@@ -230,6 +230,13 @@ export const TOWER_RESIDENTS: readonly TowerResident[] = [
     col: 12, row: 12, path: [{ col: 12, row: 12 }, { col: 16, row: 12 }, { col: 16, row: 15 }, { col: 12, row: 15 }], speed: 0.16,
   },
   {
+    id: 511, name: "MARA QUILL", role: "LAST LOOK GIFT CO. · OWNER", color: "#f9a8d4", logo: "◇",
+    floor: "lobby", businessCode: "TWR-RETAIL-002", route: "LOBBY · ARRIVAL WALL",
+    caresFor: "curated visitor gifts, cards, and prompt lobby delivery",
+    errands: ["assembling a same-day gift set", "checking visitor-card stock", "routing a delivery upstairs"],
+    col: 17, row: 12, path: [{ col: 17, row: 12 }, { col: 19, row: 12 }, { col: 19, row: 15 }, { col: 17, row: 15 }], speed: 0.17,
+  },
+  {
     id: 504, name: "RIO LIFT", role: "LIFTLINE COURIER · RUNNER", color: "#22d3ee", logo: "↑",
     floor: "lobby", businessCode: "TWR-LOGI-024", route: "LOBBY → DELIVERY DESK → FLOORS",
     caresFor: "documents, parcels, and signatures that cannot wait",
@@ -277,6 +284,13 @@ export const TOWER_RESIDENTS: readonly TowerResident[] = [
     caresFor: "access, response, escorts, and evidence",
     errands: ["checking a door lock", "escorting a contractor", "logging a custody transfer"],
     col: 14, row: 7, path: [{ col: 14, row: 7 }, { col: 18, row: 7 }, { col: 18, row: 13 }, { col: 14, row: 14 }], speed: 0.23,
+  },
+  {
+    id: 512, name: "ILYA SENN", role: "RINSE 67 · OWNER", color: "#93c5fd", logo: "◌",
+    floor: 7, businessCode: "TWR-LIFE-022", route: "FLOOR 7 · SERVICE CORRIDOR",
+    caresFor: "clean uniforms, linen service, and return timing for the next shift",
+    errands: ["sorting an urgent uniform order", "checking a linen pickup", "setting the next shift's delivery route"],
+    col: 9, row: 11, path: [{ col: 9, row: 11 }, { col: 13, row: 11 }, { col: 13, row: 15 }, { col: 9, row: 15 }], speed: 0.18,
   },
 ];
 
