@@ -35,13 +35,18 @@ Each shop location has its own boss within its brand faction: a brand with three
 locations has three bosses. Track each boss as an individual NPC with personal
 history and relationships, while preserving the shared brand-level faction.
 
+Each boss is loyal first to their own shop, then to the parent brand faction.
+Other brands are opposing factions; intra-brand bosses may cooperate while
+competing brands remain rivals.
+
 **Why:** the user clarified that brands define factions and each location has its
-own boss.
+own boss, whose loyalty is ordered from local shop to brand.
 
 **How to apply:** key rivalries, cooperation, and business effects to brand
 identity, while keeping each brand's own shops and organizations connected to
-its faction. Track each location boss individually beneath that faction, and
-keep all effects fictional and server-authoritative.
+its faction. Track each location boss individually beneath that faction and
+make their shop-first, faction-second loyalty shape decisions. Keep all effects
+fictional and server-authoritative.
 
 Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
 
