@@ -22,6 +22,16 @@ the in-game market to cover all brands and shops.
 **How to apply:** make investability follow in-game brand/shop identity so new
 businesses can join the market without requiring a hand-picked subset.
 
+Credit score is the reputation measure for both players and NPCs. Good
+reputation must be earned, and a player's or NPC's reputation/credit score must
+remain consistent across game resets.
+
+**Why:** the user wants reputation to be earned and reset-independent for both
+players and NPCs, with credit score as its measurement.
+
+**How to apply:** attach reputation to durable player/NPC identity rather than a
+resettable game save, and preserve the same credit-score measure for both.
+
 **Why:** the user wants Pablo Corp to be able to partner with players through
 financing, including short- and medium-term loans.
 
