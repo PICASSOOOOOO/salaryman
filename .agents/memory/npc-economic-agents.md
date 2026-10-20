@@ -9,6 +9,28 @@ NPCs are part of the economy, not background decoration. They need food and othe
 
 **How to apply:** When adding an NPC domain, include its needs, spending, income source, wealth state, and visible progression. Avoid player-only economy logic that makes NPCs passive props.
 
+Build a broad Sims-like life simulation for residents, not just an economy or
+business simulator. Personal life includes needs and wellbeing, faith and
+beliefs, relationships and family (marriage, children, affairs, and pregnancy),
+work, homes and living conditions, desires, money and debt, routines, and
+emergent social events. Keep this breadth original to SALARYMAN's live city and
+its dystopian corporate setting.
+
+The life simulation also spans public and private services and real estate:
+clinics, water fountains, restrooms, hostels, hotels, apartments, rent,
+ownership, and citizenship. Restrooms restore stamina. These systems should
+connect to residents' wellbeing, housing, finances, legal status, and everyday
+choices.
+
+**Why:** The user clarified they want the full breadth of The Sims-style life
+simulation, including the previously named relationships and family systems.
+
+**How to apply:** Treat residents as persistent people with interconnected
+needs, relationships, work, finances, and living conditions. Make choices and
+events affect ongoing routines and relationships rather than reducing life
+systems to one-off decorative dialogue. Connect housing, services, rent,
+ownership, and citizenship to the same persistent life simulation.
+
 ## Public maintenance workforce
 
 Keep the maintenance NPC group small and believable. Give workers routes, breaks,
