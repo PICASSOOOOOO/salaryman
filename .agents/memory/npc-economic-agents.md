@@ -183,8 +183,9 @@ measured, bounded changes to Pablo Prime automation speed.
 Recruited NPCs can build and repair organization property, open small kiosks or
 shops within their organization's offices and floors, and take service roles
 such as chauffeurs or butlers escorting people from elevators to office doors.
-Elevators should also have a wise, important attendant NPC, with the role covered
-across all four shifts.
+Elevators are a core part of Tower movement and access, not background scenery.
+They should have a wise, important attendant NPC, with the role covered across
+all four shifts.
 
 **Why:** the user wants recruited NPCs to contribute to the physical and
 commercial life of their organization, and elevators to have a wise attendant.
