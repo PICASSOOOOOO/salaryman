@@ -15,6 +15,8 @@ Combat may include either one-on-one duels or group/battle-royale encounters, bu
 
 Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
 
+Organizations may also have shared storage rooms holding up to 2,000 items. Members with access can use the shared room, with a storage clerk supervising access.
+
 **Why:** The user clarified the intended tone and boundaries for weapon use, fines, and rivalry.
 
-**How to apply:** Keep ordinary competition nonviolent and abstract. Gate armed conflict by context, use equipped game items, and never allow casual lethal outcomes in occupied or secured spaces. Keep penalties fictional and game-side. Enforce each storage capacity server-side.
+**How to apply:** Keep ordinary competition nonviolent and abstract. Gate armed conflict by context, use equipped game items, and never allow casual lethal outcomes in occupied or secured spaces. Keep penalties fictional and game-side. Enforce each storage capacity server-side, and enforce shared-room access through org permissions.
