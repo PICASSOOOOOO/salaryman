@@ -40,11 +40,12 @@ register there before exploring beyond the lobby, including people who are
 unemployed. Unregistered entrants are stopped by security or kept out by locked
 doors; registration is a building-security gate, not an employment requirement.
 
-**Why:** the user wants all building access to begin with receptionist
-registration for security purposes, regardless of employment status.
+**Why:** new players are strangers on arrival; reception registration lets
+building security know who entered. The user wants this for security, regardless
+of employment status.
 
 **How to apply:** make receptionist registration mandatory, with no alternate
-onboarding path that grants building access. Enforce registration on access
-paths beyond the lobby. Use security or locked doors to deny unregistered
-entry, with server-authoritative checks rather than relying only on visible door
-state.
+onboarding path that grants building access. Register and identify entrants at
+reception, then enforce registration on access paths beyond the lobby. Use
+security or locked doors to deny unregistered entry, with server-authoritative
+checks rather than relying only on visible door state.
