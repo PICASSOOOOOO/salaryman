@@ -34,3 +34,15 @@ flags through when the authoritative read fails lets a reset account bypass rece
 
 **How to apply:** Only a verified empty save list may clear local tutorial/building progress, and
 only a verified save-list response may release protected-route or lobby reconciliation gates.
+
+Everyone must register with reception before exploring beyond the lobby,
+including people who are unemployed. Unregistered entrants are stopped by
+security or kept out by locked doors; registration is a building-security gate,
+not an employment requirement.
+
+**Why:** the user wants all building access to begin with receptionist
+registration for security purposes, regardless of employment status.
+
+**How to apply:** enforce registration on access paths beyond the lobby. Use
+security or locked doors to deny unregistered entry, with server-authoritative
+checks rather than relying only on visible door state.
