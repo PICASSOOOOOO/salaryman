@@ -18,14 +18,16 @@ Enforce actor- and action-specific permissions, data scope, and security on the
 server for both fictional and real interactions. Do not treat NPC status itself
 as authorization.
 
-SALARYMAN's game-side conflict should support corporate competition and espionage, not an outlaw culture. Weapons are rare and generally prohibited in offices; civilians discourage conflict. Drawing weapons in public building spaces is possible but illegal and may trigger fines. Nonlethal fistfights or melee with improvised objects do not carry fines. Lethal outcomes belong only in isolated, unmonitored areas when violence is necessary.
+SALARYMAN's game-side conflict should feel corporate, even when antagonistic. Petty rivalries, sabotage, spies, and killers may exist, but characters still operate within the Tower's laws and workplace culture: weapons are rare and generally prohibited in offices; drawing one in public building space is illegal and may trigger fines; lethal outcomes belong only in isolated, unmonitored areas when violence is necessary.
 
 Combat may include either one-on-one duels or group/battle-royale encounters, but these remain fictional game events governed by the same safety and legality rules.
 
 Build an original office-sim adaptation of the broad living-world idea: NPC
 relationships and rivalries should evolve through cooperation and competition
 and materially change shop behavior and business opportunities, not only
-dialogue. Do not copy enRAGE code or assets.
+dialogue. Keep antagonism corporate in style, including petty sabotage, violence,
+spies, and killers where the existing game laws permit; "we all just work here"
+remains the tone. Do not copy enRAGE code or assets.
 
 Faction identity follows the brand. Each distinct brand is its own faction;
 shops, locations, and organizations operating under that brand belong to that
@@ -41,19 +43,23 @@ Other brands are opposing factions; intra-brand bosses may cooperate while
 competing brands remain rivals.
 
 NPC bosses are motivated to compete and protect their own shops and brand
-factions. Keep the tone gentlemanly and businesslike, not outlaw-style.
+factions. Rivalry may include sabotage and violence, but it should remain
+corporate and petty in style, not become a separate outlaw identity.
 
-**Why:** the user clarified that brands define factions, each location has its
-own boss with shop-first loyalty, and the rival system should not use an outlaw
-tone.
+**Why:** the user clarified that brands define factions and each location has
+its own boss with shop-first loyalty. The user further specified that antagonists,
+sabotage, petty violence, killers, and spies may exist when framed by corporate
+life and the office-sim laws: "we all just work here."
 
 **How to apply:** key rivalries, cooperation, and business effects to brand
 identity, while keeping each brand's own shops and organizations connected to
 its faction. Track each location boss individually beneath that faction and
 make their shop-first, faction-second loyalty shape decisions. Use RDR2 only as
-a broad living-world reference; keep the office sim's competitive style
-professional. Keep game-state changes server-authoritative and apply the same
-explicit access checks to any connected real-system action.
+a broad living-world reference. Keep antagonism corporate in style; enforce
+office-law consequences and safe-area limits, and do not let sabotage remove
+the staffing and availability needed to keep a shop selling to players. Keep
+game-state changes server-authoritative and apply the same explicit access
+checks to any connected real-system action.
 
 Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
 
