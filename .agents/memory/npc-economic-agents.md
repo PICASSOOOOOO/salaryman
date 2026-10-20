@@ -180,6 +180,19 @@ contributing to paid automation.
 another player. Match each NPC to skill-appropriate organization work and make
 measured, bounded changes to Pablo Prime automation speed.
 
+Recruited NPCs can build and repair organization property, open small kiosks or
+shops within their organization's offices and floors, and take service roles
+such as chauffeurs or butlers escorting people from elevators to office doors.
+Elevators should also have a wise, important attendant NPC, with the role covered
+across all four shifts.
+
+**Why:** the user wants recruited NPCs to contribute to the physical and
+commercial life of their organization, and elevators to have a wise attendant.
+
+**How to apply:** keep construction, repairs, and shops within organization
+property and appropriate NPC skills. Treat chauffeur, butler, and elevator
+attendant as purposeful NPC roles with visible in-world behavior.
+
 NPC-operated businesses may grow into
 specialized sellers and develop improved versions of their products; do not imply
 that this progression is active until it has a real simulation.
