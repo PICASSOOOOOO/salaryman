@@ -414,21 +414,35 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     if (priorData?.towerOnboarding !== undefined && incoming.towerOnboarding === undefined) {
       incoming.towerOnboarding = priorData.towerOnboarding;
     }
-    // Skill unlocks (data.skills[]) are written server-side by /skills/unlock.
-    // The client's doSave does not include this key, so carry it over to prevent
-    // a routine save from clobbering server-granted unlocks.
-    if (priorData?.skills !== undefined && incoming.skills === undefined) {
-      incoming.skills = priorData.skills;
+    // Skill state is server-owned. Always overwrite any client-supplied skills,
+    // point balance, and progression counters so routine saves cannot forge or
+    // erase rare unlocks and progress.
+    if (priorData) {
+      incoming.skills = Array.isArray(priorData.skills) ? priorData.skills : [];
+      incoming.skill_points = Number.isFinite(Number(priorData.skill_points))
+        ? Math.max(0, Number(priorData.skill_points))
+        : 0;
+      if (priorData.skillProgression !== undefined) {
+        incoming.skillProgression = priorData.skillProgression;
+      } else {
+        delete incoming.skillProgression;
+      }
+    } else {
+      const t1Skill = defaultT1ForClass(String(charClass));
+      incoming.skills = [t1Skill];
+      incoming.skill_points = 0;
+      incoming.skillProgression = {
+        level: 1,
+        levelXp: 0,
+        verifiedPayrollFiat: 0,
+        inGameWorkFiat: 0,
+        participationXp: 0,
+        skillPointsEarned: 0,
+      };
     }
     // REC stamina, sessions, inventory effects and idempotency markers are
     // server-owned. Browser saves must never mint or roll them back.
     if (priorData?.rec !== undefined) incoming.rec = priorData.rec;
-    // Onboarding pre-unlock: first save for this slot (no prior data) gets a
-    // free T1 skill based on the character class chosen during immigration.
-    if (!priorData && !Array.isArray(incoming.skills)) {
-      const t1Skill = defaultT1ForClass(String(charClass));
-      incoming.skills = [t1Skill];
-    }
     // First save: auto-grant a visa for the player's starting city so the
     // world-server visa gate doesn't block them on their very first connection.
     // Idempotent (ON CONFLICT DO NOTHING) — fire-and-forget, never blocks save.
