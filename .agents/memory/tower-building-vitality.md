@@ -42,20 +42,27 @@ Players and NPCs with sufficient funds may purchase a business. Business concept
 must remain unique by default; opening duplicate locations as a chain or franchise
 requires the owner, player or NPC, to have net worth above ƒ1,000,000,000.
 
-Pablo Corp pays all in-game NPC salaries, so its sponsored shops and services
-must generate enough revenue to cover payroll and remain profitable. If Tower
-infrastructure fails and sponsored shops close, Pablo Corp suffers from the
-lost business. Price all items and services with operating costs and profit in
-mind; the user's target is 300% pricing, with markup versus margin to be
-confirmed before encoding the formula.
+Pablo Corp pays partner shop owners; the shop owners hire and pay their own
+employees. Treat shop owners as partners who can expand and build creative
+businesses over time in the live MMO, rather than as employees on Pablo Corp's
+direct payroll. Pablo Corp's profit must account for its payments to partners
+and operating costs. If Tower infrastructure fails and sponsored shops close,
+Pablo Corp suffers from lost business. Price all items and services with costs
+and profit in mind; the user's target is 300% pricing, with markup versus margin
+to be confirmed before encoding the formula.
 
-**Why:** the user clarified that Pablo Corp bears NPC payroll, building
-infrastructure failures hurt its sponsored shops, and company profitability
-must be protected through pricing.
+The live MMO should grow at a deliberate pace: each city/server has a
+five-year plan measured in real time.
 
-**How to apply:** include NPC salaries and operating costs in company
-profitability, model shop closures as lost revenue, and use the requested 300%
-target only after confirming its calculation basis.
+**Why:** the user clarified that Pablo Corp pays partner shop owners, shop
+owners pay employees, and the ecosystem should support gradual creative growth
+over a five-real-time-year city/server plan.
+
+**How to apply:** model partner payments separately from owner-managed payroll,
+make shop-owner expansion and creative activity viable, and account for
+infrastructure-driven shop closures as lost business. Pace the city/server
+economy across five real-world years rather than compressing it into a short
+in-game cycle.
 
 **Why:** The user wants a creativity- and innovation-friendly economy where NPCs
 can pursue new work or start businesses with capital. Business entry is open to
