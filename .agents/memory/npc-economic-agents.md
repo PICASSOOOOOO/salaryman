@@ -36,16 +36,18 @@ education growth. "School of hard knocks" experiences can award XP only when
 they teach a real lesson about commerce, finance, or capitalism; that XP is not
 itself formal education.
 More education should provide stronger skill boosts and business advantages.
+Do not put cooldown timers on education; real education does not work that way.
 
 **Why:** the user wants education to be substantial, school-led progression,
 while allowing practical business lessons to count as experience only when they
 actually teach something. Higher education should improve skills and business
-outcomes.
+outcomes, without artificial cooldowns.
 
 **How to apply:** keep formal education separate from XP. Award practical XP for
 meaningful commerce, finance, or capitalism learning, but do not let other
 activities raise the education meter. Let higher education increase relevant
-skill bonuses and business advantages without assuming specific formulas.
+skill bonuses and business advantages without assuming specific formulas. Do
+not gate education progression behind cooldown timers.
 
 ## Public maintenance workforce
 
