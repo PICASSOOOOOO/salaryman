@@ -13,6 +13,8 @@ SALARYMAN's game-side conflict should support corporate competition and espionag
 
 Combat may include either one-on-one duels or group/battle-royale encounters, but these remain fictional game events governed by the same safety and legality rules.
 
+Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
+
 **Why:** The user clarified the intended tone and boundaries for weapon use, fines, and rivalry.
 
-**How to apply:** Keep ordinary competition nonviolent and abstract. Gate armed conflict by context, use equipped game items, and never allow casual lethal outcomes in occupied or secured spaces. Keep penalties fictional and game-side.
+**How to apply:** Keep ordinary competition nonviolent and abstract. Gate armed conflict by context, use equipped game items, and never allow casual lethal outcomes in occupied or secured spaces. Keep penalties fictional and game-side. Enforce each storage capacity server-side.
