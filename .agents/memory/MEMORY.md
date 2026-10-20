@@ -49,7 +49,7 @@
 - [Office ambient bed](office-ambient-bed.md) — Gate the office bed centrally and track transient sounds so they stop cleanly.
 - [Pablo Radio global station](pablo-radio-global.md) — exactly one app-wide Call Home player serves all non-phone routes; HUDs and settings only change shared radio state.
 - [Marketplace bot roster](marketplace-bot-roster.md) — Curate nine bots; deactivate removed entries without deleting rows, and gate by owner/dev membership.
-- [Business Marketplace](business-marketplace.md) — Settle sales atomically; income is display-only and never paid out automatically.
+- [Business Marketplace](business-marketplace.md) — Settle sales atomically; actual-business auctions need org legal roles, succession, and Tower sale flows.
 - [Item trading and lockers](item-trading-and-lockers.md) — Shops trade across the item catalog, player listings escrow items, and private lockers must stay secure.
 - [Accounting + ledger](accounting-books-reconcile.md) — Match paid-invoice and cash-ledger guards; see [autopilot actions](accounting-autopilot.md) for shared atomic finance operations.
 - [CRM telephony recording](crm-telephony-recording.md) — Deduplicate org Twilio activities; apply lead side effects only on new inserts across both SMS stacks.

@@ -17,3 +17,16 @@ Player-to-player transfer = ONE transaction (`settleListingTransfer`): buyer deb
 
 ## Scope
 Income is stored/displayed only (`monthlyIncomeFiat`); there is NO auto-payout loop wired into WorldPlay. If asked for recurring lease/income payouts, that is net-new work.
+
+## Organization sale and succession direction
+Organizations should support guest access, lawyer/legal support, and wills or
+succession rules so ownership can be transferred and businesses can be sold
+into the Tower. The actual-business marketplace should feel like an animated
+auction, not only a static listing grid.
+
+**Why:** the user wants people to be able to sell real businesses into the Tower
+and described legal representation and wills as part of organization ownership.
+
+**How to apply:** design organization-level permissions, sale eligibility,
+succession, and settlement together; keep actual business listings distinct
+from the existing in-game digital-business catalog.

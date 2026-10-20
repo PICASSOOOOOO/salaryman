@@ -5,59 +5,62 @@ description: What "financial game on net worth + stamina" actually required in W
 
 # SALARYMAN net-worth / stamina refocus
 
-## Current character-status and economy HUD direction
+## Current character-status and economy model
 
-The compact status system should show credit score, stamina, wallet, and net
-worth. Wallet FIAT and net worth are distinct. Clicking credit score or net
-worth should shortcut to the relevant economy pages. Stamina belongs in the
-Health/Inventory section.
+Stamina is bodily health. There is no separate health/HP meter and characters
+do not actually die: exhaustion makes them tired. Show stamina in the
+Health/Inventory area using Zelda-like quarter-heart increments. Stamina capacity
+should rise with better credit, experience, skills, item powers, and low net
+worth; poor credit and high net worth reduce it. Items help balance those
+tradeoffs.
 
-Health capacity should use Zelda-like quarter-heart increments. Heart capacity
-should rise with better credit, experience, skills, and item powers; it should
-also rise with low net worth and fall with high net worth. This balances wealth's
-influence and economic/job access with greater physical resilience for poorer
-players. Keep the quarter-heart display's exact relationship to stamina
-unconfirmed until the user clarifies it.
+Credit score represents the establishment's assessment and affects financial
+systems. Net worth is the player's actual personal worth. Poorer players gain
+physical power; wealthier players gain corporate power, job/access opportunities,
+and influence. Wallet cash, bank balance, and net worth are three distinct
+values: wallet is cash on hand ("cash is king"), bank money is subject to
+capitalistic lending and interest algorithms, and net worth represents what the
+player is actually worth.
 
-**Why:** the user described health, skills, credit, wealth, wallet money, job
-access, power, and influence as one connected progression system.
+The compact status HUD shows credit score, stamina, wallet cash, and net worth.
+Clicking credit score or net worth opens the corresponding economy pages.
 
-**How to apply:** keep wallet, net worth, credit, stamina, and health as separate
-concepts; use quarter-heart granularity for health capacity, and route the
-credit/net-worth controls to economy pages.
+**Why:** the user clarified that stamina is health, no one actually dies, and
+wealth, establishment credit, skills, items, access, power, and influence form
+one connected progression system.
 
-The push to make SALARYMAN a pure financial game (net worth + stamina, no
-wallet/levels/XP/HP) splits cleanly into a SAFE set and an ENTANGLED set.
+**How to apply:** do not add a separate HP/death model. Keep wallet, bank balance,
+net worth, credit, and stamina distinct; balance poorer physical resilience
+against wealthy corporate influence, with items as counterweights.
 
-## Already-true / low-risk (don't re-litigate)
+## Legacy implementation risks
+
+Older notes proposed removing wallet, levels/XP, and HP for a pure financial
+game. That product direction is superseded: XP contributes to stamina capacity,
+wallet cash remains visible, and stamina is the sole bodily health measure.
+Existing damage, hazards, rescue, and hospitalization code is entangled, so
+refactor it deliberately to exhaustion/tiredness rather than leaving any lethal
+HP path behind.
+
+## Existing economy invariants (preserve)
 - **Voluntary debt is already blocked.** Every voluntary storefront in
   `WorldPlay.tsx` guards `if (g.salary < price) { sfxError(); setNarr('… INSUFFICIENT …'); return; }`
   before deducting. Only INVOLUNTARY charges (taxes, fines, debt-enforcement
   beatings, auto-rent/utilities) push `g.salary` negative — which is exactly
   the spec ("negative net worth only involuntarily"). Do NOT add a blanket
   negative-balance clamp; it would break the involuntary path.
-- **Levels/XP removal = gut `applyExpGain` to a no-op** (keep the 9-arg
-  signature so ~14 combat/kill call sites still compile). `noUnusedLocals:false`
-  in tsconfig.base.json means the now-dead EXP_TABLE/MAX_LEVEL/expToLevel/
-  LEVEL_MILESTONES consts don't error. Player level frozen at baseline ⇒ attack
-  formula `20 + (level-1)*5` collapses to 20 ⇒ "fixed difficulty" for free
-  (enemy THREAT_* stats are already constants, never level-scaled). Skill tree
-  keeps existing `skillPoints`, just no new grants.
 
-## Entangled / high-risk (HP + combat — a real refactor, not a tweak)
+## Entangled / high-risk (stamina-as-health refactor)
 - `g.hp` has ~198 references. It drives the LETHAL death route (`g.hp<=0` →
   dead body + `setIsDead` + hospital cinematic, ~line 12239), is the field the
   MP/arena battle resolver returns (`outcome.playerHpRemaining` → `g.hp`), and
   is hit by environmental hazards (poison ~11082, radiation ~10517, hypothermia
   ~14349, starvation ~14381, acid ~14739) AND by dozens of building heals.
-- A SEPARATE collapse route already exists: `g.energy<=0 && g.hp>0` →
-  rescuable CRITICAL (120s) → hospital cinematic. The spec's "0-stamina
-  blackout→hospital" wants combat to route here instead of the HP-death route.
-- Converting combat to stamina means redirecting the ~6 player-damage sites
-  (5685 resolver, 7740, 10740, 11632, 15189, 14965) and the resolver's
-  hp/maxHp interface to energy, then deciding what HP-driven death/env-hazards
-  become. This is the bulk of the work and must be tested live (combat + death
-  + hospital + MP sync), not just typechecked. Deferred as a follow-up.
+- A separate exhaustion/rescue route already exists. The current product
+  direction is nonlethal: route exhaustion to tired/rescue behavior, not death.
+- Converting combat and hazards to the stamina-only model is a substantial
+  refactor. Test combat, exhaustion, rescue, and multiplayer sync; never retain
+  a lethal death route.
 
 ## Misc
 - Unemployment stipend cadence lives in api-server `lib/salary.ts`
