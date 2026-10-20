@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SKILL_CATALOG,
   SKILL_TREES,
+  CLASS_TO_T1_SKILL,
   canUnlock,
   canonicalSkillIds,
   defaultT1ForClass,
@@ -41,8 +42,14 @@ describe("native game skill catalog", () => {
       "technical_skills.spreadsheet_1",
     ]);
     expect(getSkillById("power.enforcer_1")?.branch).toBe("Stamina");
+    expect(getSkillById("business.negotiator_1")?.id).toBe("office_politics.salary_negotiation_1");
     expect(defaultT1ForClass("hacker")).toBe("technical_skills.computer_repair_1");
+    expect(defaultT1ForClass("trader")).toBe("office_politics.salary_negotiation_1");
+    expect(defaultT1ForClass("lawyer")).toBe("office_politics.professional_communication_1");
     expect(defaultT1ForClass("unknown")).toBe("stamina.long_shift_1");
+    for (const skillId of Object.values(CLASS_TO_T1_SKILL)) {
+      expect(getSkillById(skillId)).toBeDefined();
+    }
   });
 
   it("marks free in-game feature unlocks without granting paid entitlements", () => {

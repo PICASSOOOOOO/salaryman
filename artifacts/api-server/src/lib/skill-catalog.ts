@@ -123,6 +123,7 @@ const trees: SkillTreeSpec[] = [
       { id: "networking", name: "Networking", effect: "network credit gain", valuePerRank: 3 },
       { id: "job_security", name: "Job Security", effect: "job-loss risk reduction", valuePerRank: 3 },
       { id: "salary_negotiation", name: "Salary Negotiation", effect: "salary negotiation success", valuePerRank: 3 },
+      { id: "professional_communication", name: "Professional Communication", effect: "professional communication effectiveness", valuePerRank: 4 },
       { id: "performance_reviews", name: "Performance Reviews", effect: "performance review outcomes", valuePerRank: 3 },
       { id: "attendance", name: "Reliable Attendance", effect: "attendance-based reputation", valuePerRank: 4 },
       { id: "workplace_competition", name: "Workplace Competition", effect: "career competition effectiveness", valuePerRank: 3 },
@@ -198,8 +199,8 @@ const LEGACY_SKILL_IDS: Record<string, string> = {
   "work.analyst_1": "technical_skills.spreadsheet_1",
   "work.analyst_2": "technical_skills.spreadsheet_2",
   "work.field_expert": "technical_skills.printer_repair_2",
-  "business.negotiator_1": "office_politics.negotiation_1",
-  "business.negotiator_2": "office_politics.negotiation_2",
+  "business.negotiator_1": "office_politics.salary_negotiation_1",
+  "business.negotiator_2": "office_politics.salary_negotiation_2",
   "business.tax_strategist": "office_politics.income_planning_3",
   "power.enforcer_1": "stamina.long_shift_1",
   "power.enforcer_2": "stamina.long_shift_2",
@@ -237,10 +238,10 @@ export const CLASS_TO_T1_SKILL: Record<string, string> = {
   technician: "technical_skills.printer_repair_1",
   medic: "stamina.minor_care_1",
   soldier: "stamina.long_shift_1",
-  trader: "office_politics.negotiation_1",
+  trader: "office_politics.salary_negotiation_1",
   hacker: "technical_skills.computer_repair_1",
   journalist: "office_politics.workplace_awareness_1",
-  lawyer: "office_politics.professional_language_1",
+  lawyer: "office_politics.professional_communication_1",
 };
 
 export function defaultT1ForClass(charClass?: string): string {
