@@ -42,6 +42,21 @@ Players and NPCs with sufficient funds may purchase a business. Business concept
 must remain unique by default; opening duplicate locations as a chain or franchise
 requires the owner, player or NPC, to have net worth above ƒ1,000,000,000.
 
+Pablo Corp pays all in-game NPC salaries, so its sponsored shops and services
+must generate enough revenue to cover payroll and remain profitable. If Tower
+infrastructure fails and sponsored shops close, Pablo Corp suffers from the
+lost business. Price all items and services with operating costs and profit in
+mind; the user's target is 300% pricing, with markup versus margin to be
+confirmed before encoding the formula.
+
+**Why:** the user clarified that Pablo Corp bears NPC payroll, building
+infrastructure failures hurt its sponsored shops, and company profitability
+must be protected through pricing.
+
+**How to apply:** include NPC salaries and operating costs in company
+profitability, model shop closures as lost revenue, and use the requested 300%
+target only after confirming its calculation basis.
+
 **Why:** The user wants a creativity- and innovation-friendly economy where NPCs
 can pursue new work or start businesses with capital. Business entry is open to
 buyers who can afford it, while uniqueness and a net-worth threshold regulate
