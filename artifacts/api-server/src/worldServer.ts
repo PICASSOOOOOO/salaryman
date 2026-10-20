@@ -12,7 +12,7 @@ import { getAnonymousAccessCookieStatus } from './middlewares/anonymousAccess';
 // server; the cap keeps a single instance healthy and hosting cost predictable.
 // Default 50; raise per deployment (SERVER_MAX_PLAYERS) once a realm's economy
 // justifies more compute, or spin up a second city in the same continent.
-import { resolveWorldWebSocketUser } from "./lib/replit-websocket-auth";
+import { resolveWebSocketUser, resolveWorldWebSocketUser } from "./lib/replit-websocket-auth";
 export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 50;
 
 // Which realm this (identical) deployment IS. Both servers run the same build;
@@ -85,6 +85,7 @@ export interface Player {
   lastPvpAttack: number;
   level: number;
   networkCreditScore?: number;
+  lastPickpocketAt?: number;
   inventory: LootItem[];
   weaponId: string;
   lastPveReward: number;
@@ -183,6 +184,7 @@ interface PendingPickpocket {
   thiefId: string;
   victimId: string;
   expiresAt: number;
+  success: boolean;
   timeout: ReturnType<typeof setTimeout>;
 }
 const pendingPickpockets = new Map<string, PendingPickpocket>();
@@ -346,7 +348,18 @@ export function pickpocketWalletAmount(wallet: number, random = Math.random): nu
 }
 
 export function canPickpocketItem(item: LootItem): boolean {
-  return !/legendary/i.test(item.rarity ?? "");
+  const rarity = (item.rarity ?? "").trim().toLowerCase();
+  return rarity !== "legendary" && rarity !== "impossible";
+}
+
+export function pickpocketItemChance(item: LootItem, creditScore: number, level: number): number {
+  const rarity = (item.rarity ?? "common").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  if (!canPickpocketItem(item)) return 0;
+  if (rarity === "veryrare") return 0.002;
+  if (rarity === "rare") return rarePickpocketChance(creditScore, level);
+  if (rarity === "expensive" || rarity === "hardtofind") return 0.005;
+  if (rarity === "moderate") return 0.01;
+  return 0.02;
 }
 
 export function rarePickpocketChance(creditScore: number, level: number): number {
@@ -363,9 +376,10 @@ const resolvePickpocket = (victimId: string, caught = false) => {
   const thief = players.get(pending.thiefId);
   const victim = players.get(victimId);
   if (!thief || !victim) return;
-  if (caught) {
-    sendTo(thief.id, { type: "pickpocket_result", result: "foiled" });
-    sendTo(victim.id, { type: "pickpocket_encounter_end", result: "foiled" });
+  if (caught || !pending.success) {
+    const result = caught ? "foiled" : "failed";
+    sendTo(thief.id, { type: "pickpocket_result", result });
+    sendTo(victim.id, { type: "pickpocket_encounter_end", result });
     return;
   }
 
@@ -374,15 +388,10 @@ const resolvePickpocket = (victimId: string, caught = false) => {
   thief.money += amount;
   let item: LootItem | null = null;
   const eligible = victim.inventory.filter(canPickpocketItem);
-  const rareItems = eligible.filter((candidate) => /rare/i.test(candidate.rarity ?? ""));
-  const ordinaryItems = eligible.filter((candidate) => !/rare/i.test(candidate.rarity ?? ""));
-  if (rareItems.length && Math.random() < rarePickpocketChance(thief.networkCreditScore ?? 680, thief.level)) {
-    item = rareItems[Math.floor(Math.random() * rareItems.length)];
-  } else if (ordinaryItems.length && Math.random() < 0.02) {
-    item = ordinaryItems[Math.floor(Math.random() * ordinaryItems.length)];
-  }
+  const candidate = eligible.length ? eligible[Math.floor(Math.random() * eligible.length)] : null;
+  if (candidate && Math.random() < pickpocketItemChance(candidate, thief.networkCreditScore ?? 680, thief.level)) item = candidate;
   if (item) {
-    const index = victim.inventory.findIndex((owned) => owned.id === item!.id);
+    const index = victim.inventory.findIndex((owned) => owned === item);
     if (index >= 0) {
       const [stolen] = victim.inventory.splice(index, 1);
       thief.inventory.push(stolen);
@@ -828,6 +837,80 @@ export const handleMessage = (player: Player, raw: string) => {
   try { msg = JSON.parse(raw); } catch { return; }
 
   switch (msg.type) {
+
+    case "pickpocket_attempt": {
+      const target = typeof msg.targetId === "string" ? players.get(msg.targetId) : undefined;
+      const alreadyEngaged = [...pendingPickpockets.values()].some(
+        (encounter) => encounter.thiefId === player.id || encounter.victimId === player.id,
+      );
+      if (!player.userId || !target?.userId || target.isBot || player.isBot
+        || target.id === player.id || target.cityId !== player.cityId
+        || target.interiorBid !== player.interiorBid || target.hp <= 0 || player.hp <= 0
+        || player.sleeping || player.paused || target.sleeping || target.paused
+        || Math.hypot(player.x - target.x, player.y - target.y) > PVP_RANGE
+        || alreadyEngaged) {
+        sendTo(player.id, { type: "pickpocket_result", result: "unavailable" });
+        break;
+      }
+      const now = Date.now();
+      if (now - (player.lastPickpocketAt ?? 0) < 20_000) {
+        sendTo(player.id, { type: "pickpocket_result", result: "cooldown" });
+        break;
+      }
+      player.lastPickpocketAt = now;
+      const success = Math.random() < pickpocketChance(player.networkCreditScore ?? 680, player.level);
+      const timeout = setTimeout(() => resolvePickpocket(target.id), PICKPOCKET_ENCOUNTER_MS);
+      pendingPickpockets.set(target.id, {
+        thiefId: player.id,
+        victimId: target.id,
+        expiresAt: now + PICKPOCKET_ENCOUNTER_MS,
+        success,
+        timeout,
+      });
+      sendTo(player.id, { type: "pickpocket_result", result: "encounter_started", expiresInMs: PICKPOCKET_ENCOUNTER_MS });
+      sendTo(target.id, {
+        type: "pickpocket_encounter",
+        attackerId: player.id,
+        attackerName: player.name,
+        slowMotionSeconds: 2,
+        expiresInMs: PICKPOCKET_ENCOUNTER_MS,
+        choices: ["prevent", "stop", "fight", "retaliate"],
+      });
+      break;
+    }
+
+    case "pickpocket_response": {
+      const choice = typeof msg.choice === "string" ? msg.choice : "";
+      const pending = pendingPickpockets.get(player.id);
+      if (!pending || !["prevent", "stop", "fight", "retaliate"].includes(choice)) break;
+      if (pending.expiresAt <= Date.now()) {
+        resolvePickpocket(player.id);
+        break;
+      }
+      // These are encounter-only responses. They end the attempt without
+      // opening a battle mode or applying general PvP damage.
+      resolvePickpocket(player.id, true);
+      sendTo(player.id, { type: "pickpocket_response_result", choice, result: "defended" });
+      break;
+    }
+
+    case "pickpocket_profile": {
+      if (!player.userId) break;
+      const score = player.networkCreditScore ?? 680;
+      const skillNodes = [
+        { id: "light_fingers", unlocked: score >= 620 && player.level >= 3, creditScore: 620, level: 3 },
+        { id: "quiet_hands", unlocked: score >= 680 && player.level >= 10, creditScore: 680, level: 10 },
+        { id: "ghost_step", unlocked: score >= 740 && player.level >= 20, creditScore: 740, level: 20 },
+      ];
+      sendTo(player.id, {
+        type: "pickpocket_profile",
+        creditScore: score,
+        experienceLevel: player.level,
+        chance: pickpocketChance(score, player.level),
+        skillNodes,
+      });
+      break;
+    }
 
     case 'move':
       {
@@ -1563,6 +1646,9 @@ const resolveSessionAvatar = async (req: IncomingMessage): Promise<string | null
 const resolveWorldUserId = async (req: IncomingMessage): Promise<string | null> => {
   return (await resolveWorldWebSocketUser(req))?.id ?? null;
 };
+const resolveSessionUserId = async (req: IncomingMessage): Promise<string | null> => {
+  return (await resolveWebSocketUser(req))?.id ?? null;
+};
 
 // Live WebSocket population, compared against MAX_PLAYERS for the capacity gate.
 export const getWorldPlayerCount = () => players.size;
@@ -1820,9 +1906,23 @@ export const attachWorldServer = (httpServer: Server) => {
       }
     }
 
+    let networkCreditScore = authenticatedUserId ? 0 : 680;
+    if (authenticatedUserId) {
+      try {
+        const [ledger] = await db.select({ creditScore: playerLedgerTable.creditScore })
+          .from(playerLedgerTable)
+          .where(eq(playerLedgerTable.userId, authenticatedUserId))
+          .limit(1);
+        if (ledger && Number.isFinite(ledger.creditScore)) networkCreditScore = ledger.creditScore;
+        else if (!ledger) networkCreditScore = 680;
+      } catch (error) {
+        console.error("[World] Could not load network credit for player:", error);
+      }
+    }
+
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, sleeping: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
+    const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, networkCreditScore, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, sleeping: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
     addPlayer(player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 

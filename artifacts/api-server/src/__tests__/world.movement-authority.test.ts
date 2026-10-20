@@ -8,6 +8,11 @@ import {
   handleMessage,
   validateAuthenticatedMovement,
   WORLD_BOUNDS,
+  pickpocketChance,
+  pickpocketWalletAmount,
+  canPickpocketItem,
+  pickpocketItemChance,
+  rarePickpocketChance,
 } from "../worldServer";
 
 describe("authenticated world movement authority", () => {
@@ -116,5 +121,29 @@ describe("authenticated world movement authority", () => {
 
   it("uses the Tower arrival apron as the new-user fallback", () => {
     expect(AUTHENTICATED_CITY_SPAWN).toEqual({ x: 6400, y: 5910 });
+  });
+});
+
+describe("server pickpocket limits", () => {
+  it("keeps the skill difficult and below the configured ceiling", () => {
+    expect(pickpocketChance(400, 1)).toBe(0.002);
+    expect(pickpocketChance(800, 50)).toBeLessThanOrEqual(0.035);
+    expect(pickpocketChance(Number.NaN, 10)).toBe(0);
+  });
+
+  it("takes a random wallet-only amount strictly below five percent", () => {
+    expect(pickpocketWalletAmount(10_000, () => 0.999)).toBe(498);
+    expect(pickpocketWalletAmount(10_000, () => 0)).toBe(0);
+    expect(pickpocketWalletAmount(-1, () => 0.5)).toBe(0);
+  });
+
+  it("never steals legendary or impossible items and keeps higher rarity tiers unlikely", () => {
+    const item = (rarity: string) => ({ id: "x", name: "X", desc: "", rarity });
+    expect(canPickpocketItem(item("legendary"))).toBe(false);
+    expect(canPickpocketItem(item("impossible"))).toBe(false);
+    expect(pickpocketItemChance(item("very rare"), 800, 50)).toBeLessThan(0.01);
+    expect(pickpocketItemChance(item("rare"), 800, 50)).toBeLessThan(0.01);
+    expect(pickpocketItemChance(item("expensive"), 800, 50)).toBeLessThan(0.01);
+    expect(rarePickpocketChance(699, 50)).toBe(0);
   });
 });
