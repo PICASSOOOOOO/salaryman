@@ -1,6 +1,7 @@
 import { Router } from "express";
+import { createHash } from "node:crypto";
 import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, alphaApplicationsTable, normalizeOrgName } from "@workspace/db";
+import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, alphaApplicationsTable, verifiedPaidWagesTable, normalizeOrgName } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
 import * as geoip from "geoip-lite";
 import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
@@ -9,6 +10,170 @@ import { deriveConditionProfile, repairConditionScore } from "../lib/world-condi
 
 const router = Router();
 const LIVE_CITY_IDS = new Set(["minx_city", "huda_city"]);
+const PAYMENT_REF_MAX_LENGTH = 120;
+
+function validIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function validPaidAmount(value: unknown): string | null {
+  const amount = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000_000) return null;
+  if (Math.round(amount * 100) !== amount * 100) return null;
+  return amount.toFixed(2);
+}
+
+/**
+ * Returns employees whose wage events the caller may attest. A target must be
+ * an active org member and have a real-business registry entry matching the
+ * owner's organization; merely sharing a company name is not sufficient.
+ */
+router.get("/world/paid-wage-attestation-targets", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Login required" });
+  try {
+    const callerId = String(req.user.id);
+    const owned = await db.select({ orgId: organizationsTable.id, orgName: organizationsTable.name })
+      .from(orgMembersTable)
+      .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
+      .where(and(
+        eq(orgMembersTable.userId, callerId),
+        eq(orgMembersTable.role, "owner"),
+        eq(orgMembersTable.status, "active"),
+      ));
+    if (!owned.length) return res.json({ employees: [] });
+
+    const candidates = await db.select({
+      businessId: worldBusinessesTable.id,
+      userId: worldBusinessesTable.userId,
+      playerName: worldBusinessesTable.playerName,
+      companyName: worldBusinessesTable.companyName,
+    }).from(worldBusinessesTable).where(eq(worldBusinessesTable.businessType, "real"));
+    const employeeMembers = await db.select({
+      orgId: orgMembersTable.orgId,
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+    }).from(orgMembersTable).where(and(
+      inArray(orgMembersTable.orgId, owned.map((org) => org.orgId)),
+      eq(orgMembersTable.status, "active"),
+    ));
+    const membersByOrg = new Map<number, Set<string>>();
+    for (const member of employeeMembers) {
+      if (member.role === "owner") continue;
+      const set = membersByOrg.get(member.orgId) ?? new Set<string>();
+      set.add(member.userId);
+      membersByOrg.set(member.orgId, set);
+    }
+    const employees = candidates.filter((candidate) => {
+      if (!candidate.userId || candidate.userId === callerId || !candidate.companyName) return false;
+      return owned.some((org) =>
+        org.orgName.trim().toLowerCase() === candidate.companyName!.trim().toLowerCase()
+        && membersByOrg.get(org.orgId)?.has(candidate.userId!),
+      );
+    });
+    return res.json({ employees });
+  } catch (err: any) {
+    console.error("[World] paid-wage targets error:", err?.message);
+    return res.status(500).json({ error: "Unable to load wage attestation targets" });
+  }
+});
+
+/**
+ * Owner-only attestation for one actual wage payment. The owner confirms the
+ * amount/date/period; the payment reference is hashed and never stored raw.
+ * Unique database constraints make replayed or re-keyed period submissions
+ * fail closed. This record is for progression eligibility, not FIAT credit.
+ */
+router.post("/world/attest-paid-wage", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Login required" });
+  const callerId = String(req.user.id);
+  const businessId = Number(req.body?.businessId);
+  const paidAmount = validPaidAmount(req.body?.paidAmount);
+  const currencyCode = typeof req.body?.currencyCode === "string" ? req.body.currencyCode.trim().toUpperCase() : "";
+  const paidAt = req.body?.paidAt;
+  const payPeriodStart = req.body?.payPeriodStart;
+  const payPeriodEnd = req.body?.payPeriodEnd;
+  const paymentReference = typeof req.body?.paymentReference === "string"
+    ? req.body.paymentReference.trim()
+    : "";
+
+  if (!Number.isSafeInteger(businessId) || businessId <= 0 || !paidAmount
+    || !/^[A-Z]{3}$/.test(currencyCode)
+    || !validIsoDate(paidAt) || !validIsoDate(payPeriodStart) || !validIsoDate(payPeriodEnd)
+    || payPeriodStart > payPeriodEnd || paidAt < payPeriodEnd
+    || paidAt > new Date().toISOString().slice(0, 10)
+    || paymentReference.length < 4 || paymentReference.length > PAYMENT_REF_MAX_LENGTH) {
+    return res.status(400).json({ error: "Valid business, paid amount, currency, payment date, pay period, and payment reference are required" });
+  }
+
+  try {
+    const [target] = await db.select().from(worldBusinessesTable)
+      .where(and(
+        eq(worldBusinessesTable.id, businessId),
+        eq(worldBusinessesTable.businessType, "real"),
+      )).limit(1);
+    if (!target?.userId || !target.companyName) {
+      return res.status(404).json({ error: "Real-business employee record not found" });
+    }
+    if (target.userId === callerId) {
+      return res.status(403).json({ error: "Owners cannot attest their own wages" });
+    }
+    const [org] = await db.select({ id: organizationsTable.id, name: organizationsTable.name })
+      .from(organizationsTable)
+      .where(sql`lower(btrim(${organizationsTable.name})) = lower(btrim(${target.companyName}))`)
+      .limit(1);
+    if (!org) return res.status(404).json({ error: "Organization not found for employee record" });
+
+    const [owner] = await db.select({ userId: orgMembersTable.userId })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, org.id),
+        eq(orgMembersTable.userId, callerId),
+        eq(orgMembersTable.role, "owner"),
+        eq(orgMembersTable.status, "active"),
+      )).limit(1);
+    if (!owner) return res.status(403).json({ error: "Only an active organization owner can attest wages" });
+
+    const [employee] = await db.select({ userId: orgMembersTable.userId })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, org.id),
+        eq(orgMembersTable.userId, target.userId),
+        eq(orgMembersTable.status, "active"),
+      )).limit(1);
+    if (!employee) return res.status(403).json({ error: "Employee is not an active member of this organization" });
+
+    const paymentReferenceHash = createHash("sha256")
+      .update(`${org.id}:${target.userId}:${paymentReference.toLowerCase()}`)
+      .digest("hex");
+    const [attestation] = await db.insert(verifiedPaidWagesTable).values({
+      orgId: org.id,
+      businessId: target.id,
+      employeeUserId: target.userId,
+      attestedByUserId: callerId,
+      paidAmount,
+      currencyCode,
+      paidAt,
+      payPeriodStart,
+      payPeriodEnd,
+      paymentReferenceHash,
+    }).onConflictDoNothing().returning({
+      id: verifiedPaidWagesTable.id,
+      employeeUserId: verifiedPaidWagesTable.employeeUserId,
+      paidAmount: verifiedPaidWagesTable.paidAmount,
+      currencyCode: verifiedPaidWagesTable.currencyCode,
+      paidAt: verifiedPaidWagesTable.paidAt,
+    });
+    if (!attestation) {
+      return res.status(409).json({ error: "This employee's pay period or payment reference was already attested" });
+    }
+    return res.status(201).json({ ok: true, attestation });
+  } catch (err: any) {
+    console.error("[World] paid-wage attestation error:", err?.message);
+    return res.status(500).json({ error: "Unable to record wage attestation" });
+  }
+});
 
 const OUTSIDE_WORLD_PATHS = [
   "/world/locate",

@@ -30,6 +30,7 @@ export * from "./user-tiers";
 export * from "./user-features";
 export * from "./usage-meters";
 export * from "./world-businesses";
+export * from "./verified-paid-wages";
 export * from "./player-profiles";
 export * from "./salaryman-saves";
 export * from "./billboards";
