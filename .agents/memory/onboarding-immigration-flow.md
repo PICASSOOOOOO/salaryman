@@ -60,4 +60,7 @@ of the building. Use the express line primarily to move NPC registration along
 without delaying new users. Use security or locked doors to deny unregistered
 entry, with server-authoritative checks rather than relying only on visible door
 state. Make onboarding prompts frequent and obvious, especially around the
-lockdown and mandatory reception registration.
+lockdown and mandatory reception registration, but keep them non-obtrusive.
+Action modules should show the next required step and action without getting in
+the player's way, using a contextual E prompt so players can join what is
+happening in the scene.
