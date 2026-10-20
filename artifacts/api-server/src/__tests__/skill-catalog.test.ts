@@ -9,7 +9,7 @@ import {
 } from "../lib/skill-catalog";
 
 describe("native game skill catalog", () => {
-  it("provides five named trees with 51 skills each", () => {
+  it("provides five named trees with more than 50 skills each", () => {
     expect(SKILL_TREES.map((tree) => tree.name)).toEqual([
       "Stamina",
       "Agility",
@@ -19,9 +19,9 @@ describe("native game skill catalog", () => {
     ]);
 
     for (const tree of SKILL_TREES) {
-      expect(SKILL_CATALOG.filter((skill) => skill.branch === tree.name)).toHaveLength(51);
+      expect(SKILL_CATALOG.filter((skill) => skill.branch === tree.name).length).toBeGreaterThan(50);
     }
-    expect(SKILL_CATALOG).toHaveLength(255);
+    expect(new Set(SKILL_CATALOG.map((skill) => skill.id)).size).toBe(SKILL_CATALOG.length);
   });
 
   it("uses three ranks per skill track and enforces rank prerequisites", () => {
@@ -49,5 +49,6 @@ describe("native game skill catalog", () => {
     expect(getSkillById("technical_skills.automation_1")?.unlocksFreeFeature).toBeUndefined();
     expect(getSkillById("technical_skills.automation_2")?.unlocksFreeFeature).toBe("basic_office_scripting");
     expect(getSkillById("technical_skills.item_repair_1")?.unlocksFreeFeature).toBe("basic_item_repair");
+    expect(getSkillById("technical_skills.infrastructure_repair_2")?.unlocksFreeFeature).toBe("basic_infrastructure_repair");
   });
 });

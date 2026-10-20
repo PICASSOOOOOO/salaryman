@@ -62,6 +62,7 @@ const trees: SkillTreeSpec[] = [
       { id: "physical_attack", name: "Physical Attack", effect: "physical attack strength", valuePerRank: 3 },
       { id: "defense", name: "Damage Defense", effect: "incoming damage reduction", valuePerRank: 2 },
       { id: "survival", name: "Survival", effect: "hazard survival", valuePerRank: 4, cooldownSeconds: 60 },
+      { id: "disaster_survival", name: "Disaster Survival", effect: "fictional disaster survival", valuePerRank: 4 },
     ],
   },
   {
@@ -108,6 +109,9 @@ const trees: SkillTreeSpec[] = [
       { id: "replicant_systems", name: "Replicant Systems", effect: "replicant system efficiency", valuePerRank: 4 },
       { id: "workstation", name: "Workstation Tuning", effect: "workstation performance", valuePerRank: 4 },
       { id: "emergency_repair", name: "Emergency Repair", effect: "emergency repair speed", valuePerRank: 4, cooldownSeconds: 45 },
+      { id: "infrastructure_repair", name: "Infrastructure Repair", effect: "building infrastructure repair", valuePerRank: 4, freeFeature: "basic_infrastructure_repair", featureRank: 2 },
+      { id: "security_systems", name: "Security Systems", effect: "security system repair and inspection", valuePerRank: 4, freeFeature: "basic_security_inspection", featureRank: 2 },
+      { id: "disaster_response", name: "Disaster Response", effect: "infrastructure recovery after fictional disasters", valuePerRank: 4, cooldownSeconds: 60 },
     ],
   },
   {
@@ -132,6 +136,8 @@ const trees: SkillTreeSpec[] = [
       { id: "faction_relations", name: "Faction Relations", effect: "fictional faction reputation", valuePerRank: 3 },
       { id: "underworld_contracts", name: "Underworld Contracts", effect: "fictional illegal job access", valuePerRank: 3 },
       { id: "business_growth", name: "Business Growth", effect: "business growth effectiveness", valuePerRank: 3 },
+      { id: "debt_collection", name: "Debt Collector Encounters", effect: "fictional debt encounter avoidance", valuePerRank: 3 },
+      { id: "extortion_protection", name: "Extortion Protection", effect: "fictional extortion resistance", valuePerRank: 3 },
     ],
   },
   {
@@ -155,6 +161,10 @@ const trees: SkillTreeSpec[] = [
       { id: "burnout_resistance", name: "Burnout Resistance", effect: "burnout buildup reduction", valuePerRank: 3 },
       { id: "social_reading", name: "Social Reading", effect: "coworker intent detection", valuePerRank: 4 },
       { id: "under_pressure", name: "Under Pressure", effect: "task accuracy under pressure", valuePerRank: 3 },
+      { id: "stealth", name: "Stealth", effect: "stealth detection avoidance", valuePerRank: 4 },
+      { id: "security_awareness", name: "Security Awareness", effect: "security threat detection", valuePerRank: 4 },
+      { id: "debt_evasion", name: "Debt Collector Evasion", effect: "fictional debt encounter escape", valuePerRank: 3, cooldownSeconds: 45 },
+      { id: "extortion_resistance", name: "Extortion Resistance", effect: "fictional extortion encounter resistance", valuePerRank: 3 },
     ],
   },
 ];
