@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   hasExplicitActionAccess,
   loyaltyOrderForBoss,
+  validateNpcAgencySnapshot,
   type ExplicitActionGrant,
   type ShopLocationBoss,
 } from "./npc-agency";
@@ -88,5 +89,22 @@ describe("brand factions and shop-location bosses", () => {
         { level: "brand", id: "brand-common-table" },
       ]),
     );
+  });
+
+  it("validates shared-brand references and one boss per physical location", () => {
+    const brand = { id: "brand-common-table", name: "Common Table" };
+    const bosses: ShopLocationBoss[] = [
+      { id: "boss-a", name: "A", brandId: brand.id, shopId: "common-table", locationId: "floor-2-suite-1", netWorthFiat: 100 },
+      { id: "boss-b", name: "B", brandId: brand.id, shopId: "common-table", locationId: "floor-5-suite-2", netWorthFiat: 200 },
+    ];
+    expect(validateNpcAgencySnapshot({ factions: [brand], bosses })).toEqual([]);
+    expect(validateNpcAgencySnapshot({
+      factions: [brand],
+      bosses: [bosses[0], { ...bosses[1], locationId: bosses[0].locationId }],
+    })).toContain("Duplicate boss location: floor-2-suite-1");
+    expect(validateNpcAgencySnapshot({
+      factions: [],
+      bosses: [bosses[0]],
+    })).toContain("Boss boss-a references an unknown brand");
   });
 });

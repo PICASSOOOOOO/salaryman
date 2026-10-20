@@ -540,6 +540,13 @@
       "when": 1792317418234,
       "tag": "0076_game_business_organization_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1792501187236,
+      "tag": "0077_npc_agency_factions",
+      "breakpoints": true
     }
   ]
 }
