@@ -427,7 +427,7 @@ export default function Upgrade({ embedded = false, onPrimeCheckout, primeChecko
           {[
             [
               boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
-              "PABLO PRIME is $100/month for the nine-agent curated workforce and automation tools. CALLL HOME is a separate $50/month subscription. Cancel anytime.",
+              "PABLO PRIME is $200/month and includes all FREE and CALLL HOME benefits, plus the curated agent workforce and business automation. CALLL HOME alone is $100/month. Cancel anytime.",
             ],
             [
               "What about cosmetics, properties, vehicles?",

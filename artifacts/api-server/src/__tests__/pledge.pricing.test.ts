@@ -89,19 +89,20 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
     expect(res.body.error).toBe("Unknown pledge item");
   });
 
-  it("lists CALLL HOME at $50/month as a subscription", () => {
+  it("lists CALLL HOME at $100/month as a subscription", () => {
     const calllHome = catalog.items.find((i) => i.id === "membership_calll_home");
     expect(calllHome).toBeTruthy();
-    expect(calllHome.priceUsd).toBe(50);
+    expect(calllHome.priceUsd).toBe(100);
     expect(calllHome.subscriptionFeature).toBe("phone_system");
   });
 
-  it("lists PABLO PRIME at $100/month as a separate membership subscription", () => {
+  it("lists PABLO PRIME at $200/month as a bundled membership subscription", () => {
     expect(catalog.categories).toContain("membership");
     const prime = catalog.items.find((i) => i.id === "membership_pablo_prime");
     expect(prime).toBeTruthy();
-    expect(prime.priceUsd).toBe(100);
+    expect(prime.priceUsd).toBe(200);
     expect(prime.subscriptionFeature).toBe("claw_bot");
+    expect(prime.effect).toContain("all CALLL HOME benefits");
     // Still no secret cost/markup leak on this item.
     const text = rawText(prime);
     expect(text).not.toContain("costUsd");

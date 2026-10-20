@@ -339,23 +339,22 @@ const CALLL_HOME_LISTING: PledgeItem = {
   id: "membership_calll_home",
   category: "membership",
   name: "CALLL HOME",
-  blurb: "Business calling and messaging for your organization.",
-  effect: "Twilio-connected calling, two-way SMS, campaigns, recordings, and the AI secretary — billed $50/month.",
-  costUsd: 50,
+  blurb: "Automated business calling and messaging for your organization.",
+  effect: "Includes automated and predictive dialing, two-way SMS, campaigns, recordings, and the AI secretary — billed $100/month.",
+  costUsd: 100,
   noMarkup: true,
   subscriptionFeature: "phone_system",
   icon: "☎",
 };
 
-// PABLO PRIME — the $100/mo platform subscription. It grants the `claw_bot`
-// feature, which bundles the paid automation capabilities.
+// PABLO PRIME — the $200/mo platform subscription. It includes CALLL HOME.
 const PRIME_LISTING: PledgeItem = {
   id: "membership_pablo_prime",
   category: "membership",
   name: "PABLO PRIME",
   blurb: "The whole platform in one subscription.",
-  effect: "Unlocks Jean Claw and the full Pixel Agent workforce, Live Listen, Screen Scan, and Say This — billed $100/month. CALLL HOME is separate.",
-  costUsd: 100,
+  effect: "Includes Pablo AI, the full Pixel Agent workforce, Live Listen, Screen Scan, Say This, and all CALLL HOME benefits — billed $200/month.",
+  costUsd: 200,
   noMarkup: true,
   subscriptionFeature: "claw_bot",
   icon: "👑",

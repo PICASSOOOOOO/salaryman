@@ -1,6 +1,6 @@
 - [Account settings cross-device sync](account-settings-sync.md) — Authenticated display preferences sync to users.gameSettings; logged-out settings remain local.
 - [Frontend API path prefix](frontend-api-path-prefix.md) — apiFetch does not add `/api` to slash-prefixed paths; browser callers must use `/api/...` or they request the SPA route.
-- [Office-first restructure + city story-gate](office-first-restructure.md) — Onboard to /office; story begins in-city, so never hard-lock /world before an office start path exists.
+- [Office onboarding and story gates](office-first-restructure.md) — Onboard to /office; see [receptionist flow](onboarding-immigration-flow.md) and [discovery cues](office-discovery-onboarding.md).
 - [Browser onboarding work paths](browser-onboarding-work-path.md) — web onboarding offers real business or “LOOKING FOR WORK”; fictional business/immigration stays in the downloadable game.
 - [Site-wide popup boundary](site-wide-popup-boundary.md) — keep alerts opt-in; offer COMMS as a page and user-opened desktop dock, with badges and intentional dialogs preserved.
 - [Phone tests and voice](phone-system-daily-test.md) — Mocked and live tests differ; see the [harness](twilio-phone-tests.md), [bridge](browser-phone-bridge.md), and [toll-free retry](twilio-tollfree-resubmission.md).
@@ -11,7 +11,7 @@
 - [Pablo persona prompts](pablo-persona-prompts.md) — browser/phone use a shared professional core; industry follows the active org for all members, with sensitive data current-user/org scoped.
 - [Pablo Corp atmosphere](pablo-corp-atmosphere.md) — there is always an air of corruption at Pablo Corp; you never know what's happening behind the scenes.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
-- [Comms delivery + presence](comms-outgoing-delivery.md) — Send via acknowledged HTTP; browser org channels stay separate from the game's single proximity/voice group. See [details](comms-presence.md).
+- [COMMS delivery + presence](comms-outgoing-delivery.md) — Send via acknowledged HTTP; browser org channels stay separate from game proximity/voice. See [presence](comms-presence.md) and [toaster](comms-notification-toaster.md).
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Inbound phone routing](telephony-owner-resolution.md) — Active number ownership wins; match country from the dialed number. See [country-aware matching](country-aware-telephony.md).
 - [Office player avatar](office-player-avatar.md) — Keep players outside the NPC FSM; roster polls must not rebuild them, and re-added agents must cancel deferred despawn.
@@ -22,22 +22,16 @@
 - [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.
 - [Onboarding-aware test fixtures](onboarding-test-fixtures.md) — Protected-route fixtures need the same completed-onboarding signal as real users.
 - [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
-- [Plan/auth gate loading race](auth-plan-gate-loading-race.md) — Wait for auth loading before gating; otherwise paid users may bounce to /upgrade on cold load.
-- [Clerk auth bootstrap 401 race](auth-bootstrap-401-race.md) — immediate post-sign-in onboarding reads can 401 before the API sees Clerk; retry without global session redirect.
+- [Auth routing and loading](newuser-funnel-gate.md) — Public routes stay open; see [protected-route gating](public-route-auth-gating.md), [plan race](auth-plan-gate-loading-race.md), [Clerk retry](auth-bootstrap-401-race.md), and [preview OIDC](replit-auth-preview-origin.md).
 - [Keep-alive ErrorBoundary + HMR](keepalive-errorboundary-hmr.md) — Hidden mounted subtrees can retain an ErrorBoundary fallback after HMR; reset it on vite:afterUpdate.
-- [Browser auth routing](newuser-funnel-gate.md) — public homepage stays at `/`; missing/expired sessions go directly to compact sign-in with returnTo, never through Pablo.
-- [Public route auth gating](public-route-auth-gating.md) — shared providers must wait for resolved auth before protected reads, polling, or user-scoped metadata caching.
-- [Preview OIDC callback origin](replit-auth-preview-origin.md) — loopback callbacks use REPLIT_DEV_DOMAIN; iframe handoff and expired guest cookies must not block OIDC callback.
-- [Pablo nebula visual direction](pablo-nebula-canonical.md) — Approved `/pablo` uses a painterly wave-field shader; editor screenshots may not show WebGL.
+- [Pablo nebula visuals](pablo-nebula-canonical.md) — Approved `/pablo` uses a painterly wave field; see [screenshot orb fallback](pablo-nebula-orb.md).
 - [Pablo voice safety](pablo-voice-output-gating.md) — TTS is gated; see [campaign consent](pablo-outbound-campaign-consent.md) and [signature voice rules](elevenlabs-signature-voices.md).
 - [Pablo front-door controls](pablo-frontdoor-controls.md) — Keep “Tap to talk” visible and separate bottom controls from reply bubbles.
 - [Tester program](tester-program.md) — 20 slots, atomic approvals, 3-day inactivity sweep, and a dismissible Discord banner.
 - [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — browser and game use one canonical assistant backend; keep its in-game character a visual representation, not a duplicate agent.
 - [Per-user Google Calendar](google-calendar-user-oauth.md) — each user links their own Google account in-app; never use the owner’s Replit Google connection for customer calendars.
-- [Pablo emotion nebula orb](pablo-nebula-orb.md) — Screenshot browsers use a 2D fallback; cap its core in pixels and avoid additive whiteout.
 - [Org door locks](org-door-locks.md) — Keep passcodes server-side and enforce role checks on every entry path.
 - [Education Classroom feature](classroom-feature.md) — Resolve teacher roles per user; gate only class-specific rooms on shared `/ws/conf`.
-- [Receptionist-first onboarding](onboarding-immigration-flow.md) — Check in at the Tower lobby after Pablo login; immigration starts only when exiting.
 - [Referral invites](referral-invites.md) — Preserve invite tokens through signup and award rewards atomically to prevent double-pay.
 - [IsoOffice isometric renderer](iso-office-renderer.md) — `/office` uses IsoOffice; inspect gated pages with a temporary non-lazy early return, then revert it.
 - [Office surveillance embed mode](office-embed-mode.md) — Detect embed mode from frame context because redirects can strip `?embed=1`.
@@ -63,7 +57,6 @@
 - [Marketing Command Center](marketing-command-center.md) — Bluesky/Discord can publish for real; PRIME gates connections, otherwise posts simulate.
 - [PRIME gating money routes](prime-gating-money-routes.md) — Separate claw_bot, Pablo Tax, and TTS paid/tester gates.
 - [Post-onboarding cutscene + TTS double-fire](post-onboarding-cutscene.md) — Intro is one-time; TTS can fire both callbacks on failure, so advances must be idempotent.
-- [Comms notification toaster](comms-notification-toaster.md) — Mount notifications outside fullscreen chat; wait for loading before setting the unread baseline.
 - [Platform Connections credentials](platform-connections-credentials.md) — Mask secrets and notes in connection lists; merge on reconnect and clear on disconnect.
 - [ATM network + BANCO OMBRA](atm-banco-ombra.md) — FIAT is server-owned; Stripe credits settle only when paid, and Plaid is view-only.
 - [Blueprint/CAD decoder](schematic-cad-decoder.md) — Authenticate every credit-burning AI route server-side; classify image/PDF separately from CAD text.
@@ -91,7 +84,6 @@
 - [SALARYMAN net-worth refocus](networth-refocus.md) — Keep voluntary debt; XP removal is a no-op, while HP is entangled with hazards and death.
 - [Global multi-broker trade bot](global-trade-bot.md) — Trade Bot supports multiple brokers and currencies; amounts use native major units and analysis uses POST.
 - [Real banking + net-worth overview](real-banking-overview.md) — Plaid stays view-only; external balances are separate from in-game FIAT.
-- [Office discovery onboarding](office-discovery-onboarding.md) — Story starts at the office elevator; reveal cues one at a time and list quarter scenes in Mission Menu.
 - [Godot game visual language](godot-game-visual-language.md) — ASCII motifs can extend into selected world art; confine CRT treatments to physical terminal and TV screens.
 - [Workspace light surfaces](workspace-light-surfaces.md) — browser/control-plane UI is strictly cream/white and black; all cyberpunk color belongs only to the downloadable game.
 - [SALARYMAN product manifesto](pablo-creation-workspace.md) — Gamified office automation; browser funnels users to desktop and free creator tools.
@@ -104,6 +96,7 @@
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
 - [Currency boundaries](fiat-gold-rail.md) — Keep FIAT, GOLD, and Credits separate; Credits cannot cash out or pay subscriptions.
+- [Subscription pricing and localization](subscription-pricing.md) — PABLO PRIME includes CALLL HOME; currency conversion is display-only and does not change USD billing.
 - [Cross-client economy](cross-client-economy.md) — desktop/browser game FIAT shares server ledgers; browser Credits are distinct from FIAT and GOLD and remain a separate service-use balance.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
@@ -113,10 +106,10 @@
 - [Replit session identity bridge](replit-session-identity-bridge.md) — Match OIDC callbacks to local users by email before creating another identity.
 - [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
 - [VendKing utility rule](vendking-utility-rule.md) — Decorative goods are valid stock; price stronger supported benefits higher.
-- [Shadow Tower floor rules](shadow-tower-rules.md) — Align geometry, access, services, and prices; keep shells on restricted floors.
+- [Tower floor access and previews](shadow-tower-rules.md) — Align geometry, access, services, and prices; see [Godot-native previews](tower-floor-previews.md).
 - [Godot visual pipeline](godot-visual-continuity.md) — Preserve native 3D and character continuity; see [procedural attachments](godot-review-model-attachments.md).
 - [Rigged voxel avatar conversion](rigged-voxel-avatar.md) — Avoid independent remeshes of overlapping shells; verify clean shading and all 32 clips before replacing the live model.
-- [Godot movie capture paths](godot-movie-capture-paths.md) — `--write-movie` output resolves under the selected Godot project root, not the shell working directory.
+- [Game capture workflows](godot-movie-capture-paths.md) — `--write-movie` resolves under the Godot project root; see [packaged capture](desktop-game-capture.md) for virtual-display pitfalls.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
 - [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
 - [NPC economic agents](npc-economic-agents.md) — unique NPCs have autonomous economic lives; Prime unlocks exclusive rentals and a separately paid secretary.
@@ -139,12 +132,10 @@
 - [Marketing SMS consent boundary](marketing-sms-consent.md) — explicit per-contact SMS permission and an active user/org-owned Twilio sender; campaigns remain explicitly started.
 - [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
 - [SALARYMAN company + support](salaryman-legal-entity.md) — Picasso AI, LLC is the legal entity; see [support routing](salaryman-support-routing.md).
-- [Tower floor previews](tower-floor-previews.md) — use Godot-native 3D for B1–B6/F1–F12; do not show Pygame Tower art, and treat layout/door/object/control tests as gameplay checks.
 - [Room privacy gameplay](room-privacy-gameplay.md) — closed doors obscure/muffle, open doors reveal/leak more; eavesdropping stays fictional and server-authorized.
 - [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is Dec 31, 2026; defer pledge offers until the asset catalog is decided and keep the base game free.
-- [Packaged game capture](desktop-game-capture.md) — on virtual Linux displays, XWD may return black for Godot/OpenGL; use the paired game's Movie Writer and verify input effects.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
 - [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
 - [Tower building vitality](tower-building-vitality.md) — Pablo owns initial stores; AI-driven NPCs pursue creative work; repeat businesses require net worth above ƒ1B.

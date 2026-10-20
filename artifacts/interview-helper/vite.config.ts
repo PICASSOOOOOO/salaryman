@@ -61,6 +61,16 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname),
   define: {
     "__BUILD_VERSION__": JSON.stringify(getFormattedVersion()),
+    // A browser dependency in the Meshtastic stack reads Node's process
+    // metadata. Keep its expected shape without shipping a Node polyfill.
+    process: "globalThis.process",
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        process: "globalThis.process",
+      },
+    },
   },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),

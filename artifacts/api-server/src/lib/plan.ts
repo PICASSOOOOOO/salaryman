@@ -23,26 +23,26 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
   phone_system:{
     name: "Phone System",
     codename: "CALLLHOME",
-    price: 50,
-    desc: "Paid Twilio-connected calling and two-way SMS with a default platform toll-free number. Custom number rentals are managed separately.",
+    price: 100,
+    desc: "CALLL HOME includes automated calling, two-way SMS, campaigns, recordings, and the AI secretary.",
   },
   phone_advanced: {
     name: "CALLL HOME Advanced Dialing",
     codename: "CALLLHOME-ADVANCED",
     price: 0,
-    desc: "Custom-plan access to automated and predictive dialing and SMS marketing.",
+    desc: "Automated and predictive dialing and SMS marketing included with CALLL HOME.",
   },
   claw_bot: {
-    name: "Pablo AI",
+    name: "PABLO PRIME",
     codename: "PIXEL AGENT AUTOMATION",
-    price: 100,
-    desc: "Pablo AI chat and business automation. Billed in USD. Phone service is separate.",
+    price: 200,
+    desc: "PABLO PRIME includes Pablo AI, business automation, and all CALLL HOME benefits.",
   },
 };
 
-// Automation tools belong to the Pixel Agent subscription. Twilio is a
-// separate cost-bearing service and must never be unlocked by this bundle.
-const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this"];
+// PABLO PRIME includes the free tools and the paid CALLL HOME tier.
+const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this", "phone_system"];
+const BUNDLED_BY_CALLL_HOME: FeatureKey[] = ["phone_advanced"];
 const USD_PAID_FEATURES = new Set<FeatureKey>(["phone_system", "claw_bot"]);
 
 export function isUsdPaidFeature(feature: FeatureKey): boolean {
@@ -235,6 +235,9 @@ export async function getUserFeatures(userId: string, email?: string | null): Pr
   if (features.has("claw_bot")) {
     for (const k of BUNDLED_BY_PABLO) features.add(k);
   }
+  if (features.has("phone_system")) {
+    for (const k of BUNDLED_BY_CALLL_HOME) features.add(k);
+  }
   return features;
 }
 
@@ -297,14 +300,21 @@ export async function hasFeature(userId: string, email: string | undefined | nul
       if (!resolved || !isUsdPaidFeature(resolved) || !!row.stripeSubscriptionId) return true;
     }
   }
-  // A paid automation subscription unlocks its included automation tools, but
-  // never the separately billed Twilio phone system.
+  // PABLO PRIME includes CALLL HOME; CALLL HOME includes its advanced dialing
+  // and marketing capabilities.
   if (BUNDLED_BY_PABLO.includes(feature)) {
     const [automation] = await db
       .select({ stripeSubscriptionId: userFeaturesTable.stripeSubscriptionId })
       .from(userFeaturesTable)
       .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, "claw_bot")));
     if (automation?.stripeSubscriptionId) return true;
+  }
+  if (BUNDLED_BY_CALLL_HOME.includes(feature)) {
+    const [calllHome] = await db
+      .select({ stripeSubscriptionId: userFeaturesTable.stripeSubscriptionId })
+      .from(userFeaturesTable)
+      .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, "phone_system")));
+    if (calllHome?.stripeSubscriptionId) return true;
   }
   // Pledge Store passes unlock terminal features from the pledge_purchases
   // ledger — the same source of truth the in-world game reads.
