@@ -31,23 +31,27 @@ events affect ongoing routines and relationships rather than reducing life
 systems to one-off decorative dialogue. Connect housing, services, rent,
 ownership, and citizenship to the same persistent life simulation.
 
-Education is a major progression meter. Schools are the only source of formal
-education growth. "School of hard knocks" experiences can award XP only when
-they teach a real lesson about commerce, finance, or capitalism; that XP is not
-itself formal education.
-More education should provide stronger skill boosts and business advantages.
+Education is a major progression meter. The current fictional school focuses on
+business training; real schools can also increase education and award XP.
+"School of hard knocks" experiences can award XP only when they teach a real
+lesson about commerce, finance, or capitalism; that XP is not itself formal
+education. Education provides a bonus to XP gain, and XP improves credit score
+and stats. More education should provide stronger skill boosts and business
+advantages.
 Do not put cooldown timers on education; real education does not work that way.
 
 **Why:** the user wants education to be substantial, school-led progression,
-while allowing practical business lessons to count as experience only when they
-actually teach something. Higher education should improve skills and business
-outcomes, without artificial cooldowns.
+with the fictional school focused on business training, real-school contributions,
+XP-linked credit and stats, and practical business lessons counting only when
+they actually teach something. Higher education should improve skills and
+business outcomes without artificial cooldowns.
 
 **How to apply:** keep formal education separate from XP. Award practical XP for
 meaningful commerce, finance, or capitalism learning, but do not let other
 activities raise the education meter. Let higher education increase relevant
-skill bonuses and business advantages without assuming specific formulas. Do
-not gate education progression behind cooldown timers.
+skill bonuses and business advantages, and let education boost XP gain. XP
+should contribute to credit score and stats. Do not gate education progression
+behind cooldown timers or assume specific formulas.
 
 ## Public maintenance workforce
 
