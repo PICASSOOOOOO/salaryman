@@ -26,6 +26,17 @@ foundation: maintain relationships that can evolve through cooperation,
 competition, and fictional business sabotage. The system should materially
 change NPC shop behavior and business opportunities, not only dialogue.
 
+Each in-game organization or shop is its own faction. Keep different businesses
+as separate relationship endpoints; do not collapse them into broad generic
+factions such as departments.
+
+**Why:** the user clarified that faction identity should follow each individual
+organization and shop.
+
+**How to apply:** key rivalries, cooperation, and business effects to the
+specific in-game organization or shop, while keeping all effects fictional and
+server-authoritative.
+
 Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
 
 Organizations may also have shared storage rooms holding up to 2,000 items. Members with access can use the shared room, with a storage clerk supervising access.
