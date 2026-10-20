@@ -132,13 +132,20 @@ trades, and life events visible through walking NPC dialogue.
 Each business needs its own storage room, sized to the scale of its business
 space. Staff manually restock from shipments supplied by shipping companies;
 shipments arrive at the shipping dock and are delivered to each business
-throughout the day. The delivery process should be animated.
+throughout the day. The delivery process should be animated. Staff place
+supplier orders when stock is needed. Shops pay shipping companies for those
+orders, and shipping companies use the money to procure goods from outside the
+building; keep this order flow economically balanced.
 
-**Why:** the user specified this as the shop inventory and restocking model.
+**Why:** the user specified the manual restocking and dock-to-store flow, then
+clarified that staff orders trigger shipments and shops pay shipping companies,
+which in turn purchase goods from outside the building.
 
 **How to apply:** connect per-business storage capacity and stock to a visible
 shipping-dock-to-store delivery flow; do not model restocking as an instant
-inventory refill.
+inventory refill. Settle supplier orders as explicit shop expenses and shipper
+income, then represent outside procurement as a distinct cost so the shipping
+company's economy depends on real order volume.
 
 When shop employees participate in the NPC mod, at least half of each shop's
 employees should be part of the mod while the other half continue working so the
