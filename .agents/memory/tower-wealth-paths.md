@@ -150,3 +150,14 @@ not a battle-team encounter, and that halls should feel friendly.
 **How to apply:** Keep theft attempts server-validated and high-risk/low-reward;
 tie skill unlocks to both network credit score and XP, and avoid creating a
 separate battle-team mode or broad combat escalation for a theft response.
+
+Pickpocket rewards are tightly capped: stolen cash comes only from the victim's
+wallet and must be a random amount below 5% of that wallet. Item theft excludes
+legendary items, and rare-item chances must remain below 1%.
+
+**Why:** The user explicitly limited pickpocket rewards and protected legendary
+items while keeping rare-item theft exceptionally unlikely.
+
+**How to apply:** Enforce the limits on the authoritative server, never trust
+client-selected amounts or item identities, and preserve the distinction between
+wallet cash and banked funds.

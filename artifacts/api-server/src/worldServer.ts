@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable, worldPlayerPositionsTable } from '@workspace/db';
+import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable, worldPlayerPositionsTable, playerLedgerTable } from '@workspace/db';
 import { OUTSIDE_WORLD_ENABLED } from './lib/outside-world';
 import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
@@ -12,7 +12,7 @@ import { getAnonymousAccessCookieStatus } from './middlewares/anonymousAccess';
 // server; the cap keeps a single instance healthy and hosting cost predictable.
 // Default 50; raise per deployment (SERVER_MAX_PLAYERS) once a realm's economy
 // justifies more compute, or spin up a second city in the same continent.
-import { resolveWebSocketUser } from "./lib/replit-websocket-auth";
+import { resolveWorldWebSocketUser } from "./lib/replit-websocket-auth";
 export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 50;
 
 // Which realm this (identical) deployment IS. Both servers run the same build;
@@ -60,6 +60,7 @@ interface LootItem {
   id: string;
   name: string;
   desc: string;
+  rarity?: string;
 }
 
 export interface Player {
@@ -83,6 +84,7 @@ export interface Player {
   money: number;
   lastPvpAttack: number;
   level: number;
+  networkCreditScore?: number;
   inventory: LootItem[];
   weaponId: string;
   lastPveReward: number;
@@ -154,6 +156,18 @@ const addPlayer = (player: Player) => {
   }
 };
 const removePlayer = (player: Player) => {
+  const encounter = pendingPickpockets.get(player.id);
+  if (encounter) {
+    clearTimeout(encounter.timeout);
+    pendingPickpockets.delete(player.id);
+    if (encounter.thiefId !== player.id) sendTo(encounter.thiefId, { type: "pickpocket_result", result: "cancelled" });
+  }
+  for (const [victimId, pending] of pendingPickpockets) {
+    if (pending.thiefId !== player.id) continue;
+    clearTimeout(pending.timeout);
+    pendingPickpockets.delete(victimId);
+    sendTo(victimId, { type: "pickpocket_encounter_end", result: "cancelled" });
+  }
   if (player.moveBroadcastTimer) clearTimeout(player.moveBroadcastTimer);
   players.delete(player.id);
   indexedRemove(cityPlayers, player.cityId, player.id);
@@ -165,6 +179,13 @@ const floorLocks = new Map<string, FloorLock>();
 const videoRooms = new Map<string, Set<string>>();
 const pendingCalls = new Map<string, { callerId: string; targetId: string; ts: number }>();
 const activeCalls = new Map<string, string>();
+interface PendingPickpocket {
+  thiefId: string;
+  victimId: string;
+  expiresAt: number;
+  timeout: ReturnType<typeof setTimeout>;
+}
+const pendingPickpockets = new Map<string, PendingPickpocket>();
 
 // Guest connection state (room code → set of guest connection objects)
 interface GuestConn {
@@ -308,6 +329,74 @@ const broadcastPlayerList = (cityId: string) => {
 const sendTo = (id: string, msg: object) => {
   const p = players.get(id);
   if (p && p.ws?.readyState === WebSocket.OPEN) p.ws.send(JSON.stringify(msg));
+};
+
+export function pickpocketChance(creditScore: number, level: number): number {
+  if (!Number.isFinite(creditScore) || !Number.isFinite(level)) return 0;
+  // The base chance is deliberately very low. Network credit and game level
+  // improve the odds gradually, but never make pickpocketing reliable.
+  return Math.min(0.035, 0.002 + Math.max(0, Math.min(800, creditScore) - 400) * 0.000025
+    + Math.max(0, Math.min(50, level) - 1) * 0.0002);
+}
+
+export function pickpocketWalletAmount(wallet: number, random = Math.random): number {
+  if (!Number.isSafeInteger(wallet) || wallet <= 0) return 0;
+  const maxPercent = Math.min(0.0499, random() * 0.0499);
+  return Math.min(wallet, Math.floor(wallet * maxPercent));
+}
+
+export function canPickpocketItem(item: LootItem): boolean {
+  return !/legendary/i.test(item.rarity ?? "");
+}
+
+export function rarePickpocketChance(creditScore: number, level: number): number {
+  if (creditScore < 700 || level < 10) return 0;
+  return 0.009; // strictly below one percent
+}
+
+const PICKPOCKET_ENCOUNTER_MS = 5_000;
+const resolvePickpocket = (victimId: string, caught = false) => {
+  const pending = pendingPickpockets.get(victimId);
+  if (!pending) return;
+  clearTimeout(pending.timeout);
+  pendingPickpockets.delete(victimId);
+  const thief = players.get(pending.thiefId);
+  const victim = players.get(victimId);
+  if (!thief || !victim) return;
+  if (caught) {
+    sendTo(thief.id, { type: "pickpocket_result", result: "foiled" });
+    sendTo(victim.id, { type: "pickpocket_encounter_end", result: "foiled" });
+    return;
+  }
+
+  const amount = pickpocketWalletAmount(victim.money);
+  victim.money = Math.max(0, victim.money - amount);
+  thief.money += amount;
+  let item: LootItem | null = null;
+  const eligible = victim.inventory.filter(canPickpocketItem);
+  const rareItems = eligible.filter((candidate) => /rare/i.test(candidate.rarity ?? ""));
+  const ordinaryItems = eligible.filter((candidate) => !/rare/i.test(candidate.rarity ?? ""));
+  if (rareItems.length && Math.random() < rarePickpocketChance(thief.networkCreditScore ?? 680, thief.level)) {
+    item = rareItems[Math.floor(Math.random() * rareItems.length)];
+  } else if (ordinaryItems.length && Math.random() < 0.02) {
+    item = ordinaryItems[Math.floor(Math.random() * ordinaryItems.length)];
+  }
+  if (item) {
+    const index = victim.inventory.findIndex((owned) => owned.id === item!.id);
+    if (index >= 0) {
+      const [stolen] = victim.inventory.splice(index, 1);
+      thief.inventory.push(stolen);
+      item = stolen;
+    } else item = null;
+  }
+  sendTo(thief.id, {
+    type: "pickpocket_result", result: "success", money: amount, item,
+    wallet: thief.money, inventory: thief.inventory,
+  });
+  sendTo(victim.id, {
+    type: "pickpocket_encounter_end", result: "stolen", money: amount, item,
+    wallet: victim.money, inventory: victim.inventory,
+  });
 };
 
 // ── World Events (in-memory) ───────────────────────────────────────────────────
@@ -1466,12 +1555,13 @@ const markIdlePlayersSleeping = () => {
 // raw upgrade request (req.cookies isn't populated for WS handshakes, so parse
 // the cookie header ourselves). Returns null when unauthenticated.
 const resolveSessionAvatar = async (req: IncomingMessage): Promise<string | null> => {
-  return (await resolveWebSocketUser(req))?.profileImageUrl ?? null;
+  return (await resolveWorldWebSocketUser(req))?.profileImageUrl ?? null;
 };
 
-// Resolve the authenticated user id from a raw upgrade request's session cookie.
-const resolveSessionUserId = async (req: IncomingMessage): Promise<string | null> => {
-  return (await resolveWebSocketUser(req))?.id ?? null;
+// Resolve the authenticated user from a session or linked native desktop
+// credential. This is only used by the exterior world socket.
+const resolveWorldUserId = async (req: IncomingMessage): Promise<string | null> => {
+  return (await resolveWorldWebSocketUser(req))?.id ?? null;
 };
 
 // Live WebSocket population, compared against MAX_PLAYERS for the capacity gate.
@@ -1619,7 +1709,7 @@ export const attachWorldServer = (httpServer: Server) => {
     server: httpServer,
     path: '/ws',
     verifyClient: (info, done) => {
-      void resolveSessionUserId(info.req)
+      void resolveWorldUserId(info.req)
         .then((userId) => {
           const access = getAnonymousAccessCookieStatus(info.req.headers.cookie);
           const allowed = Boolean(userId) || (access.valid && !access.expired);
@@ -1650,7 +1740,7 @@ export const attachWorldServer = (httpServer: Server) => {
     const cityId  = (params.get('city')    ?? SERVER_CITY_ID).slice(0, 40);
     const startX  = parseFloat(params.get('x') ?? '820');
     const startY  = parseFloat(params.get('y') ?? '430');
-    const authenticatedUserId = await resolveSessionUserId(req);
+    const authenticatedUserId = await resolveWorldUserId(req);
 
     // Capacity is per-CITY, not global: each walled city is its own realm with
     // its own MAX_PLAYERS budget, so a packed Minx never locks newcomers out of
