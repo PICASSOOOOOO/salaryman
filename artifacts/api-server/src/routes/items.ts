@@ -55,6 +55,8 @@ import {
 } from "../lib/battery";
 
 const router: IRouter = Router();
+// Keep aligned with the 6×4 inventory grid used by the native game.
+const CARRIED_ITEM_CAPACITY = 24;
 
 const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; y: number }> = {
   "fish-store": { floor: 2, x: 22_884, y: 47_470 },
@@ -133,6 +135,22 @@ function getAppBaseUrl(): string {
 // These operate on `quantity` and run inside a caller-supplied transaction so
 // the buy/use/install legs stay atomic with whatever else they touch.
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function checkCarriedCapacity(tx: Tx, userId: string, slot: number, itemId: string) {
+  // Serialize acquisitions for one character so parallel requests cannot both
+  // claim the final slot. hashtext collisions only cause extra serialization.
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${slot})`);
+  const rows = await tx.select({ itemId: playerInventoryTable.itemId })
+    .from(playerInventoryTable)
+    .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slot)));
+  const alreadyHeld = rows.some((row) => row.itemId === itemId);
+  return {
+    ok: alreadyHeld || rows.length < CARRIED_ITEM_CAPACITY,
+    usedSlots: rows.length,
+    capacity: CARRIED_ITEM_CAPACITY,
+    alreadyHeld,
+  };
+}
 
 // Increment a consumable stack by `qty` (upsert: create at `qty` or add on top).
 async function addConsumable(tx: Tx, userId: string, slot: number, itemId: string, qty: number, acquiredVia: string): Promise<void> {
@@ -229,7 +247,13 @@ router.get("/items/inventory", async (req, res) => {
       .select()
       .from(playerInventoryTable)
       .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slot)));
-    res.json({ slot, itemIds: rows.map((r) => r.itemId), rows });
+    res.json({
+      slot,
+      itemIds: rows.map((r) => r.itemId),
+      rows,
+      usedSlots: rows.length,
+      capacity: CARRIED_ITEM_CAPACITY,
+    });
   } catch {
     res.status(500).json({ error: "Failed to load inventory" });
   }
@@ -345,7 +369,15 @@ router.post("/items/buy", async (req, res) => {
 
     // Owners get consumables granted free.
     if (isOwnerEmail(email)) {
-      await db.transaction((tx) => addConsumable(tx, userId, slot, item.id, qty, "grant"));
+      const capacity = await db.transaction(async (tx) => {
+        const check = await checkCarriedCapacity(tx, userId, slot, item.id);
+        if (check.ok) await addConsumable(tx, userId, slot, item.id, qty, "grant");
+        return check;
+      });
+      if (!capacity.ok) {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...capacity });
+        return;
+      }
       res.json({ owned: true, granted: true, quantity: qty });
       return;
     }
@@ -353,6 +385,8 @@ router.post("/items/buy", async (req, res) => {
     const totalPrice = marketPriceFiat * qty;
     try {
       const paid = await db.transaction(async (tx) => {
+        const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+        if (!capacity.ok) return { ok: false as const, capacity };
         const result = await spendFiat(tx, {
           userId,
           amountFiat: totalPrice,
@@ -372,8 +406,12 @@ router.post("/items/buy", async (req, res) => {
             amountFiat: totalPrice,
           });
         }
-        return result;
+        return { ...result, capacity: null };
       });
+      if (!paid.ok && paid.capacity) {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
+        return;
+      }
       if (!paid.ok) {
         res.status(402).json({ error: "insufficient_fiat", required: totalPrice, spendable: paid.spendable });
         return;
@@ -417,15 +455,24 @@ router.post("/items/buy", async (req, res) => {
   // Owners get everything granted free.
   const email = identity.email ?? undefined;
   if (isOwnerEmail(email)) {
-    const grant = db.insert(playerInventoryTable)
-      .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "grant" });
-    const rows = repeatablePlacementItem
-      ? await grant.onConflictDoUpdate({
-        target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
-        set: { quantity: sql`${playerInventoryTable.quantity} + 1` },
-      }).returning({ quantity: playerInventoryTable.quantity })
-      : await grant.onConflictDoNothing().returning({ quantity: playerInventoryTable.quantity });
-    res.json({ owned: true, granted: true, quantity: rows[0]?.quantity ?? 1 });
+    const grant = await db.transaction(async (tx) => {
+      const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+      if (!capacity.ok) return { capacity };
+      const insert = tx.insert(playerInventoryTable)
+        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "grant" });
+      const rows = repeatablePlacementItem
+        ? await insert.onConflictDoUpdate({
+          target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+          set: { quantity: sql`${playerInventoryTable.quantity} + 1` },
+        }).returning({ quantity: playerInventoryTable.quantity })
+        : await insert.onConflictDoNothing().returning({ quantity: playerInventoryTable.quantity });
+      return { rows };
+    });
+    if ("capacity" in grant) {
+      res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...grant.capacity });
+      return;
+    }
+    res.json({ owned: true, granted: true, quantity: grant.rows[0]?.quantity ?? 1 });
     return;
   }
 
@@ -449,6 +496,8 @@ router.post("/items/buy", async (req, res) => {
 
   try {
     const paid = await db.transaction(async (tx) => {
+      const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+      if (!capacity.ok) return { ok: false as const, capacity };
       const result = await spendFiat(tx, {
         userId,
         amountFiat: effectivePrice,
@@ -486,8 +535,12 @@ router.post("/items/buy", async (req, res) => {
           amountFiat: effectivePrice,
         });
       }
-      return { ...result, quantity: inserted[0]?.quantity ?? 1 };
+      return { ...result, capacity: null, quantity: inserted[0]?.quantity ?? 1 };
     });
+    if (!paid.ok && paid.capacity) {
+      res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
+      return;
+    }
     if (!paid.ok) {
       res.status(402).json({ error: "insufficient_fiat", required: effectivePrice, spendable: paid.spendable });
       return;
@@ -696,6 +749,8 @@ router.post("/items/storage/withdraw", async (req, res) => {
   if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
   try {
     const result = await db.transaction(async (tx) => {
+      const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+      if (!capacity.ok) return { error: "full" as const, capacity };
       const removed = await tx
         .delete(playerStorageTable)
         .where(and(
@@ -718,7 +773,14 @@ router.post("/items/storage/withdraw", async (req, res) => {
         .onConflictDoNothing();
       return { ok: true as const };
     });
-    if ("error" in result) { res.status(404).json({ error: "That item isn't in your locker." }); return; }
+    if ("error" in result) {
+      if (result.error === "full") {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...result.capacity });
+        return;
+      }
+      res.status(404).json({ error: "That item isn't in your locker." });
+      return;
+    }
     res.json({ ok: true, withdrawn: item.id });
   } catch (e: any) {
     console.error("[Items] withdraw failed:", e?.message);
