@@ -113,7 +113,7 @@
 - [Game capture workflows](godot-movie-capture-paths.md) — `--write-movie` resolves under the Godot project root; see [packaged capture](desktop-game-capture.md) for virtual-display pitfalls.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
 - [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
-- [NPC economic agents](npc-economic-agents.md) — NPCs have distinct personalities; recruits are rare, skill-unique, and reputation-gated.
+- [NPC economic agents](npc-economic-agents.md) — all NPCs have unique personalities; rare recruits have deep stories, skills, and player-usable powers.
 - [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
 - [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — Use the added RDR2 Nemesis Rage mod for NPC shop rivals who cooperate and compete.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — Keep reset-independent purchase snapshots outside wipe tables; restore monotonically under identity-safe locking.
@@ -138,7 +138,7 @@
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is Dec 31, 2026; defer pledge offers until the asset catalog is decided and keep the base game free.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
-- [Replicant power lore](replicant-power-lore.md) — treat NPCs/androids as people; explore equality and class conflict, with Blade Runner and classic SF as inspiration.
+- [Replicant power lore](replicant-power-lore.md) — intrinsic power is replicant-only; unique recruit powers can be used by any player.
 - [Tower building vitality](tower-building-vitality.md) — Pablo Corp pays partner shop owners; owners pay employees and expand creatively over a five-real-time-year city/server plan.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
