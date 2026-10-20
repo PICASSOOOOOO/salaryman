@@ -154,5 +154,6 @@
 - [Tower business locations and stock](floor-seven-marketplace-scope.md) — Floors 2–7 support eight suites; preserve assignments and shared hallway stock without a directory.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.
+- [Game-only rivalries](game-only-rivalries.md) — fictional coworker competition stays in the downloadable-game simulation and never calls real business APIs.
 - [Org-wide external integrations](org-wide-external-integrations.md) — owner-authorized outside apps sync organization data bidirectionally across browser/game; members join by verified SALARYMAN invite and can have characters.
 - [Cyber Deck licensing and evidence boundary](cyber-deck-licensing.md) — Meshtastic browser SDK is GPL-3.0-only; evidence stays local and radio actions stay user-initiated.

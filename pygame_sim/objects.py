@@ -448,6 +448,27 @@ class OfficeObjectRegistry:
             state.notice = message
             return InteractionResult(True, message, route="merchant")
 
+        if item.id.startswith("coworker-"):
+            npc = state.rivalry.coworker(item.id)
+            if npc is None or not npc.alive:
+                return InteractionResult(False, "COWORKER RECORD NOT FOUND")
+            proximity = hypot(
+                scene.player_position[0] - item.position[0],
+                scene.player_position[1] - item.position[1],
+            )
+            if item.room != scene.current_room or proximity > 1_250:
+                message = "MOVE CLOSER TO THE COWORKER"
+                state.notice = message
+                return InteractionResult(False, message)
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "competition",
+                from_object=True,
+                source=npc.name,
+                source_object_id=item.id,
+            )
+            return InteractionResult(True, f"RIVALRY / {npc.name.upper()}")
+
         if item.id == "lobby-reception-desk":
             message = "RECEPTION / TOWER INFORMATION READY"
             state.notice = message
@@ -549,6 +570,22 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
     """Create the fixed physical-object contract for the first tower slice."""
 
     registry = OfficeObjectRegistry(auto_scale_legacy_coordinates=True)
+    for index, position in enumerate(
+        ((8_000, 43_000), (13_000, 43_000), (18_000, 43_000),
+         (8_000, 56_000), (18_000, 56_000)),
+        start=1,
+    ):
+        registry.add(
+            OfficeObject(
+                f"coworker-{index}",
+                "receptionist",
+                "COWORKER",
+                "office_03",
+                position,
+                "OPEN COMPETITION MENU",
+            ),
+            scale_legacy_coordinates=False,
+        )
     # Historical workstation placements are deliberately kept inert; the active
     # registry below is the only source of furniture and interactables.
     """

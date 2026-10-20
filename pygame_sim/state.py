@@ -17,6 +17,7 @@ from .customization import (
     sanitize_room_customizations,
 )
 from .models import ActionKind, LedgerEntry, OfficeRoster, RecruitCandidate, Worker
+from .npc_engine import RivalryEngine
 from .pest_work import PEST_JOB_BY_ID, PEST_JOBS, normalize_work_orders
 
 
@@ -29,10 +30,10 @@ GameRole = Literal["player", "moderator", "admin"]
 OverlayPage = Literal[
     "tools", "economy", "customize", "systems", "phone",
     "player", "settings", "inventory", "vending", "bank",
-    "pest_jobs", "pest_uniform", "melee", "basement_stairs",
+    "pest_jobs", "pest_uniform", "melee", "competition", "basement_stairs",
     "utility_work", "company_relocation", "merchant", "reception", "business_stock",
 ]
-PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone"})
+PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone", "competition"})
 RECRUITMENT_REFRESH_COST = 50.0
 DECAY_PER_WORKSPACE_MINUTE = 0.07
 MAINTENANCE_BASE_COST = 40.0
@@ -82,6 +83,7 @@ class OfficeState:
     elapsed_seconds: float = 0.0
     running: bool = True
     roster: OfficeRoster = field(default_factory=OfficeRoster)
+    rivalry: RivalryEngine = field(default_factory=RivalryEngine.new_game)
     ledger: list[LedgerEntry] = field(default_factory=list)
     hours_completed_today: int = 0
     total_output: float = 0.0
@@ -508,6 +510,7 @@ class OfficeState:
                 }
                 for worker in self.roster.workers
             ],
+            "rivalry": self.rivalry.to_dict(),
             "ledger": [
                 {"label": entry.label, "amount": entry.amount, "balance": entry.balance}
                 for entry in self.ledger[-100:]
@@ -546,6 +549,8 @@ class OfficeState:
             ]
             if workers:
                 state.roster.workers = workers
+            if "rivalry" in payload:
+                state.rivalry = RivalryEngine.from_dict(payload["rivalry"])
             state.funds = float(payload.get("funds", state.funds))
             state.day = max(1, int(payload.get("day", state.day)))
             state.hour = max(0, min(23, int(payload.get("hour", state.hour))))

@@ -1398,6 +1398,9 @@ func _load_player() -> void:
 
 
 func _on_player_action_requested(action: String) -> void:
+	if action == "fight" and _nearby_object_id().begins_with("coworker-"):
+		_send_command("coworker_fight")
+		return
 	_send_command("set_action", {"action": action})
 
 
@@ -2620,6 +2623,14 @@ func _nearby_object_kind() -> String:
 	for item in scene_data.get("objects", []):
 		if item is Dictionary and bool(item.get("nearby", false)):
 			return str(item.get("kind", ""))
+	return ""
+
+
+func _nearby_object_id() -> String:
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	for item in scene_data.get("objects", []):
+		if item is Dictionary and bool(item.get("nearby", false)):
+			return str(item.get("id", ""))
 	return ""
 
 
@@ -3870,7 +3881,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 				workers.size(),
 				float(office.get("funds", 0.0)),
 			]
-native_app_footer.text = "1–7 OPEN MODULES  ·  8 VIDEO MEETING  ·  9 OR ESC CLOSE"
+			native_app_footer.text = "1–7 OPEN MODULES  ·  8 VIDEO MEETING  ·  9 OR ESC CLOSE"
 		"economy":
 			native_app_title.text = "BANCO OMBRA"
 			native_app_body.text = "%s\nGAME FIAT  ƒ%.2f\n\nThis is the Tower game wallet view. No transfer or payout is initiated from this screen." % [
@@ -3941,6 +3952,29 @@ native_app_footer.text = "1–7 OPEN MODULES  ·  8 VIDEO MEETING  ·  9 OR ESC 
 					])
 			native_app_body.text = "Choose a move for the nearest active pest.\n\n%s\n\nNo graphic effects are shown." % "\n".join(move_lines)
 			native_app_footer.text = "1–9 SELECT MOVE  ·  ESC CLOSE"
+		"competition":
+			native_app_title.text = "OFFICE RIVALRY / GAME SIMULATION"
+			var coworker_id := str(office.get("activeObjectId", ""))
+			var coworker_value: Dictionary = {}
+			var coworkers_value: Variant = office.get("npcCoworkers", [])
+			if coworkers_value is Array:
+				for entry in coworkers_value:
+					if entry is Dictionary and str(entry.get("id", "")) == coworker_id:
+						coworker_value = entry
+						break
+			if coworker_value.is_empty():
+				native_app_body.text = "COWORKER RECORD UNAVAILABLE."
+			else:
+				native_app_body.text = "%s  /  %s %s\nTrait: %s\nGrudge: %d  ·  State: %s\nDepartment morale: %d\n\nChoose a fictional competition action. These choices affect only this downloadable game's local simulation." % [
+					str(coworker_value.get("name", "COWORKER")),
+					str(coworker_value.get("department", "DEPARTMENT")),
+					str(coworker_value.get("corporate_rank", "Associate")),
+					str(coworker_value.get("trait_name", "Unknown")),
+					int(coworker_value.get("grudge_score", 0)),
+					str(coworker_value.get("state", "Idle")).replace("_", " "),
+					int(coworker_value.get("morale", 100)),
+				]
+			native_app_footer.text = "1–8 ACTION  ·  FIGHT HAS A RARE FATALITY CHANCE, HIGHER WITH GAME WEAPONS  ·  ESC CLOSE"
 		"inventory":
 			native_app_title.text = "STAMINA SUPPLIES"
 			var supplies: Variant = office.get("staminaSupplies", [])
@@ -4235,6 +4269,8 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 				labels = ["1 > PHONE CENTER", "2 > COMMS"]
 		"reception":
 			labels = ["1 > JOBS", "2 > CONTRACTS", "3 > REALTY"]
+		"competition":
+			labels = ["1 > RUMOR", "2 > SUPPRESS", "3 > BRIBE", "4 > SABOTAGE", "5 > FIRE", "6 > ROBBERY", "7 > EXTORT", "8 > FIGHT"]
 		"systems":
 			labels = [
 				"1 > JOBS", "2 > BOOKS", "3 > CONTACTS", "4 > MARKETING",
@@ -4248,6 +4284,8 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 		child.queue_free()
 	native_app_action_grid.visible = not labels.is_empty()
 	if page == "systems":
+		native_app_action_grid.columns = 4
+	elif page == "competition":
 		native_app_action_grid.columns = 4
 	elif page == "reception":
 		native_app_action_grid.columns = 3
@@ -4300,6 +4338,8 @@ func _on_native_app_action_pressed(page: String, choice: int) -> void:
 			_send_command("reception_choice", {"choice": choice})
 		"systems":
 			_send_command("terminal_choice", {"choice": choice})
+		"competition":
+			_send_command("competition_choice", {"choice": choice})
 
 
 static func terminal_choice_for_key(keycode: int) -> int:
@@ -4470,6 +4510,10 @@ func _input(event: InputEvent) -> void:
 					var move: Variant = moves[move_index]
 					if move is Dictionary:
 						_send_command("basement_attack", {"move_id": str(move.get("id", ""))})
+			elif active_page == "competition" and event.keycode in [
+				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8
+			]:
+				_send_command("competition_choice", {"choice": int(event.keycode) - KEY_0})
 			elif active_page == "inventory" and event.keycode in [
 				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8
 			]:

@@ -9,6 +9,7 @@ so TCP packet boundaries never become application message boundaries.
 from __future__ import annotations
 
 import json
+import random
 import socket
 import webbrowser
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from .pest_work import (
     STAMINA_SUPPLY_ITEMS,
 )
 from .object_physics import interaction_profile_for
+from .npc_engine import COMPETITION_ACTIONS
 from .scene import FLOOR_COUNT, TowerScene
 from .state import OfficeState
 
@@ -69,6 +71,8 @@ COMMANDS = {
     "toggle_music",
     "open_melee_menu",
     "basement_attack",
+    "competition_choice",
+    "coworker_fight",
     "ask_tower_work_advice",
     "start_pest_job",
     "toggle_pest_uniform",
@@ -153,6 +157,10 @@ def validate_command(command: object) -> tuple[bool, str]:
         choice = payload.get("choice")
         if not _is_int(choice) or choice not in PHONE_SERVICE_ROUTES:
             return False, "PHONE SERVICE CHOICE MUST BE 1-2"
+    elif name == "competition_choice":
+        choice = payload.get("choice")
+        if not _is_int(choice) or not 1 <= choice <= len(COMPETITION_ACTIONS):
+            return False, "COMPETITION CHOICE OUT OF RANGE"
     elif name == "buy_vending":
         item_id = payload.get("item_id")
         if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
@@ -418,6 +426,18 @@ def _handle_basement_interact(
         return CommandResult(True, state.notice)
 
     return None
+
+
+def _resolve_coworker_fatality(state: OfficeState, coworker: Any) -> bool:
+    """Resolve a very rare, abstract game-only outcome after an NPC fight."""
+    if random.random() >= state.rivalry.fatality_chance(state.game_inventory):
+        return False
+    coworker.alive = False
+    coworker.state = "Deceased"
+    coworker.memory_vault.append({"action": "fatality", "severity": 0})
+    coworker.memory_vault = coworker.memory_vault[-100:]
+    state.close_page()
+    return True
 
 
 def apply_command(
@@ -793,6 +813,62 @@ def apply_command(
             return CommandResult(False, "COULD NOT OPEN THE SELECTED SERVICE")
         state.close_page()
         return CommandResult(True, f"OPENING {label}")
+    if name == "competition_choice":
+        coworker_id = state.active_object_id
+        coworker = state.rivalry.coworker(coworker_id or "")
+        target = scene.objects.get(coworker_id or "")
+        if (
+            state.active_page != "competition"
+            or coworker is None
+            or not coworker.alive
+            or target is None
+            or target.room != scene.current_room
+            or hypot(
+                scene.player_position[0] - target.position[0],
+                scene.player_position[1] - target.position[1],
+            ) > 1_250
+        ):
+            return CommandResult(False, "MOVE BACK TO THE COWORKER")
+        action = COMPETITION_ACTIONS[payload["choice"] - 1]
+        department = state.rivalry.departments[coworker.department_id]
+        impact = coworker.log_interaction(
+            str(action["id"]),
+            int(action["impact"]),
+            department,
+            int(action["treasury_delta"]),
+        )
+        if action["id"] == "fight":
+            scene.set_player_action("fight", duration=0.7)
+        fatality = action["id"] == "fight" and _resolve_coworker_fatality(state, coworker)
+        state.notice = (
+            f"FATAL CONFRONTATION / {coworker.name.upper()} LEFT THE OFFICE"
+            if fatality
+            else
+            f"{action['label']} / {coworker.name.upper()} GRUDGE +{impact} / "
+            f"{department.name.upper()} MORALE {department.department_morale}"
+        )
+        return CommandResult(True, state.notice)
+    if name == "coworker_fight":
+        target = scene.nearby_object
+        coworker = (
+            state.rivalry.coworker(target.id)
+            if target is not None and target.id.startswith("coworker-")
+            else None
+        )
+        if target is None or coworker is None or not coworker.alive or target.room != scene.current_room:
+            return CommandResult(False, "NO COWORKER IN FIGHT RANGE")
+        department = state.rivalry.departments[coworker.department_id]
+        impact = coworker.log_interaction("fight", 24, department)
+        scene.set_player_action("fight", duration=0.7)
+        fatality = _resolve_coworker_fatality(state, coworker)
+        state.notice = (
+            f"FATAL CONFRONTATION / {coworker.name.upper()} LEFT THE OFFICE"
+            if fatality
+            else
+            f"FIGHT / {coworker.name.upper()} GRUDGE +{impact} / "
+            f"{department.name.upper()} MORALE {department.department_morale}"
+        )
+        return CommandResult(True, state.notice)
     if name == "phone_choice":
         if state.active_page != "phone":
             return CommandResult(False, "OPEN A PHONE PANEL FIRST")
@@ -952,6 +1028,11 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "activeWork": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("activeWork"),
                 }
                 for item in scene.objects.objects
+                if not item.id.startswith("coworker-")
+                or (
+                    state.rivalry.coworker(item.id) is not None
+                    and state.rivalry.coworker(item.id).alive
+                )
             ],
             "automationSync": {
                 "state": scene.autopilot_snapshot.state,
@@ -988,6 +1069,19 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "activePage": state.active_page,
             "pageSource": state.page_source,
             "activeObjectId": state.active_object_id,
+            "npcCoworkers": [
+                {
+                    **npc.to_dict(),
+                    "department": state.rivalry.departments[npc.department_id].name,
+                    "morale": state.rivalry.departments[npc.department_id].department_morale,
+                }
+                for npc in state.rivalry.coworkers
+            ],
+            "npcDepartments": [
+                department.to_dict()
+                for department in state.rivalry.departments.values()
+            ],
+            "competitionActions": COMPETITION_ACTIONS,
             "vendingCatalog": state.vending_catalog,
             "businessStockLines": state.business_stock_lines,
             "ghostListing": state.ghost_listing,
