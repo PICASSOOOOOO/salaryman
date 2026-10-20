@@ -3,9 +3,10 @@ name: SALARYMAN receptionist-first onboarding
 description: First-time registration, housing, and the lockdown finale all happen inside the Shadow Tower lobby.
 ---
 
-New players enter through the visual Shadow Tower lobby itself. There is no Pablo front
-door in the onboarding funnel: fade in to a busy lobby, wait behind another rendered
-visitor in the reception line, then automatically meet reception.
+New players animate through the Shadow Tower's front door into a busy lobby with
+a visible reception line. They may enter the line or not, but the lockdown still
+happens and they find themselves locked inside. Keep the arrival physical and
+diegetic rather than fading directly into the lobby.
 Reception is the onboarding authority and runs the full character and business intake in
 lobby dialogue boxes. It assigns a free hostel bed on the player's chosen hostel floor and
 free access to the Floor 2 Computer Cafe terminal.
@@ -42,15 +43,21 @@ doors; registration is a building-security gate, not an employment requirement.
 Unregistered entrants cannot use free lobby features before registering.
 Reception is the in-world equivalent of signing in to use SALARYMAN: it
 identifies the person but does not require organization membership or a job.
+Provide an express line for identity and building registration. NPCs usually
+use it so their queue does not bore a new player.
 
 **Why:** new players are strangers on arrival; reception registration lets
 building security know who entered. The user wants this for security, regardless
 of employment status, and an unemployed person must be able to register without
-joining an organization.
+joining an organization. NPCs should use the quick line to keep a new user's
+reception wait engaging.
 
 **How to apply:** make receptionist registration mandatory, with no alternate
 onboarding path that grants building access. Require account sign-in and
 reception registration, but do not require an org. Register and identify
 entrants at reception before granting access to lobby features or any other part
-of the building. Use security or locked doors to deny unregistered entry, with
-server-authoritative checks rather than relying only on visible door state.
+of the building. Use the express line primarily to move NPC registration along
+without delaying new users. Use security or locked doors to deny unregistered
+entry, with server-authoritative checks rather than relying only on visible door
+state. Make onboarding prompts frequent and obvious, especially around the
+lockdown and mandatory reception registration.
