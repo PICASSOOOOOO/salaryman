@@ -547,6 +547,13 @@
       "when": 1792501187236,
       "tag": "0077_npc_agency_factions",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792540800000,
+      "tag": "0078_tower_shop_logistics",
+      "breakpoints": true
     }
   ]
 }
