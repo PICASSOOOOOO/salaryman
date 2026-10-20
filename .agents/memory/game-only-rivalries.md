@@ -21,10 +21,10 @@ SALARYMAN's game-side conflict should support corporate competition and espionag
 
 Combat may include either one-on-one duels or group/battle-royale encounters, but these remain fictional game events governed by the same safety and legality rules.
 
-NPC corporate rivalries should use the added RDR2 Nemesis Rage mod as their
-foundation: maintain relationships that can evolve through cooperation,
-competition, and fictional business sabotage. The system should materially
-change NPC shop behavior and business opportunities, not only dialogue.
+Build an original office-sim adaptation of the broad living-world idea: NPC
+relationships and rivalries should evolve through cooperation and competition
+and materially change shop behavior and business opportunities, not only
+dialogue. Do not copy enRAGE code or assets.
 
 Faction identity follows the brand. Each distinct brand is its own faction;
 shops, locations, and organizations operating under that brand belong to that
@@ -39,14 +39,19 @@ Each boss is loyal first to their own shop, then to the parent brand faction.
 Other brands are opposing factions; intra-brand bosses may cooperate while
 competing brands remain rivals.
 
-**Why:** the user clarified that brands define factions and each location has its
-own boss, whose loyalty is ordered from local shop to brand.
+NPC bosses are motivated to compete and protect their own shops and brand
+factions. Keep the tone gentlemanly and businesslike, not outlaw-style.
+
+**Why:** the user clarified that brands define factions, each location has its
+own boss with shop-first loyalty, and the rival system should not use an outlaw
+tone.
 
 **How to apply:** key rivalries, cooperation, and business effects to brand
 identity, while keeping each brand's own shops and organizations connected to
 its faction. Track each location boss individually beneath that faction and
-make their shop-first, faction-second loyalty shape decisions. Keep all effects
-fictional and server-authoritative.
+make their shop-first, faction-second loyalty shape decisions. Use RDR2 only as
+a broad living-world reference; keep the office sim's competitive style
+professional. Keep all effects fictional and server-authoritative.
 
 Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
 
