@@ -152,12 +152,16 @@ tie skill unlocks to both network credit score and XP, and avoid creating a
 separate battle-team mode or broad combat escalation for a theft response.
 
 Pickpocket rewards are tightly capped: stolen cash comes only from the victim's
-wallet and must be a random amount below 5% of that wallet. Item theft excludes
-legendary items, and rare-item chances must remain below 1%.
+wallet and must be a random amount below 5% of that wallet. Legendary items are
+never stolen; impossible items are unobtainable, rare-item chances stay below
+1%, and very-rare, expensive, or hard-to-find items must remain exceptionally
+unlikely.
 
-**Why:** The user explicitly limited pickpocket rewards and protected legendary
-items while keeping rare-item theft exceptionally unlikely.
+**Why:** The user explicitly limited pickpocket rewards, named the inventory
+rarity tiers, and protected legendary items while keeping rare-item theft
+exceptionally unlikely.
 
 **How to apply:** Enforce the limits on the authoritative server, never trust
 client-selected amounts or item identities, and preserve the distinction between
-wallet cash and banked funds.
+wallet cash and banked funds. Treat rarity labels as gameplay policy, not client
+authority.
