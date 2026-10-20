@@ -1,9 +1,9 @@
 export const SKILL_TREES = [
-  { id: "body", name: "Body" },
-  { id: "reflexes", name: "Reflexes" },
-  { id: "technical_ability", name: "Technical Ability" },
-  { id: "intelligence", name: "Intelligence" },
-  { id: "cool", name: "Cool" },
+  { id: "stamina", name: "Stamina" },
+  { id: "agility", name: "Agility" },
+  { id: "technical_skills", name: "Technical Skills" },
+  { id: "office_politics", name: "Office Politics" },
+  { id: "composure", name: "Composure" },
 ] as const;
 
 export type SkillBranch = (typeof SKILL_TREES)[number]["name"];
@@ -17,6 +17,8 @@ export interface SkillDef {
   cost: number;
   prereq?: string;
   effect: string;
+  cooldownSeconds?: number;
+  unlocksFreeFeature?: string;
 }
 
 interface SkillTrack {
@@ -25,6 +27,9 @@ interface SkillTrack {
   effect: string;
   valuePerRank: number;
   unit?: string;
+  cooldownSeconds?: number;
+  freeFeature?: string;
+  featureRank?: 1 | 2 | 3;
 }
 
 interface SkillTreeSpec {
@@ -33,120 +38,122 @@ interface SkillTreeSpec {
   tracks: SkillTrack[];
 }
 
+// Original SALARYMAN office-survival abilities. Each of the 17 tracks has
+// three ranks, giving every tree 51 spendable skills.
 const trees: SkillTreeSpec[] = [
   {
-    id: "body",
-    name: "Body",
+    id: "stamina",
+    name: "Stamina",
     tracks: [
-      { id: "shotgun", name: "Shotgun Damage", effect: "shotgun damage", valuePerRank: 5, unit: "%" },
-      { id: "machine_gun", name: "Light Machine Gun Damage", effect: "light machine gun damage", valuePerRank: 5, unit: "%" },
-      { id: "blunt", name: "Blunt Weapon Damage", effect: "blunt weapon damage", valuePerRank: 5, unit: "%" },
-      { id: "gorilla_arms", name: "Gorilla Arms Damage", effect: "Gorilla Arms damage", valuePerRank: 5, unit: "%" },
-      { id: "health_regen", name: "Health Regeneration", effect: "health regeneration", valuePerRank: 2, unit: "%" },
-      { id: "adrenaline", name: "Adrenaline Duration", effect: "adrenaline duration", valuePerRank: 5, unit: "%" },
-      { id: "max_health", name: "Maximum Health", effect: "maximum health", valuePerRank: 5, unit: "%" },
-      { id: "stamina", name: "Stamina Recovery", effect: "stamina recovery", valuePerRank: 5, unit: "%" },
-      { id: "melee", name: "Melee Damage", effect: "melee damage", valuePerRank: 4, unit: "%" },
-      { id: "heavy_weapons", name: "Heavy Weapon Handling", effect: "heavy weapon handling", valuePerRank: 4, unit: "%" },
-      { id: "pain_resistance", name: "Pain Resistance", effect: "damage resistance", valuePerRank: 2, unit: "%" },
-      { id: "carry", name: "Carry Capacity", effect: "carry capacity", valuePerRank: 5, unit: "%" },
-      { id: "grapple", name: "Grapple Strength", effect: "grapple strength", valuePerRank: 5, unit: "%" },
-      { id: "healing_items", name: "Healing Item Effectiveness", effect: "healing item effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "combat_recovery", name: "Combat Recovery", effect: "health recovery after combat", valuePerRank: 3, unit: "%" },
-      { id: "knockdown", name: "Knockdown Resistance", effect: "knockdown resistance", valuePerRank: 5, unit: "%" },
-      { id: "unarmed", name: "Unarmed Damage", effect: "unarmed damage", valuePerRank: 5, unit: "%" },
+      { id: "long_shift", name: "Long-Shift Endurance", effect: "long-shift fatigue resistance", valuePerRank: 4 },
+      { id: "energy_recovery", name: "Energy Recovery", effect: "energy recovery", valuePerRank: 4 },
+      { id: "hydration", name: "Hydration", effect: "hydration item effectiveness", valuePerRank: 4 },
+      { id: "meal_efficiency", name: "Meal Efficiency", effect: "meal effectiveness", valuePerRank: 4 },
+      { id: "caffeine", name: "Caffeine Tolerance", effect: "caffeine duration", valuePerRank: 4 },
+      { id: "posture", name: "Posture Support", effect: "posture-related fatigue reduction", valuePerRank: 4 },
+      { id: "stress_recovery", name: "Stress Recovery", effect: "stress recovery", valuePerRank: 4 },
+      { id: "health_recovery", name: "Health Recovery", effect: "health recovery", valuePerRank: 3 },
+      { id: "carry", name: "Supply Carrying", effect: "supply carrying capacity", valuePerRank: 5 },
+      { id: "minor_care", name: "Minor Injury Care", effect: "health item effectiveness", valuePerRank: 4 },
+      { id: "air_quality", name: "Air Quality Tolerance", effect: "air quality protection", valuePerRank: 4 },
+      { id: "temperature", name: "Temperature Tolerance", effect: "temperature protection", valuePerRank: 4 },
+      { id: "replicant_reserve", name: "Replicant Energy Reserve", effect: "replicant energy capacity", valuePerRank: 3 },
+      { id: "power_rest", name: "Power Rest Efficiency", effect: "replicant energy recovery", valuePerRank: 4 },
+      { id: "physical_attack", name: "Physical Attack", effect: "physical attack strength", valuePerRank: 3 },
+      { id: "defense", name: "Damage Defense", effect: "incoming damage reduction", valuePerRank: 2 },
+      { id: "survival", name: "Survival", effect: "hazard survival", valuePerRank: 4, cooldownSeconds: 60 },
     ],
   },
   {
-    id: "reflexes",
-    name: "Reflexes",
+    id: "agility",
+    name: "Agility",
     tracks: [
-      { id: "assault_rifles", name: "Assault Rifle Damage", effect: "assault rifle damage", valuePerRank: 5, unit: "%" },
-      { id: "smg", name: "Submachine Gun Damage", effect: "submachine gun damage", valuePerRank: 5, unit: "%" },
-      { id: "blades", name: "Blade Damage", effect: "blade damage", valuePerRank: 5, unit: "%" },
-      { id: "dash", name: "Dash Distance", effect: "dash distance", valuePerRank: 5, unit: "%" },
-      { id: "air_dash", name: "Air Dash Control", effect: "air dash control", valuePerRank: 5, unit: "%" },
-      { id: "movement", name: "Movement Speed", effect: "movement speed", valuePerRank: 2, unit: "%" },
-      { id: "evasion", name: "Evasion", effect: "evasion", valuePerRank: 2, unit: "%" },
-      { id: "reload", name: "Reload Speed", effect: "reload speed", valuePerRank: 4, unit: "%" },
-      { id: "weapon_swap", name: "Weapon Swap Speed", effect: "weapon swap speed", valuePerRank: 5, unit: "%" },
-      { id: "slide", name: "Slide Distance", effect: "slide distance", valuePerRank: 5, unit: "%" },
-      { id: "sprint", name: "Sprint Efficiency", effect: "sprint stamina cost reduction", valuePerRank: 4, unit: "%" },
-      { id: "aim_move", name: "Moving Aim", effect: "accuracy while moving", valuePerRank: 3, unit: "%" },
-      { id: "close_range", name: "Close-Range Accuracy", effect: "close-range accuracy", valuePerRank: 3, unit: "%" },
-      { id: "blade_deflect", name: "Blade Deflection", effect: "blade deflection", valuePerRank: 3, unit: "%" },
-      { id: "quick_recovery", name: "Quick Recovery", effect: "movement recovery time reduction", valuePerRank: 4, unit: "%" },
-      { id: "positioning", name: "Combat Positioning", effect: "positioning bonus duration", valuePerRank: 5, unit: "%" },
-      { id: "initiative", name: "Initiative", effect: "initiative", valuePerRank: 3, unit: "%" },
+      { id: "typing", name: "Typing Speed", effect: "typing task speed", valuePerRank: 4 },
+      { id: "window_switching", name: "Window Switching", effect: "task switching speed", valuePerRank: 4 },
+      { id: "hallway_movement", name: "Hallway Movement", effect: "hallway movement speed", valuePerRank: 3 },
+      { id: "quiet_steps", name: "Quiet Footsteps", effect: "movement noise reduction", valuePerRank: 4 },
+      { id: "break_timing", name: "Break Timing", effect: "break action speed", valuePerRank: 4 },
+      { id: "coffee_run", name: "Coffee Run", effect: "vending and supply interaction speed", valuePerRank: 4 },
+      { id: "tool_handling", name: "Tool Handling", effect: "maintenance action speed", valuePerRank: 4 },
+      { id: "inventory_access", name: "Inventory Access", effect: "inventory interaction speed", valuePerRank: 4 },
+      { id: "desk_transition", name: "Desk Transition", effect: "desk interaction speed", valuePerRank: 4 },
+      { id: "meeting_exit", name: "Meeting Exit", effect: "meeting exit speed", valuePerRank: 4 },
+      { id: "evasion", name: "Defensive Evasion", effect: "incoming attack evasion", valuePerRank: 3, cooldownSeconds: 20 },
+      { id: "reaction", name: "Attack Speed", effect: "attack action speed", valuePerRank: 3 },
+      { id: "keyboard_precision", name: "Keyboard Precision", effect: "computer task accuracy", valuePerRank: 3 },
+      { id: "task_queue", name: "Task Queue Control", effect: "task queue efficiency", valuePerRank: 3 },
+      { id: "sprint_efficiency", name: "Sprint Efficiency", effect: "sprint energy cost reduction", valuePerRank: 4 },
+      { id: "supply_sorting", name: "Supply Sorting", effect: "inventory sorting speed", valuePerRank: 4 },
+      { id: "quick_response", name: "Survival Escape", effect: "escape action speed", valuePerRank: 4, cooldownSeconds: 30 },
     ],
   },
   {
-    id: "technical_ability",
-    name: "Technical Ability",
+    id: "technical_skills",
+    name: "Technical Skills",
     tracks: [
-      { id: "cyberware_capacity", name: "Cyberware Capacity", effect: "cyberware capacity", valuePerRank: 2, unit: "%" },
-      { id: "engineering", name: "Engineering", effect: "engineering effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "health_items", name: "Health Item Effectiveness", effect: "health item effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "tech_weapons", name: "Tech Weapon Damage", effect: "tech weapon damage", valuePerRank: 5, unit: "%" },
-      { id: "repairs", name: "Equipment Repair", effect: "repair effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "durability", name: "Equipment Durability", effect: "equipment durability", valuePerRank: 5, unit: "%" },
-      { id: "power_systems", name: "Power Systems", effect: "power system efficiency", valuePerRank: 4, unit: "%" },
-      { id: "water_systems", name: "Water Systems", effect: "water system efficiency", valuePerRank: 4, unit: "%" },
-      { id: "safety_systems", name: "Safety Systems", effect: "safety system effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "armor", name: "Armor Tuning", effect: "armor effectiveness", valuePerRank: 3, unit: "%" },
-      { id: "device_upgrades", name: "Device Upgrades", effect: "device upgrade cost reduction", valuePerRank: 3, unit: "%" },
-      { id: "salvage", name: "Component Salvage", effect: "salvaged components", valuePerRank: 5, unit: "%" },
-      { id: "drones", name: "Drone Control", effect: "drone effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "electronics", name: "Electronics", effect: "electronics interaction speed", valuePerRank: 4, unit: "%" },
-      { id: "fabrication", name: "Fabrication", effect: "fabrication material efficiency", valuePerRank: 3, unit: "%" },
-      { id: "battery_efficiency", name: "Battery Efficiency", effect: "battery capacity", valuePerRank: 5, unit: "%" },
-      { id: "tool_handling", name: "Tool Handling", effect: "tool durability", valuePerRank: 5, unit: "%" },
+      { id: "printer_repair", name: "Printer Repair", effect: "printer repair success", valuePerRank: 4, freeFeature: "basic_printer_repair", featureRank: 1 },
+      { id: "spreadsheet", name: "Spreadsheet Work", effect: "spreadsheet task speed", valuePerRank: 4 },
+      { id: "automation", name: "Office Programming", effect: "office automation efficiency", valuePerRank: 4, freeFeature: "basic_office_scripting", featureRank: 2 },
+      { id: "device_setup", name: "Mechanics", effect: "device setup and repair speed", valuePerRank: 4, freeFeature: "basic_mechanics_bench", featureRank: 1 },
+      { id: "computer_repair", name: "Computer Repair", effect: "computer repair success", valuePerRank: 4, freeFeature: "basic_computer_repair", featureRank: 1 },
+      { id: "power_systems", name: "Power Systems", effect: "power system maintenance", valuePerRank: 4, freeFeature: "basic_power_diagnostics", featureRank: 2 },
+      { id: "water_systems", name: "Water Systems", effect: "water system maintenance", valuePerRank: 4, freeFeature: "basic_water_diagnostics", featureRank: 2 },
+      { id: "safety_systems", name: "Safety Systems", effect: "safety equipment effectiveness", valuePerRank: 4, freeFeature: "basic_safety_inspection", featureRank: 2 },
+      { id: "health_equipment", name: "Health Equipment", effect: "health equipment effectiveness", valuePerRank: 4 },
+      { id: "item_repair", name: "Item Repair", effect: "item repair effectiveness", valuePerRank: 4, freeFeature: "basic_item_repair", featureRank: 1 },
+      { id: "durability", name: "Equipment Care", effect: "equipment durability", valuePerRank: 4 },
+      { id: "battery_efficiency", name: "Battery Efficiency", effect: "battery capacity", valuePerRank: 3 },
+      { id: "component_salvage", name: "Component Salvage", effect: "recovered repair components", valuePerRank: 4 },
+      { id: "tool_life", name: "Tool Care", effect: "tool durability", valuePerRank: 4 },
+      { id: "replicant_systems", name: "Replicant Systems", effect: "replicant system efficiency", valuePerRank: 4 },
+      { id: "workstation", name: "Workstation Tuning", effect: "workstation performance", valuePerRank: 4 },
+      { id: "emergency_repair", name: "Emergency Repair", effect: "emergency repair speed", valuePerRank: 4, cooldownSeconds: 45 },
     ],
   },
   {
-    id: "intelligence",
-    name: "Intelligence",
+    id: "office_politics",
+    name: "Office Politics",
     tracks: [
-      { id: "ram_recovery", name: "RAM Recovery", effect: "RAM recovery", valuePerRank: 5, unit: "%" },
-      { id: "quickhack_damage", name: "Quickhack Damage", effect: "quickhack damage", valuePerRank: 5, unit: "%" },
-      { id: "quickhack_cost", name: "Quickhack Cost", effect: "quickhack RAM cost reduction", valuePerRank: 3, unit: "%" },
-      { id: "overclock", name: "Overclock Duration", effect: "overclock duration", valuePerRank: 4, unit: "%" },
-      { id: "smart_weapons", name: "Smart Weapon Accuracy", effect: "smart weapon accuracy", valuePerRank: 4, unit: "%" },
-      { id: "control_programs", name: "Control Programs", effect: "control program duration", valuePerRank: 4, unit: "%" },
-      { id: "combat_programs", name: "Combat Programs", effect: "combat program effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "network_scan", name: "Network Scanning", effect: "scan range", valuePerRank: 5, unit: "%" },
-      { id: "stealth_hacks", name: "Stealth Programs", effect: "stealth program duration", valuePerRank: 4, unit: "%" },
-      { id: "device_hacks", name: "Device Control", effect: "device control duration", valuePerRank: 4, unit: "%" },
-      { id: "hack_queue", name: "Hack Queue", effect: "quickhack queue capacity", valuePerRank: 1, unit: "" },
-      { id: "trace_resistance", name: "Trace Resistance", effect: "trace buildup reduction", valuePerRank: 4, unit: "%" },
-      { id: "data_mining", name: "Data Mining", effect: "data recovered", valuePerRank: 5, unit: "%" },
-      { id: "ram_capacity", name: "RAM Capacity", effect: "RAM capacity", valuePerRank: 2, unit: "%" },
-      { id: "smart_lock", name: "Smart Weapon Lock-On", effect: "smart weapon lock-on speed", valuePerRank: 5, unit: "%" },
-      { id: "program_recovery", name: "Program Recovery", effect: "program cooldown reduction", valuePerRank: 3, unit: "%" },
-      { id: "remote_access", name: "Remote Access", effect: "remote interaction range", valuePerRank: 5, unit: "%" },
+      { id: "professional_language", name: "Professional Language", effect: "workplace communication effectiveness", valuePerRank: 4 },
+      { id: "executive_email", name: "Executive Email", effect: "executive communication effectiveness", valuePerRank: 4 },
+      { id: "networking", name: "Networking", effect: "network credit gain", valuePerRank: 3 },
+      { id: "reputation", name: "Workplace Reputation", effect: "reputation gain", valuePerRank: 3 },
+      { id: "negotiation", name: "Negotiation", effect: "negotiation success", valuePerRank: 3 },
+      { id: "meeting_control", name: "Meeting Control", effect: "meeting outcome influence", valuePerRank: 3 },
+      { id: "calendar_strategy", name: "Calendar Strategy", effect: "calendar action effectiveness", valuePerRank: 4 },
+      { id: "team_morale", name: "Team Morale", effect: "team morale support", valuePerRank: 3 },
+      { id: "conflict_resolution", name: "Conflict Resolution", effect: "conflict resolution success", valuePerRank: 4 },
+      { id: "client_relations", name: "Client Relations", effect: "client relationship gain", valuePerRank: 3 },
+      { id: "career_planning", name: "Career Planning", effect: "experience gain", valuePerRank: 3 },
+      { id: "business_operations", name: "Business Operations", effect: "business task efficiency", valuePerRank: 4 },
+      { id: "income_planning", name: "Income Planning", effect: "work income", valuePerRank: 2 },
+      { id: "credit_repair", name: "Credit Repair", effect: "network credit recovery", valuePerRank: 3 },
+      { id: "workplace_awareness", name: "Workplace Awareness", effect: "workplace threat detection", valuePerRank: 4 },
+      { id: "trust_building", name: "Trust Building", effect: "coworker trust gain", valuePerRank: 3 },
+      { id: "business_growth", name: "Business Growth", effect: "business growth effectiveness", valuePerRank: 3 },
     ],
   },
   {
-    id: "cool",
-    name: "Cool",
+    id: "composure",
+    name: "Composure",
     tracks: [
-      { id: "precision_rifles", name: "Precision Rifle Damage", effect: "precision rifle damage", valuePerRank: 5, unit: "%" },
-      { id: "handguns", name: "Handgun Damage", effect: "handgun damage", valuePerRank: 5, unit: "%" },
-      { id: "throwing_weapons", name: "Throwing Weapon Damage", effect: "throwing weapon damage", valuePerRank: 5, unit: "%" },
-      { id: "optical_camo", name: "Optical Camo Duration", effect: "optical camo duration", valuePerRank: 5, unit: "%" },
-      { id: "stealth", name: "Stealth Movement", effect: "stealth movement noise reduction", valuePerRank: 4, unit: "%" },
-      { id: "takedowns", name: "Stealth Takedowns", effect: "stealth takedown effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "critical_chance", name: "Critical Hit Chance", effect: "critical hit chance", valuePerRank: 1, unit: "%" },
-      { id: "critical_damage", name: "Critical Hit Damage", effect: "critical hit damage", valuePerRank: 4, unit: "%" },
-      { id: "headshots", name: "Headshot Damage", effect: "headshot damage", valuePerRank: 5, unit: "%" },
-      { id: "detection", name: "Detection Time", effect: "enemy detection time", valuePerRank: 4, unit: "%" },
-      { id: "cooldown", name: "Combat Cooldowns", effect: "combat cooldown reduction", valuePerRank: 3, unit: "%" },
-      { id: "poison", name: "Poison Effects", effect: "poison effectiveness", valuePerRank: 4, unit: "%" },
-      { id: "cover", name: "Cover Accuracy", effect: "accuracy from cover", valuePerRank: 4, unit: "%" },
-      { id: "ambush", name: "Ambush Damage", effect: "first-strike damage", valuePerRank: 5, unit: "%" },
-      { id: "marking", name: "Target Marking", effect: "marked target duration", valuePerRank: 5, unit: "%" },
-      { id: "escape", name: "Escape Movement", effect: "escape movement speed", valuePerRank: 3, unit: "%" },
-      { id: "composure", name: "Composure", effect: "composure under pressure", valuePerRank: 4, unit: "%" },
+      { id: "quiet_breaks", name: "Quiet Breaks", effect: "break visibility reduction", valuePerRank: 4 },
+      { id: "end_of_shift", name: "End-of-Shift Timing", effect: "end-of-shift detection avoidance", valuePerRank: 4 },
+      { id: "stress_control", name: "Stress Control", effect: "stress buildup reduction", valuePerRank: 4 },
+      { id: "presentation", name: "Presentation Composure", effect: "presentation composure", valuePerRank: 4 },
+      { id: "focus", name: "Focus", effect: "focus duration", valuePerRank: 4 },
+      { id: "patience", name: "Patience", effect: "long task interruption resistance", valuePerRank: 4 },
+      { id: "observation", name: "Observation", effect: "pickpocket detection chance", valuePerRank: 3 },
+      { id: "light_fingers", name: "Light Fingers", effect: "pickpocket attempt success", valuePerRank: 1 },
+      { id: "wallet_awareness", name: "Wallet Awareness", effect: "wallet protection", valuePerRank: 3 },
+      { id: "deescalation", name: "De-escalation", effect: "nonviolent theft response effectiveness", valuePerRank: 4 },
+      { id: "retaliation_control", name: "Retaliation Control", effect: "retaliation cooldown reduction", valuePerRank: 3 },
+      { id: "cooldown_recovery", name: "Cooldown Recovery", effect: "ability cooldown reduction", valuePerRank: 2 },
+      { id: "burnout_resistance", name: "Burnout Resistance", effect: "burnout buildup reduction", valuePerRank: 3 },
+      { id: "social_reading", name: "Social Reading", effect: "coworker intent detection", valuePerRank: 4 },
+      { id: "recovery_routine", name: "Recovery Routine", effect: "stress recovery from breaks", valuePerRank: 4 },
+      { id: "reputation_protection", name: "Reputation Protection", effect: "reputation loss reduction", valuePerRank: 3 },
+      { id: "under_pressure", name: "Under Pressure", effect: "task accuracy under pressure", valuePerRank: 3 },
     ],
   },
 ];
@@ -155,7 +162,7 @@ function buildTree(tree: SkillTreeSpec): SkillDef[] {
   return tree.tracks.flatMap((track) =>
     ([1, 2, 3] as const).map((rank) => {
       const id = `${tree.id}.${track.id}_${rank}`;
-      const previousId = rank > 1 ? `${tree.id}.${track.id}_${rank - 1}` : undefined;
+      const prereq = rank > 1 ? `${tree.id}.${track.id}_${rank - 1}` : undefined;
       const value = track.valuePerRank * rank;
       const unit = track.unit ?? "%";
       return {
@@ -165,8 +172,10 @@ function buildTree(tree: SkillTreeSpec): SkillDef[] {
         name: `${track.name} ${["I", "II", "III"][rank - 1]}`,
         desc: `Improve ${track.effect} by ${value}${unit}.`,
         cost: rank,
-        prereq: previousId,
+        prereq,
         effect: `+${value}${unit} ${track.effect}`,
+        ...(track.cooldownSeconds ? { cooldownSeconds: track.cooldownSeconds } : {}),
+        ...(track.freeFeature && track.featureRank === rank ? { unlocksFreeFeature: track.freeFeature } : {}),
       };
     }),
   );
@@ -175,15 +184,15 @@ function buildTree(tree: SkillTreeSpec): SkillDef[] {
 export const SKILL_CATALOG: SkillDef[] = trees.flatMap(buildTree);
 
 const LEGACY_SKILL_IDS: Record<string, string> = {
-  "work.analyst_1": "technical_ability.electronics_1",
-  "work.analyst_2": "technical_ability.electronics_2",
-  "work.field_expert": "technical_ability.engineering_2",
-  "business.negotiator_1": "cool.composure_1",
-  "business.negotiator_2": "cool.composure_2",
-  "business.tax_strategist": "cool.composure_3",
-  "power.enforcer_1": "body.melee_1",
-  "power.enforcer_2": "body.melee_2",
-  "power.iron_will": "body.pain_resistance_1",
+  "work.analyst_1": "technical_skills.spreadsheet_1",
+  "work.analyst_2": "technical_skills.spreadsheet_2",
+  "work.field_expert": "technical_skills.printer_repair_2",
+  "business.negotiator_1": "office_politics.negotiation_1",
+  "business.negotiator_2": "office_politics.negotiation_2",
+  "business.tax_strategist": "office_politics.income_planning_3",
+  "power.enforcer_1": "stamina.long_shift_1",
+  "power.enforcer_2": "stamina.long_shift_2",
+  "power.iron_will": "composure.stress_control_1",
 };
 
 export function canonicalSkillId(id: string): string {
@@ -211,18 +220,18 @@ export function playerHasSkill(unlocked: string[], skillId: string): boolean {
 }
 
 export const CLASS_TO_T1_SKILL: Record<string, string> = {
-  corporate: "cool.composure_1",
-  freelancer: "technical_ability.electronics_1",
-  operator: "body.melee_1",
-  technician: "technical_ability.engineering_1",
-  medic: "body.health_regen_1",
-  soldier: "body.shotgun_1",
-  trader: "cool.composure_1",
-  hacker: "intelligence.ram_recovery_1",
-  journalist: "intelligence.data_mining_1",
-  lawyer: "cool.composure_1",
+  corporate: "office_politics.networking_1",
+  freelancer: "technical_skills.workstation_1",
+  operator: "agility.hallway_movement_1",
+  technician: "technical_skills.printer_repair_1",
+  medic: "stamina.minor_care_1",
+  soldier: "stamina.long_shift_1",
+  trader: "office_politics.negotiation_1",
+  hacker: "technical_skills.computer_repair_1",
+  journalist: "office_politics.workplace_awareness_1",
+  lawyer: "office_politics.professional_language_1",
 };
 
 export function defaultT1ForClass(charClass?: string): string {
-  return CLASS_TO_T1_SKILL[charClass?.toLowerCase() ?? ""] ?? "body.max_health_1";
+  return CLASS_TO_T1_SKILL[charClass?.toLowerCase() ?? ""] ?? "stamina.long_shift_1";
 }

@@ -11,11 +11,11 @@ import {
 describe("native game skill catalog", () => {
   it("provides five named trees with 51 skills each", () => {
     expect(SKILL_TREES.map((tree) => tree.name)).toEqual([
-      "Body",
-      "Reflexes",
-      "Technical Ability",
-      "Intelligence",
-      "Cool",
+      "Stamina",
+      "Agility",
+      "Technical Skills",
+      "Office Politics",
+      "Composure",
     ]);
 
     for (const tree of SKILL_TREES) {
@@ -25,9 +25,9 @@ describe("native game skill catalog", () => {
   });
 
   it("uses three ranks per skill track and enforces rank prerequisites", () => {
-    const first = getSkillById("body.shotgun_1")!;
-    const second = getSkillById("body.shotgun_2")!;
-    const third = getSkillById("body.shotgun_3")!;
+    const first = getSkillById("stamina.survival_1")!;
+    const second = getSkillById("stamina.survival_2")!;
+    const third = getSkillById("stamina.survival_3")!;
 
     expect([first.tier, second.tier, third.tier]).toEqual([1, 2, 3]);
     expect(canUnlock(first.id, [])).toBe(true);
@@ -37,11 +37,17 @@ describe("native game skill catalog", () => {
   });
 
   it("maps legacy unlocks and character classes into the new trees", () => {
-    expect(canonicalSkillIds(["work.analyst_1", "technical_ability.electronics_1"])).toEqual([
-      "technical_ability.electronics_1",
+    expect(canonicalSkillIds(["work.analyst_1", "technical_skills.spreadsheet_1"])).toEqual([
+      "technical_skills.spreadsheet_1",
     ]);
-    expect(getSkillById("power.enforcer_1")?.branch).toBe("Body");
-    expect(defaultT1ForClass("hacker")).toBe("intelligence.ram_recovery_1");
-    expect(defaultT1ForClass("unknown")).toBe("body.max_health_1");
+    expect(getSkillById("power.enforcer_1")?.branch).toBe("Stamina");
+    expect(defaultT1ForClass("hacker")).toBe("technical_skills.computer_repair_1");
+    expect(defaultT1ForClass("unknown")).toBe("stamina.long_shift_1");
+  });
+
+  it("marks free in-game feature unlocks without granting paid entitlements", () => {
+    expect(getSkillById("technical_skills.automation_1")?.unlocksFreeFeature).toBeUndefined();
+    expect(getSkillById("technical_skills.automation_2")?.unlocksFreeFeature).toBe("basic_office_scripting");
+    expect(getSkillById("technical_skills.item_repair_1")?.unlocksFreeFeature).toBe("basic_item_repair");
   });
 });
