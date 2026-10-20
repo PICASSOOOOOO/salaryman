@@ -127,6 +127,19 @@ business-specific, allow long vacancies and repeated firings, and make the
 maximum four-shift staffing example affordable to the shop. Keep handoffs,
 trades, and life events visible through walking NPC dialogue.
 
+## Shop storage and shipping
+
+Each business needs its own storage room, sized to the scale of its business
+space. Staff manually restock from shipments supplied by shipping companies;
+shipments arrive at the shipping dock and are delivered to each business
+throughout the day. The delivery process should be animated.
+
+**Why:** the user specified this as the shop inventory and restocking model.
+
+**How to apply:** connect per-business storage capacity and stock to a visible
+shipping-dock-to-store delivery flow; do not model restocking as an instant
+inventory refill.
+
 When shop employees participate in the NPC mod, at least half of each shop's
 employees should be part of the mod while the other half continue working so the
 shop remains available and can sell to players.

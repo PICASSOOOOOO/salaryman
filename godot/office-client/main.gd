@@ -827,6 +827,54 @@ func _add_business_suite_finish(
 		var threshold := _pygame_to_world(x + width / 2.0, threshold_z, room)
 		threshold.y = FLOOR_HEIGHT + 0.102
 		_add_box("%sStoreThreshold" % tag, threshold, Vector3(minf(span_x * 0.35, 2.4), 0.025, 0.16), finish["trim"])
+	_add_business_storage_room(room, tag, x, y, width, height, door_side, finish)
+
+
+func _add_business_storage_room(
+	room: String,
+	tag: String,
+	x: int,
+	y: int,
+	width: int,
+	height: int,
+	door_side: String,
+	finish: Dictionary,
+) -> void:
+	# Allocate the rear quarter of the actual suite footprint as receiving and
+	# storage space. This scales with different business suite sizes.
+	var depth := int(height * 0.25)
+	var start_y := y if door_side == "south" else y + height - depth
+	var divider_y := y + depth if door_side == "south" else start_y
+	var span_x := float(width) * WORLD_SCALE
+	var span_z := float(depth) * WORLD_SCALE
+	var storage_center := _pygame_to_world(x + width / 2.0, start_y + depth / 2.0, room)
+	_add_box(
+		"%sStorageFloor" % tag,
+		Vector3(storage_center.x, FLOOR_HEIGHT + 0.125, storage_center.z),
+		Vector3(maxf(span_x - 0.35, 0.2), 0.025, maxf(span_z - 0.35, 0.2)),
+		finish["trim"],
+	)
+
+	var wall_height := 1.65
+	var segment_span := maxf(span_x * 0.41, 0.2)
+	for side in [-1.0, 1.0]:
+		var panel_x := x + width * (0.21 if side < 0.0 else 0.79)
+		var panel := _pygame_to_world(panel_x, divider_y, room)
+		panel.y = wall_height / 2.0
+		_add_solid_box(
+			"%sStoragePartition%s" % [tag, "L" if side < 0.0 else "R"],
+			panel,
+			Vector3(segment_span, wall_height, 0.11),
+			finish["wall"],
+		)
+
+	var crate_material := _material(Color("#8a765b"), 0.9)
+	var rack_material := _material(Color("#59665a"), 0.8)
+	for index in range(2):
+		var rack_x := x + width * (0.2 if index == 0 else 0.8)
+		var rack := _pygame_to_world(rack_x, start_y + depth * 0.5, room)
+		_add_solid_box("%sStorageRack%d" % [tag, index], Vector3(rack.x, 0.72, rack.z), Vector3(0.72, 1.35, 0.42), rack_material)
+		_add_box("%sStorageCrate%d" % [tag, index], Vector3(storage_center.x + (index - 0.5) * 0.55, 0.42, storage_center.z), Vector3(0.42, 0.62, 0.42), crate_material)
 
 
 func _store_side_panel_position(x: float, z: float, room: String, panel_y: float) -> Vector3:

@@ -88,6 +88,22 @@ class TowerFloorTravelTests(unittest.TestCase):
             },
         )
 
+    def test_business_storage_scales_to_suite_footprint(self):
+        scene = TowerScene()
+        suites = [obj for obj in scene.objects.objects if obj.kind == "business_suite"]
+        for suite in suites:
+            pallets = [
+                obj for obj in scene.objects.objects
+                if obj.kind == "pallet"
+                and obj.business_key == suite.business_key
+                and obj.unit_number == suite.unit_number
+            ]
+            self.assertEqual(len(pallets), 2, suite.business_key)
+            self.assertTrue(all(obj.suite_bounds for obj in pallets), suite.business_key)
+            self.assertEqual(pallets[0].suite_bounds[0], suite.suite_bounds[0])
+            self.assertEqual(pallets[0].suite_bounds[2], suite.suite_bounds[2])
+            self.assertEqual(pallets[0].suite_bounds[3], suite.suite_bounds[3] // 4)
+
     def test_every_floor_template_and_basement_has_one_shared_hallway_fixture_set(self):
         scene = TowerScene()
         fixture_kinds = {"pay_phone", "trash_can", "atm", "vending_machine", "fire_extinguisher"}

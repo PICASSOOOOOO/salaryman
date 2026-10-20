@@ -915,6 +915,52 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             solid_half_extents=half_extents,
         ), scale_legacy_coordinates=False)
 
+    def add_business_storage(
+        room: str,
+        tag: str,
+        business_key: str,
+        label: str,
+        unit_number: int,
+        bounds: tuple[int, int, int, int],
+        door_side: str,
+    ) -> None:
+        x, y, width, height = bounds
+        storage_depth = max(1_200, height // 4)
+        storage_start_y = y if door_side == "south" else y + height - storage_depth
+        storage_center_y = storage_start_y + storage_depth // 2
+        partition_y = y + storage_depth if door_side == "south" else storage_start_y
+        passage = max(700, width // 7)
+        segment_length = (width - passage) // 2
+        add_wall(room, tag, "h", x + segment_length // 2, partition_y, segment_length, 30)
+        add_wall(room, tag, "h", x + width - segment_length // 2, partition_y, segment_length, 30)
+
+        storage_id = f"{tag}-business-{unit_number:02d}-storage"
+        for index, offset in enumerate((-1, 1), start=1):
+            storage_x = x + width // 2 + offset * max(500, width // 4)
+            registry.add(OfficeObject(
+                f"{storage_id}-pallet-{index}",
+                "pallet",
+                f"{label} STOCK ROOM PALLET",
+                room,
+                (storage_x, storage_center_y),
+                "",
+                interactive=False,
+                business_key=business_key,
+                unit_number=unit_number,
+                suite_bounds=(x, storage_start_y, width, storage_depth),
+            ), scale_legacy_coordinates=False)
+            registry.add(OfficeObject(
+                f"{storage_id}-crate-{index}",
+                "supply_crate",
+                f"{label} STOCK CRATE",
+                room,
+                (storage_x, storage_center_y - 260),
+                "",
+                interactive=False,
+                business_key=business_key,
+                unit_number=unit_number,
+            ), scale_legacy_coordinates=False)
+
     def add_suite(
         room: str,
         tag: str,
@@ -940,6 +986,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             service_actions=actions_for_business(business_key),
             suite_bounds=bounds,
         ), scale_legacy_coordinates=False)
+        add_business_storage(room, tag, business_key, label, unit_number, bounds, door_side)
         if not build_walls:
             return
 
@@ -973,6 +1020,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             add_wall(room, tag, "h", x + width // 4, south_y, width // 2, wall)
         add_wall(room, tag, "v", x, y + height // 2, height, wall)
         add_wall(room, tag, "v", x + width, y + height // 2, height, wall)
+
 
     for floor in (*range(2, 6), *range(8, 13)):
         room = str(FLOOR_PLAN["playableFloors"][str(floor)]["room"])

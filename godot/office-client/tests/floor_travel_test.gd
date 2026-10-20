@@ -39,6 +39,9 @@ func _run_tests() -> void:
 	assert(client.world_root.get_node_or_null("TestFishStoreStoreFinishFloor") != null)
 	assert(client.world_root.get_node_or_null("TestFishStoreStoreWallNorth") != null)
 	assert(client.world_root.get_node_or_null("TestFishStoreStoreThreshold") != null)
+	assert(client.world_root.get_node_or_null("TestFishStoreStorageFloor") != null)
+	assert(client.world_root.get_node_or_null("TestFishStoreStoragePartitionL") != null)
+	assert(client.world_root.get_node_or_null("TestFishStoreStorageRack0") != null)
 	client._add_business_suite_finish(
 		"office_03",
 		"TestNorthDoorStore",
@@ -48,6 +51,7 @@ func _run_tests() -> void:
 	)
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallNorthL") != null)
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallSouth") != null)
+	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStorageFloor") != null)
 	var base_layout: Dictionary = floor_plan["baseLayout"]
 	var lobby_bounds: Array = base_layout["elevatorLobby"]["bounds"]
 	var main_hall: Array = base_layout["hallways"][0]
