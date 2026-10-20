@@ -57,13 +57,24 @@ behind cooldown timers or assume specific formulas.
 
 Players can examine both other players and NPCs. The information shown is
 limited by the relationship: strangers reveal less, and stronger relationships
-can reveal more. The exact information tiers are not yet defined.
+can reveal more. Progression through these levels comes from extensive
+participation between the examining player and the NPC or player being examined;
+both sides' involvement matters.
+
+- Level 1: name.
+- Level 2: name and age.
+- Level 3: name, age, and profession.
+- Level 4: name, age, profession, and credit score.
+- Level 5: name, age, profession, credit score, and net worth.
 
 **Why:** the user wants relationship-based limits on examining both NPCs and
-other players.
+other players, with five exact information levels that deepen through extensive
+participation by both parties.
 
 **How to apply:** make profile disclosure gradual rather than all-or-nothing,
-and keep each field within its security and data-access permissions.
+enforce the level gates server-side, and keep each field within its security
+and data-access permissions. Base progression on substantial participation
+between the two people, not a one-sided profile view.
 
 ## Public maintenance workforce
 
