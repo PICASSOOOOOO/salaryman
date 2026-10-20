@@ -39,11 +39,14 @@ As floor height increases, real estate becomes more expensive and spaces become
 larger, with fewer suites per floor and room for larger operations. Large
 operators pay higher rent, have tighter margins, and pass more cost to consumers
 through higher prices. Smaller shops have less space and operational scale, but
-can compete with lower prices. The prior eight-suite capacity is a baseline to
-revisit where it conflicts with this vertical tiering.
+can compete with lower prices. Higher floors offer better quality and create a
+disadvantage for poorer players because of their cost; they are better suited to
+wealthier players and larger operations. The prior eight-suite capacity is a
+baseline to revisit where it conflicts with this vertical tiering.
 
 **Why:** the user wants staggered NPC competitors on higher floors and a
-tradeoff between large, expensive operations and small, lower-priced shops.
+tradeoff between large, expensive operations and small, lower-priced shops, with
+higher-quality floors favoring wealthier players.
 
 **How to apply:** preserve unique main shops, place only distinct new rivals on
 higher floors, reduce suite count as floor size and rent rise, and let players
