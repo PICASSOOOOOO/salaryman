@@ -87,6 +87,7 @@ const QUICK_ACCESS = [
   { path: '/business/autopilot', label: 'PABLO AI AUTOMATION', icon: Bot },
   { path: '/phone', label: 'CALLL HOME', icon: PhoneCall },
   { path: '/comms', label: 'COMMS', icon: MessageSquare },
+  { path: '/cyber-deck', label: 'CYBER DECK', icon: Shield },
 ];
 
 const SECTIONS = [
