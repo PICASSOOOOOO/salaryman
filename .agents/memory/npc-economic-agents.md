@@ -127,6 +127,17 @@ business-specific, allow long vacancies and repeated firings, and make the
 maximum four-shift staffing example affordable to the shop. Keep handoffs,
 trades, and life events visible through walking NPC dialogue.
 
+When shop employees participate in the NPC mod, at least half of each shop's
+employees should be part of the mod while the other half continue working so the
+shop remains available and can sell to players.
+
+**Why:** The user specified that mod participation must not leave a shop without
+enough staff to stay open and serve player customers.
+
+**How to apply:** Track mod participation and operating coverage per shop. Keep
+at least half of employees in the mod while retaining the remaining half on
+shop operations; do not let mod activity suspend sales or service.
+
 Public maintenance payouts are issued by receptionist Mila from the game reward
 pool. Private organization work is paid by that organization's receptionist only
 after verified completion. These payer roles do not create separate assistant
