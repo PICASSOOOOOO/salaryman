@@ -26,16 +26,22 @@ foundation: maintain relationships that can evolve through cooperation,
 competition, and fictional business sabotage. The system should materially
 change NPC shop behavior and business opportunities, not only dialogue.
 
-Each in-game organization or shop is its own faction. Keep different businesses
-as separate relationship endpoints; do not collapse them into broad generic
-factions such as departments.
+Faction identity follows the brand. Each distinct brand is its own faction;
+shops, locations, and organizations operating under that brand belong to that
+faction rather than becoming separate factions by default. Different brands keep
+separate relationships and histories.
 
-**Why:** the user clarified that faction identity should follow each individual
-organization and shop.
+Each shop location has its own boss within its brand faction: a brand with three
+locations has three bosses. Track each boss as an individual NPC with personal
+history and relationships, while preserving the shared brand-level faction.
 
-**How to apply:** key rivalries, cooperation, and business effects to the
-specific in-game organization or shop, while keeping all effects fictional and
-server-authoritative.
+**Why:** the user clarified that brands define factions and each location has its
+own boss.
+
+**How to apply:** key rivalries, cooperation, and business effects to brand
+identity, while keeping each brand's own shops and organizations connected to
+its faction. Track each location boss individually beneath that faction, and
+keep all effects fictional and server-authoritative.
 
 Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
 
