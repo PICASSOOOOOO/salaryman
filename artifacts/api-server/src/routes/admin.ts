@@ -651,7 +651,7 @@ router.post("/admin/production-user-reset", async (req: Request, res: Response) 
  * via the existing `feature_trials` table with a 100-year expiration.
  * Listed grouped by email so admins can toggle individual features off.
  */
-const ALL_FEATURE_KEYS = ["live_listen", "screen_scan", "say_this", "phone_system", "claw_bot"] as const;
+const ALL_FEATURE_KEYS = ["live_listen", "screen_scan", "say_this", "phone_system", "phone_advanced", "claw_bot"] as const;
 
 router.get("/admin/email-grants", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;

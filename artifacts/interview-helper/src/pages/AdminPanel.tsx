@@ -215,10 +215,11 @@ const FEATURE_LABELS: Record<string, string> = {
   screen_scan: 'SCREEN SCAN',
   say_this: 'SAY THIS',
   phone_system: 'CALLL HOME',
+  phone_advanced: 'CALLL HOME ADVANCED',
   claw_bot: 'CLAW BOT',
 };
 
-const ALL_FEATURES = ['live_listen', 'screen_scan', 'say_this', 'phone_system', 'claw_bot'];
+const ALL_FEATURES = ['live_listen', 'screen_scan', 'say_this', 'phone_system', 'phone_advanced', 'claw_bot'];
 
 const DEFAULT_TOGGLES: { key: string; label: string; desc: string; category: string; defaultOn: boolean }[] = [
   { key: 'maintenance_mode', label: 'MAINTENANCE MODE', desc: 'Disables all user access except Picasso admins', category: 'system', defaultOn: false },

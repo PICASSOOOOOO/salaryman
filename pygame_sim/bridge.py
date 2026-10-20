@@ -86,7 +86,7 @@ RECEPTION_SERVICE_ROUTES = {
 }
 PHONE_SERVICE_ROUTES = {
     1: ("CALLL HOME", "/phone"),
-    2: ("COMMS / MESH BRIDGE", "/comms?section=mesh"),
+    2: ("COMMS", "/comms"),
 }
 
 

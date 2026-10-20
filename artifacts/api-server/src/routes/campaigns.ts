@@ -45,6 +45,16 @@ async function requireAuth(req: Request, res: Response): Promise<string | null> 
   return userId;
 }
 
+async function requireSmsMarketingAccess(req: Request, res: Response): Promise<string | null> {
+  const userId = await requireAuth(req, res);
+  if (!userId) return null;
+  if (!(await hasFeature(userId, req.user?.email, "phone_advanced"))) {
+    res.status(403).json({ error: "SMS marketing requires a Custom CALLL HOME plan.", feature: "phone_advanced", upgrade: "/pricing" });
+    return null;
+  }
+  return userId;
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -314,7 +324,7 @@ router.get("/campaigns/email/unsubscribe", async (req: Request, res: Response) =
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/campaigns/sms", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   try {
     const campaigns = await db
@@ -330,7 +340,7 @@ router.get("/campaigns/sms", async (req: Request, res: Response) => {
 });
 
 router.get("/campaigns/sms/audience", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   try {
     const contacts = await db.select({
@@ -374,7 +384,7 @@ router.get("/campaigns/sms/audience", async (req: Request, res: Response) => {
 });
 
 router.get("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   try {
     const [campaign] = await db
@@ -395,7 +405,7 @@ router.get("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/sms", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   const { name, messageBody, scheduledAt, recipientFilter } = req.body;
   if (!name?.trim()) { res.status(400).json({ error: "Campaign name required" }); return; }
@@ -419,7 +429,7 @@ router.post("/campaigns/sms", async (req: Request, res: Response) => {
 });
 
 router.put("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   const { name, messageBody, scheduledAt, recipientFilter, status } = req.body;
   try {
@@ -450,7 +460,7 @@ router.put("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   try {
     await db
@@ -464,7 +474,7 @@ router.delete("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   const { test, testPhone } = req.body ?? {};
 

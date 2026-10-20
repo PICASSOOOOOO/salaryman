@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
 export type Tier = "free" | "pro";
-export type FeatureKey = "live_listen" | "screen_scan" | "say_this" | "phone_system" | "claw_bot";
+export type FeatureKey = "live_listen" | "screen_scan" | "say_this" | "phone_system" | "phone_advanced" | "claw_bot";
 
 export interface TrialInfo {
   featureKey: FeatureKey;

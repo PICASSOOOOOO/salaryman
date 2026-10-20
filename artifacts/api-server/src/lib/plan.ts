@@ -26,6 +26,12 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
     price: 50,
     desc: "Paid Twilio-connected calling and two-way SMS with a default platform toll-free number. Custom number rentals are managed separately.",
   },
+  phone_advanced: {
+    name: "CALLL HOME Advanced Dialing",
+    codename: "CALLLHOME-ADVANCED",
+    price: 0,
+    desc: "Custom-plan access to automated and predictive dialing and SMS marketing.",
+  },
   claw_bot: {
     name: "Pablo AI",
     codename: "PIXEL AGENT AUTOMATION",

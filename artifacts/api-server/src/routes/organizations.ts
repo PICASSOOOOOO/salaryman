@@ -1727,6 +1727,10 @@ router.post("/orgs/:orgId/stripe-checkout", async (req, res) => {
     res.status(400).json({ error: "Valid feature required" });
     return;
   }
+  if (feature === "phone_advanced") {
+    res.status(400).json({ error: "Advanced CALLL HOME access is configured by Custom agreement, not self-service checkout." });
+    return;
+  }
 
   const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
   if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
@@ -1749,6 +1753,7 @@ router.post("/orgs/:orgId/stripe-checkout", async (req, res) => {
     screen_scan: "STRIPE_PRICE_SCREEN_SCAN",
     say_this: "STRIPE_PRICE_SAY_THIS",
     phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
+    phone_advanced: "STRIPE_PRICE_PHONE_ADVANCED",
     claw_bot: "STRIPE_PRICE_CLAW_BOT",
   };
   const priceId = process.env[FEATURE_PRICE_ENV[feature as FeatureKey] ?? ""];

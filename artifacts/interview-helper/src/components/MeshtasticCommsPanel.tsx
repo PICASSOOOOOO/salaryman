@@ -115,6 +115,9 @@ export function MeshtasticCommsPanel() {
         </>
       )}
       {error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}
+      <p className="mt-3 text-xs text-black/60">
+        Need phone numbers or Twilio calling? <a href={`${import.meta.env.BASE_URL}phone`} className="font-bold underline">CALLL HOME paid service</a>.
+      </p>
       <p className="mt-3 text-[10px] text-black/45">Meshtastic JavaScript SDK · GPL-3.0-only · <a href={`${import.meta.env.BASE_URL}licenses/GPL-3.0.txt`} className="underline">license</a></p>
     </section>
   );

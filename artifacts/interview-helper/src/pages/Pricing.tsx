@@ -298,6 +298,7 @@ export default function Pricing() {
               "DOCUMENTS & INVOICES",
               "SALARYMAN MMO ACCESS",
               "INTERVIEW PREP TOOLS",
+              "INTERNAL COMMS + MESHTASTIC BRIDGE",
             ].map((perk) => (
               <div key={perk} className="flex items-center gap-2">
                 <Check className="w-3 h-3 text-sky-400/50 shrink-0" />

@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { MeshDevice } from "@meshtastic/core";
-import { TransportWebSerial } from "@meshtastic/transport-web-serial";
-import { TransportWebBluetooth } from "@meshtastic/transport-web-bluetooth";
+import { useCallback, useRef, useState } from "react";
 import { unzipSync } from "fflate";
 import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
-import { AlertTriangle, Download, FileSearch, Radio, ShieldCheck, Trash2, Upload, Unplug } from "lucide-react";
+import { AlertTriangle, Download, FileSearch, ShieldCheck, Trash2, Upload } from "lucide-react";
 
 const MAX_FILE_BYTES = 32 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 100;
@@ -22,7 +19,6 @@ type Evidence = {
   text: string;
   archive: { name: string; size: number; data?: Uint8Array }[];
 };
-type MeshMessage = { from: number; channel: number; text: string; time: number };
 
 function detectFileType(bytes: Uint8Array, name: string): string {
   const starts = (...values: number[]) => values.every((value, index) => bytes[index] === value);
@@ -142,20 +138,7 @@ function CyberDeck() {
   const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [device, setDevice] = useState<MeshDevice | null>(null);
-  const [radioType, setRadioType] = useState<"serial" | "bluetooth">("serial");
-  const [radioError, setRadioError] = useState("");
-  const [channel, setChannel] = useState(0);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  const [messages, setMessages] = useState<MeshMessage[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
-  const messageSubscription = useRef<{ unsubscribe?: () => void } | null>(null);
-
-  useEffect(() => () => {
-    messageSubscription.current?.unsubscribe?.();
-    if (device) void device.disconnect();
-  }, [device]);
 
   const inspect = useCallback(async (file?: File) => {
     if (!file) return;
@@ -171,49 +154,6 @@ function CyberDeck() {
     }
   }, []);
 
-  const connect = async () => {
-    setRadioError("");
-    try {
-      const transport = radioType === "serial"
-        ? await TransportWebSerial.create(115200)
-        : await TransportWebBluetooth.create();
-      const nextDevice = new MeshDevice(transport);
-      const wrapper = nextDevice.events.onMessagePacket.asEvent() as unknown as {
-        subscribe: (callback: (packet: { from: number; channel: number; data: string }) => void) => { unsubscribe?: () => void };
-      };
-      messageSubscription.current = wrapper.subscribe((packet) => {
-        setMessages((current) => [...current.slice(-99), { from: packet.from, channel: packet.channel, text: packet.data, time: Date.now() }]);
-      });
-      setDevice(nextDevice);
-    } catch (cause) {
-      setRadioError(cause instanceof Error ? cause.message : "Could not connect to the selected radio.");
-    }
-  };
-
-  const disconnect = async () => {
-    messageSubscription.current?.unsubscribe?.();
-    messageSubscription.current = null;
-    if (device) await device.disconnect().catch(() => undefined);
-    setDevice(null);
-  };
-
-  const sendMessage = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!device || !text || text.length > 200) return;
-    setSending(true);
-    setRadioError("");
-    try {
-      await device.sendText(text, "broadcast", false, channel);
-      setMessages((current) => [...current.slice(-99), { from: 0, channel, text, time: Date.now() }]);
-      setDraft("");
-    } catch (cause) {
-      setRadioError(cause instanceof Error ? cause.message : "Message was not sent.");
-    } finally {
-      setSending(false);
-    }
-  };
-
   if (isLoading) return <div className="p-8 text-sm">Restoring session…</div>;
   if (!isAuthenticated) return <SignInPage context="Sign in to use Cyber Deck." />;
 
@@ -224,7 +164,7 @@ function CyberDeck() {
           <div>
             <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-black/55"><ShieldCheck className="h-4 w-4" /> Browser-only tools</p>
             <h1 className="text-3xl font-bold tracking-tight">Cyber Deck</h1>
-            <p className="mt-1 max-w-2xl text-sm text-black/60">Inspect selected evidence files locally, or connect a Meshtastic radio to read and send channel messages.</p>
+            <p className="mt-1 max-w-2xl text-sm text-black/60">Inspect selected evidence files locally. Meshtastic messaging is now in COMMS.</p>
           </div>
         </header>
 
@@ -260,44 +200,17 @@ function CyberDeck() {
             )}
           </section>
 
-          <section className="border border-black/20 bg-white p-4 sm:p-5" aria-labelledby="mesh-title">
-            <div className="mb-4 flex items-center gap-2"><Radio className="h-5 w-5" /><h2 id="mesh-title" className="text-base font-bold">Meshtastic mesh comms</h2></div>
-            <p className="mb-4 text-sm text-black/60">Connect directly to a nearby radio. Browser radio support requires HTTPS and a compatible Chromium browser. Messages are broadcast over the selected mesh channel.</p>
-            {!device ? (
-              <div className="space-y-3">
-                <label className="block text-xs font-bold uppercase tracking-wide">Connection type
-                  <select value={radioType} onChange={(event) => setRadioType(event.target.value as "serial" | "bluetooth")} className="mt-1 block min-h-11 w-full border border-black/25 bg-white px-3 text-sm">
-                    <option value="serial">USB / Web Serial</option><option value="bluetooth">Bluetooth LE</option>
-                  </select>
-                </label>
-                <button onClick={() => void connect()} className="min-h-11 w-full border border-black bg-black px-4 py-2 text-sm font-bold text-white hover:bg-black/80">Connect radio</button>
-              </div>
-            ) : (
-              <>
-                <div className="mb-3 flex items-center justify-between border border-black/10 bg-[#fafaf7] p-3 text-sm">
-                  <span className="font-bold">Radio connected · {radioType === "serial" ? "USB" : "Bluetooth"}</span>
-                  <button onClick={() => void disconnect()} className="flex items-center gap-1 text-xs font-bold"><Unplug className="h-4 w-4" /> Disconnect</button>
-                </div>
-                <label className="mb-3 block text-xs font-bold uppercase tracking-wide">Channel
-                  <select value={channel} onChange={(event) => setChannel(Number(event.target.value))} className="mt-1 block min-h-10 w-full border border-black/25 bg-white px-3 text-sm">
-                    {Array.from({ length: 8 }, (_, number) => <option key={number} value={number}>{number === 7 ? "Admin (receive only in this tool)" : `Channel ${number}`}</option>)}
-                  </select>
-                </label>
-                <div className="mb-3 flex h-64 flex-col gap-2 overflow-y-auto border border-black/15 bg-[#fafaf7] p-3" aria-live="polite">
-                  {messages.filter((message) => message.channel === channel).length === 0 && <p className="m-auto text-center text-sm text-black/45">Waiting for messages on this channel.</p>}
-                  {messages.filter((message) => message.channel === channel).map((message, index) => <article key={`${message.time}-${index}`} className="max-w-[90%] border border-black/10 bg-white p-2 text-sm"><p className="mb-1 text-[10px] font-bold uppercase text-black/45">{message.from === 0 ? "You" : `Node !${message.from.toString(16)}`} · {new Date(message.time).toLocaleTimeString()}</p><p className="break-words">{message.text}</p></article>)}
-                </div>
-                <form onSubmit={(event) => void sendMessage(event)} className="flex gap-2">
-                  <input value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={200} placeholder="Message this channel" className="min-h-11 min-w-0 flex-1 border border-black/25 px-3 text-sm" aria-label="Mesh message" />
-                  <button disabled={!draft.trim() || sending || channel === 7} className="min-h-11 border border-black bg-black px-4 text-sm font-bold text-white disabled:opacity-40">{sending ? "Sending…" : "Send"}</button>
-                </form>
-                <p className="mt-2 text-xs text-black/50">Broadcasts are public to listeners on this channel. This tool does not encrypt or retain messages.</p>
-              </>
-            )}
-            {radioError && <p role="alert" className="mt-3 flex gap-2 text-sm text-red-700"><AlertTriangle className="h-4 w-4 shrink-0" />{radioError}</p>}
+          <section className="flex flex-col justify-between border border-black/20 bg-white p-4 sm:p-5" aria-labelledby="mesh-title">
+            <div>
+              <div className="mb-4 flex items-center gap-2"><h2 id="mesh-title" className="text-base font-bold">Meshtastic moved to COMMS</h2></div>
+              <p className="mb-4 text-sm text-black/60">Radio connection and messages are now handled in the free COMMS bridge, shared with CALLL HOME. Radio actions remain user-initiated and local to your device.</p>
+            </div>
+            <a href={`${import.meta.env.BASE_URL}comms?section=mesh`} className="flex min-h-11 items-center justify-center border border-black bg-black px-4 py-2 text-sm font-bold text-white hover:bg-black/80">
+              Open COMMS mesh bridge
+            </a>
           </section>
         </div>
-        <p className="mt-5 text-xs text-black/45">Radio transport: Meshtastic JavaScript SDK, GPL-3.0-only. <a href={`${import.meta.env.BASE_URL}licenses/GPL-3.0.txt`} className="underline">Read the license</a>. Evidence inspection is read-only and limited to files you select.</p>
+        <p className="mt-5 text-xs text-black/45">Evidence inspection is read-only and limited to files you select.</p>
       </div>
     </main>
   );

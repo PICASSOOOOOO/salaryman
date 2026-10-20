@@ -52,6 +52,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      "os": path.resolve(import.meta.dirname, "src/lib/browser-node-shims/os.ts"),
+      "path": path.resolve(import.meta.dirname, "src/lib/browser-node-shims/path.ts"),
+      "util": path.resolve(import.meta.dirname, "src/lib/browser-node-shims/util.ts"),
     },
     dedupe: ["react", "react-dom"],
   },

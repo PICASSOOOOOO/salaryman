@@ -271,6 +271,13 @@ export default function CalllHomePage() {
             </span>
           </div>
           <div className="calll-home-connection" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <a
+                href={`${BASE}phone/mesh`}
+                className="border border-black/30 px-2 py-1 text-[0.45rem] font-bold tracking-widest hover:bg-black hover:text-white"
+                title="Free Meshtastic radio bridge"
+              >
+                MESH · FREE
+              </a>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',

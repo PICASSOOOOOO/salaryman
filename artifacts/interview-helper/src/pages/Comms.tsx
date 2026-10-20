@@ -24,7 +24,7 @@ interface ResponderEntry {
 
 const TABS: { id: CommsSection; label: string; icon: typeof MessageSquare }[] = [
   { id: 'chat', label: 'CHAT', icon: MessageSquare },
-  { id: 'sms', label: 'SMS', icon: MessageSquare },
+  { id: 'sms', label: 'CALLL SMS', icon: MessageSquare },
   { id: 'associates', label: 'ASSOCIATES', icon: Users },
   { id: 'responders', label: 'RESPONDERS', icon: Shield },
   { id: 'mesh', label: 'MESH BRIDGE', icon: Radio },

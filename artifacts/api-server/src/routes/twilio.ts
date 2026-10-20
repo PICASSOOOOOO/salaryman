@@ -1665,6 +1665,10 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
       res.status(400).json({ error: "mode must be power, auto, or predictive" });
       return;
     }
+    if (mode !== "power" && !(await hasFeature(userId, req.user?.email, "phone_advanced"))) {
+      res.status(403).json({ error: "Automated and predictive dialing require a Custom CALLL HOME plan.", feature: "phone_advanced", upgrade: "/pricing" });
+      return;
+    }
     const orgContext = await getPhoneOrgContext(userId);
     const policy = await getPhoneDialingPolicy(orgContext.orgId);
     const dialCountry = typeof req.body?.countryCode === "string" && /^[A-Za-z]{2}$/.test(req.body.countryCode)
@@ -4493,7 +4497,7 @@ router.post("/twilio/history/:callId/link-contact", requireAuth, requireFeature(
   }
 });
 
-router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), async (req, res) => {
+router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), requireFeature("phone_advanced"), async (req, res) => {
   try {
     const { numbers, callerName } = req.body;
     const userId = getAuthUserId(req);

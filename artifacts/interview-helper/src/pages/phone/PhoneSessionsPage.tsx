@@ -3,6 +3,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Radio, Users, Zap, Square, CheckSquare, Loader2, X, Search, RefreshCw, Rocket } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
@@ -33,6 +34,8 @@ export default function PhoneSessionsPage() {
 
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
+  const { features: planFeatures } = usePlan();
+  const hasAdvancedDialing = planFeatures.has('phone_advanced');
   const [, rawNavigate] = useLocation();
   const hubNav = useCalllHomeNavigate();
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
@@ -235,12 +238,16 @@ export default function PhoneSessionsPage() {
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {MODES.map(m => {
                 const isSel = dialingMode === m.key;
+                const locked = m.key !== 'power' && !hasAdvancedDialing;
                 return (
                   <button
                     key={m.key}
-                    onClick={() => setDialingMode(m.key)}
+                    onClick={() => { if (!locked) setDialingMode(m.key); }}
+                    disabled={locked}
+                    title={locked ? 'Available on Custom CALLL HOME plans' : undefined}
                     style={{
-                      padding: '14px 16px', textAlign: 'left', borderRadius: 8, cursor: 'pointer',
+                      padding: '14px 16px', textAlign: 'left', borderRadius: 8, cursor: locked ? 'not-allowed' : 'pointer',
+                      opacity: locked ? 0.45 : 1,
                       background: isSel ? slate(0.06) : slate(0.04),
                       border: `1px solid ${isSel ? m.color(0.35) : slate(0.08)}`,
                       transition: 'all 0.15s' }}

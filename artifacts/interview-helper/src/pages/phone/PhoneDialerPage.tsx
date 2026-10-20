@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle, RefreshCw, Rocket } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
 import {
@@ -42,6 +43,8 @@ export default function PhoneDialerPage() {
   const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
+  const { features: planFeatures } = usePlan();
+  const hasAdvancedDialing = planFeatures.has('phone_advanced');
   const [, rawNavigate] = useLocation();
   const hubNav = useCalllHomeNavigate();
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
@@ -395,12 +398,16 @@ export default function PhoneDialerPage() {
               <div style={{ display: 'flex', gap: 8 }}>
                 {MODES.map(m => {
                   const isSel = dialingMode === m.key;
+                  const locked = m.key !== 'power' && !hasAdvancedDialing;
                   return (
                     <button
                       key={m.key}
-                      onClick={() => setDialingMode(m.key)}
+                      onClick={() => { if (!locked) setDialingMode(m.key); }}
+                      disabled={locked}
+                      title={locked ? 'Available on Custom CALLL HOME plans' : undefined}
                       style={{
-                        flex: 1, padding: '10px 8px', textAlign: 'center', borderRadius: 8, cursor: 'pointer',
+                        flex: 1, padding: '10px 8px', textAlign: 'center', borderRadius: 8, cursor: locked ? 'not-allowed' : 'pointer',
+                        opacity: locked ? 0.45 : 1,
                         background: isSel ? slate(0.06) : slate(0.04),
                         border: `1px solid ${isSel ? m.color(0.35) : slate(0.08)}`,
                         transition: 'all 0.15s' }}

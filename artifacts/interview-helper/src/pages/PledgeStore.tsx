@@ -19,6 +19,10 @@ const PLAN_COPY: Record<FeatureKey, { summary: string; bullets: string[] }> = {
     summary: "CALLL HOME's paid Twilio calling service, connected to your CRM.",
     bullets: ["Basic business calling and two-way SMS", "Calls and messages connect to CRM contacts", "Default platform number included; no auto/predictive dialing or SMS marketing"],
   },
+  phone_advanced: {
+    summary: "Custom CALLL HOME capabilities, available by agreement.",
+    bullets: ["Automated and predictive dialing", "SMS marketing campaigns with required consent", "Client-specific terms and access"],
+  },
   claw_bot: {
     summary: "Pablo AI brings chat and business automation together.",
     bullets: ["Pablo chat with nine specialist agents", "Business workflows and bot chaining", "Live Listen, Screen Scan, and Say This"],
@@ -154,7 +158,7 @@ export default function PledgeStore() {
               </div>
               <p className="text-3xl font-black">$0</p>
               <p className="mt-1 text-xs font-bold uppercase tracking-wider text-black/50">Always free</p>
-              <p className="mt-5 text-sm leading-relaxed text-black/70">Core SALARYMAN access with no paid subscription.</p>
+              <p className="mt-5 text-sm leading-relaxed text-black/70">Core SALARYMAN access, free internal COMMS, and the Meshtastic radio bridge.</p>
               <div className="mt-auto pt-6">
                 <span className="block border border-black/20 px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-black/55">
                   Included
