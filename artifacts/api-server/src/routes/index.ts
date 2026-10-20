@@ -121,6 +121,7 @@ import businessDataRouter from "./business-data";
 import crmAdaptiveRouter from "./crm-adaptive";
 import crmSyncRouter from "./crm-sync";
 import desktopDownloadRouter from "./desktop-download";
+import npcAgencyRouter from "./npc-agency";
 import { requireOnboardingForMutation } from "../middlewares/requireOnboarding";
 
 const router: IRouter = Router();
@@ -249,5 +250,6 @@ router.use(desktopBasementRouter);
    router.use(crmSyncRouter);
   router.use(marketplaceRouter);
   router.use(desktopDownloadRouter);
+  router.use(npcAgencyRouter);
 
 export default router;
