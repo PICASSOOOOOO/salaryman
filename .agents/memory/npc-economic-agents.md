@@ -53,6 +53,18 @@ skill bonuses and business advantages, and let education boost XP gain. XP
 should contribute to credit score and stats. Do not gate education progression
 behind cooldown timers or assume specific formulas.
 
+## Relationship-based profile information
+
+Players can examine both other players and NPCs. The information shown is
+limited by the relationship: strangers reveal less, and stronger relationships
+can reveal more. The exact information tiers are not yet defined.
+
+**Why:** the user wants relationship-based limits on examining both NPCs and
+other players.
+
+**How to apply:** make profile disclosure gradual rather than all-or-nothing,
+and keep each field within its security and data-access permissions.
+
 ## Public maintenance workforce
 
 Keep the maintenance NPC group small and believable. Give workers routes, breaks,
