@@ -12,6 +12,16 @@ offices and cost more in real estate.
 Pablo Corp may partner with players through bank loans and bridge loans, with
 repayment horizons ranging from days to weeks to months.
 
+NPC shop bosses compete to grow their net worth through investments. Every
+in-game brand and shop is represented on the stock market and can be invested
+in; the exchange is not limited to a selected roster.
+
+**Why:** the user wants NPC wealth competition to include investing and wants
+the in-game market to cover all brands and shops.
+
+**How to apply:** make investability follow in-game brand/shop identity so new
+businesses can join the market without requiring a hand-picked subset.
+
 **Why:** the user wants Pablo Corp to be able to partner with players through
 financing, including short- and medium-term loans.
 
