@@ -49,7 +49,9 @@ router.get("/world/paid-wage-attestation-targets", async (req, res) => {
       userId: worldBusinessesTable.userId,
       playerName: worldBusinessesTable.playerName,
       companyName: worldBusinessesTable.companyName,
-    }).from(worldBusinessesTable).where(eq(worldBusinessesTable.businessType, "real"));
+    }).from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.businessType, "real"))
+      .orderBy(desc(worldBusinessesTable.createdAt));
     const employeeMembers = await db.select({
       orgId: orgMembersTable.orgId,
       userId: orgMembersTable.userId,
@@ -65,13 +67,17 @@ router.get("/world/paid-wage-attestation-targets", async (req, res) => {
       set.add(member.userId);
       membersByOrg.set(member.orgId, set);
     }
+    const seenEmployeeIds = new Set<string>();
     const employees = candidates.filter((candidate) => {
       if (!candidate.userId || candidate.userId === callerId || !candidate.companyName) return false;
-      return owned.some((org) =>
+      if (seenEmployeeIds.has(candidate.userId)) return false;
+      const eligible = owned.some((org) =>
         org.orgName.trim().toLowerCase() === candidate.companyName!.trim().toLowerCase()
         && membersByOrg.get(org.orgId)?.has(candidate.userId!),
       );
-    });
+      if (eligible) seenEmployeeIds.add(candidate.userId);
+      return eligible;
+    }).map(({ businessId, playerName, companyName }) => ({ businessId, playerName, companyName }));
     return res.json({ employees });
   } catch (err: any) {
     console.error("[World] paid-wage targets error:", err?.message);
@@ -97,9 +103,19 @@ router.post("/world/attest-paid-wage", async (req, res) => {
   const paymentReference = typeof req.body?.paymentReference === "string"
     ? req.body.paymentReference.trim()
     : "";
+  let currencyIsValid = false;
+  if (/^[A-Z]{3}$/.test(currencyCode)) {
+    try {
+      new Intl.NumberFormat("en", { style: "currency", currency: currencyCode });
+      currencyIsValid = true;
+    } catch {
+      currencyIsValid = false;
+    }
+  }
 
   if (!Number.isSafeInteger(businessId) || businessId <= 0 || !paidAmount
-    || !/^[A-Z]{3}$/.test(currencyCode)
+    || !currencyIsValid
+    || req.body?.ownerConfirmed !== true
     || !validIsoDate(paidAt) || !validIsoDate(payPeriodStart) || !validIsoDate(payPeriodEnd)
     || payPeriodStart > payPeriodEnd || paidAt < payPeriodEnd
     || paidAt > new Date().toISOString().slice(0, 10)

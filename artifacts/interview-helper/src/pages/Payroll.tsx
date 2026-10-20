@@ -8,6 +8,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
+import { PaidWageAttestationPanel } from '@/components/PaidWageAttestationPanel';
 
 const FIAT_TO_USD = 0.012;
 
@@ -241,6 +242,8 @@ export default function Payroll() {
             </button>
           ))}
         </div>
+
+        <PaidWageAttestationPanel />
 
         {loading && (
           <div className="flex justify-center py-20">
