@@ -7,6 +7,7 @@ import {
   getTowerRoutineState,
   getTowerOperatorDialogue,
   getTowerOperatorDialogues,
+  getTowerRivalryUpdate,
   TOWER_BUSINESSES,
 } from "./tower-life";
 
@@ -96,5 +97,26 @@ describe("Tower Life operating catalog", () => {
     expect(getTowerOperatorDialogues(13)).toEqual([]);
     expect(getTowerOperatorDialogues("lobby")).toEqual([]);
     expect(getTowerOperatorDialogue(undefined)).toBeNull();
+  });
+
+  it("rotates shared shop rivalry scenes while preserving sales and half-shop coverage", () => {
+    const firstDay = getTowerRivalryUpdate(new Date(Date.UTC(2026, 0, 1)));
+    const nextDay = getTowerRivalryUpdate(new Date(Date.UTC(2026, 0, 2)));
+    expect(firstDay).not.toEqual(nextDay);
+
+    for (let offset = 0; offset < 4; offset += 1) {
+      const scene = getTowerRivalryUpdate(new Date(Date.UTC(2026, 0, 1 + offset)));
+      expect(scene.agencyShare).toBe(0.5);
+      expect(scene.operatingShare).toBe(0.5);
+      expect(scene.salesAvailable).toBe(true);
+      expect(scene.participants.length).toBeGreaterThanOrEqual(2);
+      expect(scene.businesses.length).toBeGreaterThanOrEqual(2);
+      expect(scene.playerOpportunity.length).toBeGreaterThan(0);
+    }
+
+    const incident = Array.from({ length: 4 }, (_, offset) =>
+      getTowerRivalryUpdate(new Date(Date.UTC(2026, 0, 1 + offset))),
+    ).find((scene) => scene.tactic === "sabotage");
+    expect(incident?.businessEffect).toContain("counter stays open");
   });
 });

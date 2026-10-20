@@ -364,7 +364,8 @@ function ambientArtSrc(id: number): string | undefined {
   return id === 501 ? "tower-art/character-claw-prime.png" : undefined;
 }
 
-function projectAmbientResident(resident: TowerResident): TowerAmbientOccupant {
+function projectAmbientResident(resident: TowerResident, at = new Date()): TowerAmbientOccupant {
+  const rivalryTask = getTowerRivalryUpdate(at).workByResident[resident.name];
   return {
     id: resident.id,
     name: resident.name,
@@ -375,7 +376,7 @@ function projectAmbientResident(resident: TowerResident): TowerAmbientOccupant {
     speed: resident.speed,
     role: resident.role,
     errands: resident.errands,
-    workLabel: resident.errands[0] ?? resident.role,
+    workLabel: rivalryTask ?? resident.errands[0] ?? resident.role,
     routine: createTowerDailyRoutine(resident.id, resident.errands),
     artSrc: ambientArtSrc(resident.id),
   };
@@ -384,6 +385,7 @@ function projectAmbientResident(resident: TowerResident): TowerAmbientOccupant {
 export function getTowerAmbientOccupants(
   floor: TowerFloor,
   presence: readonly TowerResidentPresence[] = [],
+  at = new Date(),
 ): TowerAmbientOccupant[] {
   if (typeof floor === "number" && floor >= 5) {
     return getShadowTowerCommercialTenants(floor).map(({ resident, business }) => ({
@@ -406,7 +408,7 @@ export function getTowerAmbientOccupants(
       ? presence.some((entry) => entry.id === resident.id && entry.floor === floor)
       : resident.floor === floor)
     .map((resident) => {
-      const occupant = projectAmbientResident(resident);
+      const occupant = projectAmbientResident(resident, at);
       const state = presence.find((entry) => entry.id === resident.id);
       if (!state) return occupant;
       return {
@@ -431,6 +433,71 @@ export const TOWER_GOSSIP = [
 
 export function getTowerGossip(index = 0) {
   return TOWER_GOSSIP[index % TOWER_GOSSIP.length];
+}
+
+export type TowerRivalryUpdate = {
+  participants: readonly string[];
+  businesses: readonly string[];
+  tactic: "competition" | "sabotage" | "cooperation" | "intelligence";
+  headline: string;
+  businessEffect: string;
+  playerOpportunity: string;
+  agencyShare: 0.5;
+  operatingShare: 0.5;
+  salesAvailable: true;
+};
+
+const TOWER_RIVALRY_UPDATES: readonly TowerRivalryUpdate[] = [
+  {
+    participants: ["ADA BLOM", "MARA QUILL"],
+    businesses: ["BLACK GLASS FLORIST", "LAST LOOK GIFT CO."],
+    tactic: "competition",
+    headline: "Two lobby counters are competing for the same apology order.",
+    businessEffect: "Both shops keep taking orders; each is offering a different same-day bundle.",
+    playerOpportunity: "Compare the bundles, then carry the buyer's choice to the correct counter.",
+    agencyShare: 0.5,
+    operatingShare: 0.5,
+    salesAvailable: true,
+  },
+  {
+    participants: ["MARA QUILL", "ADA BLOM"],
+    businesses: ["LAST LOOK GIFT CO.", "BLACK GLASS FLORIST"],
+    tactic: "sabotage",
+    headline: "A petty label swap has sent several gift sleeves to the wrong display.",
+    businessEffect: "Black Glass has a short preparation backlog, but its counter stays open and accepts orders.",
+    playerOpportunity: "Sort the mislabeled sleeves and deliver the corrected display list.",
+    agencyShare: 0.5,
+    operatingShare: 0.5,
+    salesAvailable: true,
+  },
+  {
+    participants: ["ADA BLOM", "ILYA SENN"],
+    businesses: ["BLACK GLASS FLORIST", "RINSE 67"],
+    tactic: "cooperation",
+    headline: "Ada and Ilya are coordinating clean table linens for a lobby event.",
+    businessEffect: "The florist can prepare larger arrangements without pausing its walk-in service.",
+    playerOpportunity: "Run the tagged linen bundle between the service corridor and gift arcade.",
+    agencyShare: 0.5,
+    operatingShare: 0.5,
+    salesAvailable: true,
+  },
+  {
+    participants: ["ILYA SENN", "MARA QUILL"],
+    businesses: ["RINSE 67", "LAST LOOK GIFT CO."],
+    tactic: "intelligence",
+    headline: "Ilya is checking the public delivery board after Mara's courier schedule changed.",
+    businessEffect: "Rinse 67 is adjusting its pickup timing using posted business notices, not private records.",
+    playerOpportunity: "Confirm the updated public pickup window with both counters.",
+    agencyShare: 0.5,
+    operatingShare: 0.5,
+    salesAvailable: true,
+  },
+] as const;
+
+/** Shared shift bulletin: rotates by UTC day so every client sees the same scene. */
+export function getTowerRivalryUpdate(at = new Date()): TowerRivalryUpdate {
+  const dayNumber = Math.floor(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()) / 86_400_000);
+  return TOWER_RIVALRY_UPDATES[((dayNumber % TOWER_RIVALRY_UPDATES.length) + TOWER_RIVALRY_UPDATES.length) % TOWER_RIVALRY_UPDATES.length];
 }
 
 /** Occupied commercial floors have dialogue; vacant and non-commercial floors do not. */
