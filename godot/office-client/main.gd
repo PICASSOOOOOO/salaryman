@@ -629,6 +629,7 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 					"Floor%02dUnit%02d" % [floor_number, unit_number],
 					bounds,
 					business,
+					str(unit.get("doorSide", "south")),
 				)
 				_add_business_suite_sign(room, business, bounds)
 				break
@@ -712,20 +713,22 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 
 
 func _business_finish_style(business_key: String) -> String:
-	if business_key in ["shadow_cafeteria", "tower_restaurant", "tower_cafe", "tea_shop", "juice_bar", "soda_candy", "grocery_store", "liquor_store"]:
+	if business_key in ["shadow_cafeteria", "restaurant", "cafe_f04", "tea_shop", "juice_bar", "soda_candy_shop", "grocery_store", "liquor_store", "bar_f12"]:
 		return "food"
-	if business_key in ["tower_clinic", "tower_doctor", "tower_dentist", "tower_pharmacy"]:
+	if business_key in ["tower_clinic", "tower_doctor", "tower_dentist", "tower_pharmacy", "salon", "barber", "soap_store"]:
 		return "care"
-	if business_key in ["tower_tailor", "formal_clothing", "shoe_store", "lobby_gift_shop", "tower_florist", "jewelry_store"]:
+	if business_key in ["formal_clothing_store", "shoe_store", "jewelry_store", "flower_shop", "plant_store", "glasses_shop", "lobby_gift_shop"]:
 		return "atelier"
-	if business_key in ["tower_terminal_repair", "computer_store", "office_equipment", "tool_store", "tower_print", "record_store", "book_store"]:
+	if business_key in ["tower_terminal_repair", "office_equipment_store", "tool_store", "printer_shop", "record_store", "book_store", "phone_store_f03", "phone_store_f05", "tv_store", "radio_station", "music_studio", "music_shop"]:
 		return "workshop"
-	if business_key in ["tower_law", "tower_realty", "tower_accounting", "tower_stock_broker", "tower_gold_exchange", "tower_insurance"]:
+	if business_key in ["banco_ombra", "tower_realty", "tower_stock_broker", "tower_gold_exchange", "tower_insurance", "school", "meeting_room", "public_workspace", "study_hall", "library", "chapel", "museum"]:
 		return "executive"
-	if business_key in ["tower_laundry", "tower_massage", "tower_childcare", "hostel", "hotel", "salon", "barber"]:
+	if business_key in ["tower_laundry", "hostel", "hostel_f11", "hotel_f11", "hotel_f12", "mattress_store", "furniture-store"]:
 		return "comfort"
-	if business_key in ["tower_import_export", "tower_mineral_rights", "tower_security", "tower_construction", "tower_power", "tower_water"]:
+	if business_key in ["tower_import_export", "tower_mineral_rights", "tower_security", "landscaping_company", "interior_design", "glass_installation", "plumber", "electrician", "android_replicant_repair", "janitorial_services", "moving_company", "security_station_2", "fire_station_2", "admin_office_2"]:
 		return "industrial"
+	if business_key in ["fish-store", "rug_store", "antique_shop_f04", "antique_shop_f05", "mirror_shop", "lighting_store", "art_supply_store", "magazine_store", "arcade", "karaoke", "vespa_shop", "kitchen_appliance_store", "paint_store", "soda_candy_shop", "pawn_shop"]:
+		return "retail"
 	return "retail"
 
 
@@ -765,7 +768,13 @@ func _store_finish_pair(style: String) -> Dictionary:
 	return finish
 
 
-func _add_business_suite_finish(room: String, tag: String, bounds: Array, business: Dictionary) -> void:
+func _add_business_suite_finish(
+	room: String,
+	tag: String,
+	bounds: Array,
+	business: Dictionary,
+	door_side: String = "south",
+) -> void:
 	if bounds.size() < 4:
 		return
 	var x := int(bounds[0])
@@ -790,28 +799,40 @@ func _add_business_suite_finish(room: String, tag: String, bounds: Array, busine
 	var panel_height := 1.05
 	var panel_y := 0.68
 	var panel_depth := 0.055
-	var half_x := span_x / 2.0
-	var half_z := span_z / 2.0
-	var north := _pygame_to_world(x + width / 2.0, y + 24, room)
+	var north_z := y + 24
+	var south_z := y + height - 24
+	var north := _pygame_to_world(x + width / 2.0, north_z, room)
 	north.y = panel_y
-	_add_box("%sStoreWallNorth" % tag, north, Vector3(span_x - 0.12, panel_height, panel_depth), finish["wall"])
+	var south := _pygame_to_world(x + width / 2.0, south_z, room)
+	south.y = panel_y
+	var side_span := maxf((span_x - 6.2) / 2.0, 0.2)
+	if door_side == "north":
+		_add_box("%sStoreWallNorthL" % tag, _store_side_panel_position(x + width * 0.25 - 1.5 / WORLD_SCALE, north_z, room, panel_y), Vector3(side_span, panel_height, panel_depth), finish["wall"])
+		_add_box("%sStoreWallNorthR" % tag, _store_side_panel_position(x + width * 0.75 + 1.5 / WORLD_SCALE, north_z, room, panel_y), Vector3(side_span, panel_height, panel_depth), finish["wall"])
+		_add_box("%sStoreWallSouth" % tag, south, Vector3(span_x - 0.12, panel_height, panel_depth), finish["wall"])
+	else:
+		_add_box("%sStoreWallNorth" % tag, north, Vector3(span_x - 0.12, panel_height, panel_depth), finish["wall"])
+		var south_left := _store_side_panel_position(x + width * 0.25 - 1.5 / WORLD_SCALE, south_z, room, panel_y)
+		var south_right := _store_side_panel_position(x + width * 0.75 + 1.5 / WORLD_SCALE, south_z, room, panel_y)
+		_add_box("%sStoreWallSouthL" % tag, south_left, Vector3(side_span, panel_height, panel_depth), finish["wall"])
+		_add_box("%sStoreWallSouthR" % tag, south_right, Vector3(side_span, panel_height, panel_depth), finish["wall"])
 	var west := _pygame_to_world(x + 24, y + height / 2.0, room)
 	west.y = panel_y
 	_add_box("%sStoreWallWest" % tag, west, Vector3(panel_depth, panel_height, span_z - 0.12), finish["wall"])
 	var east := _pygame_to_world(x + width - 24, y + height / 2.0, room)
 	east.y = panel_y
 	_add_box("%sStoreWallEast" % tag, east, Vector3(panel_depth, panel_height, span_z - 0.12), finish["wall"])
-	var south_z := y + height - 24
-	var south_left := _pygame_to_world(x + width * 0.25 - 1.5 / WORLD_SCALE, south_z, room)
-	var south_right := _pygame_to_world(x + width * 0.75 + 1.5 / WORLD_SCALE, south_z, room)
-	south_left.y = panel_y
-	south_right.y = panel_y
-	var side_span := maxf((span_x - 6.2) / 2.0, 0.2)
-	_add_box("%sStoreWallSouthL" % tag, south_left, Vector3(side_span, panel_height, panel_depth), finish["wall"])
-	_add_box("%sStoreWallSouthR" % tag, south_right, Vector3(side_span, panel_height, panel_depth), finish["wall"])
-	var threshold := _pygame_to_world(x + width / 2.0, south_z, room)
-	threshold.y = FLOOR_HEIGHT + 0.12
-	_add_box("%sStoreThreshold" % tag, threshold, Vector3(minf(span_x * 0.35, 2.4), 0.025, 0.16), finish["trim"])
+	if door_side in ["north", "south"]:
+		var threshold_z := north_z if door_side == "north" else south_z
+		var threshold := _pygame_to_world(x + width / 2.0, threshold_z, room)
+		threshold.y = FLOOR_HEIGHT + 0.102
+		_add_box("%sStoreThreshold" % tag, threshold, Vector3(minf(span_x * 0.35, 2.4), 0.025, 0.16), finish["trim"])
+
+
+func _store_side_panel_position(x: float, z: float, room: String, panel_y: float) -> Vector3:
+	var position := _pygame_to_world(x, z, room)
+	position.y = panel_y
+	return position
 
 func _add_yard_fence_horizontal(node_prefix: String, left: float, right: float, z: float) -> void:
 	var length := right - left

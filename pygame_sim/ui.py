@@ -720,6 +720,85 @@ class SolarPunkRenderer:
                 pygame.draw.rect(self.screen, office_fill, bay)
                 pygame.draw.rect(self.screen, office_stroke, bay, max(1, int(24 * scale)))
 
+            def draw_store_interior(business_key: str, bounds: tuple[int, int, int, int], door_side: str = "south") -> None:
+                finishes = {
+                    "food": ((154, 111, 78), (91, 67, 54)),
+                    "care": ((165, 184, 160), (76, 111, 96)),
+                    "atelier": ((178, 133, 142), (104, 65, 79)),
+                    "workshop": ((137, 156, 156), (62, 83, 87)),
+                    "executive": ((164, 143, 105), (88, 71, 51)),
+                    "comfort": ((144, 164, 141), (78, 101, 78)),
+                    "industrial": ((149, 145, 121), (78, 79, 65)),
+                    "retail": ((185, 162, 123), (103, 81, 55)),
+                }
+                key = business_key.lower()
+                if any(token in key for token in ("food", "cafe", "tea", "juice", "soda", "grocery", "restaurant", "liquor", "bar")):
+                    style = "food"
+                elif any(token in key for token in ("clinic", "doctor", "dentist", "pharmacy", "salon", "barber", "soap")):
+                    style = "care"
+                elif any(token in key for token in ("clothing", "shoe", "jewelry", "flower", "plant", "glasses", "gift")):
+                    style = "atelier"
+                elif any(token in key for token in ("terminal", "equipment", "tool", "printer", "record", "book", "phone", "tv", "radio", "music")):
+                    style = "workshop"
+                elif any(token in key for token in ("bank", "realty", "broker", "exchange", "school", "library", "chapel", "museum", "meeting", "workspace", "study")):
+                    style = "executive"
+                elif any(token in key for token in ("hostel", "hotel", "mattress", "furniture", "laundry")):
+                    style = "comfort"
+                elif any(token in key for token in ("plumber", "electrician", "security", "fire", "moving", "landscaping", "janitorial", "repair", "construction", "import", "mineral")):
+                    style = "industrial"
+                else:
+                    style = "retail"
+                fill, wall = finishes[style]
+                bay = world_rect(bounds)
+                if not bay.colliderect(viewport):
+                    return
+                pygame.draw.rect(self.screen, fill, bay)
+                border = max(2, min(int(24 * scale), bay.width // 8, bay.height // 8))
+                pygame.draw.rect(self.screen, wall, bay, border)
+                # A small inset floor border and entry mat make these read as
+                # fitted shops rather than another section of public hallway.
+                if bay.width > border * 4 and bay.height > border * 4:
+                    inset = bay.inflate(-border * 4, -border * 4)
+                    pygame.draw.rect(self.screen, wall, inset, max(1, border // 2))
+                threshold_width = max(border * 2, bay.width // 5)
+                threshold_height = max(2, border // 2)
+                threshold_x = bay.centerx - threshold_width // 2
+                threshold_y = bay.bottom - threshold_height if door_side == "south" else bay.top
+                pygame.draw.rect(self.screen, (211, 183, 121), (threshold_x, threshold_y, threshold_width, threshold_height))
+
+            floor_data = FLOOR_PLAN.get("playableFloors", {}).get(str(floor_number), {})
+            suite_layout = FLOOR_PLAN.get("businessSuiteLayout", {})
+            if floor_number == 6:
+                office_bounds = {
+                    str(office.get("id", "")): tuple(office.get("bounds", ()))
+                    for office in base_layout.get("offices", [])
+                }
+                for business in floor_data.get("businesses", []):
+                    office = office_bounds.get(str(business.get("officeRoom", "")))
+                    if not office or len(office) < 4:
+                        continue
+                    x, y, width, height = office
+                    half_width = width // 2
+                    if str(business.get("officeHalf", "west")) == "east":
+                        x += half_width
+                    draw_store_interior(
+                        str(business.get("businessKey", "")),
+                        (x, y, half_width, height),
+                    )
+            else:
+                layout_key = str(floor_data.get("suiteLayout", "standardFloorUnits"))
+                units = suite_layout.get(layout_key, suite_layout.get("standardFloorUnits", []))
+                unit_by_number = {int(unit.get("unitNumber", 0)): unit for unit in units}
+                for business in floor_data.get("businesses", []):
+                    unit = unit_by_number.get(int(business.get("unitNumber", 0)))
+                    bounds = tuple(unit.get("bounds", ())) if unit else ()
+                    if len(bounds) >= 4:
+                        draw_store_interior(
+                            str(business.get("businessKey", "")),
+                            bounds,
+                            str(unit.get("doorSide", "south")),
+                        )
+
             for hallway_data in base_layout["hallways"]:
                 hallway = world_rect(tuple(hallway_data))
                 pygame.draw.rect(self.screen, hallway_fill, hallway)

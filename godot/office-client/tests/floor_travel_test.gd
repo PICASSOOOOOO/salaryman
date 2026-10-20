@@ -27,6 +27,27 @@ func _run_tests() -> void:
 	var floor_plan = JSON.parse_string(FileAccess.get_file_as_string("res://floor_plan.json"))
 	assert(floor_plan is Dictionary)
 	client.floor_plan_data = floor_plan
+	client.world_root = Node3D.new()
+	root.add_child(client.world_root)
+	client._build_materials()
+	client._add_business_suite_finish(
+		"office_03",
+		"TestFishStore",
+		[1_000, 1_000, 3_000, 2_000],
+		{"businessKey": "fish-store"},
+	)
+	assert(client.world_root.get_node_or_null("TestFishStoreStoreFinishFloor") != null)
+	assert(client.world_root.get_node_or_null("TestFishStoreStoreWallNorth") != null)
+	assert(client.world_root.get_node_or_null("TestFishStoreStoreThreshold") != null)
+	client._add_business_suite_finish(
+		"office_03",
+		"TestNorthDoorStore",
+		[1_000, 1_000, 3_000, 2_000],
+		{"businessKey": "plant_store"},
+		"north",
+	)
+	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallNorthL") != null)
+	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallSouth") != null)
 	var base_layout: Dictionary = floor_plan["baseLayout"]
 	var lobby_bounds: Array = base_layout["elevatorLobby"]["bounds"]
 	var main_hall: Array = base_layout["hallways"][0]
