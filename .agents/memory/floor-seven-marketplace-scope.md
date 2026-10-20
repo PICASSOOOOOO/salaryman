@@ -46,6 +46,22 @@ disadvantage for poorer players because of their cost; they are better suited to
 wealthier players and larger operations. The prior eight-suite capacity is a
 baseline to revisit only through rearrangement within the existing floor area.
 
+If the economy is struggling, suites may be moved upward and higher floors may
+be rearranged to support more new businesses and competition, still within the
+existing floor space. This should respond to actual economic need rather than
+create empty or superfluous content. Preserve player participation and
+completion: the experience should be fun and slightly challenging, and the
+business ecosystem should help players network and start viable businesses.
+
+**Why:** the user wants suite placement and business capacity to respond to
+economic conditions, while prioritizing player participation, completion, and
+real business creation.
+
+**How to apply:** use existing floor area flexibly when more competition is
+needed; add only suites and businesses that create meaningful opportunities.
+Keep the challenge moderate and make networking and player-run businesses
+central outcomes.
+
 **Why:** the user wants staggered NPC competitors on higher floors and a
 tradeoff between large, expensive operations and small, lower-priced shops, with
 higher-quality floors favoring wealthier players.
