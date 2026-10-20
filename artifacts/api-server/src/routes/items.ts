@@ -13,11 +13,13 @@ import {
   botsTable,
   usersTable,
   desktopOfficePresenceTable,
+  towerShopInventoryTable,
+  towerShopShipmentsTable,
   INSTALL_TARGET_TYPES,
   INSTALL_CAPACITY,
   type InstallTargetType,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import Stripe from "stripe";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
@@ -46,6 +48,8 @@ import {
   TOWER_BUSINESS_STOCK_LINES,
   TOWER_GHOST_LISTING,
 } from "@workspace/api-zod";
+import { quoteTowerShopOrder, DEFAULT_TOWER_SHOP_PRICING_POLICY } from "../lib/tower-shop-pricing";
+import { settleTowerShopSupplierOrderTx } from "../lib/tower-shop-finance";
 import {
   isBattery,
   batteryCapacity,
@@ -305,6 +309,154 @@ router.get("/items/loadout", async (req, res) => {
 });
 
 // ─── Buy with in-game FIAT ────────────────────────────────────────────────────
+router.post("/items/tower-business/order", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const businessKey = String(req.body?.businessKey ?? "");
+  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+  const requestToken = String(req.body?.requestKey ?? "");
+  const rawLines = req.body?.lines;
+  if (!shop || !/^[A-Za-z0-9:_-]{8,100}$/.test(requestToken)
+    || !Array.isArray(rawLines) || rawLines.length < 1 || rawLines.length > 20) {
+    res.status(400).json({ error: "Invalid Tower shop order." });
+    return;
+  }
+
+  const lines: Array<{ itemId: string; quantity: number }> = [];
+  const seen = new Set<string>();
+  for (const raw of rawLines) {
+    const itemId = String(raw?.itemId ?? "");
+    const quantity = Number(raw?.quantity);
+    const listing = TOWER_BUSINESS_STOCK_LINES.find(
+      (entry) => entry.sellerBusinessKey === businessKey && entry.itemIds.includes(itemId),
+    );
+    if (!listing || seen.has(itemId) || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) {
+      res.status(400).json({ error: "Order lines must be unique listed products with quantity from 1 to 100." });
+      return;
+    }
+    seen.add(itemId);
+    lines.push({ itemId, quantity });
+  }
+
+  const [presence] = await db.select().from(desktopOfficePresenceTable)
+    .where(eq(desktopOfficePresenceTable.userId, link.userId))
+    .limit(1);
+  const presenceAgeMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  const distance = presence
+    ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
+    : Number.POSITIVE_INFINITY;
+  if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
+    || presence.room !== "hallway" || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
+    res.status(403).json({ error: "Approach the Tower shop in the linked desktop game to place an order." });
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const market = await getMarketIndex();
+    const btcMultiplierBps = Math.round(market.multiplier * 10_000);
+    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1_000);
+    const history = await db.select({ lines: towerShopShipmentsTable.lines })
+      .from(towerShopShipmentsTable)
+      .where(and(
+        eq(towerShopShipmentsTable.businessKey, businessKey),
+        sql`${towerShopShipmentsTable.requestedAt} >= ${cutoff}`,
+        sql`${towerShopShipmentsTable.status} <> 'cancelled'`,
+      ))
+      .orderBy(desc(towerShopShipmentsTable.requestedAt))
+      .limit(500);
+    const inventory = await db.select().from(towerShopInventoryTable)
+      .where(eq(towerShopInventoryTable.businessKey, businessKey));
+    const inventoryByItem = new Map(inventory.map((row) => [
+      row.itemId,
+      row.storedQuantity + row.shelfQuantity,
+    ]));
+    const demandByItem = new Map<string, number>();
+    for (const shipment of history) {
+      for (const line of shipment.lines) {
+        demandByItem.set(line.itemId, (demandByItem.get(line.itemId) ?? 0) + line.quantity);
+      }
+    }
+
+    const itemQuotes = lines.map((line) => {
+      const item = findCatalogItem(line.itemId);
+      if (!item || item.priceFiat <= 0) throw new Error("Catalog item has no valid price");
+      const demandIndex = Math.min(10_000, 100 + (demandByItem.get(line.itemId) ?? 0) * 100);
+      const supplyIndex = Math.min(10_000, 100 + (inventoryByItem.get(line.itemId) ?? 0) * 100);
+      const quote = quoteTowerShopOrder({
+        retailUnitPriceFiat: item.priceFiat,
+        quantity: line.quantity,
+        btcMultiplierBps,
+        demandIndex,
+        supplyIndex,
+      });
+      return { demandIndex, supplyIndex, quote };
+    });
+    const quantityTotal = lines.reduce((sum, line) => sum + line.quantity, 0);
+    const goodsCostFiat = itemQuotes.reduce((sum, entry) => sum + entry.quote.goodsCostFiat, 0);
+    const supplierCostFiat = itemQuotes.reduce((sum, entry) => sum + entry.quote.supplierCostFiat, 0);
+    const deliveryFeeFiat = Math.ceil(
+      ((DEFAULT_TOWER_SHOP_PRICING_POLICY.deliveryBaseFiat
+        + DEFAULT_TOWER_SHOP_PRICING_POLICY.deliveryPerItemFiat * quantityTotal)
+        * btcMultiplierBps) / 10_000,
+    );
+    const shopTotalFiat = goodsCostFiat + deliveryFeeFiat;
+    const demandIndex = Math.round(itemQuotes.reduce((sum, entry) => sum + entry.demandIndex, 0) / itemQuotes.length);
+    const supplyIndex = Math.round(itemQuotes.reduce((sum, entry) => sum + entry.supplyIndex, 0) / itemQuotes.length);
+    if (![goodsCostFiat, supplierCostFiat, deliveryFeeFiat, shopTotalFiat].every(Number.isSafeInteger)) {
+      throw new Error("Tower shop order exceeds supported FIAT range");
+    }
+
+    const result = await db.transaction((tx) => settleTowerShopSupplierOrderTx(tx, {
+      businessKey,
+      requestKey: `tower-shop:${link.id}:${requestToken}`,
+      requestedByUserId: link.userId,
+      lines,
+      quote: {
+        wholesaleRateBps: Math.round(itemQuotes.reduce((sum, entry) => sum + entry.quote.wholesaleRateBps, 0) / itemQuotes.length),
+        marketRetailUnitFiat: 0,
+        goodsCostFiat,
+        deliveryFeeFiat,
+        shopTotalFiat,
+        supplierCostFiat,
+        shippingCompanyMarginFiat: shopTotalFiat - supplierCostFiat,
+      },
+      btcMultiplierBps,
+      demandIndex,
+      supplyIndex,
+      now,
+    }));
+    if (!result.ok) {
+      if (result.reason === "tower_funds") {
+        res.status(503).json({ error: "Tower working capital is temporarily unavailable." });
+      } else {
+        res.status(402).json({
+          error: "shop_funds",
+          balanceFiat: result.balanceFiat,
+          requiredFiat: result.requiredFiat,
+        });
+      }
+      return;
+    }
+    res.status(result.duplicate ? 200 : 201).json({
+      shipmentId: result.shipment.id,
+      status: result.shipment.status,
+      lines: result.shipment.lines,
+      goodsCostFiat: result.shipment.goodsCostFiat,
+      deliveryFeeFiat: result.shipment.deliveryFeeFiat,
+      totalFiat: result.shipment.goodsCostFiat + result.shipment.deliveryFeeFiat,
+      supplierCostFiat: result.shipment.supplierCostFiat,
+      btcMultiplierBps: result.shipment.btcMultiplierBps,
+      demandIndex: result.shipment.demandIndex,
+      supplyIndex: result.shipment.supplyIndex,
+      duplicate: result.duplicate,
+    });
+  } catch (error: any) {
+    console.error("[TowerShop] supplier order failed:", error?.message);
+    res.status(500).json({ error: "Supplier order failed; no shop order was charged." });
+  }
+});
+
 router.post("/items/buy", async (req, res) => {
   const identity = await resolveGameItemsIdentity(req, res);
   if (!identity) return;

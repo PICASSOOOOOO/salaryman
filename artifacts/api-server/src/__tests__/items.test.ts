@@ -255,6 +255,18 @@ describe("POST /items/buy", () => {
   });
 });
 
+describe("POST /items/tower-business/order", () => {
+  it("requires a linked desktop credential before accepting supplier orders", async () => {
+    const res = await request(app).post("/api/items/tower-business/order").send({
+      businessKey: "fish-store",
+      requestKey: "test-order-0001",
+      lines: [{ itemId: "furn_aquarium", quantity: 1 }],
+    });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toMatch(/desktop credential required/i);
+  });
+});
+
 describe("POST /items/checkout", () => {
   it("blocks one-time USD item purchases while leaving FIAT purchases available", async () => {
     const res = await request(app).post("/api/items/checkout").send({ itemId: BAT.id });

@@ -1,11 +1,14 @@
-import { and, eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, sql } from "drizzle-orm";
 import {
   towerOperationsLedgerTable,
   towerOperationsStateTable,
   towerShopAccountsTable,
   towerShopLedgerTable,
+  towerShopShipmentsTable,
 } from "@workspace/db";
 import { advanceTowerFinance } from "./tower-finance";
+import type { TowerShopOrderQuote } from "./tower-shop-pricing";
 
 type DbTx = Parameters<Parameters<typeof import("@workspace/db").db.transaction>[0]>[0];
 
@@ -97,4 +100,153 @@ export async function ensureTowerShopWorkingCapitalTx(
   });
 
   return { ok: true as const, account: fundedAccount, funded: true };
+}
+
+export async function settleTowerShopSupplierOrderTx(
+  tx: DbTx,
+  args: {
+    businessKey: string;
+    requestKey: string;
+    requestedByUserId: string;
+    lines: Array<{ itemId: string; quantity: number }>;
+    quote: TowerShopOrderQuote;
+    btcMultiplierBps: number;
+    demandIndex: number;
+    supplyIndex: number;
+    now?: Date;
+  },
+) {
+  const now = args.now ?? new Date();
+  const [prior] = await tx.select().from(towerShopShipmentsTable)
+    .where(eq(towerShopShipmentsTable.requestKey, args.requestKey))
+    .limit(1);
+  if (prior) return { ok: true as const, duplicate: true, shipment: prior };
+
+  const funding = await ensureTowerShopWorkingCapitalTx(tx, args.businessKey, now);
+  if (!funding.ok) return { ok: false as const, reason: "tower_funds" as const };
+  const [committedRetry] = await tx.select().from(towerShopShipmentsTable)
+    .where(eq(towerShopShipmentsTable.requestKey, args.requestKey))
+    .limit(1);
+  if (committedRetry) return { ok: true as const, duplicate: true, shipment: committedRetry };
+  if (funding.account.balanceFiat < args.quote.shopTotalFiat) {
+    return {
+      ok: false as const,
+      reason: "shop_funds" as const,
+      balanceFiat: funding.account.balanceFiat,
+      requiredFiat: args.quote.shopTotalFiat,
+    };
+  }
+
+  const shippingCompanyKey = "tower-shipping-company";
+  const supplierKey = "outside-suppliers";
+  const lockLedgerAccount = async (type: string, key: string) => {
+    const advisoryKey = `tower-shop-ledger:${type}:${key}`;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${advisoryKey}))`);
+    const [row] = await tx.select({
+      balance: sql<number>`coalesce(sum(case when ${towerShopLedgerTable.direction} = 'credit' then ${towerShopLedgerTable.amountFiat} else -${towerShopLedgerTable.amountFiat} end), 0)`,
+    }).from(towerShopLedgerTable).where(and(
+      eq(towerShopLedgerTable.accountType, type),
+      eq(towerShopLedgerTable.accountKey, key),
+    ));
+    const balance = Number(row?.balance ?? 0);
+    if (!Number.isSafeInteger(balance) || balance < 0 || balance > MAX_FIAT) {
+      throw new Error(`Tower shop ledger balance is invalid for ${type}:${key}`);
+    }
+    return balance;
+  };
+
+  const shipperBalance = await lockLedgerAccount("shipping_company", shippingCompanyKey);
+  const supplierBalance = await lockLedgerAccount("external_supplier", supplierKey);
+  const shipmentId = randomUUID();
+  const shipperAfterPayment = shipperBalance + args.quote.shopTotalFiat;
+  const shipperAfterProcurement = shipperAfterPayment - args.quote.supplierCostFiat;
+  const supplierAfterPayment = supplierBalance + args.quote.supplierCostFiat;
+  if ([shipperAfterPayment, shipperAfterProcurement, supplierAfterPayment]
+    .some((balance) => !Number.isSafeInteger(balance) || balance < 0 || balance > MAX_FIAT)) {
+    throw new Error("Tower shop supplier settlement exceeds supported FIAT balances");
+  }
+
+  const [shipment] = await tx.insert(towerShopShipmentsTable).values({
+    id: shipmentId,
+    requestKey: args.requestKey,
+    businessKey: args.businessKey,
+    shippingCompanyKey,
+    status: "supplier_processing",
+    lines: args.lines,
+    goodsCostFiat: args.quote.goodsCostFiat,
+    deliveryFeeFiat: args.quote.deliveryFeeFiat,
+    supplierCostFiat: args.quote.supplierCostFiat,
+    btcMultiplierBps: args.btcMultiplierBps,
+    demandIndex: args.demandIndex,
+    supplyIndex: args.supplyIndex,
+    requestedByUserId: args.requestedByUserId,
+    requestedAt: now,
+    supplierOrderedAt: now,
+    updatedAt: now,
+  }).returning();
+  if (!shipment) throw new Error("Tower shop shipment could not be created");
+
+  const shopAfterPayment = funding.account.balanceFiat - args.quote.shopTotalFiat;
+  await tx.update(towerShopAccountsTable).set({
+    balanceFiat: shopAfterPayment,
+    totalOrderSpendFiat: funding.account.totalOrderSpendFiat + args.quote.shopTotalFiat,
+    updatedAt: now,
+  }).where(eq(towerShopAccountsTable.businessKey, args.businessKey));
+  const eventBase = `tower-shop-order:${shipmentId}`;
+  await tx.insert(towerShopLedgerTable).values([
+    {
+      eventKey: `${eventBase}:shop-debit`,
+      shipmentId,
+      accountType: "shop",
+      accountKey: args.businessKey,
+      direction: "debit",
+      amountFiat: args.quote.shopTotalFiat,
+      balanceAfterFiat: shopAfterPayment,
+      counterpartyType: "shipping_company",
+      counterpartyKey: shippingCompanyKey,
+      description: "Supplier order and delivery payment",
+      createdAt: now,
+    },
+    {
+      eventKey: `${eventBase}:shipper-credit`,
+      shipmentId,
+      accountType: "shipping_company",
+      accountKey: shippingCompanyKey,
+      direction: "credit",
+      amountFiat: args.quote.shopTotalFiat,
+      balanceAfterFiat: shipperAfterPayment,
+      counterpartyType: "shop",
+      counterpartyKey: args.businessKey,
+      description: "Shop supplier-order payment",
+      createdAt: now,
+    },
+    {
+      eventKey: `${eventBase}:shipper-procurement`,
+      shipmentId,
+      accountType: "shipping_company",
+      accountKey: shippingCompanyKey,
+      direction: "debit",
+      amountFiat: args.quote.supplierCostFiat,
+      balanceAfterFiat: shipperAfterProcurement,
+      counterpartyType: "external_supplier",
+      counterpartyKey: supplierKey,
+      description: "Outside supplier procurement",
+      createdAt: now,
+    },
+    {
+      eventKey: `${eventBase}:supplier-credit`,
+      shipmentId,
+      accountType: "external_supplier",
+      accountKey: supplierKey,
+      direction: "credit",
+      amountFiat: args.quote.supplierCostFiat,
+      balanceAfterFiat: supplierAfterPayment,
+      counterpartyType: "shipping_company",
+      counterpartyKey: shippingCompanyKey,
+      description: "Payment for outside goods procurement",
+      createdAt: now,
+    },
+  ]);
+
+  return { ok: true as const, duplicate: false, shipment, balanceFiat: shopAfterPayment };
 }
