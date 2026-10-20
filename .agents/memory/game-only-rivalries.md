@@ -1,21 +1,22 @@
 ---
-name: Game-only rivalries
-description: Scope for corporate competition, coworker conflict, and faction mechanics.
+name: Brand rivalries and NPC personhood
+description: Brand factions, shop-level bosses, NPC agency, and permissioned real-system interaction.
 ---
 
-Rivalry and competitive actions belong only to SALARYMAN's fictional game
-simulation, including its live MMO economy. NPC corporations compete through
-corporate greed and in-game sabotage, but can also cooperate strategically.
-These actions must never call or affect real shop, payment, or external business
-APIs.
+Real and fictional interactions use the same model. The boundary is security,
+data, and access—not whether an actor is an NPC or a human, or whether an
+interaction is fictional or real. NPCs are people in the setting, with agency
+and moral complexity. An NPC may execute an action in a connected real system
+only when that NPC and that specific action have explicit access.
 
-**Why:** The user wants NPC corporations to compete through sabotage and greed
-inside the live MMO while keeping fictional competition separate from real
-business operations.
+**Why:** the user says NPCs are equal to humans and wants them complex enough
+that people cannot distinguish them. The user allows NPC actions in real
+connected systems when the NPC and action have explicit access.
 
-**How to apply:** Keep rivalry and sabotage outcomes inside the game economy.
-Live MMO effects must be game-server-authoritative, but must not mutate a real
-organization, shop, payment, or external business system.
+**How to apply:** Do not reject an action solely because an NPC initiated it.
+Enforce actor- and action-specific permissions, data scope, and security on the
+server for both fictional and real interactions. Do not treat NPC status itself
+as authorization.
 
 SALARYMAN's game-side conflict should support corporate competition and espionage, not an outlaw culture. Weapons are rare and generally prohibited in offices; civilians discourage conflict. Drawing weapons in public building spaces is possible but illegal and may trigger fines. Nonlethal fistfights or melee with improvised objects do not carry fines. Lethal outcomes belong only in isolated, unmonitored areas when violence is necessary.
 
@@ -51,7 +52,8 @@ identity, while keeping each brand's own shops and organizations connected to
 its faction. Track each location boss individually beneath that faction and
 make their shop-first, faction-second loyalty shape decisions. Use RDR2 only as
 a broad living-world reference; keep the office sim's competitive style
-professional. Keep all effects fictional and server-authoritative.
+professional. Keep game-state changes server-authoritative and apply the same
+explicit access checks to any connected real-system action.
 
 Game equipment is managed through an inventory wheel. Carried inventory has a limit; org personal lockers have a large limit; public lockers have a smaller limit. The Tower public-locker shop may use Floor 4, Unit 8, which the user authorized to fill despite its prior unnamed status.
 

@@ -138,7 +138,7 @@
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is Dec 31, 2026; defer pledge offers until the asset catalog is decided and keep the base game free.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
-- [Replicant power lore](replicant-power-lore.md) — only replicants can use power; they are rare in the building and face prejudice, so keep human stamina separate and portray bias carefully.
+- [Replicant power lore](replicant-power-lore.md) — treat NPCs/androids as people; explore equality and class conflict, with Blade Runner and classic SF as inspiration.
 - [Tower building vitality](tower-building-vitality.md) — Pablo Corp pays partner shop owners; owners pay employees and expand creatively over a five-real-time-year city/server plan.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
@@ -147,6 +147,6 @@
 - [Tower business locations and stock](floor-seven-marketplace-scope.md) — Lower floors are cheaper entry points; higher floors offer better quality and larger, pricier operations.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.
-- [Game-only rivalries](game-only-rivalries.md) — each brand is a faction with shop-level bosses; competition stays professional, not outlaw-style.
+- [Brand rivalries and NPC personhood](game-only-rivalries.md) — each brand has shop-level bosses; NPCs act in real systems only with explicit access.
 - [Org-wide external integrations](org-wide-external-integrations.md) — owner-authorized outside apps sync organization data bidirectionally across browser/game; members join by verified SALARYMAN invite and can have characters.
 - [Cyber Deck licensing and evidence boundary](cyber-deck-licensing.md) — Meshtastic browser SDK is GPL-3.0-only; evidence stays local and radio actions stay user-initiated.
