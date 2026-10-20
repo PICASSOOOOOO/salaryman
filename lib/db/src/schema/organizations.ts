@@ -269,6 +269,7 @@ export const ORG_PERMISSION_KEYS = [
   "custom_apps.view",
   "custom_apps.edit",
   "custom_apps.manage",
+  "storage.access",
 ] as const;
 export type OrgPermissionKey = (typeof ORG_PERMISSION_KEYS)[number];
 
@@ -294,6 +295,7 @@ export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; desc
   "custom_apps.view": { label: "View custom apps", description: "Open published custom pages and read their organization records.", group: "Apps" },
   "custom_apps.edit": { label: "Edit custom app records", description: "Create, update, and delete records in published custom pages.", group: "Apps" },
   "custom_apps.manage": { label: "Manage custom apps", description: "Create, edit, publish, and delete organization custom pages.", group: "Apps" },
+  "storage.access": { label: "Access org storage", description: "Deposit and withdraw equipment from the shared organization storage room.", group: "Operations" },
 };
 
 // Sensible defaults applied when an org has not customized a key.
@@ -314,6 +316,7 @@ export const DEFAULT_PERMISSION_MIN_ROLE: Record<OrgPermissionKey, OrgRole> = {
   "custom_apps.view": "specialist",
   "custom_apps.edit": "specialist",
   "custom_apps.manage": "manager",
+  "storage.access": "specialist",
 };
 
 export const orgPermissionsTable = pgTable(

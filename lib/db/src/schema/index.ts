@@ -111,6 +111,7 @@ export * from "./ad-creatives";
 export * from "./education";
 export * from "./inventory";
 export * from "./player-storage";
+export * from "./public-lockers";
 export * from "./installed-items";
 export * from "./travel-vouchers";
 export * from "./land-construction";
