@@ -67,14 +67,21 @@ both sides' involvement matters.
 - Level 4: name, age, profession, and credit score.
 - Level 5: name, age, profession, credit score, and net worth.
 
+Criminal or unemployed NPCs should still present as employed. Advanced criminals
+may use a front company, including having a business office.
+
 **Why:** the user wants relationship-based limits on examining both NPCs and
 other players, with five exact information levels that deepen through extensive
-participation by both parties.
+participation by both parties. The user also wants criminal and unemployed
+NPCs to have an employment presentation, with front companies available to
+advanced criminals.
 
 **How to apply:** make profile disclosure gradual rather than all-or-nothing,
 enforce the level gates server-side, and keep each field within its security
 and data-access permissions. Base progression on substantial participation
-between the two people, not a one-sided profile view.
+between the two people, not a one-sided profile view. Give criminal/unemployed
+NPCs an employed presentation, and let advanced criminals use a front company
+with an office.
 
 ## Public maintenance workforce
 
