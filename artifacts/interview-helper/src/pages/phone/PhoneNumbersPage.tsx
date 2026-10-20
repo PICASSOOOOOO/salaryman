@@ -20,6 +20,7 @@ export default function PhoneNumbersPage() {
   const [searchingNumbers, setSearchingNumbers] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [settingActiveId, setSettingActiveId] = useState<number | null>(null);
+  const [purchasingNumber, setPurchasingNumber] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const checkoutResult = new URLSearchParams(window.location.search).get('number_checkout');
@@ -77,6 +78,25 @@ export default function PhoneNumbersPage() {
       else setSearchError(d.error || 'Search failed');
     } catch { setSearchError('Search failed'); }
     setSearchingNumbers(false);
+  };
+
+  const buyNumber = async (number: AvailableNumber) => {
+    setPurchasingNumber(number.phoneNumber);
+    setSearchError('');
+    try {
+      const requestId = `phone-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const r = await apiFetch('/api/stripe/create-phone-number-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: number.phoneNumber, countryCode: buyCountry, requestId }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data?.url) throw new Error(data?.error || `Checkout failed (${r.status})`);
+      window.location.assign(data.url);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'Could not start number checkout');
+      setPurchasingNumber(null);
+    }
   };
 
   const setActiveNumber = async (id: number) => {
@@ -147,11 +167,12 @@ export default function PhoneNumbersPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 16 }}>
         {/* Buy a number */}
         <PhoneCard>
-          <PhoneCardHeader><Search size={11} /> NUMBER RENTALS</PhoneCardHeader>
+          <PhoneCardHeader><Search size={11} /> BUY A NUMBER</PhoneCardHeader>
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: '0.52rem', color: warning(0.9) }}>30-DAY RENTALS WILL USE CREDITS</div>
-            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>New rentals are not available yet. Existing numbers remain active and manageable.</div>
-            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>CALLL HOME is $50/month and includes two-way SMS and a default platform number.</div>
+            <div style={{ fontSize: '0.52rem', color: warning(0.9) }}>CUSTOM NUMBERS · $10 ONE-TIME CHECKOUT</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>Choose an available number to continue to secure checkout. Availability is checked again before payment.</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>Twilio may also charge recurring rental fees for the number.</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>CALLL HOME subscription is separate and required to use phone features.</div>
             {regionDefaults && (
               <div style={{ fontSize: '0.5rem', color: slate(0.55) }}>
                 Home realm: {regionDefaults.countryInfo.flag} {regionDefaults.countryInfo.region}
@@ -195,8 +216,15 @@ export default function PhoneNumbersPage() {
                       <div style={{ fontSize: '0.6rem', color: slate(0.85) }}>{formatPhone(n.phoneNumber)}</div>
                       {(n.locality || n.region) && <div style={{ fontSize: '0.45rem', color: slate(0.55) }}>{[n.locality, n.region].filter(Boolean).join(', ')}</div>}
                     </div>
-                    <PhoneBtn disabled size="sm" color={primary} data-testid={`button-rent-${n.phoneNumber}`}>
-                      RENT LATER
+                    <PhoneBtn
+                      onClick={() => buyNumber(n)}
+                      disabled={purchasingNumber !== null}
+                      size="sm"
+                      color={primary}
+                      data-testid={`button-rent-${n.phoneNumber}`}
+                    >
+                      {purchasingNumber === n.phoneNumber ? <Loader2 size={11} className="animate-spin" /> : null}
+                      BUY $10
                     </PhoneBtn>
                   </div>
                 ))}
@@ -214,7 +242,7 @@ export default function PhoneNumbersPage() {
           <span style={{ color: slate(0.5), fontVariantNumeric: 'tabular-nums' }}>{phoneNumbers.length}</span>
         </PhoneCardHeader>
         {phoneNumbers.length === 0 ? (
-          <EmptyState message={defaultNumber ? `USING PLATFORM DEFAULT ${formatPhone(defaultNumber)} — CUSTOM RENTALS WILL RETURN WITH CREDITS` : "NO NUMBERS CONFIGURED — CUSTOM RENTALS WILL RETURN WITH CREDITS"} icon={<Hash size={32} />} />
+          <EmptyState message={defaultNumber ? `USING PLATFORM DEFAULT ${formatPhone(defaultNumber)}` : "NO CUSTOM NUMBERS CONFIGURED"} icon={<Hash size={32} />} />
         ) : (
           <div>
             {phoneNumbers.map(n => (

@@ -131,8 +131,10 @@ export async function provisionPaidPhoneNumber(input: {
       if (!available.some((candidate) => candidate.phoneNumber === input.phoneNumber)) {
         throw new Error("That number is no longer available. Your payment will not be fulfilled automatically; contact support for a refund.");
       }
-      const baseUrl = process.env.APP_BASE_URL
-        || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
+      const domain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim()
+        || process.env.REPLIT_DEV_DOMAIN?.trim();
+      const baseUrl = (process.env.APP_BASE_URL || (domain ? `https://${domain}` : "")).replace(/\/+$/, "");
+      if (!baseUrl) throw new Error("Public application URL is not configured");
       purchased = await client.incomingPhoneNumbers.create({
         phoneNumber: input.phoneNumber,
         voiceUrl: `${baseUrl}/api/twilio/webhook/voice?userId=${encodeURIComponent(input.userId)}`,

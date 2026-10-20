@@ -210,16 +210,30 @@ describe("POST /stripe/webhook", () => {
 
   // ── Subscription feature grant ───────────────────────────────────────────────
 
-  it("blocks new one-time USD number checkouts", async () => {
+  it("creates a one-time USD checkout for an available custom number", async () => {
+    mocks.checkoutCreate.mockResolvedValueOnce({ id: "cs_phone_checkout", url: "https://checkout.example/phone" });
     const res = await request(app).post("/api/stripe/create-phone-number-session").send({
       phoneNumber: "+15558881111",
       countryCode: "US",
-      requestId: "request-unauthorized-1",
+      requestId: "request-phone-001",
     });
-    expect(res.status).toBe(410);
-    expect(res.body.error).toBe("monthly_subscriptions_only");
-    expect(mocks.assertPhoneNumberAvailable).not.toHaveBeenCalled();
-    expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(res.body.url).toBe("https://checkout.example/phone");
+    expect(mocks.assertPhoneNumberAvailable).toHaveBeenCalledWith("+15558881111", "US");
+    expect(mocks.checkoutCreate).toHaveBeenCalledWith(expect.objectContaining({
+      mode: "payment",
+      client_reference_id: TEST_USER,
+      metadata: expect.objectContaining({ type: "phone_number", phoneNumber: "+15558881111" }),
+    }), { idempotencyKey: `phone-number:${TEST_USER}:request-phone-001` });
+    const duplicate = await request(app).post("/api/stripe/create-phone-number-session").send({
+      phoneNumber: "+15558881111",
+      countryCode: "US",
+      requestId: "request-phone-002",
+    });
+    expect(duplicate.status).toBe(409);
+    expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
+    await db.delete(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, "cs_phone_checkout"));
   });
 
   it("fulfils a paid custom number exactly once across duplicate webhooks", async () => {

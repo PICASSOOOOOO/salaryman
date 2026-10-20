@@ -9,11 +9,12 @@ import { handlePledgeWebhookEvent } from "./pledge";
 import { handleItemWebhookEvent } from "./items";
 import { handleStripeOrganizationPaymentEvent } from "../lib/org-payment-settlement";
 import { ensureFiatAccounts, spendFiat } from "../lib/fiat-wallet";
-import { provisionPaidPhoneNumber } from "../lib/phone-number-service";
+import { assertPhoneNumberAvailable, provisionPaidPhoneNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { markOrganizationAsPaid, markUserAsPaid } from "../lib/payment-protection";
 import { autoActivatePrimeWorkflows } from "../lib/autopilot/activation";
 import { resolveCurrentOrgId } from "../lib/org-permissions";
+import { isSupportedCountry } from "../lib/phone";
 
 const router = Router();
 
@@ -153,6 +154,8 @@ export function getStripe() {
 
 function getAppBaseUrl(): string {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
+  const deployedDomain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  if (deployedDomain) return `https://${deployedDomain}`;
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   return "http://localhost:3000";
 }
@@ -550,10 +553,87 @@ router.post("/stripe/create-phone-number-session", async (req, res) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  res.status(410).json({
-    error: "monthly_subscriptions_only",
-    message: "Custom number rentals will use Credits and are not available through USD checkout.",
-  });
+  const user = req.user;
+  const { phoneNumber, countryCode, label, requestId } = req.body as {
+    phoneNumber?: string;
+    countryCode?: string;
+    label?: string;
+    requestId?: string;
+  };
+  if (
+    typeof phoneNumber !== "string" || !/^\+[1-9]\d{7,14}$/.test(phoneNumber)
+    || typeof countryCode !== "string" || !isSupportedCountry(countryCode)
+    || typeof requestId !== "string" || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)
+  ) {
+    res.status(400).json({ error: "A valid phone number, country code, and request ID are required" });
+    return;
+  }
+  if (!(await hasFeature(user.id, user.email, "phone_system"))) {
+    res.status(403).json({ error: "CALLL HOME subscription required", feature: "phone_system" });
+    return;
+  }
+  if (!(await canUsePlatformTwilio(user.id, user.email))) {
+    res.status(403).json({ error: "Phone system access is not authorized for this account" });
+    return;
+  }
+
+  try {
+    const session = await db.transaction(async (tx) => {
+      // Serialize checkout creation for a specific number. Without this guard,
+      // separate browser sessions could both pay and race to provision it.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${phoneNumber})::bigint)`);
+      const [existingPurchase] = await tx.select({ id: phoneNumberPurchasesTable.id })
+        .from(phoneNumberPurchasesTable)
+        .where(and(
+          eq(phoneNumberPurchasesTable.phoneNumber, phoneNumber),
+          inArray(phoneNumberPurchasesTable.status, ["pending", "processing", "completed"]),
+        ))
+        .limit(1);
+      if (existingPurchase) throw new Error("This number already has a purchase in progress or is assigned");
+
+      await assertPhoneNumberAvailable(phoneNumber, countryCode);
+      const baseUrl = getAppBaseUrl().replace(/\/+$/, "");
+      const checkout = await getStripe().checkout.sessions.create({
+        mode: "payment",
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "SALARYMAN Custom Phone Number",
+              description: `${phoneNumber} — one-time setup and number purchase`,
+            },
+            unit_amount: PHONE_NUMBER_PRICE_CENTS,
+          },
+          quantity: 1,
+        }],
+        success_url: `${baseUrl}/phone?tab=numbers&number_checkout=success`,
+        cancel_url: `${baseUrl}/phone?tab=numbers&number_checkout=cancel`,
+        client_reference_id: user.id,
+        metadata: {
+          userId: user.id,
+          type: "phone_number",
+          phoneNumber,
+          countryCode,
+          label: typeof label === "string" ? label.slice(0, 64) : "main",
+          amountCents: String(PHONE_NUMBER_PRICE_CENTS),
+        },
+      }, { idempotencyKey: `phone-number:${user.id}:${requestId}` });
+      await tx.insert(phoneNumberPurchasesTable).values({
+        userId: user.id,
+        stripeSessionId: checkout.id,
+        phoneNumber,
+        countryCode,
+        label: typeof label === "string" ? label.slice(0, 64) : "main",
+        amountCents: PHONE_NUMBER_PRICE_CENTS,
+      });
+      return checkout;
+    });
+    res.json({ url: session.url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Phone number checkout failed";
+    console.error("[CalllHome] phone-number checkout error:", message);
+    res.status(message.includes("purchase in progress or is assigned") ? 409 : 400).json({ error: message });
+  }
 });
 
 async function fulfilPhoneNumberPurchase(session: Stripe.Checkout.Session): Promise<void> {
