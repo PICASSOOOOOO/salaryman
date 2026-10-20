@@ -39,3 +39,14 @@ meaningful cooperation and competition between them.
 **How to apply:** integrate the added RDR2 Nemesis Rage mod with NPC shop owners
 so their rivalries and cooperation affect shop behavior; do not make the system
 a cosmetic label or build a duplicate before checking the mod.
+
+## Shop staffing hierarchy
+
+Shop owners are on-site and working at key hours; shops also have managers, shift
+leads, and other staff. Keep those identities and roles distinct.
+
+**Why:** The user clarified that owners work in their shops at key hours and that
+shops also have managers and shift leads.
+
+**How to apply:** Do not promote a named operator or staff member to shop boss
+unless canon explicitly identifies them as an owner or boss.

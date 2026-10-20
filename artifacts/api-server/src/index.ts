@@ -28,6 +28,7 @@ import { creativeWorkAutopilotHandler } from './lib/autopilot/handlers/creative-
 import { marketResearchAutopilotHandler } from './lib/autopilot/handlers/market-research';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
+import { seedConfirmedTowerNpcAgency } from "./lib/seed-npc-agency";
 import { expireOverdueRentals } from './routes/fleet';
 import { isUserDataRetentionEnabled, runUserDataRetentionSweep } from './routes/lifecycle';
 import { purgeOutsideWorldState } from './lib/outside-world';
@@ -83,6 +84,9 @@ function runDeferredBoot(): void {
     });
     seedResourceNodes().catch(err => {
       console.error("[Resource Seed] Error:", err);
+    });
+    seedConfirmedTowerNpcAgency().catch(err => {
+      console.error("[NPC Agency Seed] Error:", err);
     });
     tickCommodityPrices().catch(err => {
       console.error("[Commodity Prices] Error:", err);
