@@ -5,6 +5,22 @@ description: How the in-game verified-salary hourly FIAT wage accrues and is ver
 
 # Verified real-salary wage
 
+## Product requirement: paid wages must be confirmed
+
+Real-world payroll must not count toward player progression merely because a
+monthly salary was declared or an employer relationship was verified. The
+organization owner must confirm that the wages were actually paid. Keep
+real-world payroll progress separate from in-game job wages and purchased
+income.
+
+**Why:** the user requires game progression to reflect actual work and explicitly
+requires org-owner confirmation that real-world wages were paid.
+
+**How to apply:** before using a real-world salary signal for XP, skill points,
+or other progression, verify a paid payroll event and its owner confirmation.
+The current `incomeVerified` declaration/qualification flow is not sufficient
+evidence of individual wages paid.
+
 A player whose real-world monthly salary is VERIFIED earns `floor(monthly/720)` ƒ
 per WHOLE REAL-world hour (720 = 30d × 24h), credited as spendable FIAT checking.
 

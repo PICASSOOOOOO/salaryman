@@ -77,7 +77,7 @@
 - [Deploy build typecheck gate](deploy-typecheck-gate.md) — Publish typechecks before building; dev can hide TypeScript errors until release.
 - [Proxy TTS no speech API](proxy-tts-no-speech-api.md) — Use textToSpeech with the Replit proxy; it does not support audio.speech.create or tts-1.
 - [Streamer Mode + OBS WebSocket](streamer-mode.md) — Mask email and USD only; keep FIAT visible and OBS passwords device-local.
-- [Verified real-salary wage](verified-salary-wage.md) — Pay verified wages to FIAT by real hour with an idempotent cursor.
+- [Verified real-salary wage](verified-salary-wage.md) — Never count declared salary as wages paid; require org-owner confirmation of actual payroll.
 - [API health monitoring (two-layer)](api-health-monitoring.md) — Combine in-process transitions with external health:all; production validation sends email.
 - [Consumables + install slots](consumables-install-system.md) — Stack consumables; resolve install targets on the server, never from client IDs.
 - [Battery running-cost system](battery-running-cost.md) — Battery powers AI/electrical costs; installation charges fully and refunds require a full charge.
