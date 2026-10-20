@@ -14,7 +14,8 @@ should rise with better credit, experience, skills, item powers, and low net
 worth; poor credit and high net worth reduce it. Items help balance those
 tradeoffs. High-powered corporate characters also lose stamina hearts faster
 than poorer characters; wealth therefore reduces both stamina capacity and
-stamina endurance.
+stamina endurance. Wealthy characters need more replenishing items or rest to
+recover, limiting how long they can adventure primarily to make money.
 
 Credit score represents the establishment's assessment and affects financial
 systems. Net worth is the player's actual personal worth. Poorer players gain
@@ -34,7 +35,8 @@ one connected progression system.
 **How to apply:** do not add a separate HP/death model. Keep wallet, bank balance,
 net worth, credit, and stamina distinct; balance poorer physical resilience and
 slower stamina drain against wealthy corporate influence, with items as
-counterweights.
+counterweights. Give wealthy adventurers meaningful recovery costs and rest
+needs so wealth does not also create unlimited adventure stamina.
 
 ## Legacy implementation risks
 
