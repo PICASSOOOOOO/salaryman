@@ -110,6 +110,23 @@ async function syncDebtToLedger(userId: string, saveData: Record<string, unknown
 const FREE_MAX_SLOTS = 2;
 const PRO_MAX_SLOTS = 10;
 const ENTERPRISE_MAX_SLOTS = 1;
+const MAX_CHARACTER_LEVEL = 120;
+
+export function resolveAuthoritativeLevel(
+  progression: unknown,
+  storedLevel: unknown,
+): number {
+  const progressionLevel =
+    progression && typeof progression === "object"
+      ? (progression as Record<string, unknown>).level
+      : undefined;
+  const candidate = Number.isFinite(Number(progressionLevel))
+    ? Number(progressionLevel)
+    : Number(storedLevel);
+  return Number.isFinite(candidate)
+    ? Math.max(1, Math.min(MAX_CHARACTER_LEVEL, Math.floor(candidate)))
+    : 1;
+}
 
 // ── Story Mode (foundation) ──────────────────────────────────────────────────
 // Story progression is a per-character (per save-slot) state stored inside the
@@ -378,11 +395,14 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     // immutable commitment fields while still letting forward progress through.
     const incoming = data as Record<string, unknown>;
     const [prior] = await db
-      .select({ data: salarymanSavesTable.data })
+      .select({ data: salarymanSavesTable.data, level: salarymanSavesTable.level })
       .from(salarymanSavesTable)
       .where(and(eq(salarymanSavesTable.userId, req.user.id), eq(salarymanSavesTable.slotIndex, slot)))
       .limit(1);
     const priorData = prior?.data as Record<string, unknown> | undefined;
+    const authoritativeLevel = prior
+      ? resolveAuthoritativeLevel(priorData?.skillProgression, prior.level)
+      : 1;
     const protectedProperties = recovery.properties.find((property) => property.slotIndex === slot);
     if (protectedProperties && incoming.propertyDeeds === undefined) {
       incoming.propertyDeeds = protectedProperties.propertyDeeds;
@@ -491,7 +511,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
           slotIndex: slot,
           charName: String(charName).slice(0, 64).toUpperCase(),
           charClass: String(charClass).slice(0, 32).toLowerCase(),
-          level: Number(level) || 1,
+          level: authoritativeLevel,
           salary: salaryColumn,
           lastZone: String(lastZone || "MINX CITY").slice(0, 64),
           playtime: Number(playtime) || 0,
@@ -503,7 +523,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
           set: {
             charName: String(charName).slice(0, 64).toUpperCase(),
             charClass: String(charClass).slice(0, 32).toLowerCase(),
-            level: Number(level) || 1,
+            level: authoritativeLevel,
             salary: salaryColumn,
             lastZone: String(lastZone || "MINX CITY").slice(0, 64),
             playtime: Number(playtime) || 0,

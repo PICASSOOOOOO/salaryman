@@ -1011,10 +1011,8 @@ export const handleMessage = (player: Player, raw: string) => {
       if (player.pveRewardCount > 12) break;
       if (now - player.lastPveReward < 400) break;
       player.lastPveReward = now;
-      if (typeof msg.exp === 'number' && msg.exp > 0 && msg.exp <= 100) {
-        player.level = Math.min(50, player.level + Math.floor(msg.exp / 100));
-        player.maxHp = (CLASS_HP[player.class.toLowerCase()] ?? 350) + (player.level - 1) * 10;
-      }
+      // XP and level are not accepted from the client. Character progression
+      // is persisted through server-owned save/progression state.
       if (Math.random() < 0.25) {
         const loot = LOOT_ITEMS[Math.floor(Math.random() * LOOT_ITEMS.length)];
         player.inventory.push(loot);
