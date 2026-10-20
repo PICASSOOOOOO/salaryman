@@ -3947,7 +3947,7 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_footer.text = "B RETURN TO VENDING STOCK  ·  ESC CLOSE"
 		"business_shop":
 			native_app_title.text = "TOWER SHOP / DIRECT PURCHASE"
-			var shop_key := "fish-store" if page_source.to_lower().contains("fish") else "furniture-store"
+			var shop_key := str(office.get("businessKey", ""))
 			var shop_items: Array[Dictionary] = []
 			var shop_lines_value: Variant = office.get("businessStockLines", [])
 			if shop_lines_value is Array:
@@ -4599,7 +4599,7 @@ func _input(event: InputEvent) -> void:
 			]:
 				var office: Dictionary = snapshot.get("office", {})
 				var shop_source := str(office.get("pageSource", "")).to_lower()
-				var shop_key := "fish-store" if shop_source.contains("fish") else "furniture-store"
+				var shop_key := str(office.get("businessKey", ""))
 				var selected_index := int(event.keycode) - KEY_1
 				var stock_value: Variant = office.get("businessStockLines", [])
 				if stock_value is Array:

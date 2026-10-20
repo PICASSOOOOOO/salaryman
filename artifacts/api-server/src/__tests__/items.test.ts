@@ -21,6 +21,7 @@ import { eq } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
 import { computeGearStats, PUBLIC_VENDING_ITEM_IDS } from "../lib/item-catalog";
+import { TOWER_BUSINESS_STOCK_LINES } from "@workspace/api-zod";
 import {
   buildApp,
   resetAuthState,
@@ -92,8 +93,12 @@ describe("GET /items/vending-catalog", () => {
     expect(education?.items[1].priceFiat).toBeGreaterThan(education!.items[0].priceFiat);
     expect(education?.items[0].basePriceFiat).toBe(450_000);
     expect(education?.items[1].basePriceFiat).toBe(900_000);
-    expect(education?.sellerBusinessKey).toBeNull();
-    expect(education?.sellerLocationLabel).toBeNull();
+    expect(education?.sellerBusinessKey).toBe("book_store");
+    expect(education?.sellerLocationLabel).toBe("FLOOR 04 / SUITE 07");
+    expect(education?.items.map((item) => item.id)).toEqual([
+      "vend_interview_drill",
+      "vend_trade_cert",
+    ]);
     expect(education?.npcExpansion).toEqual({
       ready: true,
       simulationEnabled: false,
@@ -111,6 +116,16 @@ describe("GET /items/vending-catalog", () => {
     expect(seating?.sellerBusinessKey).toBe("furniture-store");
     expect(seating?.items).toHaveLength(1);
     expect(seating?.items[0]).toMatchObject({ id: "furn_couch", basePriceFiat: 8_000 });
+    for (const businessKey of ["formal_clothing_store", "tool_store", "plant_store"]) {
+      const sellerLines = listings.filter((listing) => listing.sellerBusinessKey === businessKey);
+      expect(sellerLines.length).toBeGreaterThan(0);
+      expect(sellerLines.every((listing) => listing.items.length > 0)).toBe(true);
+    }
+    for (const listing of listings) {
+      expect(listing.items.map((item) => item.id)).toEqual(
+        TOWER_BUSINESS_STOCK_LINES.find((source) => source.id === listing.id)?.itemIds ?? [],
+      );
+    }
     expect(res.body.ghost).toMatchObject({
       availability: "direct_npc",
       requiresProximityInteraction: true,
@@ -122,6 +137,15 @@ describe("GET /items/vending-catalog", () => {
 });
 
 describe("POST /items/buy", () => {
+  it("rejects catalog items that aren't sold by Tower vending", async () => {
+    const res = await request(app).post("/api/items/buy").send({
+      itemId: "equip_hardhat",
+      source: "tower_vending",
+    });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/not sold by Tower vending/i);
+  });
+
   it("401 when not authenticated", async () => {
     resetAuthState();
     const { authState } = await import("./helpers/itemsTestApp");

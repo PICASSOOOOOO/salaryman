@@ -38,9 +38,8 @@ export type TowerBusinessStockLine = {
 };
 
 /**
- * These are read-only business-stock and quote lines shown at vending machines.
- * Physical locations are included only when an existing business is assigned.
- * No marketplace, seller, stock, or price is invented for unassigned lines.
+ * Item IDs are sale allowlists for the assigned physical Tower shops. Empty
+ * item lists remain quote-only; unassigned lines do not create a seller or sale.
  */
 export const TOWER_BUSINESS_STOCK_LINES: readonly TowerBusinessStockLine[] = [
   {
@@ -106,6 +105,70 @@ export const TOWER_BUSINESS_STOCK_LINES: readonly TowerBusinessStockLine[] = [
     npcProductFamily: "chairs",
     npcVersion: 1,
     npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["comfort", "durability"] },
+  },
+  {
+    id: "additional-furnishings",
+    label: "Tables and server racks",
+    specialty: "office-furniture",
+    sellerBusinessKey: "furniture-store",
+    sellerName: "FURNITURE STORE",
+    sellerLocationLabel: "FLOOR 02 / SUITE 07",
+    itemIds: ["furn_boardroom", "furn_server_rack"],
+    quoteCategories: [],
+    priceSource: "catalog_item",
+    valueRank: 4,
+    valueDrivers: ["income", "infrastructure"],
+    npcProductFamily: "office-furniture",
+    npcVersion: 1,
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["capacity", "durability", "quality"] },
+  },
+  {
+    id: "clothing",
+    label: "Workwear and formal clothing",
+    specialty: "clothing",
+    sellerBusinessKey: "formal_clothing_store",
+    sellerName: "FORMAL CLOTHING STORE",
+    sellerLocationLabel: "FLOOR 03 / SUITE 07",
+    itemIds: ["cloth_jumpsuit", "cloth_hivis", "cloth_pinstripe", "cloth_trench", "cloth_exec", "cloth_sundress", "cloth_cocktail", "cloth_qipao"],
+    quoteCategories: [],
+    priceSource: "catalog_item",
+    valueRank: 3,
+    valueDrivers: ["skills"],
+    npcProductFamily: "clothing",
+    npcVersion: 1,
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["quality", "durability"] },
+  },
+  {
+    id: "tools-and-safety",
+    label: "Tools and safety supplies",
+    specialty: "tools",
+    sellerBusinessKey: "tool_store",
+    sellerName: "TOOL STORE",
+    sellerLocationLabel: "FLOOR 03 / SUITE 04",
+    itemIds: ["equip_hardhat", "equip_workgloves", "mat_scrap", "mat_copper", "mat_silicon"],
+    quoteCategories: [],
+    priceSource: "catalog_item",
+    valueRank: 3,
+    valueDrivers: ["skills", "infrastructure"],
+    npcProductFamily: "tools-and-safety",
+    npcVersion: 1,
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["durability", "quality"] },
+  },
+  {
+    id: "plants",
+    label: "Indoor plants",
+    specialty: "plants",
+    sellerBusinessKey: "plant_store",
+    sellerName: "PLANT STORE",
+    sellerLocationLabel: "FLOOR 09 / SUITE 03",
+    itemIds: ["decor_plant"],
+    quoteCategories: [],
+    priceSource: "catalog_item",
+    valueRank: 2,
+    valueDrivers: ["beauty"],
+    npcProductFamily: "plants",
+    npcVersion: 1,
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["quality", "capacity"] },
   },
   {
     id: "terminals",
@@ -207,9 +270,9 @@ export const TOWER_BUSINESS_STOCK_LINES: readonly TowerBusinessStockLine[] = [
     id: "education-books",
     label: "Books and skill courses",
     specialty: "education",
-    sellerBusinessKey: null,
-    sellerName: null,
-    sellerLocationLabel: null,
+    sellerBusinessKey: "book_store",
+    sellerName: "BOOK STORE",
+    sellerLocationLabel: "FLOOR 04 / SUITE 07",
     itemIds: ["vend_interview_drill", "vend_trade_cert"],
     quoteCategories: [],
     priceSource: "catalog_item",

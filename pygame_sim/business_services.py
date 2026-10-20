@@ -1,7 +1,7 @@
-"""Existing SALARYMAN screens that Tower business locations may open.
+"""Existing SALARYMAN screens and explicitly purchasable Tower storefronts.
 
-No retail flow is created here. Businesses without a real service screen remain
-informational office spaces until a supported service is implemented.
+Other businesses remain informational until a supported service or catalog
+allowlist is implemented; this module never grants generic shop access.
 """
 
 from __future__ import annotations
@@ -16,7 +16,14 @@ BUSINESS_SERVICE_ACTIONS: dict[str, tuple[str, ...]] = {
     "jewelry_store": ("gold_exchange",),
 }
 
-PURCHASABLE_BUSINESSES = frozenset({"fish-store", "furniture-store"})
+PURCHASABLE_BUSINESSES = frozenset({
+    "fish-store",
+    "furniture-store",
+    "formal_clothing_store",
+    "tool_store",
+    "book_store",
+    "plant_store",
+})
 
 BUSINESS_ACTION_LABELS: dict[str, str] = {
     "bank_balance": "VIEW BANCO OMBRA BALANCE",

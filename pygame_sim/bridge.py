@@ -1083,6 +1083,11 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "activePage": state.active_page,
             "pageSource": state.page_source,
             "activeObjectId": state.active_object_id,
+            "businessKey": (
+                scene.objects[state.active_object_id].business_key
+                if state.active_object_id in scene.objects
+                else None
+            ),
             "npcCoworkers": [
                 {
                     **npc.to_dict(),

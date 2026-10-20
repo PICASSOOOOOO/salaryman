@@ -27,6 +27,7 @@ import { recordLegacyRecoveryEventTx, restoreLegacyRecoveryForUser } from "../li
 import {
   ITEM_CATALOG,
   ITEM_TYPES,
+  PUBLIC_VENDING_ITEM_IDS,
   findCatalogItem,
   computeGearStats,
   requiresPhysicalBlackMarket,
@@ -62,6 +63,10 @@ const PUBLIC_LOCKER_CAPACITY = 12;
 const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; y: number }> = {
   "fish-store": { floor: 2, x: 22_884, y: 47_470 },
   "furniture-store": { floor: 2, x: 39_341, y: 47_470 },
+  formal_clothing_store: { floor: 3, x: 39_341, y: 47_470 },
+  tool_store: { floor: 3, x: 54_597, y: 15_556 },
+  book_store: { floor: 4, x: 39_341, y: 47_470 },
+  plant_store: { floor: 9, x: 39_341, y: 15_556 },
 };
 
 function requireAuth(req: Request, res: any): string | null {
@@ -212,9 +217,11 @@ router.get("/items/catalog", async (_req, res) => {
 
 router.get("/items/vending-catalog", async (_req, res) => {
   const catalog = await marketCatalogItems();
+  const vendingItems = catalog.items.filter((item) =>
+    PUBLIC_VENDING_ITEM_IDS.some((vendingId) => vendingId === item.id));
   const lines = TOWER_BUSINESS_STOCK_LINES.map((listing) => ({
     ...listing,
-    items: catalog.items.map((item) => ({
+    items: catalog.items.filter((item) => listing.itemIds.includes(item.id)).map((item) => ({
       ...item,
       sellerBusinessKey: listing.sellerBusinessKey,
       sellerName: listing.sellerName,
@@ -222,7 +229,7 @@ router.get("/items/vending-catalog", async (_req, res) => {
   }));
   res.json({
     market: catalog.market,
-    items: catalog.items.map((item) => ({
+    items: vendingItems.map((item) => ({
       ...item,
       sellerBusinessKey: "tower_vending",
       sellerName: "NIGHT PANTRY NETWORK",
@@ -320,6 +327,10 @@ router.post("/items/buy", async (req, res) => {
     res.status(400).json({ error: "Unknown item" });
     return;
   }
+  if (source === "tower_vending" && !PUBLIC_VENDING_ITEM_IDS.some((vendingId) => vendingId === item.id)) {
+    res.status(403).json({ error: "This item is not sold by Tower vending." });
+    return;
+  }
   const repeatablePlacementItem = item.type === "furniture" || item.type === "decor";
   if (source === "tower_business") {
     const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
@@ -330,6 +341,10 @@ router.post("/items/buy", async (req, res) => {
     const listing = TOWER_BUSINESS_STOCK_LINES.find(
       (entry) => entry.sellerBusinessKey === businessKey && entry.itemIds.includes(item.id),
     );
+    if (!listing) {
+      res.status(403).json({ error: "This shop does not stock that item." });
+      return;
+    }
     const [presence] = await db.select().from(desktopOfficePresenceTable)
       .where(eq(desktopOfficePresenceTable.userId, userId))
       .limit(1);
@@ -343,7 +358,7 @@ router.post("/items/buy", async (req, res) => {
       res.status(403).json({ error: "Approach this Tower shop before purchasing." });
       return;
     }
-     businessName = listing?.sellerName ?? "Tower shop";
+      businessName = listing.sellerName ?? "Tower shop";
   }
   if (requiresPhysicalBlackMarket(item) && source !== "black_market" && source !== "tower_business") {
     res.status(403).json({ error: "Find the physical black-market dealer in Shadow Tower." });
