@@ -9,6 +9,15 @@ or exploiting/raiding the game systems through extortion and crimes to get rich
 and powerful. A secret mafia path must be available to any player. Private lending
 needs a system. The ATM must be "iron clad." Higher floors offer more comfortable
 offices and cost more in real estate.
+Pablo Corp may partner with players through bank loans and bridge loans, with
+repayment horizons ranging from days to weeks to months.
+
+**Why:** the user wants Pablo Corp to be able to partner with players through
+financing, including short- and medium-term loans.
+
+**How to apply:** support multiple loan purposes and repayment horizons, using
+the existing credit-aware lending rules and keeping each obligation
+server-authoritative.
 Pablo Corp owns unpurchased Tower office and lease inventory. Company proceeds
 fund its building operations; after purchase, resale and sublease proceeds
 belong to the new owner. Property purchases must remain server-authoritative
