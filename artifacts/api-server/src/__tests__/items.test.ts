@@ -81,21 +81,29 @@ describe("GET /items/vending-catalog", () => {
       sellerBusinessKey: string | null;
       sellerLocationLabel: string | null;
       npcExpansion: { simulationEnabled: boolean; scope: string };
-      items: Array<{ id: string; priceFiat: number; basePriceFiat: number; useEffect?: { skillGrant?: string } }>;
+      items: Array<{
+        id: string;
+        priceFiat: number;
+        basePriceFiat: number;
+        useEffect?: { skillGrant?: string; workIncomePct?: number };
+      }>;
     }>;
     const education = listings.find((listing) => listing.id === "education-books");
     expect(education?.items.map((item) => item.id)).toEqual([
+      "book_field_manual",
       "vend_interview_drill",
       "vend_trade_cert",
     ]);
-    expect(education?.items[0].useEffect?.skillGrant).toBe("career.interview_prepared");
-    expect(education?.items[1].useEffect?.skillGrant).toBe("work.trade_certified");
-    expect(education?.items[1].priceFiat).toBeGreaterThan(education!.items[0].priceFiat);
-    expect(education?.items[0].basePriceFiat).toBe(450_000);
-    expect(education?.items[1].basePriceFiat).toBe(900_000);
+    expect(education?.items[0].useEffect?.workIncomePct).toBe(10);
+    expect(education?.items[1].useEffect?.skillGrant).toBe("career.interview_prepared");
+    expect(education?.items[2].useEffect?.skillGrant).toBe("work.trade_certified");
+    expect(education?.items[2].priceFiat).toBeGreaterThan(education!.items[1].priceFiat);
+    expect(education?.items[1].basePriceFiat).toBe(450_000);
+    expect(education?.items[2].basePriceFiat).toBe(900_000);
     expect(education?.sellerBusinessKey).toBe("book_store");
     expect(education?.sellerLocationLabel).toBe("FLOOR 04 / SUITE 07");
     expect(education?.items.map((item) => item.id)).toEqual([
+      "book_field_manual",
       "vend_interview_drill",
       "vend_trade_cert",
     ]);
