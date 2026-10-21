@@ -17,6 +17,13 @@ export const TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY: Partial<Record<ItemRarity
   legendary: 30 * 24 * 60 * 60 * 1_000,
 };
 
+export function towerShopRestockAvailableAt(lastOrderedAt: Date, cooldownMs: number): Date {
+  if (!Number.isFinite(lastOrderedAt.getTime()) || !Number.isSafeInteger(cooldownMs) || cooldownMs < 0) {
+    throw new Error("Invalid Tower shop restock cooldown input");
+  }
+  return new Date(lastOrderedAt.getTime() + cooldownMs);
+}
+
 // These defaults are deliberately centralized so balancing does not change settlement code.
 export const DEFAULT_TOWER_SHOP_PRICING_POLICY: TowerShopPricingPolicy = {
   baseWholesaleBps: 6_500,

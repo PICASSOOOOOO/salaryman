@@ -8,7 +8,7 @@ import {
   towerShopShipmentsTable,
 } from "@workspace/db";
 import { advanceTowerFinance } from "./tower-finance";
-import type { TowerShopOrderQuote } from "./tower-shop-pricing";
+import { towerShopRestockAvailableAt, type TowerShopOrderQuote } from "./tower-shop-pricing";
 
 type DbTx = Parameters<Parameters<typeof import("@workspace/db").db.transaction>[0]>[0];
 
@@ -136,7 +136,7 @@ export async function settleTowerShopSupplierOrderTx(
       .orderBy(desc(towerShopShipmentsTable.requestedAt))
       .limit(1);
     const nextAvailableAt = lastOrder
-      ? new Date(lastOrder.requestedAt.getTime() + cooldown.cooldownMs)
+      ? towerShopRestockAvailableAt(lastOrder.requestedAt, cooldown.cooldownMs)
       : null;
     if (nextAvailableAt && nextAvailableAt > now) {
       return {

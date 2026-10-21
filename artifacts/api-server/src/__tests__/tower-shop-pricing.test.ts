@@ -3,6 +3,7 @@ import {
   DEFAULT_TOWER_SHOP_PRICING_POLICY,
   quoteTowerShopOrder,
   TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY,
+  towerShopRestockAvailableAt,
 } from "../lib/tower-shop-pricing";
 
 describe("Tower shop supplier pricing", () => {
@@ -14,6 +15,23 @@ describe("Tower shop supplier pricing", () => {
     });
     expect(TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY.common).toBeUndefined();
     expect(TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY.expensive).toBeUndefined();
+  });
+
+  it("sets the next reorder time from the previous order and rejects invalid cooldown inputs", () => {
+    const lastOrder = new Date("2026-01-01T12:00:00.000Z");
+    expect(towerShopRestockAvailableAt(
+      lastOrder,
+      TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY.rare!,
+    ).toISOString()).toBe("2026-01-08T12:00:00.000Z");
+    expect(towerShopRestockAvailableAt(
+      lastOrder,
+      TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY.very_rare!,
+    ).toISOString()).toBe("2026-01-15T12:00:00.000Z");
+    expect(towerShopRestockAvailableAt(
+      lastOrder,
+      TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY.legendary!,
+    ).toISOString()).toBe("2026-01-31T12:00:00.000Z");
+    expect(() => towerShopRestockAvailableAt(lastOrder, -1)).toThrow(/Invalid Tower shop restock cooldown/);
   });
 
   it("uses the live BTC multiplier for both goods and delivery", () => {
