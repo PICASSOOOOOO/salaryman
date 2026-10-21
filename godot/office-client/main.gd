@@ -1671,7 +1671,7 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 		handle_mesh.size = Vector3(0.045, 0.68, 0.045)
 		handle.mesh = handle_mesh
 		handle.material_override = frame_material
-	handle.position = Vector3(handle_x, 0.66, 0.78)
+		handle.position = Vector3(handle_x, 0.66, 0.78)
 		shop_cargo_visual.add_child(handle)
 	var grip := MeshInstance3D.new()
 	grip.name = "CartGrip"
@@ -1725,6 +1725,9 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	route_tween.tween_callback(_restore_shop_courier_at_service_lift)
 	route_tween.tween_property(shop_cargo_visual, "position", to_position, 4.5) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	route_tween.tween_property(crate, "position", Vector3(0.0, 0.78, -0.18), 1.0) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	route_tween.parallel().tween_property(crate, "scale", Vector3.ZERO, 0.35)
 
 
 func _restore_shop_courier_at_service_lift() -> void:
