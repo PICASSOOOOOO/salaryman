@@ -2116,7 +2116,7 @@ func _process(delta: float) -> void:
 			_abort_elevator_transition("ELEVATOR REQUEST TIMED OUT")
 	_smooth_visual_player(delta)
 	if is_instance_valid(shop_cargo_visual):
-	shop_cargo_visual.position.y = 0.08 + sin(animation_clock * 5.0) * 0.025
+		shop_cargo_visual.position.y = 0.08 + sin(animation_clock * 5.0) * 0.025
 	_update_camera(delta)
 	_update_hud()
 	_advance_feature_panel_animations(delta)
@@ -2654,15 +2654,15 @@ collision_extents: Array = [],
 		return _build_yard_gate(position, object_id, label)
 	if kind == "delivery_truck" or kind == "forklift" or kind == "pallet" or kind == "supply_crate":
 		return _build_loading_yard_prop(kind, position, object_id, label)
-if kind == "shop_freight_dock":
-	return _build_loading_yard_prop("pallet", position, object_id, label)
+	if kind == "shop_freight_dock":
+		return _build_loading_yard_prop("pallet", position, object_id, label)
 	if kind == "window":
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window
 	elif kind == "door":
 		return _build_door_visual(position, object_id)
 	elif kind == "elevator" or kind == "service_elevator":
-	return _build_elevator_visual(position, object_id, kind == "service_elevator")
+		return _build_elevator_visual(position, object_id, kind == "service_elevator")
 	elif kind == "stairs" or kind == "basement_stairs":
 		return _build_staircase(position, object_id)
 	elif kind == "construction_task":
