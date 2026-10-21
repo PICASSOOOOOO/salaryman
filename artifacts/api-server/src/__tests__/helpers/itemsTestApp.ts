@@ -1,5 +1,5 @@
 import express, { type Express } from "express";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import {
   db,
   playerInventoryTable,
@@ -7,6 +7,10 @@ import {
   playerInstalledItemsTable,
   bankAccountsTable,
   playerLedgerTable,
+  desktopOfficePresenceTable,
+  desktopBasementPresenceTable,
+  deviceLinksTable,
+  usersTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import itemsRouter from "../../routes/items";
@@ -17,7 +21,7 @@ import itemsRouter from "../../routes/items";
 // after the suite.
 export const ITEMS_USER = {
   id: `test-items-${randomUUID()}`,
-  email: "armory-tester@example.test",
+  email: `armory-tester-${randomUUID()}@example.test`,
 };
 
 // Mutable auth state the injected middleware reads on every request. Tests flip
@@ -62,6 +66,39 @@ export async function seedFiat(balance: number): Promise<number> {
     })
     .returning({ id: bankAccountsTable.id });
   return acct.id;
+}
+
+export async function seedLinkedDesktopAtOffice(args: {
+  floorNumber: number;
+  x: number;
+  y: number;
+  room?: "hallway" | "office";
+}) {
+  await db.insert(usersTable).values({ id: ITEMS_USER.id, email: ITEMS_USER.email }).onConflictDoNothing();
+  const deviceId = `items-test-device-${randomUUID()}`;
+  const token = `items-test-token-${randomUUID()}`;
+  const [link] = await db.insert(deviceLinksTable).values({
+    userId: ITEMS_USER.id,
+    desktopDeviceId: deviceId,
+    desktopName: "Items test desktop",
+    status: "linked",
+    linkedAt: new Date(),
+    desktopAccessTokenHash: createHash("sha256").update(token).digest("hex"),
+    scopes: ["salaryman_app"],
+  }).returning({ id: deviceLinksTable.id });
+  await db.insert(desktopOfficePresenceTable).values({
+    userId: ITEMS_USER.id,
+    linkId: link.id,
+    city: "minx_city",
+    roomKey: `test:items:${deviceId}`,
+    room: args.room ?? "hallway",
+    floorNumber: args.floorNumber,
+    x: args.x,
+    y: args.y,
+    action: "stand",
+    lastSeenAt: new Date(),
+  });
+  return { deviceId, token };
 }
 
 // Sum the player's FIAT balance across accounts.
@@ -121,4 +158,8 @@ export async function cleanupTestData() {
     db.delete(bankAccountsTable).where(eq(bankAccountsTable.userId, id)),
     db.delete(playerLedgerTable).where(eq(playerLedgerTable.userId, id)),
   ]);
+  await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, id));
+  await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, id));
+  await db.delete(deviceLinksTable).where(eq(deviceLinksTable.userId, id));
+  await db.delete(usersTable).where(eq(usersTable.id, id));
 }

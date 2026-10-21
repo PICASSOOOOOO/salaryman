@@ -1,5 +1,23 @@
 export const NPC_SHOP_REORDER_THRESHOLD_UNITS = 4;
 export const NPC_SHOP_REORDER_TARGET_UNITS = 12;
+export const NPC_SHOP_SHELF_RESTOCK_THRESHOLD_UNITS = 4;
+export const NPC_SHOP_SHELF_TARGET_UNITS = 20;
+
+export function chooseNpcShelfRestock(args: {
+  stored: number;
+  shelf: number;
+  shelfCapacity: number;
+}): number {
+  const stored = Math.max(0, args.stored);
+  const shelf = Math.max(0, args.shelf);
+  const capacity = Math.max(0, args.shelfCapacity);
+  if (shelf > NPC_SHOP_SHELF_RESTOCK_THRESHOLD_UNITS) return 0;
+  return Math.max(0, Math.min(
+    NPC_SHOP_SHELF_TARGET_UNITS - shelf,
+    capacity - shelf,
+    stored,
+  ));
+}
 
 export function listNpcShopRestockCandidates(args: {
   itemIds: string[];

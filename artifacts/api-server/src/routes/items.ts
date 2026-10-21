@@ -58,7 +58,10 @@ import {
   towerShopRestockAvailableAt,
 } from "../lib/tower-shop-pricing";
 import { settleTowerShopSupplierOrderTx } from "../lib/tower-shop-finance";
-import { listNpcShopRestockCandidates } from "../lib/tower-shop-autopilot";
+import {
+  chooseNpcShelfRestock,
+  listNpcShopRestockCandidates,
+} from "../lib/tower-shop-autopilot";
 import {
   isBattery,
   batteryCapacity,
@@ -232,6 +235,9 @@ async function runTowerShopLogisticsTick(now = new Date()): Promise<void> {
   await runNpcTowerShopRestockTick(now).catch((error) => {
     console.error("[TowerShop] NPC shop restock tick failed:", error);
   });
+  await runNpcTowerShopShelfRestockTick(now).catch((error) => {
+    console.error("[TowerShop] NPC shelf restock tick failed:", error);
+  });
 }
 
 async function runNpcTowerShopRestockTick(now: Date): Promise<void> {
@@ -354,6 +360,46 @@ async function runNpcTowerShopRestockTick(now: Date): Promise<void> {
         `[TowerShop] NPC order: ${createdOrder.businessKey} ordered ${createdOrder.quantity} × ${createdOrder.itemId}; balance=${createdOrder.balanceFiat}`,
       );
       return;
+    }
+  }
+}
+
+async function runNpcTowerShopShelfRestockTick(now: Date): Promise<void> {
+  const businessItems = new Map<string, Set<string>>();
+  for (const listing of TOWER_BUSINESS_STOCK_LINES) {
+    const businessKey = listing.sellerBusinessKey;
+    if (!businessKey || !TOWER_BUSINESS_SHOP_LOCATIONS[businessKey]) continue;
+    const itemIds = businessItems.get(businessKey) ?? new Set<string>();
+    listing.itemIds.forEach((itemId) => itemIds.add(itemId));
+    businessItems.set(businessKey, itemIds);
+  }
+
+  for (const [businessKey, itemIds] of businessItems) {
+    for (const itemId of itemIds) {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-shelf:${businessKey}:${itemId}`}))`);
+        const [stock] = await tx.select().from(towerShopInventoryTable).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+        )).for("update").limit(1);
+        if (!stock) return;
+        const quantity = chooseNpcShelfRestock({
+          stored: stock.storedQuantity,
+          shelf: stock.shelfQuantity,
+          shelfCapacity: stock.shelfCapacity || TOWER_SHOP_SHELF_CAPACITY_PER_ITEM,
+        });
+        if (quantity <= 0) return;
+        await tx.update(towerShopInventoryTable).set({
+          storedQuantity: sql`${towerShopInventoryTable.storedQuantity} - ${quantity}`,
+          shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} + ${quantity}`,
+          updatedAt: now,
+        }).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+          sql`${towerShopInventoryTable.storedQuantity} >= ${quantity}`,
+          sql`${towerShopInventoryTable.shelfQuantity} + ${quantity} <= ${stock.shelfCapacity || TOWER_SHOP_SHELF_CAPACITY_PER_ITEM}`,
+        ));
+      });
     }
   }
 }
@@ -1057,6 +1103,7 @@ router.post("/items/buy", async (req, res) => {
     return;
   }
   const repeatablePlacementItem = item.type === "furniture" || item.type === "decor";
+  let inventoryBusinessKey = "";
   if (source === "tower_business") {
     const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
     const b1Shop = TOWER_B1_BUSINESS_SHOP_LOCATIONS[businessKey];
@@ -1106,6 +1153,7 @@ router.post("/items/buy", async (req, res) => {
         return;
       }
     }
+    if (shop) inventoryBusinessKey = businessKey;
       businessName = listing.sellerName ?? "Tower shop";
   }
   if (requiresPhysicalBlackMarket(item) && source !== "black_market" && source !== "tower_business") {
@@ -1141,6 +1189,15 @@ router.post("/items/buy", async (req, res) => {
       const paid = await db.transaction(async (tx) => {
         const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
         if (!capacity.ok) return { kind: "capacity" as const, capacity };
+        const [stock] = inventoryBusinessKey
+          ? await tx.select().from(towerShopInventoryTable).where(and(
+            eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+            eq(towerShopInventoryTable.itemId, item.id),
+          )).for("update").limit(1)
+          : [];
+        if (inventoryBusinessKey && (!stock || stock.shelfQuantity < qty)) {
+          return { kind: "stock" as const, available: stock?.shelfQuantity ?? 0 };
+        }
         const result = await spendFiat(tx, {
           userId,
           amountFiat: totalPrice,
@@ -1148,7 +1205,27 @@ router.post("/items/buy", async (req, res) => {
           kind: "item_purchase",
         });
         if (!result.ok) return { kind: "fiat" as const, spendable: result.spendable };
+        if (inventoryBusinessKey) {
+          const [updatedStock] = await tx.update(towerShopInventoryTable).set({
+            shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} - ${qty}`,
+            updatedAt: new Date(),
+          }).where(and(
+            eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+            eq(towerShopInventoryTable.itemId, item.id),
+            sql`${towerShopInventoryTable.shelfQuantity} >= ${qty}`,
+          )).returning({ itemId: towerShopInventoryTable.itemId });
+          if (!updatedStock) throw new Error("Tower shop shelf stock changed during purchase");
+        }
         await addConsumable(tx, userId, slot, item.id, qty, "fiat");
+        if (source === "tower_business") {
+          await recordTowerCompanyRevenueTx(tx, {
+            eventKey: `tower-business-sale:${randomUUID()}`,
+            category: businessKey,
+            userId,
+            amountFiat: totalPrice,
+            description: `${businessName} sale: ${item.name} ×${qty}`,
+          });
+        }
         if (source === "tower_vending") {
           await recordLegacyRecoveryEventTx(tx, {
             userId,
@@ -1164,6 +1241,10 @@ router.post("/items/buy", async (req, res) => {
       });
       if (paid.kind === "capacity") {
         res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
+        return;
+      }
+      if (paid.kind === "stock") {
+        res.status(409).json({ error: "tower_shop_sold_out", available: paid.available });
         return;
       }
       if (paid.kind === "fiat") {
@@ -1252,6 +1333,15 @@ router.post("/items/buy", async (req, res) => {
     const paid = await db.transaction(async (tx) => {
       const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
       if (!capacity.ok) return { kind: "capacity" as const, capacity };
+      const [stock] = inventoryBusinessKey
+        ? await tx.select().from(towerShopInventoryTable).where(and(
+          eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+          eq(towerShopInventoryTable.itemId, item.id),
+        )).for("update").limit(1)
+        : [];
+      if (inventoryBusinessKey && (!stock || stock.shelfQuantity < 1)) {
+        return { kind: "stock" as const, available: stock?.shelfQuantity ?? 0 };
+      }
       const result = await spendFiat(tx, {
         userId,
         amountFiat: effectivePrice,
@@ -1259,6 +1349,17 @@ router.post("/items/buy", async (req, res) => {
         kind: "item_purchase",
       });
       if (!result.ok) return { kind: "fiat" as const, spendable: result.spendable };
+      if (inventoryBusinessKey) {
+        const [updatedStock] = await tx.update(towerShopInventoryTable).set({
+          shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} - 1`,
+          updatedAt: new Date(),
+        }).where(and(
+          eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+          eq(towerShopInventoryTable.itemId, item.id),
+          sql`${towerShopInventoryTable.shelfQuantity} >= 1`,
+        )).returning({ itemId: towerShopInventoryTable.itemId });
+        if (!updatedStock) throw new Error("Tower shop shelf stock changed during purchase");
+      }
       const inventoryInsert = tx
         .insert(playerInventoryTable)
         .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" });
@@ -1293,6 +1394,10 @@ router.post("/items/buy", async (req, res) => {
     });
     if (paid.kind === "capacity") {
       res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
+      return;
+    }
+    if (paid.kind === "stock") {
+      res.status(409).json({ error: "tower_shop_sold_out", available: paid.available });
       return;
     }
     if (paid.kind === "fiat") {

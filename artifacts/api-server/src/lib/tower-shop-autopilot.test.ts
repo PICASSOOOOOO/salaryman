@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { chooseNpcShopRestockItem, listNpcShopRestockCandidates } from "./tower-shop-autopilot";
+import {
+  chooseNpcShelfRestock,
+  chooseNpcShopRestockItem,
+  listNpcShopRestockCandidates,
+} from "./tower-shop-autopilot";
+
+describe("chooseNpcShelfRestock", () => {
+  it("moves a measured top-up from storage when the shelf is low", () => {
+    expect(chooseNpcShelfRestock({ stored: 50, shelf: 3, shelfCapacity: 100 })).toBe(17);
+  });
+
+  it("respects stored quantity and remaining shelf capacity", () => {
+    expect(chooseNpcShelfRestock({ stored: 5, shelf: 2, shelfCapacity: 6 })).toBe(4);
+  });
+
+  it("does not refill a healthy shelf or an empty store room", () => {
+    expect(chooseNpcShelfRestock({ stored: 20, shelf: 5, shelfCapacity: 100 })).toBe(0);
+    expect(chooseNpcShelfRestock({ stored: 0, shelf: 0, shelfCapacity: 100 })).toBe(0);
+  });
+});
 
 describe("chooseNpcShopRestockItem", () => {
   it("orders a small top-up when the shelf and storage are nearly empty", () => {

@@ -25,6 +25,7 @@ import { TOWER_BUSINESS_STOCK_LINES } from "@workspace/api-zod";
 import {
   buildApp,
   resetAuthState,
+  authState,
   cleanupTestData,
   seedFiat,
   fiatBalance,
@@ -32,6 +33,7 @@ import {
   loadoutRows,
   itemQuantity,
   installedRows,
+  seedLinkedDesktopAtOffice,
   ITEMS_USER,
 } from "./helpers/itemsTestApp";
 
@@ -252,6 +254,30 @@ describe("POST /items/buy", () => {
     expect(second.body.quantity).toBe(2);
     expect(await itemQuantity("furn_couch")).toBe(2);
     expect(await fiatBalance()).toBe(100_000 - first.body.fiat - second.body.fiat);
+  });
+
+  it("does not charge for a Tower shop item when its shelf is empty", async () => {
+    await seedFiat(50_000);
+    authState.authed = false;
+    const desktop = await seedLinkedDesktopAtOffice({
+      floorNumber: 3,
+      x: 7_628,
+      y: 15_556,
+    });
+
+    const res = await request(app).post("/api/items/buy")
+      .set("Authorization", `Bearer ${desktop.token}`)
+      .set("x-salaryman-device-id", desktop.deviceId)
+      .send({
+        source: "tower_business",
+        businessKey: "phone_store_f03",
+        itemId: "tower_phone_handset",
+      });
+
+    expect(res.status, JSON.stringify(res.body)).toBe(409);
+    expect(res.body.error).toBe("tower_shop_sold_out");
+    expect(await fiatBalance()).toBe(50_000);
+    expect(await ownedItemIds()).not.toContain("tower_phone_handset");
   });
 
   it("two real concurrent buys: item owned once, charged once", async () => {
