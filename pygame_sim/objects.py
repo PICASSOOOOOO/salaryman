@@ -15,7 +15,12 @@ from .approved_content import (
     APPROVED_CAMERA_FOCUS_KINDS,
     APPROVED_INTERACTIVE_OBJECT_KINDS,
 )
-from .business_services import PURCHASABLE_BUSINESSES, actions_for_business
+from .business_services import (
+    PURCHASABLE_BUSINESSES,
+    RETAIL_BUSINESSES,
+    actions_for_business,
+    business_hours_status,
+)
 from .world_layout import FLOOR_PLAN, scale_legacy_position
 
 if TYPE_CHECKING:
@@ -121,6 +126,7 @@ class OfficeObject:
     service_actions: tuple[str, ...] = ()
     suite_bounds: tuple[int, int, int, int] | None = None
     solid_half_extents: tuple[int, int] | None = None
+    retail_customer_service: bool = False
 
     @property
     def visual_position(self) -> tuple[int, int]:
@@ -317,6 +323,15 @@ class OfficeObjectRegistry:
 
         if item.kind == "door":
             state.close_page()
+            if item.business_key is not None:
+                is_open, hours = business_hours_status(item.business_key)
+                message = (
+                    f"{item.label.upper()} / OPEN · {hours}"
+                    if is_open
+                    else f"{item.label.upper()} / LOCKED · OPENS {hours}"
+                )
+                state.notice = message
+                return InteractionResult(is_open, message)
             destination_room = item.destination_room
             if destination_room is None:
                 opened = scene.toggle_door(item.id)
@@ -400,6 +415,12 @@ class OfficeObjectRegistry:
 
         if item.kind in {"business_suite", "business_kiosk"}:
             scene.focus_on_interaction(item)
+            if item.business_key:
+                is_open, hours = business_hours_status(item.business_key)
+                if not is_open:
+                    message = f"{item.label.upper()} IS CLOSED · {hours}"
+                    state.notice = message
+                    return InteractionResult(False, message)
             page = (
                 "reception"
                 if item.business_key == "tower_reception_kiosk"
@@ -977,26 +998,59 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         label = str(business.get("label", "BUSINESS OFFICE"))
         unit_number = int(business.get("unitNumber", 0))
         x, y, width, height = bounds
+        center_x = x + width // 2
+        front_y = y + height if door_side == "south" else y
+        counter_y = y + height - 3_500 if door_side == "south" else y + 3_500
+        interaction_y = counter_y - 700 if door_side == "south" else counter_y + 700
         registry.add(OfficeObject(
             f"{tag}-business-{unit_number:02d}",
             "business_suite",
             label,
             room,
-            (x + width // 2, y + height // 2),
-            f"ENTER {label}",
+            (center_x, interaction_y),
+            f"{'SHOP AT' if business_key in RETAIL_BUSINESSES else 'ASK'} {label}",
             business_key=business_key,
             unit_number=unit_number,
             service_actions=actions_for_business(business_key),
             suite_bounds=bounds,
+            retail_customer_service=business_key in RETAIL_BUSINESSES,
         ), scale_legacy_coordinates=False)
         add_business_storage(room, tag, business_key, label, unit_number, bounds, door_side)
-        if not build_walls:
-            return
 
-        door_y = y + height if door_side == "south" else y
+        # Every listed business gets a real reception point: retail locations
+        # serve customers at a shop counter, while Pablo Corp offices use the
+        # same footprint as a staffed advice/reception desk.
+        if build_walls:
+            registry.add(OfficeObject(
+                f"{tag}-business-{unit_number:02d}-counter",
+                "desk",
+                f"{label} CUSTOMER COUNTER" if business_key in RETAIL_BUSINESSES else f"{label} RECEPTION",
+                room,
+                (center_x, counter_y),
+                "",
+                interactive=False,
+                business_key=business_key,
+                unit_number=unit_number,
+                solid_half_extents=(520, 180),
+            ), scale_legacy_coordinates=False)
+            waiting_y = front_y - 1_400 if door_side == "south" else front_y + 1_400
+            seat_offset = min(1_200, max(700, width // 5))
+            for seat, offset in enumerate((-seat_offset, seat_offset), start=1):
+                registry.add(OfficeObject(
+                    f"{tag}-business-{unit_number:02d}-waiting-{seat}",
+                    "chair",
+                    f"{label} WAITING SEAT",
+                    room,
+                    (center_x + offset, waiting_y),
+                    "",
+                    interactive=False,
+                    business_key=business_key,
+                    unit_number=unit_number,
+                ), scale_legacy_coordinates=False)
+
         door_position = (
-            x + width // 2,
-            door_y + (150 if door_side == "south" else -150),
+            center_x,
+            front_y + (150 if door_side == "south" else -150),
         )
         registry.add(OfficeObject(
             f"{tag}-business-{unit_number:02d}-door",
@@ -1005,8 +1059,12 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             room,
             door_position,
             "TOGGLE ENTRY DOOR",
-            display_position=(x + width // 2, door_y),
+            display_position=(center_x, front_y),
+            business_key=business_key,
+            retail_customer_service=business_key in RETAIL_BUSINESSES,
         ), scale_legacy_coordinates=False)
+        if not build_walls:
+            return
 
         wall = 30
         gap = 180
@@ -1199,27 +1257,27 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             "basement_stairs",
             "STAIRS / UP",
             room,
-            (4_400, 5_000),
+            (5_500, 5_500),
             "RETURN TO LOBBY" if level == 1 else "TAKE STAIRS UP ONE LANDING",
-        ))
+        ), scale_legacy_coordinates=False)
         registry.add(OfficeObject(
             f"basement-b{level}-service-elevator",
             "service_elevator",
             "SERVICE ELEVATOR",
             room,
-            (5_000, 4_000),
+            (4_500, 4_500),
             "SERVICE ELEVATOR / SELECT A FLOOR",
             destination_floor=1,
-        ))
+        ), scale_legacy_coordinates=False)
         if level < 6:
             registry.add(OfficeObject(
                 f"basement-stairs-down-b{level}",
                 "basement_stairs",
                 "STAIRS / DOWN",
                 room,
-                (5_600, 5_000),
+                (5_500, 4_500),
                 "TAKE STAIRS DOWN ONE LANDING",
-            ))
+            ), scale_legacy_coordinates=False)
         if level == 1:
             for entry in (
                 OfficeObject("basement-b1-job-board", "pest_job_board", "PEST WORK ORDERS", room, (5_000, 4_650), "W-2 / 1099 LOCAL JOBS"),
@@ -1306,9 +1364,9 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
         elif level == 4:
             registry.add(OfficeObject("basement-b4-supply-store", "desk", "VITAL SUPPLIES", room, (5_000, 6_500), "TOWER EMERGENCY SUPPLIES", interactive=False))
         elif level == 5:
-            registry.add(OfficeObject("basement-b5-power", "utility_station", "POWER / GENERATORS", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"))
+            registry.add(OfficeObject("basement-b5-power", "utility_station", "POWER / GENERATORS", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"), scale_legacy_coordinates=False)
         elif level == 6:
-            registry.add(OfficeObject("basement-b6-plumbing", "utility_station", "WATER / PLUMBING", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"))
+            registry.add(OfficeObject("basement-b6-plumbing", "utility_station", "WATER / PLUMBING", room, (2_500, 7_500), "MAINTAIN SHARED TOWER PLUMBING"), scale_legacy_coordinates=False)
     for room_data in FLOOR_PLAN["rooms"]:
         room = str(room_data.get("id", ""))
         raw_cells = room_data.get("mazeCells")

@@ -18,7 +18,7 @@ from time import monotonic
 from typing import Any
 
 from .automation import AUTOMATION_CHARACTERS
-from .business_services import PURCHASABLE_BUSINESSES
+from .business_services import PURCHASABLE_BUSINESSES, business_hours_status
 from .pest_work import (
     MELEE_MOVES,
     MELEE_MOVE_BY_ID,
@@ -655,6 +655,9 @@ def apply_command(
             or nearby.id != shop.id
         ):
             return CommandResult(False, "STAND AT THE SHOP COUNTER TO BUY")
+        is_open, hours = business_hours_status(business_key)
+        if not is_open:
+            return CommandResult(False, f"SHOP IS CLOSED · {hours}")
         if not any(
             isinstance(line, dict)
             and line.get("sellerBusinessKey") == business_key
@@ -1046,7 +1049,15 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                         "fuelCapacityLiters": interaction_profile_for(item.kind).fuel_capacity_liters,
                     },
                     "destinationRoom": item.destination_room,
-                    "doorOpen": item.id in scene.opened_door_ids,
+                    "businessKey": item.business_key,
+                    "businessOpen": business_hours_status(item.business_key)[0] if item.business_key else None,
+                    "businessHours": business_hours_status(item.business_key)[1] if item.business_key else None,
+                    "retailCustomerService": item.retail_customer_service,
+                    "doorOpen": (
+                        business_hours_status(item.business_key)[0]
+                        if item.kind == "door" and item.business_key
+                        else item.id in scene.opened_door_ids
+                    ),
                     "nearby": item == scene.nearby_object,
                     "cleanliness": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("cleanliness"),
                     "condition": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("condition"),

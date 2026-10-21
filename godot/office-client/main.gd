@@ -1090,6 +1090,7 @@ func _add_business_suite_sign(room: String, business: Dictionary, bounds: Array)
 	var sign := Label3D.new()
 	sign.name = "BusinessSign_%s" % str(business.get("businessKey", "unit"))
 	sign.text = str(business.get("label", "BUSINESS OFFICE"))
+	sign.set_meta("base_text", sign.text)
 	sign.font_size = 24
 	sign.pixel_size = 0.006
 	sign.modulate = Color("#e8dfc8")
@@ -3604,6 +3605,16 @@ func _build_door_visual(position: Vector3, object_id: String) -> Node3D:
 		materials["metal"],
 	)
 	pivot.add_child(handle)
+	var collision_body := StaticBody3D.new()
+	collision_body.name = "DoorCollision"
+	pivot.add_child(collision_body)
+	var collision_shape := CollisionShape3D.new()
+	collision_shape.name = "DoorCollisionShape"
+	var box := BoxShape3D.new()
+	box.size = Vector3(1.28, 1.95, 0.12)
+	collision_shape.shape = box
+	collision_shape.position = Vector3(0.64, 1.0, 0.0)
+	collision_body.add_child(collision_shape)
 	return door_root
 
 
@@ -3688,11 +3699,22 @@ func _sync_door_states(objects: Array) -> void:
 		var is_open := bool(object.get("doorOpen", false))
 		if destination_room is String and not str(destination_room).is_empty():
 			is_open = is_open or bool(object.get("nearby", false))
-		if bool(door_root.get_meta("door_open", false)) == is_open:
-			continue
-		door_root.set_meta("door_open", is_open)
-		var tween := create_tween()
-		tween.tween_property(pivot, "rotation:y", door_swing_angle(is_open), 0.18)
+		if bool(door_root.get_meta("door_open", false)) != is_open:
+			door_root.set_meta("door_open", is_open)
+			var tween := create_tween()
+			tween.tween_property(pivot, "rotation:y", door_swing_angle(is_open), 0.18)
+		var collision := pivot.get_node_or_null("DoorCollision/DoorCollisionShape") as CollisionShape3D
+		if collision != null:
+			collision.set_deferred("disabled", is_open)
+		var business_key := str(object.get("businessKey", ""))
+		if not business_key.is_empty():
+			var business_sign := get_node_or_null(NodePath("BusinessSign_%s" % business_key)) as Label3D
+			if business_sign != null:
+				business_sign.text = "%s\n%s · %s" % [
+					str(business_sign.get_meta("base_text", business_sign.text)),
+					"OPEN" if bool(object.get("businessOpen", false)) else "LOCKED",
+					str(object.get("businessHours", "")),
+				]
 
 
 func _sync_elevator_floor_indicators(scene_data: Dictionary) -> void:
