@@ -4,6 +4,8 @@ import { db, socialConnectionsTable } from "@workspace/db";
 import { hasFeature } from "../lib/plan";
 import { SOCIAL_PROVIDERS, getProvider, isProviderConfigured } from "../lib/social-providers";
 import { encryptSocialCredentials } from "../lib/social-credentials-crypto";
+import { beginSocialOAuth, completeSocialOAuth, failSocialOAuth, socialOAuthCallbackUrl } from "../lib/social-oauth";
+import { decryptSocialCredentials } from "../lib/social-credentials-crypto";
 
 const router = Router();
 
@@ -33,9 +35,20 @@ router.get("/social/connections", async (req: Request, res: Response): Promise<v
     const byProvider = new Map(rows.map((r) => [r.provider, r]));
     const connections = SOCIAL_PROVIDERS.map((p) => {
       const row = byProvider.get(p.id);
-      const configured = isProviderConfigured(p);
+      let configured = isProviderConfigured(p);
+      if (p.requiresAppConfig) {
+        try {
+          const saved = row
+            ? decryptSocialCredentials(row.credentials as Record<string, string>, userId, p.id).credentials
+            : {};
+          configured = Boolean(saved.clientId && saved.clientSecret);
+        } catch {
+          configured = false;
+        }
+      }
       let status = row?.status ?? "needs_setup";
       if (p.authType === "oauth" && !configured && status !== "connected") status = "needs_app_config";
+      else if (p.authType === "oauth" && configured && status !== "connected") status = "needs_oauth_flow";
       return {
         provider: p.id,
         label: p.label,
@@ -45,6 +58,7 @@ router.get("/social/connections", async (req: Request, res: Response): Promise<v
         configured,
         credentialFields: p.credentialFields,
         connectHint: p.connectHint,
+        callbackUrl: p.authType === "oauth" ? (() => { try { return socialOAuthCallbackUrl(); } catch { return null; } })() : null,
         status,
         accountHandle: row?.accountHandle ?? null,
         accountName: row?.accountName ?? null,
@@ -69,17 +83,18 @@ router.post("/social/connections/:provider", async (req: Request, res: Response)
     return;
   }
 
-  if (provider.authType === "oauth") {
-    res.status(501).json({
-      error: `${provider.label} connects via OAuth, which isn't wired up yet. The owner needs to register the platform app first.`,
-      status: isProviderConfigured(provider) ? "needs_oauth_flow" : "needs_app_config",
-      provider: provider.id,
-    });
-    return;
-  }
-
   try {
     const credentials = (req.body?.credentials ?? {}) as Record<string, string>;
+    if (provider.authType === "oauth") {
+      const missing = provider.credentialFields.filter((f) => !credentials[f.key]?.trim()).map((f) => f.label);
+      if (missing.length) {
+        res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
+        return;
+      }
+      const flow = await beginSocialOAuth(userId, provider.id, credentials.clientId, credentials.clientSecret);
+      res.json({ ok: true, status: "connecting", ...flow });
+      return;
+    }
     const missing = provider.credentialFields.filter((f) => !credentials[f.key]?.trim()).map((f) => f.label);
     if (missing.length) {
       res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
@@ -123,6 +138,27 @@ router.post("/social/connections/:provider", async (req: Request, res: Response)
   } catch (err: any) {
     console.error("[Marketing] connect error:", err?.message);
     res.status(500).json({ error: "Failed to connect account" });
+  }
+});
+
+router.get("/social/oauth/callback", async (req: Request, res: Response): Promise<void> => {
+  const state = typeof req.query.state === "string" ? req.query.state : "";
+  const code = typeof req.query.code === "string" ? req.query.code : "";
+  const providerError = typeof req.query.error === "string" ? req.query.error : "";
+  try {
+    if (providerError) {
+      await failSocialOAuth(state);
+      res.redirect("/marketing?social=authorization_declined");
+      return;
+    }
+    if (!state || !code) {
+      res.redirect("/marketing?social=authorization_failed");
+      return;
+    }
+    const result = await completeSocialOAuth(state, code);
+    res.redirect(`/marketing?social=connected&provider=${encodeURIComponent(result.provider)}`);
+  } catch {
+    res.redirect("/marketing?social=authorization_failed");
   }
 });
 

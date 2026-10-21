@@ -30,6 +30,7 @@ interface Connection {
   configured: boolean;
   credentialFields: CredentialField[];
   connectHint: string;
+  callbackUrl?: string | null;
   status: string;
   accountHandle: string | null;
   accountName: string | null;
@@ -114,6 +115,10 @@ export default function MarketingCommandCenter() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setFormError(data.error || "Connection failed.");
+        return;
+      }
+      if (data.authorizationUrl) {
+        window.location.assign(data.authorizationUrl);
         return;
       }
       setActive(null);
@@ -296,6 +301,12 @@ export default function MarketingCommandCenter() {
                 </button>
               </div>
               <p style={{ fontSize: 11, color: "rgba(228,228,231,0.55)", marginBottom: 16, lineHeight: 1.5 }}>{active.connectHint}</p>
+              {active.authType === "oauth" && active.callbackUrl && (
+                <div style={{ marginBottom: 14, padding: 10, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div style={{ fontSize: 10, color: "rgba(228,228,231,0.5)", marginBottom: 4 }}>ADD THIS REDIRECT URI TO YOUR APP</div>
+                  <code style={{ display: "block", color: "#a5f3fc", fontSize: 10, overflowWrap: "anywhere" }}>{active.callbackUrl}</code>
+                </div>
+              )}
 
               {active.credentialFields.map((f) => (
                 <div key={f.key} style={{ marginBottom: 12 }}>
@@ -327,7 +338,7 @@ export default function MarketingCommandCenter() {
                 style={{ width: "100%", padding: "11px", borderRadius: 8, border: "none", cursor: busy ? "default" : "pointer", background: "linear-gradient(90deg,#0891b2,#38bdf8)", color: "#04121a", fontWeight: 700, fontFamily: FONT, letterSpacing: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-                {busy ? "VERIFYING…" : "CONNECT & VERIFY"}
+                {busy ? "CONNECTING…" : active.authType === "oauth" ? "SAVE APP & AUTHORIZE" : "CONNECT & VERIFY"}
               </button>
             </motion.div>
           </motion.div>
