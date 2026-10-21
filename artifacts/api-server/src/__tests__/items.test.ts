@@ -267,6 +267,26 @@ describe("POST /items/tower-business/order", () => {
   });
 });
 
+describe("Tower shop logistics routes", () => {
+  it("requires a linked desktop credential for shipment and restocking actions", async () => {
+    const requests = [
+      request(app).get("/api/items/tower-business/fish-store/logistics"),
+      request(app).post("/api/items/tower-business/shipments/00000000-0000-4000-8000-000000000001/pickup").send({}),
+      request(app).post("/api/items/tower-business/shipments/00000000-0000-4000-8000-000000000001/receive").send({}),
+      request(app).post("/api/items/tower-business/restock").send({
+        businessKey: "fish-store",
+        itemId: "furn_aquarium",
+        quantity: 1,
+      }),
+    ];
+    const responses = await Promise.all(requests);
+    for (const res of responses) {
+      expect(res.status).toBe(401);
+      expect(res.body.error).toMatch(/desktop credential required/i);
+    }
+  });
+});
+
 describe("POST /items/checkout", () => {
   it("blocks one-time USD item purchases while leaving FIAT purchases available", async () => {
     const res = await request(app).post("/api/items/checkout").send({ itemId: BAT.id });

@@ -13,8 +13,10 @@ import {
   botsTable,
   usersTable,
   desktopOfficePresenceTable,
+  desktopBasementPresenceTable,
   towerShopInventoryTable,
   towerShopShipmentsTable,
+  towerShopAccountsTable,
   INSTALL_TARGET_TYPES,
   INSTALL_CAPACITY,
   type InstallTargetType,
@@ -72,6 +74,11 @@ const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; 
   book_store: { floor: 4, x: 39_341, y: 47_470 },
   plant_store: { floor: 9, x: 39_341, y: 15_556 },
 };
+const TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM = 1_000;
+const TOWER_SHOP_SHELF_CAPACITY_PER_ITEM = 100;
+const TOWER_SHOP_ORDER_TRANSIT_MS = 5 * 60 * 1_000;
+const TOWER_B1_SHOP_DOCK = { level: 1, x: 18_500, y: 7_000 };
+const TOWER_SHOP_INTERACTION_RADIUS = 1_400;
 
 function requireAuth(req: Request, res: any): string | null {
   if (!(req as any).isAuthenticated?.()) {
@@ -454,6 +461,248 @@ router.post("/items/tower-business/order", async (req, res) => {
   } catch (error: any) {
     console.error("[TowerShop] supplier order failed:", error?.message);
     res.status(500).json({ error: "Supplier order failed; no shop order was charged." });
+  }
+});
+
+// Supplier lead time is persisted from the order timestamp. Polling the logistics
+// view advances eligible orders to the B1 dock, so offline shops still receive stock.
+router.get("/items/tower-business/:businessKey/logistics", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const businessKey = String(req.params.businessKey ?? "");
+  if (!TOWER_BUSINESS_SHOP_LOCATIONS[businessKey]) {
+    res.status(404).json({ error: "Unknown Tower shop." });
+    return;
+  }
+  const now = new Date();
+  try {
+    await db.update(towerShopShipmentsTable).set({
+      status: "at_dock",
+      arrivedAtDockAt: now,
+      updatedAt: now,
+    }).where(and(
+      eq(towerShopShipmentsTable.businessKey, businessKey),
+      eq(towerShopShipmentsTable.status, "supplier_processing"),
+      sql`${towerShopShipmentsTable.supplierOrderedAt} <= ${new Date(now.getTime() - TOWER_SHOP_ORDER_TRANSIT_MS)}`,
+    ));
+    const [account] = await db.select().from(towerShopAccountsTable)
+      .where(eq(towerShopAccountsTable.businessKey, businessKey)).limit(1);
+    const inventory = await db.select().from(towerShopInventoryTable)
+      .where(eq(towerShopInventoryTable.businessKey, businessKey));
+    const shipments = await db.select().from(towerShopShipmentsTable)
+      .where(eq(towerShopShipmentsTable.businessKey, businessKey))
+      .orderBy(desc(towerShopShipmentsTable.requestedAt))
+      .limit(50);
+    res.json({
+      businessKey,
+      balanceFiat: account?.balanceFiat ?? 0,
+      inventory,
+      shipments,
+      dock: TOWER_B1_SHOP_DOCK,
+      transitMs: TOWER_SHOP_ORDER_TRANSIT_MS,
+    });
+  } catch (error: any) {
+    console.error("[TowerShop] logistics snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load Tower shop logistics." });
+  }
+});
+
+router.post("/items/tower-business/shipments/:shipmentId/pickup", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const shipmentId = String(req.params.shipmentId ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(shipmentId)) {
+    res.status(400).json({ error: "Invalid shipment." });
+    return;
+  }
+  const [presence] = await db.select().from(desktopBasementPresenceTable)
+    .where(eq(desktopBasementPresenceTable.userId, link.userId)).limit(1);
+  const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  const distance = presence ? Math.hypot(presence.x - TOWER_B1_SHOP_DOCK.x, presence.y - TOWER_B1_SHOP_DOCK.y) : Infinity;
+  if (!presence || presence.linkId !== link.id || presence.level !== TOWER_B1_SHOP_DOCK.level
+    || ageMs < 0 || ageMs > 15_000 || distance > 650) {
+    res.status(403).json({ error: "Move to the B1 shop-freight loading dock in the linked desktop game." });
+    return;
+  }
+  const now = new Date();
+  try {
+    const [shipment] = await db.update(towerShopShipmentsTable).set({
+      status: "in_delivery",
+      updatedAt: now,
+    }).where(and(
+      eq(towerShopShipmentsTable.id, shipmentId),
+      eq(towerShopShipmentsTable.status, "at_dock"),
+    )).returning();
+    if (!shipment) {
+      res.status(409).json({ error: "Shipment is not waiting at the B1 dock." });
+      return;
+    }
+    res.json({
+      ok: true,
+      shipmentId: shipment.id,
+      businessKey: shipment.businessKey,
+      status: shipment.status,
+      lines: shipment.lines,
+      from: TOWER_B1_SHOP_DOCK,
+      to: TOWER_BUSINESS_SHOP_LOCATIONS[shipment.businessKey],
+      animation: "dock_to_shop",
+    });
+  } catch (error: any) {
+    console.error("[TowerShop] shipment pickup failed:", error?.message);
+    res.status(500).json({ error: "Could not dispatch the Tower shop shipment." });
+  }
+});
+
+router.post("/items/tower-business/shipments/:shipmentId/receive", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const shipmentId = String(req.params.shipmentId ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(shipmentId)) {
+    res.status(400).json({ error: "Invalid shipment." });
+    return;
+  }
+  const [candidate] = await db.select().from(towerShopShipmentsTable)
+    .where(eq(towerShopShipmentsTable.id, shipmentId)).limit(1);
+  const shop = candidate ? TOWER_BUSINESS_SHOP_LOCATIONS[candidate.businessKey] : undefined;
+  if (!candidate || !shop) {
+    res.status(404).json({ error: "Unknown Tower shop shipment." });
+    return;
+  }
+  const [presence] = await db.select().from(desktopOfficePresenceTable)
+    .where(eq(desktopOfficePresenceTable.userId, link.userId)).limit(1);
+  const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  const distance = presence ? Math.hypot(presence.x - shop.x, presence.y - shop.y) : Infinity;
+  if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
+    || presence.room !== "hallway" || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
+    res.status(403).json({ error: "Move to the destination shop in the linked desktop game to receive its shipment." });
+    return;
+  }
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [shipment] = await tx.select().from(towerShopShipmentsTable)
+        .where(eq(towerShopShipmentsTable.id, shipmentId)).for("update").limit(1);
+      if (!shipment || shipment.status !== "in_delivery") return { error: "Shipment is not in delivery." } as const;
+      const lines = shipment.lines;
+      for (const line of lines) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-inventory:${shipment.businessKey}:${line.itemId}`}))`);
+        const [stock] = await tx.select().from(towerShopInventoryTable)
+          .where(and(
+            eq(towerShopInventoryTable.businessKey, shipment.businessKey),
+            eq(towerShopInventoryTable.itemId, line.itemId),
+          )).for("update").limit(1);
+        const stored = stock?.storedQuantity ?? 0;
+        const capacity = stock?.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM;
+        if (stored + line.quantity > capacity) {
+          return {
+            error: "Shop storage is full.",
+            itemId: line.itemId,
+            available: Math.max(0, capacity - stored),
+            requested: line.quantity,
+          } as const;
+        }
+      }
+      for (const line of lines) {
+        await tx.insert(towerShopInventoryTable).values({
+          businessKey: shipment.businessKey,
+          itemId: line.itemId,
+          storedQuantity: line.quantity,
+          shelfQuantity: 0,
+          storageCapacity: TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+          shelfCapacity: TOWER_SHOP_SHELF_CAPACITY_PER_ITEM,
+          updatedAt: now,
+        }).onConflictDoUpdate({
+          target: [towerShopInventoryTable.businessKey, towerShopInventoryTable.itemId],
+          set: {
+            storedQuantity: sql`${towerShopInventoryTable.storedQuantity} + ${line.quantity}`,
+            storageCapacity: sql`greatest(${towerShopInventoryTable.storageCapacity}, ${TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM})`,
+            shelfCapacity: sql`greatest(${towerShopInventoryTable.shelfCapacity}, ${TOWER_SHOP_SHELF_CAPACITY_PER_ITEM})`,
+            updatedAt: now,
+          },
+        });
+      }
+      const [delivered] = await tx.update(towerShopShipmentsTable).set({
+        status: "delivered",
+        deliveredAtStoreAt: now,
+        updatedAt: now,
+      }).where(and(
+        eq(towerShopShipmentsTable.id, shipmentId),
+        eq(towerShopShipmentsTable.status, "in_delivery"),
+      )).returning();
+      if (!delivered) throw new Error("Shipment changed while being received");
+      return { shipment: delivered };
+    });
+    if ("error" in result) {
+      res.status(409).json(result);
+      return;
+    }
+    res.json({ ok: true, shipmentId, status: "delivered", lines: result.shipment.lines });
+  } catch (error: any) {
+    console.error("[TowerShop] shipment receive failed:", error?.message);
+    res.status(500).json({ error: "Could not receive the Tower shop shipment." });
+  }
+});
+
+router.post("/items/tower-business/restock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const businessKey = String(req.body?.businessKey ?? "");
+  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+  const itemId = String(req.body?.itemId ?? "");
+  const quantity = Number(req.body?.quantity);
+  if (!shop || !TOWER_BUSINESS_STOCK_LINES.some((line) =>
+    line.sellerBusinessKey === businessKey && line.itemIds.includes(itemId))
+    || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) {
+    res.status(400).json({ error: "Choose a stocked item and a quantity from 1 to 100." });
+    return;
+  }
+  const [presence] = await db.select().from(desktopOfficePresenceTable)
+    .where(eq(desktopOfficePresenceTable.userId, link.userId)).limit(1);
+  const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  const distance = presence ? Math.hypot(presence.x - shop.x, presence.y - shop.y) : Infinity;
+  if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
+    || presence.room !== "hallway" || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
+    res.status(403).json({ error: "Move to the shop in the linked desktop game to restock its shelves." });
+    return;
+  }
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-inventory:${businessKey}:${itemId}`}))`);
+      const [stock] = await tx.select().from(towerShopInventoryTable).where(and(
+        eq(towerShopInventoryTable.businessKey, businessKey),
+        eq(towerShopInventoryTable.itemId, itemId),
+      )).for("update").limit(1);
+      if (!stock || stock.storedQuantity < quantity) {
+        return { error: "Not enough units in shop storage.", storedQuantity: stock?.storedQuantity ?? 0 } as const;
+      }
+      const shelfCapacity = stock.shelfCapacity || TOWER_SHOP_SHELF_CAPACITY_PER_ITEM;
+      if (stock.shelfQuantity + quantity > shelfCapacity) {
+        return { error: "The shelf is full.", available: Math.max(0, shelfCapacity - stock.shelfQuantity) } as const;
+      }
+      const [updated] = await tx.update(towerShopInventoryTable).set({
+        storedQuantity: sql`${towerShopInventoryTable.storedQuantity} - ${quantity}`,
+        shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} + ${quantity}`,
+        storageCapacity: stock.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+        shelfCapacity,
+        updatedAt: now,
+      }).where(and(
+        eq(towerShopInventoryTable.businessKey, businessKey),
+        eq(towerShopInventoryTable.itemId, itemId),
+        sql`${towerShopInventoryTable.storedQuantity} >= ${quantity}`,
+        sql`${towerShopInventoryTable.shelfQuantity} + ${quantity} <= ${shelfCapacity}`,
+      )).returning();
+      if (!updated) return { error: "Stock changed; refresh and try again." } as const;
+      return { stock: updated };
+    });
+    if ("error" in result) {
+      res.status(409).json(result);
+      return;
+    }
+    res.json({ ok: true, stock: result.stock });
+  } catch (error: any) {
+    console.error("[TowerShop] manual restock failed:", error?.message);
+    res.status(500).json({ error: "Could not restock the Tower shop shelf." });
   }
 });
 
