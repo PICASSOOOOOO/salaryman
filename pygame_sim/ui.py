@@ -19,6 +19,7 @@ from .customization import (
     room_decor_placements,
 )
 from .models import Worker
+from .objects import OfficeObject
 from .pest_work import MELEE_MOVES, PEST_JOBS, STAMINA_SUPPLY_ITEMS
 from .scene import FLOOR_PLAN, TowerScene
 from .state import OfficeState
@@ -346,7 +347,10 @@ class SolarPunkRenderer:
                 continue
             ix, iy = point(item.visual_position)
             depth = max(0.72, min(1.28, 0.72 + (iy - viewport.top) / max(1, viewport.height) * 0.56))
-            self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale, depth)
+            if item.kind == "construction_task":
+                self._draw_construction_task_marker(item, ix, iy, item == scene.nearby_object, scale)
+            else:
+                self._draw_tower_object(item.kind, ix, iy, item == scene.nearby_object, scale, depth)
             if item.kind in {"business_suite", "business_kiosk"}:
                 label = item.label.upper()[:27]
                 label_surface = self.font_sm.render(label, True, Palette.INK)
@@ -1509,6 +1513,42 @@ class SolarPunkRenderer:
             )
         self.text(state.notice, (720, 625), self.font_mono, Palette.MATRIX_GREEN)
         self.draw_tool_inventory(state, pygame.Rect(self.width - 286, 616, 256, 76))
+
+    def _draw_construction_task_marker(
+        self,
+        item: OfficeObject,
+        x: int,
+        y: int,
+        nearby: bool,
+        scale: float,
+    ) -> None:
+        status_colors = {
+            "ready": Palette.MATRIX_GREEN,
+            "power_required": Palette.MATRIX_AMBER,
+            "working": (107, 190, 218),
+            "working_you": Palette.MATRIX_AMBER,
+            "complete": Palette.MATRIX_DIM,
+        }
+        accent = status_colors.get(item.construction_status, Palette.MATRIX_GREEN)
+        width = max(28, int(520 * scale))
+        height = max(22, int(360 * scale))
+        frame = pygame.Rect(x - width // 2, y - height // 2, width, height)
+        pygame.draw.ellipse(self.screen, (31, 43, 36), (frame.x - 4, frame.bottom - 3, width + 8, max(6, int(14 * scale))))
+        pygame.draw.rect(self.screen, (55, 72, 61), frame, border_radius=2)
+        pygame.draw.rect(self.screen, accent if nearby else (112, 133, 114), frame, max(1, int(3 * scale)), border_radius=2)
+        for offset in (frame.left + 5, frame.right - 6):
+            pygame.draw.line(self.screen, accent, (offset, frame.top + 3), (offset, frame.bottom - 3), max(1, int(3 * scale)))
+        pygame.draw.line(self.screen, accent, frame.midleft, frame.midright, max(1, int(2 * scale)))
+        pygame.draw.line(self.screen, (183, 166, 120), frame.topleft, frame.bottomright, max(1, int(2 * scale)))
+
+        status_label = {
+            "ready": "READY",
+            "power_required": "POWER REQUIRED",
+            "working": "WORK IN PROGRESS",
+            "working_you": "YOUR WORK",
+            "complete": "COMPLETE",
+        }.get(item.construction_status, "CONSTRUCTION")
+        self.text(status_label, (frame.left, frame.top - 16), self.font_sm, accent)
 
     def matrix_panel(
         self,

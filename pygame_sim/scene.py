@@ -401,35 +401,49 @@ class TowerScene:
                 working = task.get("working") is True
                 working_by_you = task.get("workingByYou") is True
                 status = (
-                    "COMPLETE"
+                    "complete"
                     if completed
-                    else "YOUR WORK IN PROGRESS"
+                    else "working_you"
                     if working and working_by_you
-                    else "WORK IN PROGRESS"
+                    else "working"
                     if working
-                    else "POWER EXPORT REQUIRED"
+                    else "power_required"
                     if not is_power_export and not powered
-                    else "READY"
+                    else "ready"
                 )
+                status_label = {
+                    "complete": "COMPLETE",
+                    "working_you": "YOUR WORK IN PROGRESS",
+                    "working": "WORK IN PROGRESS",
+                    "power_required": "POWER EXPORT REQUIRED",
+                    "ready": "READY",
+                }[status]
                 prompt = (
-                    "START THE B5 AREA POWER EXPORT"
-                    if is_power_export and not completed
+                    "CONSTRUCTION TASK COMPLETE"
+                    if completed
+                    else "YOUR WORK IS IN PROGRESS / WAIT FOR COMPLETION"
+                    if working and working_by_you
+                    else "ANOTHER WORKER IS ON THIS TASK"
+                    if working
                     else "EXPORT POWER FROM B5 BEFORE WORKING HERE"
                     if not is_power_export and not powered
+                    else "START THE B5 AREA POWER EXPORT"
+                    if is_power_export
                     else "START THE PREPARED ON-SITE CONSTRUCTION TASK"
                 )
                 self.objects.add(OfficeObject(
                     id=f"tower-construction-{plan_id}-{task_id}",
                     kind="construction_task",
-                    label=f"{status} / {label}",
+                    label=f"{status_label} / {label}",
                     room=room,
                     position=(x, y),
                     prompt=prompt,
-                    interactive=not completed and not working,
+                    interactive=not completed and not working and (is_power_export or powered),
                     construction_plan_id=plan_id,
                     construction_task_id=task_id,
                     completed=completed,
                     work_progress=1.0 if completed else 0.0,
+                    construction_status=status,
                 ))
 
     @property

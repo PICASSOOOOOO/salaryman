@@ -21,6 +21,54 @@ class FakeResponse:
 
 
 class BuildingSyncTests(unittest.TestCase):
+    def test_construction_markers_show_status_and_block_unpowered_site_work(self):
+        scene = build_tower_scene()
+        scene.set_construction_plans([{
+            "id": 7,
+            "floorNumber": 2,
+            "powered": False,
+            "tasks": [
+                {
+                    "id": "power", "kind": "power_export", "x": 10_000, "y": 9_000,
+                    "label": "EXPORT POWER",
+                },
+                {
+                    "id": "frame", "kind": "building", "x": 12_000, "y": 10_000,
+                    "label": "RAISE FRAME",
+                },
+                {
+                    "id": "active", "kind": "building", "x": 14_000, "y": 11_000,
+                    "label": "ROUTE CONDUIT", "working": True, "workingByYou": True,
+                },
+                {
+                    "id": "other", "kind": "building", "x": 16_000, "y": 12_000,
+                    "label": "FINISH SHELL", "working": True,
+                },
+                {
+                    "id": "done", "kind": "building", "x": 18_000, "y": 13_000,
+                    "label": "COMPLETE SHELL", "completed": True,
+                },
+            ],
+        }])
+
+        markers = {
+            item.construction_task_id: item
+            for item in scene.objects.objects
+            if item.kind == "construction_task"
+        }
+        self.assertEqual(markers["power"].construction_status, "ready")
+        self.assertTrue(markers["power"].interactive)
+        self.assertEqual(markers["frame"].construction_status, "power_required")
+        self.assertFalse(markers["frame"].interactive)
+        self.assertIn("EXPORT POWER FROM B5", markers["frame"].prompt)
+        self.assertEqual(markers["active"].construction_status, "working_you")
+        self.assertFalse(markers["active"].interactive)
+        self.assertIn("YOUR WORK IS IN PROGRESS", markers["active"].prompt)
+        self.assertEqual(markers["other"].construction_status, "working")
+        self.assertIn("ANOTHER WORKER", markers["other"].prompt)
+        self.assertEqual(markers["done"].construction_status, "complete")
+        self.assertIn("COMPLETE", markers["done"].prompt)
+
     def test_linked_game_requests_are_allowlisted_and_vending_uses_primary_slot(self):
         requests = []
 

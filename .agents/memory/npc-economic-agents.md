@@ -9,6 +9,16 @@ NPCs are part of the economy, not background decoration. They need food and othe
 
 **How to apply:** When adding an NPC domain, include its needs, spending, income source, wealth state, and visible progression. Avoid player-only economy logic that makes NPCs passive props.
 
+Current development priority is to build out shops, physical objects, customization,
+supporting simulation systems, and game UI/UX before adding more story missions.
+
+**Why:** the user explicitly said the game is not ready for missions and prioritized
+the shop, object, customization, systems, and interface foundations.
+
+**How to apply:** prefer improvements to the native Tower’s shops, construction,
+objects, customization, simulation, and usability; do not add a new mission unless
+the user changes this priority.
+
 Build a broad Sims-like life simulation for residents, not just an economy or
 business simulator. Personal life includes needs and wellbeing, faith and
 beliefs, relationships and family (marriage, children, affairs, and pregnancy),

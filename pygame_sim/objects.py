@@ -115,6 +115,7 @@ class OfficeObject:
     stairwell_number: int | None = None
     completed: bool = False
     work_progress: float = 0.0
+    construction_status: str = "ready"
     business_key: str | None = None
     unit_number: int | None = None
     service_actions: tuple[str, ...] = ()
