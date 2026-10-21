@@ -21,6 +21,10 @@ function caption(input: ProviderPublishInput, limit: number): string {
   return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text;
 }
 
+function isVideo(media: string): boolean {
+  return /\.(mp4|mov|webm)(?:$|[?#])/i.test(media);
+}
+
 async function providerRequest(url: string, init: RequestInit): Promise<Record<string, any>> {
   const response = await fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
   const data = await response.json().catch(() => ({})) as Record<string, any>;
@@ -38,11 +42,20 @@ function oauthToken(creds: Record<string, string>): string {
 async function postFacebook(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
   const token = oauthToken(creds);
   const media = firstMedia(input);
-  const route = media ? `${creds.pageId}/photos` : `${creds.pageId}/feed`;
   if (!creds.pageId) throw new Error("The connected Facebook account has no Page selected.");
+  const video = media ? isVideo(media) : false;
+  const route = media
+    ? `${creds.pageId}/${video ? "videos" : "photos"}`
+    : `${creds.pageId}/feed`;
   const body = new URLSearchParams({ access_token: token });
-  body.set(media ? "url" : "message", media ? media : caption(input, 5000));
-  if (media) body.set("caption", caption(input, 5000));
+  if (!media) body.set("message", caption(input, 5000));
+  else if (video) {
+    body.set("file_url", media);
+    body.set("description", caption(input, 5000));
+  } else {
+    body.set("url", media);
+    body.set("caption", caption(input, 5000));
+  }
   const result = await providerRequest(`https://graph.facebook.com/v22.0/${route}`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -56,10 +69,15 @@ async function postThreads(creds: Record<string, string>, input: ProviderPublish
   const userId = creds.accountId;
   if (!userId) throw new Error("The connected Threads account could not be identified.");
   const media = firstMedia(input);
+  const video = media ? isVideo(media) : false;
   const params = new URLSearchParams({
     access_token: token,
     text: caption(input, 500),
-    ...(media ? { media_type: "IMAGE", image_url: media } : {}),
+    ...(media
+      ? video
+        ? { media_type: "VIDEO", video_url: media }
+        : { media_type: "IMAGE", image_url: media }
+      : {}),
   });
   const container = await providerRequest(`https://graph.threads.net/v1.0/${userId}/threads`, {
     method: "POST",
@@ -81,11 +99,11 @@ async function postInstagram(creds: Record<string, string>, input: ProviderPubli
   const media = firstMedia(input);
   if (!userId) throw new Error("The connected Instagram account could not be identified.");
   if (!media) throw new Error("Instagram publishing requires an attached public image or video.");
-  const isVideo = /\.(mp4|mov|webm)(?:$|[?#])/i.test(media);
+  const video = isVideo(media);
   const creation = new URLSearchParams({
     access_token: token,
     caption: caption(input, 2200),
-    ...(isVideo ? { media_type: "REELS", video_url: media } : { image_url: media }),
+    ...(video ? { media_type: "REELS", video_url: media } : { image_url: media }),
   });
   const container = await providerRequest(`https://graph.facebook.com/v22.0/${userId}/media`, {
     method: "POST",
@@ -93,7 +111,7 @@ async function postInstagram(creds: Record<string, string>, input: ProviderPubli
     body: creation,
   });
   if (!container.id) throw new Error("Instagram did not return a media container.");
-  if (isVideo) {
+  if (video) {
     const deadline = Date.now() + 45_000;
     let ready = false;
     while (Date.now() < deadline) {
@@ -115,7 +133,7 @@ async function postInstagram(creds: Record<string, string>, input: ProviderPubli
 async function postTikTok(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
   const token = oauthToken(creds);
   const media = firstMedia(input);
-  if (!media || !/\.(mp4|mov|webm)(?:$|[?#])/i.test(media)) {
+  if (!media || !isVideo(media)) {
     throw new Error("TikTok publishing requires an attached public video.");
   }
   const result = await providerRequest("https://open.tiktokapis.com/v2/post/publish/video/init/", {
@@ -141,7 +159,7 @@ async function postTikTok(creds: Record<string, string>, input: ProviderPublishI
 async function postYouTube(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
   const token = oauthToken(creds);
   const media = firstMedia(input);
-  if (!media || !/\.(mp4|mov|webm)(?:$|[?#])/i.test(media)) {
+  if (!media || !isVideo(media)) {
     throw new Error("YouTube publishing requires an attached public video.");
   }
   const downloaded = await safeFetch(media, { timeoutMs: 120_000, maxResponseBytes: 100 * 1024 * 1024, maxRedirects: 3 });

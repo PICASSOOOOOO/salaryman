@@ -19,11 +19,11 @@ type TokenResponse = {
 const OAUTH_SPECS: Record<OAuthProvider, { authorizeUrl: string; scopes: string[] }> = {
   facebook: {
     authorizeUrl: "https://www.facebook.com/v22.0/dialog/oauth",
-    scopes: ["pages_show_list", "pages_manage_posts"],
+    scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts"],
   },
   instagram: {
     authorizeUrl: "https://www.facebook.com/v22.0/dialog/oauth",
-    scopes: ["pages_show_list", "instagram_basic", "instagram_content_publish"],
+    scopes: ["pages_show_list", "pages_read_engagement", "instagram_basic", "instagram_content_publish"],
   },
   threads: {
     authorizeUrl: "https://threads.net/oauth/authorize",
@@ -35,7 +35,10 @@ const OAUTH_SPECS: Record<OAuthProvider, { authorizeUrl: string; scopes: string[
   },
   youtube: {
     authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
-    scopes: ["https://www.googleapis.com/auth/youtube.upload"],
+    scopes: [
+      "https://www.googleapis.com/auth/youtube.upload",
+      "https://www.googleapis.com/auth/youtube.readonly",
+    ],
   },
 };
 
@@ -236,8 +239,8 @@ export async function completeSocialOAuth(stateValue: string, code: string): Pro
     const account = await resolveAccount(state.provider, token);
     const credentials = {
       ...creds,
-      ...account.extra,
       accessToken: token.access_token || "",
+      ...account.extra,
       ...(token.refresh_token ? { refreshToken: token.refresh_token } : {}),
       ...(token.expires_in ? { expiresAtMs: String(Date.now() + token.expires_in * 1000) } : {}),
     };
