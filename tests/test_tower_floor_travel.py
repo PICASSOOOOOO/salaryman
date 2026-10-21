@@ -104,6 +104,16 @@ class TowerFloorTravelTests(unittest.TestCase):
             self.assertEqual(pallets[0].suite_bounds[2], suite.suite_bounds[2])
             self.assertEqual(pallets[0].suite_bounds[3], suite.suite_bounds[3] // 4)
 
+    def test_b1_shop_freight_dock_does_not_replace_maintenance_loading_gate(self):
+        scene = TowerScene()
+        freight_dock = scene.objects.get("basement-b1-shop-freight-dock")
+        maintenance_gate = scene.objects.get("basement-b1-loading-gate")
+        self.assertIsNotNone(freight_dock)
+        self.assertIsNotNone(maintenance_gate)
+        self.assertEqual(freight_dock.kind, "shop_freight_dock")
+        self.assertEqual(maintenance_gate.kind, "loading_gate")
+        self.assertNotEqual(freight_dock.id, maintenance_gate.id)
+
     def test_every_floor_template_and_basement_has_one_shared_hallway_fixture_set(self):
         scene = TowerScene()
         fixture_kinds = {"pay_phone", "trash_can", "atm", "vending_machine", "fire_extinguisher"}

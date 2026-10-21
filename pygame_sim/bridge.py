@@ -530,11 +530,39 @@ def apply_command(
                 return CommandResult(False, "B1 SHIPPING IS UNAVAILABLE / CARRY A TRASH LOAD")
             state.notice = "DELIVERING TRASH TO B1"
             return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind == "shop_freight_dock" \
+            and requested_object_id in (None, nearby.id):
+            if state.shop_freight_shipments_at_dock:
+                shipment_id = state.shop_freight_shipments_at_dock[0].get("id")
+                if not isinstance(shipment_id, str) or building_sync is None \
+                    or not building_sync.queue_game_request("shop_freight_pickup", shipment_id):
+                    return CommandResult(False, "SHOP FREIGHT PICKUP UNAVAILABLE / CHECK GAME LINK")
+                state.shop_freight_shipments_at_dock = []
+                state.game_service_loading.add("shop_freight_pickup")
+                state.notice = "LOADING SHOP FREIGHT AT B1"
+                return CommandResult(True, state.notice)
+            if building_sync is None or not building_sync.queue_game_request("shop_freight_snapshot"):
+                return CommandResult(False, "SHOP FREIGHT STATUS UNAVAILABLE / CHECK GAME LINK")
+            state.game_service_loading.add("shop_freight_snapshot")
+            state.notice = "CHECKING B1 SHOP FREIGHT"
+            return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "loading_gate" \
             and requested_object_id in (None, nearby.id):
             if building_sync is None or not building_sync.queue_game_request("supply_receive"):
                 return CommandResult(False, "LOADING ZONE IS UNAVAILABLE / TOWER STAFF ONLY")
             state.notice = "RECEIVING TOWER SUPPLIES"
+            return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind == "business_suite" \
+            and requested_object_id in (None, nearby.id) \
+            and isinstance(state.active_shop_shipment, dict) \
+            and state.active_shop_shipment.get("businessKey") == nearby.business_key:
+            shipment_id = state.active_shop_shipment.get("shipmentId")
+            if not isinstance(shipment_id, str) or building_sync is None \
+                or not building_sync.queue_game_request("shop_freight_receive", shipment_id):
+                return CommandResult(False, "SHOP SHIPMENT DELIVERY UNAVAILABLE / CHECK GAME LINK")
+            state.game_service_loading.add("shop_freight_receive")
+            state.notice = f"DELIVERING STOCK TO {nearby.label}"
+            scene.set_player_action("maintenance", duration=1.2)
             return CommandResult(True, state.notice)
         if nearby is not None and nearby.id == "floor-06-meeting-table" \
             and requested_object_id in (None, nearby.id):
@@ -1103,6 +1131,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "competitionActions": COMPETITION_ACTIONS,
             "vendingCatalog": state.vending_catalog,
             "businessStockLines": state.business_stock_lines,
+            "shopShipment": state.active_shop_shipment,
             "ghostListing": state.ghost_listing,
             "pestUniformWorn": state.pest_uniform_worn,
             "pestStamina": state.pest_stamina,

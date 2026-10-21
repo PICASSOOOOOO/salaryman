@@ -714,7 +714,27 @@ def run(argv: list[str] | None = None) -> int:
                 if isinstance(action, str):
                     state.game_service_loading.discard(action)
                 if sync_event.ok and isinstance(payload, dict):
-                    if action == "inventory":
+                    if action == "shop_freight_snapshot":
+                        rows = payload.get("shipments", [])
+                        state.shop_freight_shipments_at_dock = [
+                            row for row in rows
+                            if isinstance(row, dict) and isinstance(row.get("id"), str)
+                        ] if isinstance(rows, list) else []
+                        state.notice = (
+                            f"B1 SHOP FREIGHT / {len(state.shop_freight_shipments_at_dock)} SHIPMENT(S) WAITING"
+                            if state.shop_freight_shipments_at_dock
+                            else "B1 SHOP FREIGHT / NO SHIPMENTS WAITING"
+                        )
+                    elif action == "shop_freight_pickup":
+                        state.active_shop_shipment = {
+                            key: payload.get(key)
+                            for key in ("shipmentId", "businessKey", "status", "lines", "from", "to", "animation")
+                        }
+                        state.notice = f"SHOP FREIGHT IN TRANSIT / {str(payload.get('businessKey', 'SHOP')).upper()}"
+                    elif action == "shop_freight_receive":
+                        state.active_shop_shipment = None
+                        state.notice = "SHOP SHIPMENT DELIVERED TO STORAGE"
+                    elif action == "inventory":
                         rows = payload.get("rows", [])
                         state.game_inventory = [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
                         state.game_inventory_capacity = max(1, int(payload.get("capacity", 24) or 24))

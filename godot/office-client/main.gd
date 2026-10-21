@@ -46,6 +46,7 @@ var visual_player_ready := false
 var target_player_world := Vector3.ZERO
 var visual_player_velocity := Vector3.ZERO
 var animation_clock := 0.0
+var shop_cargo_visual: Node3D = null
 var camera_distance := CAMERA_DISTANCE_LEVELS[CAMERA_DEFAULT_ZOOM_INDEX]
 var camera_zoom_index := CAMERA_DEFAULT_ZOOM_INDEX
 var camera_sfx: Node
@@ -1582,6 +1583,40 @@ func _load_player() -> void:
 	player_shadow = _add_character_shadow(player_root, 0.38)
 
 
+func _sync_shop_cargo_visual(value: Variant) -> void:
+var shipment: Dictionary = value if value is Dictionary else {}
+if shipment.get("status") != "in_delivery":
+if is_instance_valid(shop_cargo_visual):
+shop_cargo_visual.queue_free()
+shop_cargo_visual = null
+return
+if is_instance_valid(shop_cargo_visual):
+return
+shop_cargo_visual = Node3D.new()
+shop_cargo_visual.name = "ServerConfirmedShopShipment"
+shop_cargo_visual.position = Vector3(0.0, 0.92, -0.38)
+player_root.add_child(shop_cargo_visual)
+var crate := MeshInstance3D.new()
+crate.name = "ShopShipmentCrate"
+var mesh := BoxMesh.new()
+mesh.size = Vector3(0.54, 0.46, 0.42)
+crate.mesh = mesh
+var material := StandardMaterial3D.new()
+material.albedo_color = Color("#b88751")
+material.roughness = 0.9
+crate.material_override = material
+shop_cargo_visual.add_child(crate)
+var strap := MeshInstance3D.new()
+strap.name = "FreightStrap"
+var strap_mesh := BoxMesh.new()
+strap_mesh.size = Vector3(0.08, 0.48, 0.44)
+strap.mesh = strap_mesh
+var strap_material := StandardMaterial3D.new()
+strap_material.albedo_color = Color("#e0c58a")
+strap.material_override = strap_material
+shop_cargo_visual.add_child(strap)
+
+
 func _on_player_action_requested(action: String) -> void:
 	if action == "fight" and _nearby_object_id().begins_with("coworker-"):
 		_send_command("coworker_fight")
@@ -2026,6 +2061,8 @@ func _process(delta: float) -> void:
 		if elevator_wait_remaining <= 0.0:
 			_abort_elevator_transition("ELEVATOR REQUEST TIMED OUT")
 	_smooth_visual_player(delta)
+if is_instance_valid(shop_cargo_visual):
+shop_cargo_visual.position.y = 0.92 + sin(animation_clock * 5.0) * 0.025
 	_update_camera(delta)
 	_update_hud()
 	_advance_feature_panel_animations(delta)
@@ -2206,6 +2243,8 @@ func _apply_snapshot(message: Dictionary) -> void:
 	player_root.reconcile_authoritative_position(target)
 	player_root.set_authoritative_action(str(player.get("action", "stand")))
 	visual_player_ready = true
+var office_state: Dictionary = message.get("office", {})
+_sync_shop_cargo_visual(office_state.get("shopShipment", {}))
 
 	var location_id := "%02d:%s" % [floor_number, room_id]
 	if location_id != last_room_id:
@@ -2561,6 +2600,8 @@ collision_extents: Array = [],
 		return _build_yard_gate(position, object_id, label)
 	if kind == "delivery_truck" or kind == "forklift" or kind == "pallet" or kind == "supply_crate":
 		return _build_loading_yard_prop(kind, position, object_id, label)
+if kind == "shop_freight_dock":
+return _build_loading_yard_prop("pallet", position, object_id, label)
 	if kind == "window":
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window

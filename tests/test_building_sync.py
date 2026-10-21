@@ -102,6 +102,37 @@ class BuildingSyncTests(unittest.TestCase):
             ],
         )
 
+    def test_shop_freight_uses_the_persisted_dock_pickup_and_delivery_routes(self):
+        requests = []
+
+        def opener(request, timeout):
+            del timeout
+            path = request.full_url.rsplit("/api", 1)[-1]
+            requests.append((request.get_method(), path))
+            return FakeResponse({"ok": True})
+
+        sync = DesktopBuildingSync(
+            DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+            opener=opener,
+        )
+        for action, shipment_id in (
+            ("shop_freight_snapshot", None),
+            ("shop_freight_pickup", "12345678-1234-1234-1234-123456789abc"),
+            ("shop_freight_receive", "12345678-1234-1234-1234-123456789abc"),
+        ):
+            self.assertTrue(sync.queue_game_request(action, shipment_id))
+            sync._sync_once()
+            self.assertTrue(sync.drain_events()[0].ok)
+
+        self.assertEqual(
+            requests,
+            [
+                ("GET", "/items/tower-business/shipments/dock"),
+                ("POST", "/items/tower-business/shipments/12345678-1234-1234-1234-123456789abc/pickup"),
+                ("POST", "/items/tower-business/shipments/12345678-1234-1234-1234-123456789abc/receive"),
+            ],
+        )
+
     def test_floor_state_is_scoped_and_queued_maintenance_cannot_follow_player(self):
         requests = []
 

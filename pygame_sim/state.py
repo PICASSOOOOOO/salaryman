@@ -129,6 +129,8 @@ class OfficeState:
     fiat_spendable: int | None = None
     selected_vending_index: int = 0
     game_service_loading: set[str] = field(default_factory=set)
+    shop_freight_shipments_at_dock: list[dict[str, object]] = field(default_factory=list)
+    active_shop_shipment: dict[str, object] | None = None
     pest_uniform_worn: bool = False
     pest_stamina: int = 100
     pest_work_orders: dict[str, dict[str, int | bool]] = field(

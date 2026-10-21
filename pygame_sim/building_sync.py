@@ -101,8 +101,14 @@ class DesktopBuildingSync:
             "bank": ("GET", "/desktop-game/bank", None),
             "waste_deliver": ("POST", "/desktop-building/waste/deliver", {}),
             "supply_receive": ("POST", "/desktop-building/supplies/receive", {}),
+            "shop_freight_snapshot": ("GET", "/items/tower-business/shipments/dock", None),
         }
-        if action == "restroom":
+        if action in {"shop_freight_pickup", "shop_freight_receive"}:
+            if not isinstance(item_id, str) or not item_id or len(item_id) > 64:
+                return False
+            stage = "pickup" if action == "shop_freight_pickup" else "receive"
+            request = ("POST", f"/items/tower-business/shipments/{item_id}/{stage}", {})
+        elif action == "restroom":
             if not isinstance(item_id, str) or len(item_id) > 48:
                 return False
             with self._lock:
@@ -323,6 +329,9 @@ class DesktopBuildingSync:
                     "waste_pickup": "TRASH PICKED UP / TAKE IT TO B1 SHIPPING",
                     "waste_deliver": "TRASH DELIVERED TO B1",
                     "supply_receive": "SUPPLIES RECEIVED AT B1",
+                    "shop_freight_snapshot": "B1 SHOP FREIGHT STATUS LOADED",
+                    "shop_freight_pickup": "SHOP SHIPMENT LOADED / TAKE IT TO THE DESTINATION",
+                    "shop_freight_receive": "SHOP SHIPMENT DELIVERED TO STORAGE",
                 }.get(game_action, f"GAME SERVICE / {game_action.upper()}")
                 self._events.put(BuildingSyncEvent(
                     True,

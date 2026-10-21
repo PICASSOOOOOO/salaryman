@@ -42,6 +42,7 @@ ObjectKind = Literal[
     "restroom_stall",
     "shipping_station",
     "loading_gate",
+    "shop_freight_dock",
     "arcade",
     "desk",
     "chair",
@@ -156,6 +157,7 @@ class OfficeObject:
             "restroom_stall": (240, 300),
             "shipping_station": (320, 220),
             "loading_gate": (240, 180),
+            "shop_freight_dock": (320, 220),
             "door": (0, 0),
             "telephone": (0, 0),
             "crt_terminal": (0, 0),
@@ -1224,6 +1226,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 OfficeObject("basement-b1-disposal", "carcass_disposal", "CARCASS DISPOSAL", room, (5_700, 5_000), "SELL A CLAIMED CARCASS"),
                 OfficeObject("basement-b1-shipping-waste", "shipping_station", "SHIPPING / WASTE", room, (15_000, 9_000), "DELIVER CARRIED TRASH"),
                 OfficeObject("basement-b1-loading-gate", "loading_gate", "GATED LOADING ZONE", room, (18_500, 7_000), "RECEIVE TOWER SUPPLIES"),
+                OfficeObject("basement-b1-shop-freight-dock", "shop_freight_dock", "SHOP FREIGHT DOCK", room, (16_500, 7_000), "CHECK / LOAD SHOP SHIPMENT"),
             ):
                 registry.add(entry)
             basement_program = FLOOR_PLAN["floorProgram"]["pabloCorpBusinessArea"]

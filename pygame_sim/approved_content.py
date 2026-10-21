@@ -72,6 +72,7 @@ APPROVED_INTERACTIVE_OBJECT_KINDS = frozenset(
         "restroom_stall",
         "shipping_station",
         "loading_gate",
+        "shop_freight_dock",
         "trash_can",
         "receptionist",
         "arcade",

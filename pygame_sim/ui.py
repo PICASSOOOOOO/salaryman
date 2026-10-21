@@ -1171,6 +1171,15 @@ class SolarPunkRenderer:
                     (crate.centerx, crate.bottom - 2),
                     1,
                 )
+        elif kind == "shop_freight_dock":
+            width = max(42, int(520 * scale))
+            height = max(28, int(300 * scale))
+            pallet = pygame.Rect(x - width // 2, y + height // 4, width, max(5, int(16 * scale)))
+            cargo = pygame.Rect(x - width // 3, pallet.top - height, width * 2 // 3, height)
+            pygame.draw.rect(self.screen, (104, 76, 53), pallet, border_radius=2)
+            pygame.draw.rect(self.screen, (172, 126, 76), cargo, border_radius=3)
+            pygame.draw.rect(self.screen, (224, 186, 119) if nearby else (93, 73, 52), cargo, 2, border_radius=3)
+            pygame.draw.line(self.screen, (224, 186, 119), (cargo.centerx, cargo.top + 3), (cargo.centerx, cargo.bottom - 2), 2)
         elif kind == "loading_gate":
             width = max(40, int(600 * scale))
             height = max(34, int(460 * scale))
@@ -1472,6 +1481,15 @@ class SolarPunkRenderer:
             prompt = pygame.Rect(270, 620, min(430, self.width - 600), 30)
             self.panel(prompt, Palette.MATRIX_PANEL_2, Palette.MATRIX_AMBER, radius=3, width=1)
             prompt_text = nearby.prompt
+            if nearby.kind == "shop_freight_dock":
+                if state.shop_freight_shipments_at_dock:
+                    prompt_text = "LOAD SHOP FREIGHT / PRESS E"
+                else:
+                    prompt_text = "CHECK B1 SHOP FREIGHT / PRESS E"
+            elif nearby.kind == "business_suite" \
+                and isinstance(state.active_shop_shipment, dict) \
+                and state.active_shop_shipment.get("businessKey") == nearby.business_key:
+                prompt_text = "DELIVER SHIPMENT TO SHOP STORAGE / PRESS E"
             if nearby.kind == "crt_terminal" and scene.is_seated_at_workstation(nearby.parent_id):
                 prompt_text = "USE COMPUTER"
             self.text(f"[E] {prompt_text}", (282, 629), self.font_md, Palette.MATRIX_BRIGHT)

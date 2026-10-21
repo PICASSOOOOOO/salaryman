@@ -484,6 +484,29 @@ router.post("/items/tower-business/order", async (req, res) => {
 
 // Supplier lead time is persisted from the order timestamp. Polling the logistics
 // view advances eligible orders to the B1 dock, so offline shops still receive stock.
+router.get("/items/tower-business/shipments/dock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const now = new Date();
+  try {
+    await db.update(towerShopShipmentsTable).set({
+      status: "at_dock",
+      arrivedAtDockAt: now,
+      updatedAt: now,
+    }).where(and(
+      eq(towerShopShipmentsTable.status, "supplier_processing"),
+      sql`${towerShopShipmentsTable.supplierOrderedAt} <= ${new Date(now.getTime() - TOWER_SHOP_ORDER_TRANSIT_MS)}`,
+    ));
+    const shipments = await db.select().from(towerShopShipmentsTable).where(and(
+      eq(towerShopShipmentsTable.status, "at_dock"),
+    )).orderBy(desc(towerShopShipmentsTable.arrivedAtDockAt)).limit(50);
+    res.json({ shipments, dock: TOWER_B1_SHOP_DOCK });
+  } catch (error: any) {
+    console.error("[TowerShop] B1 dock snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load B1 shop freight." });
+  }
+});
+
 router.get("/items/tower-business/:businessKey/logistics", async (req, res) => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
