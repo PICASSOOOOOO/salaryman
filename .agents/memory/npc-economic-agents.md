@@ -167,6 +167,22 @@ confirmed the tiered intervals.
 order for that same shop and item. Enforce it inside the order transaction so
 concurrent requests cannot evade scarcity; don't apply it to manual shelf moves.
 
+Established Pablo Corp shops, companies, and systems should have room to hire
+NPC staff. Workers vary in speed, productivity, and attendance; some are lazy,
+miss work, or steal from their own shops. Poor service can push clients toward
+alternatives. Players can create lower-priced competitors and change the
+server's direction, but unfair competition can invite sabotage. Rival companies
+need meetings and accords so they can coexist.
+
+**Why:** the user described imperfect workers, customer-driven alternatives,
+player-created competition, sabotage risk, and agreements as core parts of a
+human-feeling server economy.
+
+**How to apply:** model staff quality and reliability as visible, persistent
+business factors; let service outcomes shape customer demand; keep player
+competition consequential, and make sabotage a risk of unfair conduct rather
+than an automatic response to competition. Support explicit rival agreements.
+
 When shop employees participate in the NPC mod, at least half of each shop's
 employees should be part of the mod while the other half continue working so the
 shop remains available and can sell to players.
