@@ -57,7 +57,7 @@ import {
   towerShopRestockAvailableAt,
 } from "../lib/tower-shop-pricing";
 import { settleTowerShopSupplierOrderTx } from "../lib/tower-shop-finance";
-import { chooseNpcShopRestockItem } from "../lib/tower-shop-autopilot";
+import { listNpcShopRestockCandidates } from "../lib/tower-shop-autopilot";
 import {
   isBattery,
   batteryCapacity,
@@ -245,51 +245,60 @@ async function runNpcTowerShopRestockTick(now: Date): Promise<void> {
         }
       }
 
-      const candidate = chooseNpcShopRestockItem({
+      const candidates = listNpcShopRestockCandidates({
         itemIds,
         stockByItem,
         storageCapacityByItem: capacityByItem,
         blockedItemIds,
       });
-      if (!candidate) return null;
-      const item = findCatalogItem(candidate.itemId);
-      if (!item || item.priceFiat <= 0) return null;
+      for (const candidate of candidates) {
+        const item = findCatalogItem(candidate.itemId);
+        if (!item || item.priceFiat <= 0) continue;
 
-      const historicalDemand = history.reduce((total, shipment) => total
-        + shipment.lines
-          .filter((line) => line.itemId === candidate.itemId)
-          .reduce((lineTotal, line) => lineTotal + line.quantity, 0), 0);
-      const stockQuantity = stockByItem.get(candidate.itemId) ?? 0;
-      const demandIndex = Math.min(10_000, 100 + historicalDemand * 100);
-      const supplyIndex = Math.min(10_000, 100 + stockQuantity * 100);
-      const quote = quoteTowerShopOrder({
-        retailUnitPriceFiat: item.priceFiat,
-        quantity: candidate.quantity,
-        btcMultiplierBps,
-        demandIndex,
-        supplyIndex,
-      });
-      const requestKey = `tower-shop-npc:${businessKey}:${candidate.itemId}:${Math.floor(now.getTime() / 60_000)}`;
-      const result = await settleTowerShopSupplierOrderTx(tx, {
-        businessKey,
-        requestKey,
-        requestedByUserId: null,
-        lines: [{ itemId: candidate.itemId, quantity: candidate.quantity }],
-        restockCooldowns: TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity]
-          ? [{
-            itemId: candidate.itemId,
-            cooldownMs: TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity]!,
-          }]
-          : [],
-        quote,
-        btcMultiplierBps,
-        demandIndex,
-        supplyIndex,
-        now,
-      });
-      return result.ok && !result.duplicate
-        ? { businessKey, itemId: candidate.itemId, quantity: candidate.quantity, balanceFiat: result.balanceFiat }
-        : null;
+        const historicalDemand = history.reduce((total, shipment) => total
+          + shipment.lines
+            .filter((line) => line.itemId === candidate.itemId)
+            .reduce((lineTotal, line) => lineTotal + line.quantity, 0), 0);
+        const stockQuantity = stockByItem.get(candidate.itemId) ?? 0;
+        const demandIndex = Math.min(10_000, 100 + historicalDemand * 100);
+        const supplyIndex = Math.min(10_000, 100 + stockQuantity * 100);
+        const requestKey = `tower-shop-npc:${businessKey}:${candidate.itemId}:${Math.floor(now.getTime() / 60_000)}`;
+        const cooldownMs = TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity];
+
+        for (let quantity = candidate.quantity; quantity >= 1; quantity--) {
+          const quote = quoteTowerShopOrder({
+            retailUnitPriceFiat: item.priceFiat,
+            quantity,
+            btcMultiplierBps,
+            demandIndex,
+            supplyIndex,
+          });
+          const result = await settleTowerShopSupplierOrderTx(tx, {
+            businessKey,
+            requestKey,
+            requestedByUserId: null,
+            lines: [{ itemId: candidate.itemId, quantity }],
+            restockCooldowns: cooldownMs ? [{ itemId: candidate.itemId, cooldownMs }] : [],
+            quote,
+            btcMultiplierBps,
+            demandIndex,
+            supplyIndex,
+            now,
+          });
+          if (result.ok) {
+            if (result.duplicate) break;
+            return {
+              businessKey,
+              itemId: candidate.itemId,
+              quantity,
+              balanceFiat: result.balanceFiat,
+            };
+          }
+          if (result.reason === "tower_funds") return null;
+          if (result.reason === "restock_cooldown") break;
+        }
+      }
+      return null;
     });
     if (createdOrder) {
       console.info(

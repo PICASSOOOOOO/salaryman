@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseNpcShopRestockItem } from "./tower-shop-autopilot";
+import { chooseNpcShopRestockItem, listNpcShopRestockCandidates } from "./tower-shop-autopilot";
 
 describe("chooseNpcShopRestockItem", () => {
   it("orders a small top-up when the shelf and storage are nearly empty", () => {
@@ -33,5 +33,16 @@ describe("chooseNpcShopRestockItem", () => {
       stockByItem: new Map([["first", 2], ["second", 0], ["third", 0]]),
       storageCapacityByItem: new Map(),
     })).toEqual({ itemId: "second", quantity: 12 });
+  });
+
+  it("keeps affordable fallback items available when the first SKU is too expensive", () => {
+    expect(listNpcShopRestockCandidates({
+      itemIds: ["expensive", "affordable"],
+      stockByItem: new Map(),
+      storageCapacityByItem: new Map(),
+    })).toEqual([
+      { itemId: "expensive", quantity: 12 },
+      { itemId: "affordable", quantity: 12 },
+    ]);
   });
 });
