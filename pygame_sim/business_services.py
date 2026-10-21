@@ -23,6 +23,9 @@ PURCHASABLE_BUSINESSES = frozenset({
     "tool_store",
     "book_store",
     "plant_store",
+    "android_replicant_repair",
+    "vespa_shop",
+    "tower_terminal_repair",
 })
 
 BUSINESS_ACTION_LABELS: dict[str, str] = {

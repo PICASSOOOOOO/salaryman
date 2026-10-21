@@ -2199,12 +2199,19 @@ class SolarPunkRenderer:
                 and listing.get("sellerBusinessKey") == business_key
             ]
             products: list[dict[str, object]] = []
+            quote_categories: list[str] = []
             for listing in listings:
                 for product in listing.get("items", []):
                     if isinstance(product, dict) and str(product.get("id", "")) not in {
                         str(existing.get("id", "")) for existing in products
                     }:
                         products.append(product)
+                raw_categories = listing.get("quoteCategories", [])
+                if isinstance(raw_categories, list):
+                    quote_categories.extend(
+                        str(category) for category in raw_categories
+                        if isinstance(category, str) and category not in quote_categories
+                    )
             page_start = (state.selected_vending_index // 8) * 8
             visible_products = products[page_start:page_start + 8]
             for product_index, product in enumerate(visible_products):
@@ -2219,7 +2226,21 @@ class SolarPunkRenderer:
                         self.font_md,
                         Palette.MATRIX_BRIGHT,
                     )
-            if not products:
+            if not products and quote_categories:
+                for index, category in enumerate(quote_categories[:4]):
+                    self.text(
+                        f"QUOTE / {category.upper()[:52]}",
+                        (page.x + 28, page.y + 196 + index * 32),
+                        self.font_md,
+                        Palette.MATRIX_BRIGHT,
+                    )
+                self.text(
+                    "ASK AT THE COUNTER / NO SERVER PRICE OR ONLINE PURCHASE",
+                    (page.x + 28, page.y + 346),
+                    self.font_sm,
+                    Palette.MATRIX_AMBER,
+                )
+            elif not products:
                 self.text("NO SERVER-PRICED STOCK IS AVAILABLE", (page.x + 26, page.y + 193), self.font_lg, Palette.MATRIX_AMBER)
             else:
                 nav_button(

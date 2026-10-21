@@ -514,7 +514,7 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertNotIn("floorBusinessCounts", FLOOR_PLAN)
         self.assertNotIn("businessUnits", FLOOR_PLAN)
         business_area = FLOOR_PLAN["floorProgram"]["pabloCorpBusinessArea"]
-        self.assertEqual(business_area["floors"], list(range(1, 8)))
+        self.assertEqual(business_area["floors"], list(range(1, 13)))
         self.assertEqual(business_area["basementFloors"], [f"B{level}" for level in range(1, 7)])
         self.assertEqual(business_area["rearShipping"]["floor"], "B1")
         known_floor_six = FLOOR_PLAN["playableFloors"]["6"]["businesses"]
@@ -531,6 +531,19 @@ class PygameBridgeTests(unittest.TestCase):
                 "flower_shop",
             ],
         )
+        expected_business_keys = {
+            business["businessKey"]
+            for floor in FLOOR_PLAN["playableFloors"].values()
+            for business in floor.get("businesses", [])
+        }
+        expected_business_keys.update(
+            business["businessKey"] for business in FLOOR_PLAN["businessSuiteLayout"]["lobbyKiosks"]
+        )
+        expected_business_keys.update(business["businessKey"] for business in business_area["b1Businesses"])
+        registered_business_keys = {
+            item.business_key for item in self.scene.objects.objects if item.business_key
+        }
+        self.assertTrue(expected_business_keys.issubset(registered_business_keys))
 
         infra = FLOOR_PLAN["infrastructureMap"]
         self.assertEqual(infra["standardFloor"]["clearEnvelopeMeters"], [220, 250])
@@ -563,10 +576,14 @@ class PygameBridgeTests(unittest.TestCase):
         for object_id in infra["lobby"]["branchAccessObjectIds"]:
             self.assertIsNotNone(self.scene.objects.get(object_id))
 
-    def test_floors_eight_through_sixty_seven_remain_under_construction(self):
-        self.assertFalse(self.scene.select_floor(8))
+    def test_named_floors_are_open_and_floors_thirteen_through_sixty_seven_remain_under_construction(self):
+        self.assertTrue(self.scene.select_floor(8))
+        self.assertTrue(self.scene.select_floor(12))
+        self.assertFalse(self.scene.select_floor(13))
         self.assertFalse(self.scene.select_floor(67))
-        self.assertEqual(self.scene.floor_status(8), "under_construction")
+        self.assertEqual(self.scene.floor_status(8), "open")
+        self.assertEqual(self.scene.floor_status(12), "open")
+        self.assertEqual(self.scene.floor_status(13), "under_construction")
         self.assertEqual(self.scene.floor_status(67), "under_construction")
 
     def test_godot_vending_purchase_uses_linked_server_stock(self):

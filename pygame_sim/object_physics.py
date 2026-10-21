@@ -82,6 +82,7 @@ OBJECT_MATERIALS: dict[ObjectKind, MaterialKind] = {
     "restroom_stall": "steel",
     "shipping_station": "steel",
     "loading_gate": "steel",
+    "shop_freight_dock": "steel",
     "arcade": "electronics",
     "desk": "wood",
     "chair": "cloth",
@@ -118,7 +119,7 @@ OBJECT_MATERIALS: dict[ObjectKind, MaterialKind] = {
 _FIXED_KINDS = frozenset({
     "elevator", "service_elevator", "stairs", "basement_stairs",
     "construction_task", "utility_station", "restroom_stall",
-    "loading_gate", "partition_h", "partition_h_short", "partition_v",
+    "loading_gate", "shop_freight_dock", "partition_h", "partition_h_short", "partition_v",
     "tunnel_wall_h", "tunnel_wall_v", "window", "door", "business_suite",
     "business_kiosk", "yard_gate", "temple_audio_control",
 })

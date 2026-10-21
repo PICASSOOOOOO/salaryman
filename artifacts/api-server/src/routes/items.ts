@@ -79,6 +79,8 @@ const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; 
   tool_store: { floor: 3, x: 54_597, y: 15_556 },
   book_store: { floor: 4, x: 39_341, y: 47_470 },
   plant_store: { floor: 9, x: 39_341, y: 15_556 },
+  android_replicant_repair: { floor: 8, x: 54_597, y: 15_556 },
+  vespa_shop: { floor: 9, x: 54_597, y: 15_556 },
 };
 const TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM = 1_000;
 const TOWER_SHOP_SHELF_CAPACITY_PER_ITEM = 100;
