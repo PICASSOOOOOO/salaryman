@@ -50,7 +50,11 @@ import {
   TOWER_BUSINESS_STOCK_LINES,
   TOWER_GHOST_LISTING,
 } from "@workspace/api-zod";
-import { quoteTowerShopOrder, DEFAULT_TOWER_SHOP_PRICING_POLICY } from "../lib/tower-shop-pricing";
+import {
+  quoteTowerShopOrder,
+  DEFAULT_TOWER_SHOP_PRICING_POLICY,
+  TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY,
+} from "../lib/tower-shop-pricing";
 import { settleTowerShopSupplierOrderTx } from "../lib/tower-shop-finance";
 import {
   isBattery,
@@ -399,6 +403,11 @@ router.post("/items/tower-business/order", async (req, res) => {
       });
       return { demandIndex, supplyIndex, quote };
     });
+    const restockCooldowns = lines.flatMap((line) => {
+      const item = findCatalogItem(line.itemId);
+      const cooldownMs = item ? TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity] : undefined;
+      return cooldownMs ? [{ itemId: line.itemId, cooldownMs }] : [];
+    });
     const quantityTotal = lines.reduce((sum, line) => sum + line.quantity, 0);
     const goodsCostFiat = itemQuotes.reduce((sum, entry) => sum + entry.quote.goodsCostFiat, 0);
     const supplierCostFiat = itemQuotes.reduce((sum, entry) => sum + entry.quote.supplierCostFiat, 0);
@@ -419,6 +428,7 @@ router.post("/items/tower-business/order", async (req, res) => {
       requestKey: `tower-shop:${link.id}:${requestToken}`,
       requestedByUserId: link.userId,
       lines,
+      restockCooldowns,
       quote: {
         wholesaleRateBps: Math.round(itemQuotes.reduce((sum, entry) => sum + entry.quote.wholesaleRateBps, 0) / itemQuotes.length),
         marketRetailUnitFiat: 0,
@@ -437,6 +447,14 @@ router.post("/items/tower-business/order", async (req, res) => {
       if (result.reason === "tower_funds") {
         res.status(503).json({ error: "Tower working capital is temporarily unavailable." });
       } else {
+        if (result.reason === "restock_cooldown") {
+          res.status(429).json({
+            error: "rare_item_restock_cooldown",
+            itemId: result.itemId,
+            nextAvailableAt: result.nextAvailableAt,
+          });
+          return;
+        }
         res.status(402).json({
           error: "shop_funds",
           balanceFiat: result.balanceFiat,

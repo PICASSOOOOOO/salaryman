@@ -2,9 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TOWER_SHOP_PRICING_POLICY,
   quoteTowerShopOrder,
+  TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY,
 } from "../lib/tower-shop-pricing";
 
 describe("Tower shop supplier pricing", () => {
+  it("applies longer supplier restock intervals to higher-rarity goods only", () => {
+    expect(TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY).toEqual({
+      rare: 7 * 24 * 60 * 60 * 1_000,
+      very_rare: 14 * 24 * 60 * 60 * 1_000,
+      legendary: 30 * 24 * 60 * 60 * 1_000,
+    });
+    expect(TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY.common).toBeUndefined();
+    expect(TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY.expensive).toBeUndefined();
+  });
+
   it("uses the live BTC multiplier for both goods and delivery", () => {
     const base = quoteTowerShopOrder({
       retailUnitPriceFiat: 10_000,

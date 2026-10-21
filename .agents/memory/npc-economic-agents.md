@@ -156,6 +156,17 @@ delivery fees, and starting capital configurable so the market can be balanced
 without rewriting settlement logic. Apply the same live BTC multiplier used by
 existing game commerce to FIAT-denominated supplier quotes.
 
+Scarce shop goods have per-item, per-shop supplier reorder cooldowns: rare is
+7 days, very rare is 14 days, and legendary is 30 days. Common and expensive
+goods have no rarity-based cooldown.
+
+**Why:** The user specified that rare items must not be restocked daily and
+confirmed the tiered intervals.
+
+**How to apply:** Measure cooldown from the most recent non-cancelled supplier
+order for that same shop and item. Enforce it inside the order transaction so
+concurrent requests cannot evade scarcity; don't apply it to manual shelf moves.
+
 When shop employees participate in the NPC mod, at least half of each shop's
 employees should be part of the mod while the other half continue working so the
 shop remains available and can sell to players.

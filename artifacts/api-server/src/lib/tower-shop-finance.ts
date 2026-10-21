@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   towerOperationsLedgerTable,
   towerOperationsStateTable,
@@ -109,6 +109,7 @@ export async function settleTowerShopSupplierOrderTx(
     requestKey: string;
     requestedByUserId: string;
     lines: Array<{ itemId: string; quantity: number }>;
+    restockCooldowns?: Array<{ itemId: string; cooldownMs: number }>;
     quote: TowerShopOrderQuote;
     btcMultiplierBps: number;
     demandIndex: number;
@@ -121,6 +122,31 @@ export async function settleTowerShopSupplierOrderTx(
     .where(eq(towerShopShipmentsTable.requestKey, args.requestKey))
     .limit(1);
   if (prior) return { ok: true as const, duplicate: true, shipment: prior };
+
+  for (const cooldown of [...(args.restockCooldowns ?? [])].sort((a, b) => a.itemId.localeCompare(b.itemId))) {
+    const lockKey = `tower-shop-restock:${args.businessKey}:${cooldown.itemId}`;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
+    const [lastOrder] = await tx.select({ requestedAt: towerShopShipmentsTable.requestedAt })
+      .from(towerShopShipmentsTable)
+      .where(and(
+        eq(towerShopShipmentsTable.businessKey, args.businessKey),
+        sql`${towerShopShipmentsTable.status} <> 'cancelled'`,
+        sql`${towerShopShipmentsTable.lines} @> ${JSON.stringify([{ itemId: cooldown.itemId }])}::jsonb`,
+      ))
+      .orderBy(desc(towerShopShipmentsTable.requestedAt))
+      .limit(1);
+    const nextAvailableAt = lastOrder
+      ? new Date(lastOrder.requestedAt.getTime() + cooldown.cooldownMs)
+      : null;
+    if (nextAvailableAt && nextAvailableAt > now) {
+      return {
+        ok: false as const,
+        reason: "restock_cooldown" as const,
+        itemId: cooldown.itemId,
+        nextAvailableAt,
+      };
+    }
+  }
 
   const funding = await ensureTowerShopWorkingCapitalTx(tx, args.businessKey, now);
   if (!funding.ok) return { ok: false as const, reason: "tower_funds" as const };

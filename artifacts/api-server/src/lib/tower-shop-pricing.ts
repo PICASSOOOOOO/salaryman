@@ -1,3 +1,5 @@
+import type { ItemRarity } from "@workspace/db";
+
 export type TowerShopPricingPolicy = {
   baseWholesaleBps: number;
   minWholesaleBps: number;
@@ -7,6 +9,12 @@ export type TowerShopPricingPolicy = {
   supplierCostBps: number;
   deliveryBaseFiat: number;
   deliveryPerItemFiat: number;
+};
+
+export const TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY: Partial<Record<ItemRarity, number>> = {
+  rare: 7 * 24 * 60 * 60 * 1_000,
+  very_rare: 14 * 24 * 60 * 60 * 1_000,
+  legendary: 30 * 24 * 60 * 60 * 1_000,
 };
 
 // These defaults are deliberately centralized so balancing does not change settlement code.
