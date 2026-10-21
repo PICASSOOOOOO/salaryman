@@ -339,6 +339,7 @@ func _build_building_shell() -> void:
 		})
 	for spec in room_specs:
 		_add_room_shell(spec, floor_plan)
+	_build_basement_corridor_walls(floor_plan)
 	_build_business_suite_layout(floor_plan)
 	_build_underfloor_structure(base_layout)
 	_build_room_lighting(floor_plan)
@@ -538,6 +539,60 @@ func _add_room_shell(spec: Dictionary, floor_plan: Dictionary) -> void:
 			_add_vertical_opening_wall("%sWallRight" % room_id, outer_right, top, bottom, window_openings)
 		_add_horizontal_solid_wall("%sWallTop" % room_id, outer_left, outer_right, outer_top)
 		_add_horizontal_solid_wall("%sWallBottom" % room_id, outer_left, outer_right, outer_bottom)
+
+
+func _build_basement_corridor_walls(floor_plan: Dictionary) -> void:
+	for room_value in floor_plan.get("rooms", []):
+		if not room_value is Dictionary:
+			continue
+		var room: Dictionary = room_value
+		var room_id := str(room.get("id", ""))
+		if not room_id.begins_with("basement_b"):
+			continue
+		var cells: Array = room.get("mazeCells", [])
+		var cell_units := int(room.get("mazeCellUnits", 0))
+		if cells.is_empty() or cell_units <= 0:
+			continue
+		var render_offset: Array = room.get("renderOffset", [0, 0])
+		var offset_x := int(render_offset[0]) if render_offset.size() >= 2 else 0
+		var offset_z := int(render_offset[1]) if render_offset.size() >= 2 else 0
+		var walkable: Dictionary = {}
+		for cell_value in cells:
+			if cell_value is Array and cell_value.size() >= 2:
+				walkable[Vector2i(int(cell_value[0]), int(cell_value[1]))] = true
+		var rendered_edges: Dictionary = {}
+		for cell in walkable.keys():
+			var col: int = int(cell.x)
+			var row: int = int(cell.y)
+			var edges := [
+				{"side": "N", "delta": Vector2i(0, -1), "horizontal": true, "x": col, "z": row},
+				{"side": "E", "delta": Vector2i(1, 0), "horizontal": false, "x": col + 1, "z": row},
+				{"side": "S", "delta": Vector2i(0, 1), "horizontal": true, "x": col, "z": row + 1},
+				{"side": "W", "delta": Vector2i(-1, 0), "horizontal": false, "x": col, "z": row},
+			]
+			for edge in edges:
+				if walkable.has(cell + edge["delta"]):
+					continue
+				var horizontal := bool(edge["horizontal"])
+				var edge_x := int(edge["x"])
+				var edge_z := int(edge["z"])
+				var edge_key := "%s|%d|%d" % ["h" if horizontal else "v", edge_x, edge_z]
+				if rendered_edges.has(edge_key):
+					continue
+				rendered_edges[edge_key] = true
+				var world_x := float(offset_x + edge_x * cell_units) * WORLD_SCALE
+				var world_z := float(offset_z + edge_z * cell_units) * WORLD_SCALE
+				if horizontal:
+					world_x += float(cell_units) * WORLD_SCALE / 2.0
+				else:
+					world_z += float(cell_units) * WORLD_SCALE / 2.0
+				var center := Vector3(world_x, WALL_HEIGHT / 2.0, world_z)
+				_add_structural_wall(
+					"%sCorridorWall_%s" % [room_id, edge_key.replace("|", "_")],
+					center,
+					float(cell_units) * WORLD_SCALE,
+					horizontal,
+				)
 
 
 func _shared_exterior_window_openings(

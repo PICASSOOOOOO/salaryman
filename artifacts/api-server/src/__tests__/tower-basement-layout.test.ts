@@ -28,14 +28,17 @@ function key([x, y]: readonly [number, number]): string {
 
 describe("Tower basement maze layout", () => {
   it("keeps the B1 exterior gate and lobby rear door aligned with the server route", () => {
+    const expandedCoordinate = (value: number) => Math.round(value * Math.sqrt(8));
+    const lobbyCoordinate = (value: number, anchor: number) =>
+      Math.round(anchor + (value - anchor) / Math.sqrt(8));
     expect(TOWER_BASEMENT_BACK_ENTRANCE).toEqual({
       level: 1,
-      x: floorPlan.businessSuiteLayout.b1.exteriorGate[0],
-      y: floorPlan.businessSuiteLayout.b1.exteriorGate[1],
+      x: Math.round(floorPlan.businessSuiteLayout.b1.exteriorGate[0] / Math.sqrt(8)),
+      y: Math.round(floorPlan.businessSuiteLayout.b1.exteriorGate[1] / Math.sqrt(8)),
     });
     expect(TOWER_LOBBY_BACK_ENTRANCE).toEqual({
-      x: floorPlan.businessSuiteLayout.lobbyBackEntrance[0],
-      y: floorPlan.businessSuiteLayout.lobbyBackEntrance[1],
+      x: lobbyCoordinate(floorPlan.businessSuiteLayout.lobbyBackEntrance[0], 49_978_000),
+      y: lobbyCoordinate(floorPlan.businessSuiteLayout.lobbyBackEntrance[1], 50_000_000),
     });
     expect(isTowerBasementMazePointWalkable(
       TOWER_BASEMENT_BACK_ENTRANCE.level,
@@ -74,6 +77,10 @@ describe("Tower basement maze layout", () => {
   });
 
   it("rejects off-corridor and diagonal wall-cutting movement", () => {
+    expect(isTowerBasementMazePointWalkable(2, 1_500, 1_500)).toBe(false);
+    expect(isTowerBasementMazePointWalkable(2, 2_500, 2_500)).toBe(true);
+    expect(isTowerBasementMazePointWalkable(3, 1_500, 1_500)).toBe(false);
+    expect(isTowerBasementMazePointWalkable(3, 2_500, 2_500)).toBe(true);
     expect(isTowerBasementMazePointWalkable(4, 3_500, 3_500)).toBe(false);
     expect(isTowerBasementMazePointWalkable(4, 5_000, 5_000)).toBe(true);
     expect(isTowerBasementMazePointWalkable(7, 5_000, 5_000)).toBe(false);

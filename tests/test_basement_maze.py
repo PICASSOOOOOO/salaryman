@@ -57,7 +57,7 @@ class BasementMazeTests(unittest.TestCase):
         )
 
     def test_tunnel_routes_are_connected_and_have_dead_ends(self) -> None:
-        for level in (4, 5, 6):
+        for level in (2, 3, 4, 5, 6):
             cells = maze_cells(level)
             self.assertIn((5, 5), cells)
             visited: set[tuple[int, int]] = set()
@@ -87,11 +87,13 @@ class BasementMazeTests(unittest.TestCase):
     def test_simulation_walkability_uses_the_tunnel_cells(self) -> None:
         scene = TowerScene()
         blocked_points = {
+            2: (1_500, 1_500),
+            3: (1_500, 1_500),
             4: (3_500, 3_500),
             5: (3_500, 4_500),
             6: (3_500, 4_500),
         }
-        for level in (4, 5, 6):
+        for level in (2, 3, 4, 5, 6):
             self.assertTrue(scene.select_basement_level(level))
             self.assertTrue(scene._room_position_is_walkable((5_000, 5_000)))
             self.assertFalse(scene._room_position_is_walkable(blocked_points[level]))
@@ -112,6 +114,20 @@ class BasementMazeTests(unittest.TestCase):
             for item in registry.objects:
                 if item.room == room and item.kind == "utility_station":
                     self.assertIn((item.position[0] // 1_000, item.position[1] // 1_000), cells)
+            self.assertTrue(any(item.id.startswith(f"basement-b{level}-maze-") for item in registry.objects))
+
+    def test_b2_and_b3_have_physical_corridor_walls_and_reachable_department_bays(self) -> None:
+        registry = build_tower_object_registry()
+        for level, department_points in {
+            2: ((2_000, 2_000), (7_000, 7_000)),
+            3: ((2_000, 2_000), (7_000, 7_000)),
+        }.items():
+            scene = TowerScene()
+            self.assertTrue(scene.select_basement_level(level))
+            self.assertTrue(scene._room_position_is_walkable((5_000, 5_000)))
+            for point in department_points:
+                self.assertTrue(scene._room_position_is_walkable(point))
+            self.assertFalse(scene._room_position_is_walkable((1_500, 1_500)))
             self.assertTrue(any(item.id.startswith(f"basement-b{level}-maze-") for item in registry.objects))
 
     def test_ghost_is_a_reachable_physical_interaction_with_a_conversation_page(self) -> None:

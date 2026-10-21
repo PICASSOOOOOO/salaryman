@@ -599,7 +599,7 @@ class TowerScene:
     def _room_position_is_walkable(self, position: tuple[int, int]) -> bool:
         if not self.room.contains(position):
             return False
-        if self.current_room in {"basement_b4", "basement_b5", "basement_b6"}:
+        if self.current_room in {"basement_b2", "basement_b3", "basement_b4", "basement_b5", "basement_b6"}:
             room_data = next(
                 (room for room in FLOOR_PLAN["rooms"] if room["id"] == self.current_room),
                 None,
@@ -607,7 +607,9 @@ class TowerScene:
             maze_cells = room_data.get("mazeCells") if room_data else None
             if not isinstance(maze_cells, list):
                 return False
-            cell_size = int(room_data.get("mazeCellUnits", 1_000))
+            # Movement positions are server-authoritative 1,000-unit cells.
+            # mazeCellUnits is the larger render-space scale used by floor geometry.
+            cell_size = 1_000
             if cell_size <= 0:
                 return False
             cell = (position[0] // cell_size, position[1] // cell_size)
