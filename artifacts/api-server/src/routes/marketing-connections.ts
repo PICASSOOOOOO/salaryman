@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db, socialConnectionsTable } from "@workspace/db";
 import { hasFeature } from "../lib/plan";
 import { SOCIAL_PROVIDERS, getProvider, isProviderConfigured } from "../lib/social-providers";
+import { encryptSocialCredentials } from "../lib/social-credentials-crypto";
 
 const router = Router();
 
@@ -100,7 +101,7 @@ router.post("/social/connections/:provider", async (req: Request, res: Response)
         status: "connected",
         accountHandle: verify.accountHandle ?? null,
         accountName: verify.accountName ?? null,
-        credentials,
+        credentials: encryptSocialCredentials(credentials, userId, provider.id),
         connectedAt: now,
         lastError: null,
         updatedAt: now,
@@ -111,7 +112,7 @@ router.post("/social/connections/:provider", async (req: Request, res: Response)
           status: "connected",
           accountHandle: verify.accountHandle ?? null,
           accountName: verify.accountName ?? null,
-          credentials,
+          credentials: encryptSocialCredentials(credentials, userId, provider.id),
           connectedAt: now,
           lastError: null,
           updatedAt: now,

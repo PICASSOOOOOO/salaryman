@@ -15,6 +15,7 @@ import {
 } from "@workspace/db";
 import { getProvider } from "./social-providers";
 import { hasFeature } from "./plan";
+import { decryptSocialCredentials, encryptSocialCredentials } from "./social-credentials-crypto";
 
 export type SocialPost = typeof socialPostsTable.$inferSelect;
 
@@ -287,7 +288,31 @@ export async function publishSocialPost(opts: {
 
   // Real publish when PRIME + a live, connected Marketing account exists.
   if (canPublishLive && provider?.publish && conn && conn.status === "connected" && conn.credentials) {
-    const result = await provider.publish(conn.credentials as Record<string, string>, {
+    let credentials: Record<string, string>;
+    try {
+      const decoded = decryptSocialCredentials(
+        conn.credentials as Record<string, string>,
+        userId,
+        post.platform,
+      );
+      credentials = decoded.credentials;
+      if (decoded.needsEncryption) {
+        await db
+          .update(socialConnectionsTable)
+          .set({
+            credentials: encryptSocialCredentials(credentials, userId, post.platform),
+            updatedAt: new Date(),
+          })
+          .where(eq(socialConnectionsTable.id, conn.id));
+      }
+    } catch {
+      await db
+        .update(socialConnectionsTable)
+        .set({ lastError: "Stored social credentials could not be decrypted.", updatedAt: new Date() })
+        .where(eq(socialConnectionsTable.id, conn.id));
+      return { ok: false, status: 502, error: "Stored social credentials could not be decrypted.", platform: post.platform };
+    }
+    const result = await provider.publish(credentials, {
       content: post.content || "",
       hashtags: (post.hashtags as string[]) || [],
       mediaUrls: (post.mediaUrls as string[]) || [],
