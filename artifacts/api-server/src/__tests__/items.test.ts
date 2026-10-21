@@ -14,12 +14,21 @@ vi.mock("../lib/pablo-tax", async (importActual) => {
   return { ...actual, spendEarnedFiat: vi.fn(actual.spendEarnedFiat) };
 });
 
+vi.mock("../lib/tower-finance", async (importActual) => {
+  const actual = await importActual<typeof import("../lib/tower-finance")>();
+  return {
+    ...actual,
+    recordTowerCompanyRevenueTx: vi.fn(async () => ({ duplicate: false as const, finance: {} as any })),
+  };
+});
+
 import request from "supertest";
 import type { Express } from "express";
-import { db, playerInventoryTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, playerInventoryTable, towerShopAccountsTable, towerShopInventoryTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
+import { recordTowerCompanyRevenueTx } from "../lib/tower-finance";
 import { computeGearStats, findCatalogItem, PUBLIC_VENDING_ITEM_IDS } from "../lib/item-catalog";
 import { TOWER_BUSINESS_STOCK_LINES } from "@workspace/api-zod";
 import {
@@ -278,6 +287,78 @@ describe("POST /items/buy", () => {
     expect(res.body.error).toBe("tower_shop_sold_out");
     expect(await fiatBalance()).toBe(50_000);
     expect(await ownedItemIds()).not.toContain("tower_phone_handset");
+  });
+
+  it("settles a stocked cafeteria purchase against player FIAT, shelf stock, and shop revenue", async () => {
+    await seedFiat(50_000);
+    authState.authed = false;
+    const businessKey = "shadow_cafeteria";
+    const itemId = "tower_meal_common_table";
+    const [priorStock] = await db.select().from(towerShopInventoryTable).where(and(
+      eq(towerShopInventoryTable.businessKey, businessKey),
+      eq(towerShopInventoryTable.itemId, itemId),
+    )).limit(1);
+    const now = new Date();
+    await db.insert(towerShopAccountsTable).values({ businessKey }).onConflictDoNothing();
+    await db.insert(towerShopInventoryTable).values({
+      businessKey,
+      itemId,
+      storedQuantity: 0,
+      shelfQuantity: 2,
+      storageCapacity: 100,
+      shelfCapacity: 20,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: [towerShopInventoryTable.businessKey, towerShopInventoryTable.itemId],
+      set: {
+        storedQuantity: 0,
+        shelfQuantity: 2,
+        storageCapacity: 100,
+        shelfCapacity: 20,
+        updatedAt: now,
+      },
+    });
+    const desktop = await seedLinkedDesktopAtOffice({ floorNumber: 2, x: 7_628, y: 15_556 });
+
+    try {
+      const res = await request(app).post("/api/items/buy")
+        .set("Authorization", `Bearer ${desktop.token}`)
+        .set("x-salaryman-device-id", desktop.deviceId)
+        .send({ source: "tower_business", businessKey, itemId });
+
+      expect(res.status).toBe(200);
+      expect(res.body.quantity).toBe(1);
+      expect(await itemQuantity(itemId)).toBe(1);
+      expect(await fiatBalance()).toBe(50_000 - res.body.fiat);
+      const [stockAfter] = await db.select().from(towerShopInventoryTable).where(and(
+        eq(towerShopInventoryTable.businessKey, businessKey),
+        eq(towerShopInventoryTable.itemId, itemId),
+      )).limit(1);
+      expect(stockAfter.shelfQuantity).toBe(1);
+      expect(recordTowerCompanyRevenueTx).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+        category: businessKey,
+        userId: ITEMS_USER.id,
+        amountFiat: res.body.fiat,
+      }));
+    } finally {
+      if (priorStock) {
+        await db.update(towerShopInventoryTable).set({
+          storedQuantity: priorStock.storedQuantity,
+          shelfQuantity: priorStock.shelfQuantity,
+          storageCapacity: priorStock.storageCapacity,
+          shelfCapacity: priorStock.shelfCapacity,
+          updatedAt: priorStock.updatedAt,
+        }).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+        ));
+      } else {
+        await db.delete(towerShopInventoryTable).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+        ));
+      }
+    }
   });
 
   it("two real concurrent buys: item owned once, charged once", async () => {
