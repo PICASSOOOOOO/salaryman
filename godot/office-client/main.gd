@@ -1584,37 +1584,91 @@ func _load_player() -> void:
 
 
 func _sync_shop_cargo_visual(value: Variant) -> void:
-var shipment: Dictionary = value if value is Dictionary else {}
-if shipment.get("status") != "in_delivery":
-if is_instance_valid(shop_cargo_visual):
-shop_cargo_visual.queue_free()
-shop_cargo_visual = null
-return
-if is_instance_valid(shop_cargo_visual):
-return
-shop_cargo_visual = Node3D.new()
-shop_cargo_visual.name = "ServerConfirmedShopShipment"
-shop_cargo_visual.position = Vector3(0.0, 0.92, -0.38)
-player_root.add_child(shop_cargo_visual)
-var crate := MeshInstance3D.new()
-crate.name = "ShopShipmentCrate"
-var mesh := BoxMesh.new()
-mesh.size = Vector3(0.54, 0.46, 0.42)
-crate.mesh = mesh
-var material := StandardMaterial3D.new()
-material.albedo_color = Color("#b88751")
-material.roughness = 0.9
-crate.material_override = material
-shop_cargo_visual.add_child(crate)
-var strap := MeshInstance3D.new()
-strap.name = "FreightStrap"
-var strap_mesh := BoxMesh.new()
-strap_mesh.size = Vector3(0.08, 0.48, 0.44)
-strap.mesh = strap_mesh
-var strap_material := StandardMaterial3D.new()
-strap_material.albedo_color = Color("#e0c58a")
-strap.material_override = strap_material
-shop_cargo_visual.add_child(strap)
+	var shipment: Dictionary = value if value is Dictionary else {}
+	if shipment.get("status") != "in_delivery":
+		if is_instance_valid(shop_cargo_visual):
+			shop_cargo_visual.queue_free()
+			shop_cargo_visual = null
+		return
+	if is_instance_valid(shop_cargo_visual):
+		return
+	shop_cargo_visual = Node3D.new()
+	shop_cargo_visual.name = "ShippingCompanyFreightCart"
+	shop_cargo_visual.position = Vector3(0.0, 0.08, -0.62)
+	player_root.add_child(shop_cargo_visual)
+	var frame_material := StandardMaterial3D.new()
+	frame_material.albedo_color = Color("#46555a")
+	frame_material.metallic = 0.72
+	frame_material.roughness = 0.34
+	var cart_base := MeshInstance3D.new()
+	cart_base.name = "CartPlatform"
+	var base_mesh := BoxMesh.new()
+	base_mesh.size = Vector3(0.68, 0.08, 0.56)
+	cart_base.mesh = base_mesh
+	cart_base.material_override = frame_material
+	cart_base.position.y = 0.28
+	shop_cargo_visual.add_child(cart_base)
+	for wheel_x in [-0.27, 0.27]:
+		for wheel_z in [-0.2, 0.2]:
+			var wheel := MeshInstance3D.new()
+			wheel.name = "CartWheel"
+			var wheel_mesh := CylinderMesh.new()
+			wheel_mesh.top_radius = 0.09
+			wheel_mesh.bottom_radius = 0.09
+			wheel_mesh.height = 0.06
+			wheel.mesh = wheel_mesh
+			wheel.material_override = frame_material
+			wheel.rotation.z = PI / 2.0
+			wheel.position = Vector3(wheel_x, 0.13, wheel_z)
+			shop_cargo_visual.add_child(wheel)
+	for handle_x in [-0.27, 0.27]:
+		var handle := MeshInstance3D.new()
+		handle.name = "CartHandle"
+		var handle_mesh := BoxMesh.new()
+		handle_mesh.size = Vector3(0.045, 0.68, 0.045)
+		handle.mesh = handle_mesh
+		handle.material_override = frame_material
+		handle.position = Vector3(handle_x, 0.66, 0.23)
+		shop_cargo_visual.add_child(handle)
+	var grip := MeshInstance3D.new()
+	grip.name = "CartGrip"
+	var grip_mesh := BoxMesh.new()
+	grip_mesh.size = Vector3(0.62, 0.055, 0.055)
+	grip.mesh = grip_mesh
+	grip.material_override = frame_material
+	grip.position = Vector3(0.0, 1.0, 0.23)
+	shop_cargo_visual.add_child(grip)
+	var crate := MeshInstance3D.new()
+	crate.name = "ShopShipmentCrate"
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.54, 0.48, 0.42)
+	crate.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("#b88751")
+	material.roughness = 0.9
+	crate.material_override = material
+	crate.position.y = 0.57
+	shop_cargo_visual.add_child(crate)
+	var strap := MeshInstance3D.new()
+	strap.name = "FreightStrap"
+	var strap_mesh := BoxMesh.new()
+	strap_mesh.size = Vector3(0.08, 0.48, 0.44)
+	strap.mesh = strap_mesh
+	var strap_material := StandardMaterial3D.new()
+	strap_material.albedo_color = Color("#e0c58a")
+	strap.material_override = strap_material
+	strap.position.y = 0.57
+	shop_cargo_visual.add_child(strap)
+	var company_badge := Label3D.new()
+	company_badge.name = "ShippingCompanyBadge"
+	company_badge.text = "SHIP CO"
+	company_badge.font_size = 12
+	company_badge.pixel_size = 0.004
+	company_badge.position = Vector3(0.0, 0.47, -0.218)
+	company_badge.modulate = Color("#f1dfbc")
+	company_badge.outline_size = 3
+	company_badge.outline_modulate = Color("#30271d")
+	shop_cargo_visual.add_child(company_badge)
 
 
 func _on_player_action_requested(action: String) -> void:
@@ -2061,8 +2115,8 @@ func _process(delta: float) -> void:
 		if elevator_wait_remaining <= 0.0:
 			_abort_elevator_transition("ELEVATOR REQUEST TIMED OUT")
 	_smooth_visual_player(delta)
-if is_instance_valid(shop_cargo_visual):
-shop_cargo_visual.position.y = 0.92 + sin(animation_clock * 5.0) * 0.025
+	if is_instance_valid(shop_cargo_visual):
+	shop_cargo_visual.position.y = 0.08 + sin(animation_clock * 5.0) * 0.025
 	_update_camera(delta)
 	_update_hud()
 	_advance_feature_panel_animations(delta)
@@ -2243,8 +2297,8 @@ func _apply_snapshot(message: Dictionary) -> void:
 	player_root.reconcile_authoritative_position(target)
 	player_root.set_authoritative_action(str(player.get("action", "stand")))
 	visual_player_ready = true
-var office_state: Dictionary = message.get("office", {})
-_sync_shop_cargo_visual(office_state.get("shopShipment", {}))
+	var office_state: Dictionary = message.get("office", {})
+	_sync_shop_cargo_visual(office_state.get("shopShipment", {}))
 
 	var location_id := "%02d:%s" % [floor_number, room_id]
 	if location_id != last_room_id:
@@ -2601,14 +2655,14 @@ collision_extents: Array = [],
 	if kind == "delivery_truck" or kind == "forklift" or kind == "pallet" or kind == "supply_crate":
 		return _build_loading_yard_prop(kind, position, object_id, label)
 if kind == "shop_freight_dock":
-return _build_loading_yard_prop("pallet", position, object_id, label)
+	return _build_loading_yard_prop("pallet", position, object_id, label)
 	if kind == "window":
 		var window := _add_box_to_dynamic("Window", position + Vector3(0, 1.0, 0), Vector3(1.3, 1.1, 0.08), materials["glass"])
 		return window
 	elif kind == "door":
 		return _build_door_visual(position, object_id)
 	elif kind == "elevator" or kind == "service_elevator":
-		return _build_elevator_visual(position, object_id)
+	return _build_elevator_visual(position, object_id, kind == "service_elevator")
 	elif kind == "stairs" or kind == "basement_stairs":
 		return _build_staircase(position, object_id)
 	elif kind == "construction_task":
@@ -3539,13 +3593,14 @@ func _sync_elevator_floor_indicators(scene_data: Dictionary) -> void:
 			indicator.text = label
 
 
-func _build_elevator_visual(position: Vector3, object_id: String) -> MeshInstance3D:
+func _build_elevator_visual(position: Vector3, object_id: String, service: bool = false) -> MeshInstance3D:
 	var opening_position := position + Vector3(0.0, 0.0, 0.18)
+	var frame_material: Material = materials["metal"] if service else materials["wall_trim"]
 	_add_box_to_dynamic(
 		object_id + "-backplate",
 		opening_position + Vector3(0.0, 1.22, -0.16),
-		Vector3(2.12, 2.56, 0.18),
-		materials["wall"],
+		Vector3(2.24, 2.64, 0.24) if service else Vector3(2.12, 2.56, 0.18),
+		materials["metal"] if service else materials["wall"],
 	)
 	_add_box_to_dynamic(
 		object_id + "-floor-indicator",
@@ -3559,27 +3614,27 @@ func _build_elevator_visual(position: Vector3, object_id: String) -> MeshInstanc
 	floor_display.font_size = 28
 	floor_display.pixel_size = 0.005
 	floor_display.position = opening_position + Vector3(0.0, 2.55, 0.105)
-	floor_display.modulate = Color("#8dffb0")
+	floor_display.modulate = Color("#ffc75c") if service else Color("#8dffb0")
 	floor_display.outline_size = 6
 	floor_display.outline_modulate = Color("#07151a")
 	dynamic_root.add_child(floor_display)
 	_add_box_to_dynamic(
 		object_id + "-frame-left",
 		opening_position + Vector3(-0.84, 1.22, 0.0),
-		Vector3(0.16, 2.44, 0.34),
-		materials["wall_trim"],
+		Vector3(0.24, 2.5, 0.38) if service else Vector3(0.16, 2.44, 0.34),
+		frame_material,
 	)
 	_add_box_to_dynamic(
 		object_id + "-frame-right",
 		opening_position + Vector3(0.84, 1.22, 0.0),
-		Vector3(0.16, 2.44, 0.34),
-		materials["wall_trim"],
+		Vector3(0.24, 2.5, 0.38) if service else Vector3(0.16, 2.44, 0.34),
+		frame_material,
 	)
 	_add_box_to_dynamic(
 		object_id + "-header",
 		opening_position + Vector3(0.0, 2.36, 0.0),
 		Vector3(1.84, 0.16, 0.34),
-		materials["wall_trim"],
+		frame_material,
 	)
 	var elevator_door := _add_box_to_dynamic(
 		object_id + "-left-door",
@@ -3605,6 +3660,24 @@ func _build_elevator_visual(position: Vector3, object_id: String) -> MeshInstanc
 		Vector3(0.07, 0.07, 0.035),
 		materials["lamp_glow"],
 	)
+	if service:
+		var service_sign := Label3D.new()
+		service_sign.name = object_id + "-freight-sign"
+		service_sign.text = "FREIGHT  /  STAFF"
+		service_sign.font_size = 18
+		service_sign.pixel_size = 0.006
+		service_sign.position = opening_position + Vector3(0.0, 2.76, 0.13)
+		service_sign.modulate = Color("#f2c45b")
+		service_sign.outline_size = 5
+		service_sign.outline_modulate = Color("#171b1d")
+		dynamic_root.add_child(service_sign)
+		for stripe_index in range(5):
+			_add_box_to_dynamic(
+				object_id + "-safety-stripe-%d" % stripe_index,
+				opening_position + Vector3(-0.7 + float(stripe_index) * 0.35, 0.08, 0.11),
+				Vector3(0.18, 0.09, 0.035),
+				materials["lamp_glow"] if stripe_index % 2 == 0 else materials["metal"],
+			)
 	return elevator_door
 
 
