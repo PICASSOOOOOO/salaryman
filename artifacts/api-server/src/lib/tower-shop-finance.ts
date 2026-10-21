@@ -107,7 +107,7 @@ export async function settleTowerShopSupplierOrderTx(
   args: {
     businessKey: string;
     requestKey: string;
-    requestedByUserId: string;
+    requestedByUserId: string | null;
     lines: Array<{ itemId: string; quantity: number }>;
     restockCooldowns?: Array<{ itemId: string; cooldownMs: number }>;
     quote: TowerShopOrderQuote;

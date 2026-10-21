@@ -54,8 +54,10 @@ import {
   quoteTowerShopOrder,
   DEFAULT_TOWER_SHOP_PRICING_POLICY,
   TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY,
+  towerShopRestockAvailableAt,
 } from "../lib/tower-shop-pricing";
 import { settleTowerShopSupplierOrderTx } from "../lib/tower-shop-finance";
+import { chooseNpcShopRestockItem } from "../lib/tower-shop-autopilot";
 import {
   isBattery,
   batteryCapacity,
@@ -83,6 +85,7 @@ const TOWER_SHOP_SHELF_CAPACITY_PER_ITEM = 100;
 const TOWER_SHOP_ORDER_TRANSIT_MS = 5 * 60 * 1_000;
 const TOWER_SHOP_DOCK_HANDOFF_MS = 12_000;
 const TOWER_SHOP_COURIER_TRAVEL_MS = 15_000;
+const NPC_SHOP_ORDER_HISTORY_MS = 30 * 24 * 60 * 60 * 1_000;
 const TOWER_B1_SHOP_DOCK = { level: 1, x: 18_500, y: 7_000 };
 const TOWER_SHOP_INTERACTION_RADIUS = 1_400;
 
@@ -175,6 +178,125 @@ async function runTowerShopLogisticsTick(now = new Date()): Promise<void> {
         eq(towerShopShipmentsTable.status, "in_delivery"),
       ));
     });
+  }
+
+  await runNpcTowerShopRestockTick(now).catch((error) => {
+    console.error("[TowerShop] NPC shop restock tick failed:", error);
+  });
+}
+
+async function runNpcTowerShopRestockTick(now: Date): Promise<void> {
+  const itemIdsByBusiness = new Map<string, string[]>();
+  for (const listing of TOWER_BUSINESS_STOCK_LINES) {
+    const businessKey = listing.sellerBusinessKey;
+    if (!businessKey || !TOWER_BUSINESS_SHOP_LOCATIONS[businessKey]) continue;
+    const itemIds = itemIdsByBusiness.get(businessKey) ?? [];
+    for (const itemId of listing.itemIds) {
+      if (!itemIds.includes(itemId)) itemIds.push(itemId);
+    }
+    itemIdsByBusiness.set(businessKey, itemIds);
+  }
+
+  const market = await getMarketIndex();
+  const btcMultiplierBps = Math.round(market.multiplier * 10_000);
+  for (const [businessKey, itemIds] of itemIdsByBusiness) {
+    const createdOrder = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-npc-order:${businessKey}`}))`);
+      const [activeShipment] = await tx.select({ id: towerShopShipmentsTable.id })
+        .from(towerShopShipmentsTable)
+        .where(and(
+          eq(towerShopShipmentsTable.businessKey, businessKey),
+          sql`${towerShopShipmentsTable.status} in ('supplier_processing', 'at_dock', 'in_delivery')`,
+        ))
+        .limit(1);
+      if (activeShipment) return null;
+
+      const stockRows = await tx.select().from(towerShopInventoryTable)
+        .where(eq(towerShopInventoryTable.businessKey, businessKey));
+      const stockByItem = new Map(stockRows.map((row) => [
+        row.itemId,
+        row.storedQuantity + row.shelfQuantity,
+      ]));
+      const capacityByItem = new Map(stockRows.map((row) => [
+        row.itemId,
+        row.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+      ]));
+      const history = await tx.select({
+        lines: towerShopShipmentsTable.lines,
+        requestedAt: towerShopShipmentsTable.requestedAt,
+      }).from(towerShopShipmentsTable)
+        .where(and(
+          eq(towerShopShipmentsTable.businessKey, businessKey),
+          sql`${towerShopShipmentsTable.requestedAt} >= ${new Date(now.getTime() - NPC_SHOP_ORDER_HISTORY_MS)}`,
+          sql`${towerShopShipmentsTable.status} <> 'cancelled'`,
+        ))
+        .orderBy(desc(towerShopShipmentsTable.requestedAt))
+        .limit(500);
+
+      const blockedItemIds = new Set<string>();
+      for (const itemId of itemIds) {
+        const item = findCatalogItem(itemId);
+        const cooldownMs = item ? TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity] : undefined;
+        if (!cooldownMs) continue;
+        const lastOrder = history.find((shipment) =>
+          shipment.lines.some((line) => line.itemId === itemId));
+        if (lastOrder && towerShopRestockAvailableAt(lastOrder.requestedAt, cooldownMs) > now) {
+          blockedItemIds.add(itemId);
+        }
+      }
+
+      const candidate = chooseNpcShopRestockItem({
+        itemIds,
+        stockByItem,
+        storageCapacityByItem: capacityByItem,
+        blockedItemIds,
+      });
+      if (!candidate) return null;
+      const item = findCatalogItem(candidate.itemId);
+      if (!item || item.priceFiat <= 0) return null;
+
+      const historicalDemand = history.reduce((total, shipment) => total
+        + shipment.lines
+          .filter((line) => line.itemId === candidate.itemId)
+          .reduce((lineTotal, line) => lineTotal + line.quantity, 0), 0);
+      const stockQuantity = stockByItem.get(candidate.itemId) ?? 0;
+      const demandIndex = Math.min(10_000, 100 + historicalDemand * 100);
+      const supplyIndex = Math.min(10_000, 100 + stockQuantity * 100);
+      const quote = quoteTowerShopOrder({
+        retailUnitPriceFiat: item.priceFiat,
+        quantity: candidate.quantity,
+        btcMultiplierBps,
+        demandIndex,
+        supplyIndex,
+      });
+      const requestKey = `tower-shop-npc:${businessKey}:${candidate.itemId}:${Math.floor(now.getTime() / 60_000)}`;
+      const result = await settleTowerShopSupplierOrderTx(tx, {
+        businessKey,
+        requestKey,
+        requestedByUserId: null,
+        lines: [{ itemId: candidate.itemId, quantity: candidate.quantity }],
+        restockCooldowns: TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity]
+          ? [{
+            itemId: candidate.itemId,
+            cooldownMs: TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity]!,
+          }]
+          : [],
+        quote,
+        btcMultiplierBps,
+        demandIndex,
+        supplyIndex,
+        now,
+      });
+      return result.ok && !result.duplicate
+        ? { businessKey, itemId: candidate.itemId, quantity: candidate.quantity, balanceFiat: result.balanceFiat }
+        : null;
+    });
+    if (createdOrder) {
+      console.info(
+        `[TowerShop] NPC order: ${createdOrder.businessKey} ordered ${createdOrder.quantity} × ${createdOrder.itemId}; balance=${createdOrder.balanceFiat}`,
+      );
+      return;
+    }
   }
 }
 
