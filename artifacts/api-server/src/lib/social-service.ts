@@ -23,6 +23,7 @@ export interface CreateSocialPostInput {
   platform: SocialPlatform;
   content?: string;
   hashtags?: string[];
+  mediaUrls?: string[];
   status?: string;
   scheduledAt?: Date | null;
   aiGenerated?: string;
@@ -35,6 +36,7 @@ export async function createSocialPost(userId: string, input: CreateSocialPostIn
     platform: input.platform,
     content: input.content || "",
     hashtags: input.hashtags || [],
+    mediaUrls: input.mediaUrls || [],
     status: input.status || "draft",
     scheduledAt: input.scheduledAt ?? null,
     ...(input.aiGenerated !== undefined ? { aiGenerated: input.aiGenerated } : {}),

@@ -461,13 +461,26 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
           .orderBy(desc(projectsTable.updatedAt))
           .limit(100)
       : [];
-    const visibleDomains = canManageCreative
-      ? domains
-      : domains.map((domain) =>
-          domain.domain === "creative_work" || domain.domain === "market_research"
-            ? { ...domain, prefs: {} }
-            : domain
-        );
+    const visibleDomains = domains.map((domain) => {
+      if (domain.domain === "creative_work" || domain.domain === "market_research") {
+        return canManageCreative ? domain : { ...domain, prefs: {} };
+      }
+      if (domain.domain === "marketing") {
+        const prefs = domain.prefs && typeof domain.prefs === "object"
+          ? domain.prefs as Record<string, unknown>
+          : {};
+        const approvedBy = prefs.imageGenerationApprovedBy;
+        const { imageGenerationApprovedBy: _privateApproval, ...safePrefs } = prefs;
+        return {
+          ...domain,
+          prefs: {
+            ...safePrefs,
+            generateImages: prefs.generateImages === true && approvedBy === org?.ownerUserId,
+          },
+        };
+      }
+      return domain;
+    });
 
     res.json({
       orgId,
@@ -484,6 +497,7 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       marketing: {
         tones: AUTOPILOT_MARKETING_TONES,
         platforms: SOCIAL_PLATFORMS.map((id) => ({ id, label: MARKETING_PLATFORM_LABELS[id] ?? id })),
+        canApproveImageGeneration: org?.ownerUserId === userId,
       },
       crm: {
         leadStatuses: AUTOPILOT_CRM_LEAD_STATUSES.map((id) => ({ id, label: CRM_LEAD_STATUS_LABELS[id] ?? id })),
@@ -740,6 +754,23 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
           : domain === "market_research"
             ? existingResearchConfig
             : await getDomainConfig(orgId, domain);
+        if (domain === "marketing") {
+          delete incoming.imageGenerationApprovedBy;
+          if (incoming.generateImages === true) {
+            const [org] = await db
+              .select({ ownerUserId: organizationsTable.ownerUserId })
+              .from(organizationsTable)
+              .where(eq(organizationsTable.id, orgId))
+              .limit(1);
+            if (org?.ownerUserId !== userId) {
+              res.status(403).json({ error: "Only the organization owner can approve automated image generation" });
+              return;
+            }
+            incoming.imageGenerationApprovedBy = userId;
+          } else if (incoming.generateImages === false) {
+            incoming.imageGenerationApprovedBy = null;
+          }
+        }
         patch.prefs = sanitize({ ...(existing?.prefs ?? {}), ...incoming });
       }
     } else if (domain === "creative_work" && !existingCreativeConfig && creativePrefs) {
@@ -749,6 +780,23 @@ router.put("/autopilot/:domain", requireAutomationSubscription, async (req, res)
     }
 
     const config = await upsertDomainConfig(orgId, domain, patch);
+    if (domain === "marketing") {
+      const prefs = config.prefs && typeof config.prefs === "object"
+        ? config.prefs as Record<string, unknown>
+        : {};
+      const { imageGenerationApprovedBy: _privateApproval, ...safePrefs } = prefs;
+      res.json({
+        config: {
+          ...config,
+          botId: null,
+          prefs: {
+            ...safePrefs,
+            generateImages: prefs.generateImages === true && prefs.imageGenerationApprovedBy === userId,
+          },
+        },
+      });
+      return;
+    }
     res.json({ config: { ...config, botId: null } });
   } catch (err) {
     console.error("[Autopilot] PUT /autopilot/:domain failed:", err);

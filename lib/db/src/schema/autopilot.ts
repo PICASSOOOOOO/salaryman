@@ -100,6 +100,8 @@ export interface MarketingAutopilotPrefs {
   platforms: string[];
   tone: string;
   topics: string[];
+  generateImages: boolean;
+  imageGenerationApprovedBy: string | null;
 }
 
 // ── Business Ops autopilot preferences ───────────────────────────────────────

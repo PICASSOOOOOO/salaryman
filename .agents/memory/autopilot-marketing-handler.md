@@ -61,3 +61,18 @@ constants. PUT route merges incoming partial over stored prefs then sanitizes,
 gated on `domain==="marketing"`. UI = `MarketingPrefsEditor` on the marketing
 card in `pages/Autopilot.tsx` (the `/business/l` page, NOT MarketingCommandCenter
 despite the task wording — that's where the autopilot toggle actually is).
+
+## Campaign image generation consent
+Automated image generation must remain off unless the current organization owner
+explicitly enables it in Marketing preferences. Charge the owner's assistant
+battery strictly before each generated image; fail closed if the charge cannot be
+confirmed. Bind approval to the owner identity so ownership changes require new
+consent. Never publish Instagram without an image or TikTok/YouTube without a
+video.
+
+**Why:** the user said campaign automation may spend their credits only after they
+sign off, because the credits belong to them.
+
+**How to apply:** preserve the owner-only opt-in and strict per-image charge in
+both the UI and server handler; treat missing, stale, or unverifiable approval as
+disabled.

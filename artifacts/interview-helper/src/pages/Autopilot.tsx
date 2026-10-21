@@ -16,6 +16,7 @@ interface MarketingPrefs {
   platforms: string[];
   tone: string;
   topics: string[];
+  generateImages?: boolean;
 }
 
 interface BusinessOpsPrefs {
@@ -85,7 +86,11 @@ interface AutopilotPayload {
   creative?: { canManage: boolean; projects: CreativeProjectOption[] };
   marketResearch?: { canManage: boolean };
   accounting?: { canManage: boolean };
-  marketing: { tones: string[]; platforms: { id: string; label: string }[] };
+  marketing: {
+    tones: string[];
+    platforms: { id: string; label: string }[];
+    canApproveImageGeneration: boolean;
+  };
   crm: { leadStatuses: { id: string; label: string }[] };
   domains: DomainConfig[];
   activity: ActivityRow[];
@@ -99,7 +104,7 @@ function readMarketingPrefs(prefs: Record<string, unknown>): MarketingPrefs {
   const topics = Array.isArray(prefs.topics)
     ? (prefs.topics.filter((t) => typeof t === 'string') as string[])
     : [];
-  return { platforms, tone, topics };
+  return { platforms, tone, topics, generateImages: prefs.generateImages === true };
 }
 
 const num = (v: unknown, fallback: number): number =>
@@ -592,7 +597,11 @@ function MarketingPrefsEditor({
   onSave,
 }: {
   cfg: DomainConfig;
-  options: { tones: string[]; platforms: { id: string; label: string }[] };
+  options: {
+    tones: string[];
+    platforms: { id: string; label: string }[];
+    canApproveImageGeneration: boolean;
+  };
   busy: boolean;
   onSave: (prefs: MarketingPrefs) => void;
 }) {
@@ -600,6 +609,7 @@ function MarketingPrefsEditor({
   const [platforms, setPlatforms] = useState<string[]>(initial.platforms);
   const [tone, setTone] = useState<string>(initial.tone || (options.tones[0] ?? 'professional'));
   const [topicsText, setTopicsText] = useState<string>(initial.topics.join('\n'));
+  const [generateImages, setGenerateImages] = useState(initial.generateImages === true);
 
   // Re-sync local state if the server view changes (e.g. after a refresh).
   useEffect(() => {
@@ -607,6 +617,7 @@ function MarketingPrefsEditor({
     setPlatforms(next.platforms);
     setTone(next.tone || (options.tones[0] ?? 'professional'));
     setTopicsText(next.topics.join('\n'));
+    setGenerateImages(next.generateImages === true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg.prefs]);
 
@@ -619,7 +630,12 @@ function MarketingPrefsEditor({
       .split('\n')
       .map((t) => t.trim())
       .filter(Boolean);
-    onSave({ platforms, tone, topics });
+    onSave({
+      platforms,
+      tone,
+      topics,
+      ...(options.canApproveImageGeneration ? { generateImages } : {}),
+    });
   };
 
   return (
@@ -683,6 +699,26 @@ function MarketingPrefsEditor({
             className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none resize-y"
           />
         </div>
+      </div>
+
+      <div className="mt-3 rounded border border-cyan-500/15 bg-[#080c12] p-3">
+        <label className={`flex items-start gap-2 font-mono text-[10px] tracking-wide ${options.canApproveImageGeneration ? 'cursor-pointer text-cyan-200/80' : 'text-cyan-500/35'}`}>
+          <input
+            type="checkbox"
+            data-testid="marketing-generate-images"
+            checked={generateImages}
+            disabled={busy || !options.canApproveImageGeneration}
+            onChange={(event) => setGenerateImages(event.target.checked)}
+            className="mt-0.5 accent-cyan-400"
+          />
+          <span>
+            <span className="block">ALLOW AUTOMATIC CAMPAIGN IMAGE GENERATION</span>
+            <span className="mt-1 block normal-case tracking-normal text-[9px] text-cyan-500/45">
+              Uses the organization owner’s assistant battery per image. Available for Facebook, Instagram, and Threads; TikTok and YouTube still need a video.
+              {!options.canApproveImageGeneration ? ' Only the organization owner can approve this.' : ''}
+            </span>
+          </span>
+        </label>
       </div>
 
       <div className="flex justify-end mt-3">

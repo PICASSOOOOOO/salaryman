@@ -123,3 +123,31 @@ export async function checkCredit(
     return { allowed: true, reason: "credit_check_error" };
   }
 }
+
+/** Strict, awaited battery charge for owner-approved image generation. */
+export async function chargeMarketingImageCredit(
+  ownerId: string,
+  ownerEmail: string | null,
+): Promise<{ allowed: boolean; reason?: string }> {
+  if (!ownerId) return { allowed: false, reason: "no_owner" };
+  if (isOwnerEmail(ownerEmail ?? undefined)) return { allowed: true };
+  try {
+    const power = await getPowerStatus(ownerId, ACTIVE_SLOT, "assistant", ASSISTANT_TARGET_ID);
+    if (!power.powered) return { allowed: false, reason: "assistant_battery_depleted" };
+    const burn = await burnAiCharge({
+      userId: ownerId,
+      targetType: "assistant",
+      targetId: ASSISTANT_TARGET_ID,
+      kind: "image",
+      label: "owner-approved marketing image",
+      costBasisCents: AUTOPILOT_AI_COST_CENTS,
+      allowSeed: true,
+    });
+    return burn.ok
+      ? { allowed: true }
+      : { allowed: false, reason: burn.reason };
+  } catch (err) {
+    console.error("[Autopilot] marketing image credit charge failed:", err);
+    return { allowed: false, reason: "credit_check_error" };
+  }
+}
