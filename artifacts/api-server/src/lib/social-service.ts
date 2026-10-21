@@ -268,8 +268,10 @@ export async function publishSocialPost(opts: {
   postId: number;
   /** Active org whose Platform Connections should be considered first. */
   orgId?: number | string | null;
+  /** Automation must never count a simulated publish as a live campaign post. */
+  liveOnly?: boolean;
 }): Promise<PublishSocialPostResult> {
-  const { userId, email, postId, orgId } = opts;
+  const { userId, email, postId, orgId, liveOnly = false } = opts;
   const [post] = await db
     .select()
     .from(socialPostsTable)
@@ -370,6 +372,18 @@ export async function publishSocialPost(opts: {
         .returning();
       return { ok: true, post: updated, simulated: false, url: result.url ?? null };
     }
+  }
+
+  if (liveOnly) {
+    return {
+      ok: false,
+      status: 409,
+      error: provider?.publish
+        ? `${provider.label} needs a connected account before this campaign can publish.`
+        : `${provider?.label ?? post.platform} does not have a live publishing adapter yet.`,
+      platform: post.platform,
+      ...(!conn || conn.status !== "connected" ? { needsConnection: post.platform } : {}),
+    };
   }
 
   // No live connection (or not PRIME) — keep the in-game simulation but signal

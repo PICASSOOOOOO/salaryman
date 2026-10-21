@@ -132,6 +132,19 @@ describe("publishSocialPost", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
+  it("does not simulate success when called by the live-only marketing autopilot", async () => {
+    hasFeatureMock.mockResolvedValue(true);
+    getProviderMock.mockReturnValue({});
+    const postId = await createPost({ platform: "instagram" });
+
+    const res = await publishSocialPost({ userId: USER_ID, email: "u@test", postId, liveOnly: true });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.status).toBe(409);
+    const [row] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, postId));
+    expect(row.status).toBe("draft");
+  });
+
   it("publishes for real when PRIME + connected + provider can publish", async () => {
     hasFeatureMock.mockResolvedValue(true);
     const publish = vi.fn(async () => ({ ok: true, externalId: "ext-123", url: "http://live/post" }));

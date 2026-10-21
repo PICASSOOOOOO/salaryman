@@ -8,11 +8,11 @@ description: How real social posting + PRIME gating is wired for the Marketing C
 Real social-account connections + posting, unified under `/marketing`, gated behind PRIME.
 
 ## Provider model
-- Two camps: credential/webhook providers post for real TODAY without platform review
-  (Bluesky = AT Proto app password; Discord = channel webhook); OAuth providers
-  (X, LinkedIn, Meta FB/IG/Threads, TikTok, YouTube) are metadata-only until the OWNER
-  registers a platform app (env secrets) — they report `needs_app_config`.
-- Provider registry exposes `verify()` + `publish()`; isProviderConfigured() decides OAuth availability from env presence.
+- Customers bring their own developer apps for OAuth platforms; do not require one shared owner app.
+- Bluesky (app password) and Discord (webhook) have direct provider implementations. OAuth provider entries
+  for X, LinkedIn, Meta FB/IG/Threads, TikTok, and YouTube need real per-provider OAuth and publishing flows
+  before they are live; metadata alone must never be treated as a successful publish.
+- Provider registry exposes `verify()` + `publish()`; only a verified account with a live publisher may post.
 
 ## PRIME gating — the non-obvious part
 - There is NO new feature key/column. PRIME = the existing `claw_bot` bundle. Gate everything
@@ -29,9 +29,16 @@ Real social-account connections + posting, unified under `/marketing`, gated beh
   nudge the user to connect. Publish failure marks `connection.lastError` and returns 502 (no status change).
 
 ## Credentials at rest
-- `social_connections.credentials` JSONB stores secrets in plaintext — parity with existing
-  `user_google_links` (also plaintext). Acceptable for parity, but flagged: a future hardening task
-  should add app-layer envelope encryption. Don't treat the memory dir / DB as a secret store.
+- Encrypt `social_connections.credentials` with app-layer AES-GCM, binding ciphertext to user ID and provider.
+- The encryption key uses `SOCIAL_CREDENTIALS_ENCRYPTION_KEY` when configured, with a domain-separated
+  `SESSION_SECRET` fallback. Legacy plaintext rows are supported and upgraded on their next live use.
+- Never return saved credentials to the client; connection responses expose only status/account metadata.
+  **Why:** users configure their own social apps, so app secrets and access tokens are customer data.
+  **How to apply:** any new OAuth setup or token-refresh path must use the same encrypted credential helper.
+
+## Autonomous publishing
+- The marketing autopilot is live-only: an unconfigured provider or missing connection must leave the post
+  as a draft/error, never turn it into a simulated success. Manual/game publish can retain its simulation path.
 
 ## Frontend
 - `/marketing` IS the Command Center (replaced the old redirect to `/marketing/campaigns`).

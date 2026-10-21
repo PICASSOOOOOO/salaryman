@@ -177,6 +177,7 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
     email: ctx.ownerEmail,
     postId: draft.id,
     orgId: ctx.orgId,
+    liveOnly: true,
   });
 
   if (!result.ok) {
