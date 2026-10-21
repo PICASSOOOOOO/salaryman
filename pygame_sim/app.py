@@ -718,12 +718,23 @@ def run(argv: list[str] | None = None) -> int:
                         rows = payload.get("shipments", [])
                         state.shop_freight_shipments_at_dock = [
                             row for row in rows
-                            if isinstance(row, dict) and isinstance(row.get("id"), str)
+                            if isinstance(row, dict)
+                            and isinstance(row.get("id"), str)
+                            and row.get("status") == "at_dock"
                         ] if isinstance(rows, list) else []
+                        active_courier = next((
+                            row for row in rows
+                            if isinstance(row, dict)
+                            and isinstance(row.get("id"), str)
+                            and row.get("status") == "in_delivery"
+                        ), None) if isinstance(rows, list) else None
+                        state.active_shop_shipment = {
+                            key: active_courier.get(key)
+                            for key in ("id", "businessKey", "status", "lines", "from", "to", "animation")
+                        } if active_courier else None
                         state.notice = (
-                            f"B1 SHOP FREIGHT / {len(state.shop_freight_shipments_at_dock)} SHIPMENT(S) WAITING"
-                            if state.shop_freight_shipments_at_dock
-                            else "B1 SHOP FREIGHT / NO SHIPMENTS WAITING"
+                            f"SHIP CO / {len(state.shop_freight_shipments_at_dock)} WAITING / "
+                            f"{'COURIER EN ROUTE' if active_courier else 'NO ACTIVE COURIER'}"
                         )
                     elif action == "shop_freight_pickup":
                         state.active_shop_shipment = {

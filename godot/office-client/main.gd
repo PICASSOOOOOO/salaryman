@@ -47,6 +47,7 @@ var target_player_world := Vector3.ZERO
 var visual_player_velocity := Vector3.ZERO
 var animation_clock := 0.0
 var shop_cargo_visual: Node3D = null
+var shop_courier_route_tween: Tween
 var camera_distance := CAMERA_DISTANCE_LEVELS[CAMERA_DEFAULT_ZOOM_INDEX]
 var camera_zoom_index := CAMERA_DEFAULT_ZOOM_INDEX
 var camera_sfx: Node
@@ -1609,9 +1610,35 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	if is_instance_valid(shop_cargo_visual):
 		return
 	shop_cargo_visual = Node3D.new()
-	shop_cargo_visual.name = "ShippingCompanyFreightCart"
-	shop_cargo_visual.position = Vector3(0.0, 0.08, -0.62)
-	player_root.add_child(shop_cargo_visual)
+	shop_cargo_visual.name = "ShippingCompanyCourierCart"
+	var shipment_from: Dictionary = shipment.get("from", {})
+	var shipment_to: Dictionary = shipment.get("to", {})
+	var from_position := _pygame_to_world(
+		float(shipment_from.get("x", 18_500)),
+		float(shipment_from.get("y", 7_000)),
+		"basement_b1",
+	)
+	var to_position := _pygame_to_world(
+		float(shipment_to.get("x", 18_500)),
+		float(shipment_to.get("y", 7_000)),
+		"hallway",
+	)
+	var service_lift: Array = floor_plan_data.get("baseLayout", {}).get("serviceElevator", {}).get("position", [31_553, 0])
+	var lift_position := _pygame_to_world(float(service_lift[0]), float(service_lift[1]), "lobby")
+	shop_cargo_visual.position = from_position
+	automation_root.add_child(shop_cargo_visual)
+	var worker_scene := imported_scenes.get("character") as PackedScene
+	if worker_scene != null:
+		var worker_model := worker_scene.instantiate() as Node3D
+		worker_model.name = "ShippingCompanyWorker"
+		shop_cargo_visual.add_child(worker_model)
+		var worker_animation := PlayerController.configure_character_model(
+			worker_model,
+			PlayerController.MODEL_SCALE,
+			AvatarStyle.wardrobe_for_npc("shipping_company"),
+		)
+		if worker_animation != null:
+			worker_animation.play("walk")
 	var frame_material := StandardMaterial3D.new()
 	frame_material.albedo_color = Color("#46555a")
 	frame_material.metallic = 0.72
@@ -1644,7 +1671,7 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 		handle_mesh.size = Vector3(0.045, 0.68, 0.045)
 		handle.mesh = handle_mesh
 		handle.material_override = frame_material
-		handle.position = Vector3(handle_x, 0.66, 0.23)
+	handle.position = Vector3(handle_x, 0.66, 0.78)
 		shop_cargo_visual.add_child(handle)
 	var grip := MeshInstance3D.new()
 	grip.name = "CartGrip"
@@ -1652,7 +1679,7 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	grip_mesh.size = Vector3(0.62, 0.055, 0.055)
 	grip.mesh = grip_mesh
 	grip.material_override = frame_material
-	grip.position = Vector3(0.0, 1.0, 0.23)
+	grip.position = Vector3(0.0, 1.0, 0.78)
 	shop_cargo_visual.add_child(grip)
 	var crate := MeshInstance3D.new()
 	crate.name = "ShopShipmentCrate"
@@ -1680,7 +1707,7 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	company_badge.text = "SHIP CO"
 	company_badge.font_size = 12
 	company_badge.pixel_size = 0.004
-	company_badge.position = Vector3(0.0, 0.47, -0.218)
+	company_badge.position = Vector3(0.0, 0.47, 0.282)
 	company_badge.modulate = Color("#f1dfbc")
 	company_badge.outline_size = 3
 	company_badge.outline_modulate = Color("#30271d")
@@ -1689,6 +1716,20 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	var pickup_tween := create_tween()
 	pickup_tween.tween_property(shop_cargo_visual, "scale", Vector3.ONE, 0.38) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	shop_courier_route_tween = create_tween()
+	var route_tween := shop_courier_route_tween
+	route_tween.tween_property(shop_cargo_visual, "position", lift_position, 4.5) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	route_tween.tween_property(shop_cargo_visual, "scale", Vector3.ONE * 0.08, 0.28)
+	route_tween.tween_interval(1.35)
+	route_tween.tween_callback(_restore_shop_courier_at_service_lift)
+	route_tween.tween_property(shop_cargo_visual, "position", to_position, 4.5) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _restore_shop_courier_at_service_lift() -> void:
+	if is_instance_valid(shop_cargo_visual):
+		shop_cargo_visual.scale = Vector3.ONE
 
 
 func _on_player_action_requested(action: String) -> void:
@@ -2136,9 +2177,9 @@ func _process(delta: float) -> void:
 			_abort_elevator_transition("ELEVATOR REQUEST TIMED OUT")
 	_smooth_visual_player(delta)
 	if is_instance_valid(shop_cargo_visual):
-		var cart_speed := visual_player_velocity.length()
-		shop_cargo_visual.position.y = 0.08 + sin(animation_clock * (4.5 + cart_speed)) * (0.012 + minf(cart_speed * 0.002, 0.025))
-		shop_cargo_visual.rotation.z = sin(animation_clock * 3.2) * 0.025 if elevator_transition_active else 0.0
+		var cart_speed := 1.0 if shop_courier_route_tween != null and shop_courier_route_tween.is_running() else 0.0
+		shop_cargo_visual.position.y = PLAYER_GROUND_Y + sin(animation_clock * (4.5 + cart_speed)) * (0.012 + cart_speed * 0.008)
+		shop_cargo_visual.rotation.z = sin(animation_clock * 3.2) * 0.025 if cart_speed > 0.0 else 0.0
 		for cart_part in shop_cargo_visual.get_children():
 			if cart_part.name == "CartWheel" and cart_part is Node3D:
 				cart_part.rotate_object_local(Vector3.RIGHT, cart_speed * delta * 2.4)

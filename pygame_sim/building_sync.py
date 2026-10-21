@@ -69,6 +69,7 @@ class DesktopBuildingSync:
         self._object_states: dict[str, dict[str, Any]] = {}
         self._actions: queue.Queue[tuple[int, str, str, str]] = queue.Queue()
         self._game_requests: queue.Queue[tuple[str, str, str, dict[str, Any] | None]] = queue.Queue()
+        self._last_shop_freight_poll = time.monotonic()
         self._pending_game_actions: set[str] = set()
         self._restroom_sessions: dict[str, str] = {}
         self._events: queue.Queue[BuildingSyncEvent] = queue.Queue()
@@ -207,6 +208,10 @@ class DesktopBuildingSync:
             self._scene_snapshot = snapshot
             if self._authorized_destination == scene.current_floor:
                 self._authorized_destination = None
+        now = time.monotonic()
+        if self.link is not None and now - self._last_shop_freight_poll >= 2.0:
+            if self.queue_game_request("shop_freight_snapshot"):
+                self._last_shop_freight_poll = now
 
     def queue_action(self, object_id: str, action: str) -> bool:
         if self.link is None or action not in {"clean", "repair"} or not object_id:

@@ -176,12 +176,16 @@ need meetings and accords so they can coexist.
 
 **Why:** the user described imperfect workers, customer-driven alternatives,
 player-created competition, sabotage risk, and agreements as core parts of a
-human-feeling server economy.
+human-feeling server economy. The user also clarified that the economy must
+already operate among NPCs before a player joins; the player is an outlier, not
+the required trigger for NPC business activity.
 
 **How to apply:** model staff quality and reliability as visible, persistent
 business factors; let service outcomes shape customer demand; keep player
 competition consequential, and make sabotage a risk of unfair conduct rather
 than an automatic response to competition. Support explicit rival agreements.
+NPC business orders, dispatch, delivery, staffing, and settlement must continue
+without player presence or interaction.
 
 When shop employees participate in the NPC mod, at least half of each shop's
 employees should be part of the mod while the other half continue working so the

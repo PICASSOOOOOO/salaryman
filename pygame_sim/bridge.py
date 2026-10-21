@@ -215,11 +215,6 @@ def _request_tower_floor(
     basement_sync: Any | None = None,
 ) -> CommandResult:
     nearby = scene.nearby_object
-    if state.active_shop_shipment is not None \
-        and (nearby is None or nearby.kind != "service_elevator"):
-        message = "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR"
-        state.notice = message
-        return CommandResult(False, message)
     if scene.is_basement:
         if floor == int(scene.basement_level or 1):
             message = f"ALREADY ON BASEMENT B{floor}"
@@ -369,8 +364,6 @@ def _handle_basement_interact(
         return None
 
     if nearby.id == "basement-b1-back-entrance":
-        if state.active_shop_shipment is not None:
-            return CommandResult(False, "DELIVER THE SHOP FREIGHT BEFORE LEAVING THE TOWER")
         if basement_sync is None or not basement_sync.queue_exit(scene):
             return CommandResult(False, "B1 REAR ENTRANCE EXIT UNAVAILABLE")
         state.close_page()
@@ -392,8 +385,6 @@ def _handle_basement_interact(
         return CommandResult(True, message)
 
     if nearby.kind == "basement_stairs":
-        if state.active_shop_shipment is not None:
-            return CommandResult(False, "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR")
         level = int(scene.basement_level or 1)
         if nearby.id == "basement-stairs-up-b1":
             if basement_sync is None or not basement_sync.queue_exit(scene):
@@ -541,37 +532,16 @@ def apply_command(
             return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "shop_freight_dock" \
             and requested_object_id in (None, nearby.id):
-            if state.shop_freight_shipments_at_dock:
-                shipment_id = state.shop_freight_shipments_at_dock[0].get("id")
-                if not isinstance(shipment_id, str) or building_sync is None \
-                    or not building_sync.queue_game_request("shop_freight_pickup", shipment_id):
-                    return CommandResult(False, "SHOP FREIGHT PICKUP UNAVAILABLE / CHECK GAME LINK")
-                state.shop_freight_shipments_at_dock = []
-                state.game_service_loading.add("shop_freight_pickup")
-                state.notice = "LOADING SHOP FREIGHT AT B1"
-                return CommandResult(True, state.notice)
             if building_sync is None or not building_sync.queue_game_request("shop_freight_snapshot"):
                 return CommandResult(False, "SHOP FREIGHT STATUS UNAVAILABLE / CHECK GAME LINK")
             state.game_service_loading.add("shop_freight_snapshot")
-            state.notice = "CHECKING B1 SHOP FREIGHT"
+            state.notice = "SHIPPING COMPANY / CHECKING AUTONOMOUS COURIER"
             return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "loading_gate" \
             and requested_object_id in (None, nearby.id):
             if building_sync is None or not building_sync.queue_game_request("supply_receive"):
                 return CommandResult(False, "LOADING ZONE IS UNAVAILABLE / TOWER STAFF ONLY")
             state.notice = "RECEIVING TOWER SUPPLIES"
-            return CommandResult(True, state.notice)
-        if nearby is not None and nearby.kind == "business_suite" \
-            and requested_object_id in (None, nearby.id) \
-            and isinstance(state.active_shop_shipment, dict) \
-            and state.active_shop_shipment.get("businessKey") == nearby.business_key:
-            shipment_id = state.active_shop_shipment.get("shipmentId")
-            if not isinstance(shipment_id, str) or building_sync is None \
-                or not building_sync.queue_game_request("shop_freight_receive", shipment_id):
-                return CommandResult(False, "SHOP SHIPMENT DELIVERY UNAVAILABLE / CHECK GAME LINK")
-            state.game_service_loading.add("shop_freight_receive")
-            state.notice = f"DELIVERING STOCK TO {nearby.label}"
-            scene.set_player_action("maintenance", duration=1.2)
             return CommandResult(True, state.notice)
         if nearby is not None and nearby.id == "floor-06-meeting-table" \
             and requested_object_id in (None, nearby.id):
@@ -600,8 +570,6 @@ def apply_command(
             return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "stairs" \
             and requested_object_id in (None, nearby.id):
-            if state.active_shop_shipment is not None:
-                return CommandResult(False, "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR")
             destination = nearby.destination_floor
             if destination is None:
                 return CommandResult(False, "STAIR DIRECTION IS NOT AVAILABLE")
@@ -614,8 +582,6 @@ def apply_command(
             )
         if nearby is not None and nearby.kind in {"elevator", "service_elevator"} \
             and requested_object_id in (None, nearby.id):
-            if state.active_shop_shipment is not None and nearby.kind == "elevator":
-                return CommandResult(False, "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR")
             return _request_tower_floor(
                 nearby.destination_floor or scene.current_floor,
                 state,

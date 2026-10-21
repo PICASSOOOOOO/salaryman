@@ -21,7 +21,7 @@ import {
   INSTALL_CAPACITY,
   type InstallTargetType,
 } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 import Stripe from "stripe";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
@@ -81,8 +81,102 @@ const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; 
 const TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM = 1_000;
 const TOWER_SHOP_SHELF_CAPACITY_PER_ITEM = 100;
 const TOWER_SHOP_ORDER_TRANSIT_MS = 5 * 60 * 1_000;
+const TOWER_SHOP_DOCK_HANDOFF_MS = 12_000;
+const TOWER_SHOP_COURIER_TRAVEL_MS = 15_000;
 const TOWER_B1_SHOP_DOCK = { level: 1, x: 18_500, y: 7_000 };
 const TOWER_SHOP_INTERACTION_RADIUS = 1_400;
+
+let towerShopLogisticsTimer: NodeJS.Timeout | null = null;
+let towerShopLogisticsTickRunning = false;
+
+export function startTowerShopLogisticsScheduler(): void {
+  if (towerShopLogisticsTimer) return;
+  const tick = () => {
+    if (towerShopLogisticsTickRunning) return;
+    towerShopLogisticsTickRunning = true;
+    runTowerShopLogisticsTick()
+      .catch((error) => console.error("[TowerShop] autonomous logistics tick failed:", error))
+      .finally(() => { towerShopLogisticsTickRunning = false; });
+  };
+  setTimeout(tick, 20_000);
+  towerShopLogisticsTimer = setInterval(tick, 5_000);
+}
+
+async function runTowerShopLogisticsTick(now = new Date()): Promise<void> {
+  await db.update(towerShopShipmentsTable).set({
+    status: "at_dock",
+    arrivedAtDockAt: now,
+    updatedAt: now,
+  }).where(and(
+    eq(towerShopShipmentsTable.status, "supplier_processing"),
+    sql`${towerShopShipmentsTable.supplierOrderedAt} <= ${new Date(now.getTime() - TOWER_SHOP_ORDER_TRANSIT_MS)}`,
+  ));
+
+  await db.update(towerShopShipmentsTable).set({
+    status: "in_delivery",
+    updatedAt: now,
+  }).where(and(
+    eq(towerShopShipmentsTable.status, "at_dock"),
+    sql`${towerShopShipmentsTable.arrivedAtDockAt} <= ${new Date(now.getTime() - TOWER_SHOP_DOCK_HANDOFF_MS)}`,
+  ));
+
+  const ready = await db.select({ id: towerShopShipmentsTable.id })
+    .from(towerShopShipmentsTable)
+    .where(and(
+      eq(towerShopShipmentsTable.status, "in_delivery"),
+      sql`${towerShopShipmentsTable.updatedAt} <= ${new Date(now.getTime() - TOWER_SHOP_COURIER_TRAVEL_MS)}`,
+    ))
+    .limit(25);
+
+  for (const { id } of ready) {
+    await db.transaction(async (tx) => {
+      const [shipment] = await tx.select().from(towerShopShipmentsTable)
+        .where(eq(towerShopShipmentsTable.id, id)).for("update").limit(1);
+      if (!shipment || shipment.status !== "in_delivery"
+        || shipment.updatedAt.getTime() > now.getTime() - TOWER_SHOP_COURIER_TRAVEL_MS) return;
+
+      for (const line of shipment.lines) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-inventory:${shipment.businessKey}:${line.itemId}`}))`);
+        const [stock] = await tx.select().from(towerShopInventoryTable)
+          .where(and(
+            eq(towerShopInventoryTable.businessKey, shipment.businessKey),
+            eq(towerShopInventoryTable.itemId, line.itemId),
+          )).for("update").limit(1);
+        const stored = stock?.storedQuantity ?? 0;
+        const capacity = stock?.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM;
+        if (stored + line.quantity > capacity) return;
+      }
+
+      for (const line of shipment.lines) {
+        await tx.insert(towerShopInventoryTable).values({
+          businessKey: shipment.businessKey,
+          itemId: line.itemId,
+          storedQuantity: line.quantity,
+          shelfQuantity: 0,
+          storageCapacity: TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+          shelfCapacity: TOWER_SHOP_SHELF_CAPACITY_PER_ITEM,
+          updatedAt: now,
+        }).onConflictDoUpdate({
+          target: [towerShopInventoryTable.businessKey, towerShopInventoryTable.itemId],
+          set: {
+            storedQuantity: sql`${towerShopInventoryTable.storedQuantity} + ${line.quantity}`,
+            storageCapacity: sql`greatest(${towerShopInventoryTable.storageCapacity}, ${TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM})`,
+            shelfCapacity: sql`greatest(${towerShopInventoryTable.shelfCapacity}, ${TOWER_SHOP_SHELF_CAPACITY_PER_ITEM})`,
+            updatedAt: now,
+          },
+        });
+      }
+      await tx.update(towerShopShipmentsTable).set({
+        status: "delivered",
+        deliveredAtStoreAt: now,
+        updatedAt: now,
+      }).where(and(
+        eq(towerShopShipmentsTable.id, id),
+        eq(towerShopShipmentsTable.status, "in_delivery"),
+      ));
+    });
+  }
+}
 
 function requireAuth(req: Request, res: any): string | null {
   if (!(req as any).isAuthenticated?.()) {
@@ -497,9 +591,16 @@ router.get("/items/tower-business/shipments/dock", async (req, res) => {
       eq(towerShopShipmentsTable.status, "supplier_processing"),
       sql`${towerShopShipmentsTable.supplierOrderedAt} <= ${new Date(now.getTime() - TOWER_SHOP_ORDER_TRANSIT_MS)}`,
     ));
-    const shipments = await db.select().from(towerShopShipmentsTable).where(and(
+    const rows = await db.select().from(towerShopShipmentsTable).where(or(
       eq(towerShopShipmentsTable.status, "at_dock"),
+      eq(towerShopShipmentsTable.status, "in_delivery"),
     )).orderBy(desc(towerShopShipmentsTable.arrivedAtDockAt)).limit(50);
+    const shipments = rows.map((shipment) => ({
+      ...shipment,
+      from: TOWER_B1_SHOP_DOCK,
+      to: TOWER_BUSINESS_SHOP_LOCATIONS[shipment.businessKey],
+      animation: "dock_to_shop",
+    }));
     res.json({ shipments, dock: TOWER_B1_SHOP_DOCK });
   } catch (error: any) {
     console.error("[TowerShop] B1 dock snapshot failed:", error?.message);
