@@ -35,6 +35,17 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertFalse(decoded["office"]["musicEnabled"])
         self.assertLessEqual(len(encoded.encode("utf-8")), MAX_OUTBOUND_LINE_BYTES)
 
+    def test_vehicle_dealership_kiosk_opens_its_shop_screen(self):
+        dealership = self.scene.objects.get("lobby-kiosk-vehicle_dealership")
+        self.assertIsNotNone(dealership)
+        self.assertEqual(dealership.business_key, "vehicle_dealership")
+
+        result = self.scene.objects.interact(dealership.id, self.state, self.scene)
+
+        self.assertTrue(result.success)
+        self.assertEqual(self.state.active_page, "business_shop")
+        self.assertEqual(self.state.active_object_id, dealership.id)
+
     def test_full_default_snapshot_is_delivered_to_connected_client(self):
         bridge = OfficeBridge(port=0)
         self.assertTrue(bridge.start())
@@ -546,11 +557,11 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(expected_business_keys.issubset(registered_business_keys))
 
         infra = FLOOR_PLAN["infrastructureMap"]
-        self.assertEqual(infra["standardFloor"]["clearEnvelopeMeters"], [220, 250])
+        self.assertEqual(infra["standardFloor"]["clearEnvelopeMeters"], [622.25, 707.11])
         self.assertEqual(infra["wallServiceCavityMeters"], 0.12)
-        self.assertEqual(infra["lobby"]["bounds"][2:], [4000, 6000])
-        self.assertEqual(infra["lobby"]["clearEnvelopeMeters"], [40, 60])
-        self.assertEqual(infra["basements"]["clearEnvelopeMeters"], [100, 100])
+        self.assertEqual(infra["lobby"]["bounds"][2:], [11_314, 16_971])
+        self.assertEqual(infra["lobby"]["clearEnvelopeMeters"], [113, 170])
+        self.assertEqual(infra["basements"]["clearEnvelopeMeters"], [283, 283])
         systems = infra["systems"]
         route_ids = {route["id"] for route in infra["standardFloor"]["wallRoutes"]}
         self.assertTrue(systems)
@@ -558,21 +569,23 @@ class PygameBridgeTests(unittest.TestCase):
             self.assertTrue(set(system["wallRouteIds"]).issubset(route_ids))
             self.assertIsNotNone(self.scene.objects.get(system["source"]["objectId"]))
             self.assertIsNotNone(self.scene.objects.get(system["repairStation"]["objectId"]))
+        standard_width, standard_height = infra["standardFloor"]["clearEnvelopeUnits"]
         for route in infra["standardFloor"]["wallRoutes"]:
             for x, y in route["points"]:
                 self.assertGreaterEqual(x, 0)
                 self.assertGreaterEqual(y, 0)
-                self.assertLessEqual(x, 22_000)
-                self.assertLessEqual(y, 25_000)
+                self.assertLessEqual(x, standard_width)
+                self.assertLessEqual(y, standard_height)
         lobby_x, lobby_y, lobby_w, lobby_h = infra["lobby"]["bounds"]
         for route in infra["lobby"]["wallRoutes"]:
             for x, y in route["points"]:
                 self.assertTrue(lobby_x <= x <= lobby_x + lobby_w)
                 self.assertTrue(lobby_y <= y <= lobby_y + lobby_h)
+        basement_width, basement_height = infra["basements"]["clearEnvelopeUnits"]
         for route in infra["basements"]["wallRoutes"]:
             for x, y in route["points"]:
-                self.assertTrue(0 <= x <= 10_000)
-                self.assertTrue(0 <= y <= 10_000)
+                self.assertTrue(0 <= x <= basement_width)
+                self.assertTrue(0 <= y <= basement_height)
         for object_id in infra["lobby"]["branchAccessObjectIds"]:
             self.assertIsNotNone(self.scene.objects.get(object_id))
 
@@ -615,6 +628,44 @@ class PygameBridgeTests(unittest.TestCase):
         )
         self.assertTrue(result.ok)
         self.assertEqual(requests, [("buy_vending", "vend_coffee")])
+
+    def test_godot_vehicle_dealership_purchase_uses_listed_stock_at_lobby_kiosk(self):
+        dealership = self.scene.objects.get("lobby-kiosk-vehicle_dealership")
+        self.assertIsNotNone(dealership)
+        self.scene.player_position = dealership.position
+        self.assertTrue(self.scene.objects.interact(dealership.id, self.state, self.scene).success)
+        self.state.business_stock_lines = [{
+            "sellerBusinessKey": "vehicle_dealership",
+            "items": [{"id": "veh_car"}],
+        }]
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id, business_key: (
+                requests.append((action, item_id, business_key)) or True
+            ),
+        )
+
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "godot-vehicle-purchase",
+                "name": "buy_business_item",
+                "payload": {
+                    "business_key": "vehicle_dealership",
+                    "item_id": "veh_car",
+                },
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(
+            requests,
+            [("buy_business", "veh_car", "vehicle_dealership")],
+        )
 
     def test_mila_menu_opens_only_the_selected_existing_service(self):
         self.scene.player_position = self.scene.objects.get("lobby-receptionist").position

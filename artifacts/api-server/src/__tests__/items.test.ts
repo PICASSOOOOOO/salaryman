@@ -98,6 +98,15 @@ describe("GET /items/vending-catalog", () => {
     expect(education?.items[1].useEffect?.skillGrant).toBe("career.interview_prepared");
     expect(education?.items[2].useEffect?.skillGrant).toBe("work.trade_certified");
     expect(education?.items[2].priceFiat).toBeGreaterThan(education!.items[1].priceFiat);
+    const dealership = listings.find((listing) => listing.id === "vehicle-dealership");
+    expect(dealership?.sellerLocationLabel).toBe("FLOOR 01 / LOBBY KIOSK");
+    expect(dealership?.items.map((item) => item.id)).toEqual([
+      "veh_car",
+      "veh_boat",
+      "veh_speeder",
+      "veh_tunneler",
+      "veh_flying_car",
+    ]);
     expect(education?.items[1].basePriceFiat).toBe(450_000);
     expect(education?.items[2].basePriceFiat).toBe(900_000);
     expect(education?.sellerBusinessKey).toBe("book_store");

@@ -330,6 +330,22 @@ export const TOWER_BUSINESS_STOCK_LINES: readonly TowerBusinessStockLine[] = [
     npcVersion: 1,
     npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["effectiveness", "capacity", "quality"] },
   },
+  {
+    id: "vehicle-dealership",
+    label: "Vehicles",
+    specialty: "transport",
+    sellerBusinessKey: "vehicle_dealership",
+    sellerName: "VEHICLE DEALERSHIP",
+    sellerLocationLabel: "FLOOR 01 / LOBBY KIOSK",
+    itemIds: ["veh_car", "veh_boat", "veh_speeder", "veh_tunneler", "veh_flying_car"],
+    quoteCategories: [],
+    priceSource: "catalog_item",
+    valueRank: 5,
+    valueDrivers: ["income"],
+    npcProductFamily: "vehicles",
+    npcVersion: 1,
+    npcExpansion: { ready: true, simulationEnabled: false, scope: "specialty_only", improvementAxes: ["effectiveness", "quality"] },
+  },
 ];
 
 export const TOWER_GHOST_LISTING = {

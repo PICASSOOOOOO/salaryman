@@ -13,7 +13,7 @@ describe("autonomous Tower shop catalogs", () => {
     expect(items.some((item) => item.priceFiat < 25_000)).toBe(true);
   });
 
-  it.each(["vespa_shop", "android_replicant_repair"])(
+  it.each(["vespa_shop", "android_replicant_repair", "vehicle_dealership"])(
     "%s has catalog-backed products at its assigned shop",
     (businessKey) => {
     const itemIds = TOWER_BUSINESS_STOCK_LINES

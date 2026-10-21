@@ -3,13 +3,18 @@ name: Tower business locations and stock
 description: Tower suite capacity and named rosters, plus the no-directory and read-only stock boundaries.
 ---
 
-Pablo Corp is the initial operator of the lobby, Floors 1–7, and basements B1–B6. Floors 2–7 are suites with capacity for up to eight businesses each. Floor 1 remains an open lobby with reception and vehicle-dealership kiosks. Floors 2–6 have these rosters:
+Pablo Corp is the initial operator of the lobby, Floors 1–12, and basements B1–B6. The named shop scope covers existing locations on Floors 1–12 and B1–B6; Floors 13–67 remain under construction without named shop rosters. Floor 1 is an open lobby with reception and vehicle-dealership kiosks. Floors 2–6 and 8–12 have business suites; Floor 7 is a meditation temple with no business suite:
 - Floor 2: cafeteria (Common Table 67), clinic (Lumen Care Clinic), pharmacy (Third Shift Pharmacy), Banco Ombra currency/gold exchange, Pablo Corp Real Estate, fish, furniture, and Mender-9 Terminal Works.
 - Floor 3: phone, liquor/alcohol and cigarettes, office equipment, tools, jewelry/watches and gold exchange, tea, formal clothing, and shoes.
 - Floor 4: music, mirror, lighting, cafe, antique, record, book, and one intentionally unnamed eighth suite.
 - Floor 5: restaurant, antique, phone, TV, mattress, hostel, salon, and barber.
 - Floor 6: radio, music studio, school, art supply, meeting room, public workspace, study hall, and flower shop.
-- Floor 7 has Rinse 67 only.
+- Floor 8: landscaping, interior design, rugs, android/replicant repair, glasses, glass installation, plumbing, and electrical service.
+- Floor 9: karaoke, arcade, plants, Vespa, juice, magazines, soap, and janitorial services.
+- Floor 10: gym, Security Station #2, Fire Station #2, and Admin Office #2.
+- Floor 11: apartments, hotel, hostel, public workspace, moving, groceries, kitchen appliances, and paint.
+- Floor 12: printer, soda and candy, hotel, bar, chapel, library, pawn, and museum.
+- B1: administration, shipping, trash, food supply, construction, materials supply, power, and water.
 
 The Tower has no marketplace or directory. Preserve confirmed core economy,
 infrastructure, niche, and specialized shops as unique rather than duplicating

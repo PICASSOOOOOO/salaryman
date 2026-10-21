@@ -72,7 +72,10 @@ const router: IRouter = Router();
 const CARRIED_ITEM_CAPACITY = 24;
 const PUBLIC_LOCKER_CAPACITY = 12;
 
-const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; y: number }> = {
+const TOWER_BUSINESS_SHOP_LOCATIONS: Record<
+  string,
+  { floor: number; x: number; y: number; room?: "hallway" | "lobby" }
+> = {
   "fish-store": { floor: 2, x: 22_884, y: 47_470 },
   "furniture-store": { floor: 2, x: 39_341, y: 47_470 },
   formal_clothing_store: { floor: 3, x: 39_341, y: 47_470 },
@@ -81,6 +84,7 @@ const TOWER_BUSINESS_SHOP_LOCATIONS: Record<string, { floor: number; x: number; 
   plant_store: { floor: 9, x: 39_341, y: 15_556 },
   android_replicant_repair: { floor: 8, x: 54_597, y: 15_556 },
   vespa_shop: { floor: 9, x: 54_597, y: 15_556 },
+  vehicle_dealership: { floor: 1, x: 49_979_414, y: 50_006_505, room: "lobby" },
 };
 const TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM = 1_000;
 const TOWER_SHOP_SHELF_CAPACITY_PER_ITEM = 100;
@@ -584,7 +588,8 @@ router.post("/items/tower-business/order", async (req, res) => {
     ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
     : Number.POSITIVE_INFINITY;
   if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
-    || presence.room !== "hallway" || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
+    || presence.room !== (shop.room ?? "hallway")
+    || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
     res.status(403).json({ error: "Approach the Tower shop in the linked desktop game to place an order." });
     return;
   }
@@ -848,7 +853,8 @@ router.post("/items/tower-business/shipments/:shipmentId/receive", async (req, r
   const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
   const distance = presence ? Math.hypot(presence.x - shop.x, presence.y - shop.y) : Infinity;
   if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
-    || presence.room !== "hallway" || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
+    || presence.room !== (shop.room ?? "hallway")
+    || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
     res.status(403).json({ error: "Move to the destination shop in the linked desktop game to receive its shipment." });
     return;
   }
@@ -1029,7 +1035,7 @@ router.post("/items/buy", async (req, res) => {
       ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
       : Number.POSITIVE_INFINITY;
     if (!presence || presence.linkId !== identity.desktopLinkId
-      || presence.floorNumber !== shop.floor || presence.room !== "hallway"
+      || presence.floorNumber !== shop.floor || presence.room !== (shop.room ?? "hallway")
       || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
       res.status(403).json({ error: "Approach this Tower shop before purchasing." });
       return;

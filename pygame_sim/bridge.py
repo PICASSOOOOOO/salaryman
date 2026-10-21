@@ -648,7 +648,7 @@ def apply_command(
         if (
             state.active_page != "business_shop"
             or shop is None
-            or shop.kind != "business_suite"
+            or shop.kind not in {"business_suite", "business_kiosk"}
             or shop.business_key != business_key
             or shop.room != scene.current_room
             or nearby is None
@@ -981,6 +981,11 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
         for item in scene.objects.objects
         if item.room == scene.current_room and item.kind in {"door", "elevator", "stairs", "basement_stairs"}
     ]
+    active_object = (
+        scene.objects.get(state.active_object_id)
+        if state.active_object_id is not None
+        else None
+    )
     return {
         "type": "snapshot",
         "version": PROTOCOL_VERSION,
@@ -1090,11 +1095,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "activePage": state.active_page,
             "pageSource": state.page_source,
             "activeObjectId": state.active_object_id,
-            "businessKey": (
-                scene.objects[state.active_object_id].business_key
-                if state.active_object_id in scene.objects
-                else None
-            ),
+            "businessKey": active_object.business_key if active_object is not None else None,
             "npcCoworkers": [
                 {
                     **npc.to_dict(),
