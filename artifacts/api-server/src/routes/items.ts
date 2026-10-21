@@ -17,6 +17,7 @@ import {
   towerShopInventoryTable,
   towerShopShipmentsTable,
   towerShopAccountsTable,
+  shadowTowerOfficeUnitsTable,
   INSTALL_TARGET_TYPES,
   INSTALL_CAPACITY,
   type InstallTargetType,
@@ -74,17 +75,59 @@ const PUBLIC_LOCKER_CAPACITY = 12;
 
 const TOWER_BUSINESS_SHOP_LOCATIONS: Record<
   string,
-  { floor: number; x: number; y: number; room?: "hallway" | "lobby" }
+  { floor: number; x: number; y: number; room?: "hallway" | "lobby" | "office"; officeUnitNumber?: number }
 > = {
   "fish-store": { floor: 2, x: 22_884, y: 47_470 },
   "furniture-store": { floor: 2, x: 39_341, y: 47_470 },
+  shadow_cafeteria: { floor: 2, x: 7_628, y: 15_556 },
+  tower_clinic: { floor: 2, x: 22_884, y: 15_556 },
+  tower_pharmacy: { floor: 2, x: 39_341, y: 15_556 },
+  tower_terminal_repair: { floor: 2, x: 54_597, y: 15_556 },
+  phone_store_f03: { floor: 3, x: 7_628, y: 15_556 },
+  liquor_store: { floor: 3, x: 22_884, y: 15_556 },
+  office_equipment_store: { floor: 3, x: 39_341, y: 15_556 },
+  jewelry_store: { floor: 3, x: 7_628, y: 47_470 },
+  tea_shop: { floor: 3, x: 22_884, y: 47_470 },
   formal_clothing_store: { floor: 3, x: 39_341, y: 47_470 },
   tool_store: { floor: 3, x: 54_597, y: 15_556 },
+  shoe_store: { floor: 3, x: 54_597, y: 47_470 },
+  music_shop: { floor: 4, x: 7_628, y: 15_556 },
+  mirror_shop: { floor: 4, x: 22_884, y: 15_556 },
+  lighting_store: { floor: 4, x: 39_341, y: 15_556 },
+  cafe_f04: { floor: 4, x: 54_597, y: 15_556 },
+  antique_shop_f04: { floor: 4, x: 7_628, y: 47_470 },
+  record_store: { floor: 4, x: 22_884, y: 47_470 },
   book_store: { floor: 4, x: 39_341, y: 47_470 },
+  restaurant: { floor: 5, x: 7_628, y: 15_556 },
+  antique_shop_f05: { floor: 5, x: 22_884, y: 15_556 },
+  phone_store_f05: { floor: 5, x: 39_341, y: 15_556 },
+  tv_store: { floor: 5, x: 54_597, y: 15_556 },
+  mattress_store: { floor: 5, x: 7_628, y: 47_470 },
+  hostel: { floor: 5, x: 22_884, y: 47_470 },
+  salon: { floor: 5, x: 39_341, y: 47_470 },
+  barber: { floor: 5, x: 54_597, y: 47_470 },
+  radio_station: { floor: 6, x: 7_628, y: 15_556, room: "office", officeUnitNumber: 1 },
+  music_studio: { floor: 6, x: 22_884, y: 15_556, room: "office", officeUnitNumber: 1 },
+  school: { floor: 6, x: 39_341, y: 15_556, room: "office", officeUnitNumber: 2 },
+  art_supply_store: { floor: 6, x: 54_597, y: 15_556, room: "office", officeUnitNumber: 2 },
+  meeting_room: { floor: 6, x: 7_628, y: 47_469, room: "office", officeUnitNumber: 3 },
+  public_workspace: { floor: 6, x: 22_884, y: 47_469, room: "office", officeUnitNumber: 3 },
+  study_hall: { floor: 6, x: 39_341, y: 47_469, room: "office", officeUnitNumber: 4 },
+  flower_shop: { floor: 6, x: 54_597, y: 47_469, room: "office", officeUnitNumber: 4 },
   plant_store: { floor: 9, x: 39_341, y: 15_556 },
   android_replicant_repair: { floor: 8, x: 54_597, y: 15_556 },
   vespa_shop: { floor: 9, x: 54_597, y: 15_556 },
   vehicle_dealership: { floor: 1, x: 49_979_414, y: 50_006_505, room: "lobby" },
+};
+const TOWER_B1_BUSINESS_SHOP_LOCATIONS: Record<string, { level: 1; x: number; y: number }> = {
+  tower_admin: { level: 1, x: 3_535, y: 6_364 },
+  tower_shipping: { level: 1, x: 10_606, y: 6_364 },
+  tower_trash: { level: 1, x: 17_677, y: 6_364 },
+  tower_food_supply: { level: 1, x: 24_748, y: 6_364 },
+  tower_construction: { level: 1, x: 3_535, y: 21_920 },
+  tower_materials_supply: { level: 1, x: 10_606, y: 21_920 },
+  tower_power: { level: 1, x: 17_677, y: 21_920 },
+  tower_water: { level: 1, x: 24_748, y: 21_920 },
 };
 const TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM = 1_000;
 const TOWER_SHOP_SHELF_CAPACITY_PER_ITEM = 100;
@@ -1016,7 +1059,8 @@ router.post("/items/buy", async (req, res) => {
   const repeatablePlacementItem = item.type === "furniture" || item.type === "decor";
   if (source === "tower_business") {
     const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
-    if (!identity.desktopLink || !shop) {
+    const b1Shop = TOWER_B1_BUSINESS_SHOP_LOCATIONS[businessKey];
+    if (!identity.desktopLink || (!shop && !b1Shop)) {
       res.status(403).json({ error: "Business purchases require an in-person desktop shop interaction." });
       return;
     }
@@ -1027,18 +1071,40 @@ router.post("/items/buy", async (req, res) => {
       res.status(403).json({ error: "This shop does not stock that item." });
       return;
     }
-    const [presence] = await db.select().from(desktopOfficePresenceTable)
-      .where(eq(desktopOfficePresenceTable.userId, userId))
-      .limit(1);
-    const presenceAgeMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
-    const distance = presence
-      ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
-      : Number.POSITIVE_INFINITY;
-    if (!presence || presence.linkId !== identity.desktopLinkId
-      || presence.floorNumber !== shop.floor || presence.room !== (shop.room ?? "hallway")
-      || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
-      res.status(403).json({ error: "Approach this Tower shop before purchasing." });
-      return;
+    if (b1Shop) {
+      const [presence] = await db.select().from(desktopBasementPresenceTable)
+        .where(eq(desktopBasementPresenceTable.userId, userId))
+        .limit(1);
+      const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+      const distance = presence
+        ? Math.hypot(presence.x - b1Shop.x, presence.y - b1Shop.y)
+        : Number.POSITIVE_INFINITY;
+      if (!presence || presence.linkId !== identity.desktopLinkId
+        || presence.level !== b1Shop.level || ageMs < 0 || ageMs > 10_000 || distance > 1_400) {
+        res.status(403).json({ error: "Approach this B1 business in the linked desktop game before purchasing." });
+        return;
+      }
+    } else {
+      const [presence] = await db.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, userId))
+        .limit(1);
+      const [presenceOfficeUnit] = presence?.officeUnitId
+        ? await db.select({ unitNumber: shadowTowerOfficeUnitsTable.unitNumber })
+          .from(shadowTowerOfficeUnitsTable)
+          .where(eq(shadowTowerOfficeUnitsTable.id, presence.officeUnitId))
+          .limit(1)
+        : [];
+      const presenceAgeMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+      const distance = presence && shop
+        ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
+        : Number.POSITIVE_INFINITY;
+      if (!presence || !shop || presence.linkId !== identity.desktopLinkId
+        || presence.floorNumber !== shop.floor || presence.room !== (shop.room ?? "hallway")
+        || (shop.officeUnitNumber !== undefined && presenceOfficeUnit?.unitNumber !== shop.officeUnitNumber)
+        || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
+        res.status(403).json({ error: "Approach this Tower shop before purchasing." });
+        return;
+      }
     }
       businessName = listing.sellerName ?? "Tower shop";
   }
