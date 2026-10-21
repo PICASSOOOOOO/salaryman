@@ -109,6 +109,7 @@
 - [VendKing utility rule](vendking-utility-rule.md) — Decorative goods are valid stock; price stronger supported benefits higher.
 - [Tower floor access and previews](shadow-tower-rules.md) — Align geometry, access, services, and prices; see [Godot-native previews](tower-floor-previews.md).
 - [Godot visual pipeline](godot-visual-continuity.md) — Preserve native 3D and character continuity; see [procedural attachments](godot-review-model-attachments.md).
+- [Godot indentation verification](godot-indentation-verification.md) — Keep literal tabs in GDScript patches and run the headless parser before focused tests.
 - [Rigged voxel avatar conversion](rigged-voxel-avatar.md) — Avoid independent remeshes of overlapping shells; verify clean shading and all 32 clips before replacing the live model.
 - [Game capture workflows](godot-movie-capture-paths.md) — `--write-movie` resolves under the Godot project root; see [packaged capture](desktop-game-capture.md) for virtual-display pitfalls.
 - [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.

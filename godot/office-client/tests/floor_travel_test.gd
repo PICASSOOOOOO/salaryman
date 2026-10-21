@@ -312,6 +312,10 @@ func _run_tests() -> void:
 		"test-elevator-floor-display-text"
 	) as Label3D
 	assert(elevator_indicator != null)
+	assert(client.dynamic_root.get_node_or_null("test-elevator-freight-sign") == null)
+	client._build_elevator_visual(Vector3(4.0, 0.0, 0.0), "test-service-elevator", true)
+	assert(client.dynamic_root.get_node_or_null("test-service-elevator-freight-sign") is Label3D)
+	assert(client.dynamic_root.get_node_or_null("test-service-elevator-safety-stripe-0") is MeshInstance3D)
 	client._sync_elevator_floor_indicators({
 		"room": "basement_b4",
 		"floor": 1,

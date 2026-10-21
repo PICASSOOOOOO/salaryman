@@ -215,6 +215,11 @@ def _request_tower_floor(
     basement_sync: Any | None = None,
 ) -> CommandResult:
     nearby = scene.nearby_object
+    if state.active_shop_shipment is not None \
+        and (nearby is None or nearby.kind != "service_elevator"):
+        message = "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR"
+        state.notice = message
+        return CommandResult(False, message)
     if scene.is_basement:
         if floor == int(scene.basement_level or 1):
             message = f"ALREADY ON BASEMENT B{floor}"
@@ -364,6 +369,8 @@ def _handle_basement_interact(
         return None
 
     if nearby.id == "basement-b1-back-entrance":
+        if state.active_shop_shipment is not None:
+            return CommandResult(False, "DELIVER THE SHOP FREIGHT BEFORE LEAVING THE TOWER")
         if basement_sync is None or not basement_sync.queue_exit(scene):
             return CommandResult(False, "B1 REAR ENTRANCE EXIT UNAVAILABLE")
         state.close_page()
@@ -385,6 +392,8 @@ def _handle_basement_interact(
         return CommandResult(True, message)
 
     if nearby.kind == "basement_stairs":
+        if state.active_shop_shipment is not None:
+            return CommandResult(False, "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR")
         level = int(scene.basement_level or 1)
         if nearby.id == "basement-stairs-up-b1":
             if basement_sync is None or not basement_sync.queue_exit(scene):
@@ -591,6 +600,8 @@ def apply_command(
             return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "stairs" \
             and requested_object_id in (None, nearby.id):
+            if state.active_shop_shipment is not None:
+                return CommandResult(False, "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR")
             destination = nearby.destination_floor
             if destination is None:
                 return CommandResult(False, "STAIR DIRECTION IS NOT AVAILABLE")
@@ -603,6 +614,8 @@ def apply_command(
             )
         if nearby is not None and nearby.kind in {"elevator", "service_elevator"} \
             and requested_object_id in (None, nearby.id):
+            if state.active_shop_shipment is not None and nearby.kind == "elevator":
+                return CommandResult(False, "SHOP FREIGHT MUST TRAVEL BY SERVICE ELEVATOR")
             return _request_tower_floor(
                 nearby.destination_floor or scene.current_floor,
                 state,

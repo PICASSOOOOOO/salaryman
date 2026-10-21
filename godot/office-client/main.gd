@@ -1587,7 +1587,23 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	var shipment: Dictionary = value if value is Dictionary else {}
 	if shipment.get("status") != "in_delivery":
 		if is_instance_valid(shop_cargo_visual):
-			shop_cargo_visual.queue_free()
+			if not bool(shop_cargo_visual.get_meta("delivery_exit_started", false)):
+				shop_cargo_visual.set_meta("delivery_exit_started", true)
+				var departing_cart: Node3D = shop_cargo_visual
+				var exit_tween := create_tween()
+				exit_tween.tween_property(
+					departing_cart,
+					"position",
+					departing_cart.position + Vector3(0.0, 0.0, -0.65),
+					0.42,
+				).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				exit_tween.parallel().tween_property(
+					departing_cart,
+					"scale",
+					Vector3.ZERO,
+					0.42,
+				)
+				exit_tween.tween_callback(departing_cart.queue_free)
 			shop_cargo_visual = null
 		return
 	if is_instance_valid(shop_cargo_visual):
@@ -1669,6 +1685,10 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	company_badge.outline_size = 3
 	company_badge.outline_modulate = Color("#30271d")
 	shop_cargo_visual.add_child(company_badge)
+	shop_cargo_visual.scale = Vector3.ONE * 0.72
+	var pickup_tween := create_tween()
+	pickup_tween.tween_property(shop_cargo_visual, "scale", Vector3.ONE, 0.38) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _on_player_action_requested(action: String) -> void:
@@ -2116,7 +2136,12 @@ func _process(delta: float) -> void:
 			_abort_elevator_transition("ELEVATOR REQUEST TIMED OUT")
 	_smooth_visual_player(delta)
 	if is_instance_valid(shop_cargo_visual):
-		shop_cargo_visual.position.y = 0.08 + sin(animation_clock * 5.0) * 0.025
+		var cart_speed := visual_player_velocity.length()
+		shop_cargo_visual.position.y = 0.08 + sin(animation_clock * (4.5 + cart_speed)) * (0.012 + minf(cart_speed * 0.002, 0.025))
+		shop_cargo_visual.rotation.z = sin(animation_clock * 3.2) * 0.025 if elevator_transition_active else 0.0
+		for cart_part in shop_cargo_visual.get_children():
+			if cart_part.name == "CartWheel" and cart_part is Node3D:
+				cart_part.rotate_object_local(Vector3.RIGHT, cart_speed * delta * 2.4)
 	_update_camera(delta)
 	_update_hud()
 	_advance_feature_panel_animations(delta)
