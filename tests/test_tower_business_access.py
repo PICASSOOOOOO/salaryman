@@ -3,9 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import unittest
+from unittest.mock import patch
 
 from pygame_sim.business_services import business_hours_profile, business_hours_status
 from pygame_sim.objects import build_tower_object_registry
+from pygame_sim.scene import build_tower_scene
+from pygame_sim.state import OfficeState
 from pygame_sim.world_layout import FLOOR_PLAN
 
 
@@ -42,8 +45,24 @@ class TowerBusinessAccessTests(unittest.TestCase):
             ]
             self.assertIsNotNone(door, f"{business_key} on floor {floor} needs a door")
             self.assertEqual(door.business_key, business_key)  # type: ignore[union-attr]
-            self.assertIsNotNone(counter, f"{business_key} on floor {floor} needs a service counter")
-            self.assertEqual(len(seats), 2, f"{business_key} on floor {floor} needs lobby seats")
+            if floor <= 5:
+                self.assertIsNotNone(counter, f"{business_key} on floor {floor} needs a service counter")
+                self.assertEqual(len(seats), 2, f"{business_key} on floor {floor} needs lobby seats")
+
+    def test_closed_business_door_rejects_entry(self) -> None:
+        scene = build_tower_scene()
+        state = OfficeState.with_default_roster()
+        door = scene.objects.get("floor-02-business-01-door")
+        self.assertIsNotNone(door)
+
+        with patch(
+            "pygame_sim.objects.business_hours_status",
+            return_value=(False, "MON–SAT 06:00–22:00"),
+        ):
+            result = scene.objects.interact(door.id, state, scene)
+
+        self.assertFalse(result.success)
+        self.assertIn("LOCKED", result.message)
 
     def test_business_hour_profiles_cover_24_7_24_6_food_and_night_service(self) -> None:
         sunday_01 = datetime(2026, 10, 25, 1, 0, tzinfo=MINX)

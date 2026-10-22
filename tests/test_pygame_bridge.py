@@ -35,12 +35,39 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertFalse(decoded["office"]["musicEnabled"])
         self.assertLessEqual(len(encoded.encode("utf-8")), MAX_OUTBOUND_LINE_BYTES)
 
+    def test_business_door_snapshot_tracks_open_hours_for_godot(self):
+        door = self.scene.objects.get("floor-02-business-01-door")
+        self.assertIsNotNone(door)
+
+        with patch(
+            "pygame_sim.bridge.business_hours_status",
+            return_value=(True, "MON–SAT 06:00–22:00"),
+        ):
+            open_snapshot = build_snapshot(self.state, self.scene, sequence=8)
+        open_door = next(item for item in open_snapshot["scene"]["objects"] if item["id"] == door.id)
+        self.assertTrue(open_door["businessOpen"])
+        self.assertTrue(open_door["doorOpen"])
+        self.assertEqual(open_door["businessHours"], "MON–SAT 06:00–22:00")
+
+        with patch(
+            "pygame_sim.bridge.business_hours_status",
+            return_value=(False, "MON–SAT 06:00–22:00"),
+        ):
+            closed_snapshot = build_snapshot(self.state, self.scene, sequence=9)
+        closed_door = next(item for item in closed_snapshot["scene"]["objects"] if item["id"] == door.id)
+        self.assertFalse(closed_door["businessOpen"])
+        self.assertFalse(closed_door["doorOpen"])
+
     def test_vehicle_dealership_kiosk_opens_its_shop_screen(self):
         dealership = self.scene.objects.get("lobby-kiosk-vehicle_dealership")
         self.assertIsNotNone(dealership)
         self.assertEqual(dealership.business_key, "vehicle_dealership")
 
-        result = self.scene.objects.interact(dealership.id, self.state, self.scene)
+        with patch(
+            "pygame_sim.objects.business_hours_status",
+            return_value=(True, "EVERY DAY 00:00–24:00"),
+        ):
+            result = self.scene.objects.interact(dealership.id, self.state, self.scene)
 
         self.assertTrue(result.success)
         self.assertEqual(self.state.active_page, "business_shop")
@@ -633,7 +660,11 @@ class PygameBridgeTests(unittest.TestCase):
         dealership = self.scene.objects.get("lobby-kiosk-vehicle_dealership")
         self.assertIsNotNone(dealership)
         self.scene.player_position = dealership.position
-        self.assertTrue(self.scene.objects.interact(dealership.id, self.state, self.scene).success)
+        with patch(
+            "pygame_sim.objects.business_hours_status",
+            return_value=(True, "EVERY DAY 00:00–24:00"),
+        ):
+            self.assertTrue(self.scene.objects.interact(dealership.id, self.state, self.scene).success)
         self.state.business_stock_lines = [{
             "sellerBusinessKey": "vehicle_dealership",
             "items": [{"id": "veh_car"}],
@@ -645,21 +676,25 @@ class PygameBridgeTests(unittest.TestCase):
             ),
         )
 
-        result = apply_command(
-            {
-                "type": "command",
-                "version": PROTOCOL_VERSION,
-                "id": "godot-vehicle-purchase",
-                "name": "buy_business_item",
-                "payload": {
-                    "business_key": "vehicle_dealership",
-                    "item_id": "veh_car",
+        with patch(
+            "pygame_sim.bridge.business_hours_status",
+            return_value=(True, "EVERY DAY 00:00–24:00"),
+        ):
+            result = apply_command(
+                {
+                    "type": "command",
+                    "version": PROTOCOL_VERSION,
+                    "id": "godot-vehicle-purchase",
+                    "name": "buy_business_item",
+                    "payload": {
+                        "business_key": "vehicle_dealership",
+                        "item_id": "veh_car",
+                    },
                 },
-            },
-            self.state,
-            self.scene,
-            building_sync,
-        )
+                self.state,
+                self.scene,
+                building_sync,
+            )
 
         self.assertTrue(result.ok)
         self.assertEqual(

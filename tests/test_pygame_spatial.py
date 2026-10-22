@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
@@ -386,18 +387,20 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertEqual(result.destination, "floor:4")
         self.assertEqual(scene.current_room, "construction_f04")
 
-    def test_tower_office_doors_toggle_and_b1_yard_fence_has_one_open_gate(self):
+    def test_tower_office_doors_follow_business_hours_and_b1_yard_fence_has_one_open_gate(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
         door = scene.objects.get("floor-02-business-01-door")
         scene.select_room(door.room)
         scene.player_position = door.position
 
-        opened = scene.interact(state, door.id)
+        with patch(
+            "pygame_sim.objects.business_hours_status",
+            return_value=(True, "MON–SAT 06:00–22:00"),
+        ):
+            opened = scene.interact(state, door.id)
         self.assertTrue(opened.success)
-        self.assertIn(door.id, scene.opened_door_ids)
-        closed = scene.interact(state, door.id)
-        self.assertTrue(closed.success)
+        self.assertIn("OPEN", opened.message)
         self.assertNotIn(door.id, scene.opened_door_ids)
 
         b1 = FLOOR_PLAN["businessSuiteLayout"]["b1"]
