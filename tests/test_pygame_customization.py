@@ -53,7 +53,7 @@ class PygameCustomizationTests(unittest.TestCase):
 
             saved = json.loads(save_path.read_text(encoding="utf-8"))
             restored = OfficeState.load_from_file(save_path)
-            self.assertEqual(saved["version"], 2)
+            self.assertEqual(saved["version"], 3)
             self.assertEqual(
                 restored.get_room_customization("office_03"),
                 {"wall_style": "sunrise", "decor_style": "greenhouse"},
