@@ -11,6 +11,12 @@ The Tower basement departments are:
 - B5: power station and backup generators; this is the source for area-specific construction power exports.
 - B6: water-pumping and plumbing department.
 
+Basement development is currently the top game-building priority; finish and deepen B1–B6 before returning to Tower shop-floor expansion.
+
+**Why:** The user explicitly said to build out the basements too and make them the top priority.
+
+**How to apply:** Prioritize functional, role-specific basement gameplay across B1–B6 over additional shop-floor work.
+
 One service elevator serves the basements and the upper Tower. The lobby also has
 about four passenger elevators and two separate stairwells. This supersedes the
 earlier temporary stairs-only basement restriction; keep all destinations

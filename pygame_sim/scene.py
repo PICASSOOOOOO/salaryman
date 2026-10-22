@@ -136,6 +136,7 @@ class TowerScene:
     def set_basement_snapshot(self, snapshot: object) -> None:
         """Keep only bounded fields consumed by local game rendering and actions."""
         self.objects.remove("tower-ghost")
+        self.objects.remove("basement-b4-supply-stock")
         if not self.is_basement or not isinstance(snapshot, dict):
             self.basement_snapshot = None
             return
@@ -251,6 +252,23 @@ class TowerScene:
                         "advisoryOnly": True,
                     })
             safe_operations["workSuggestions"] = normalized_suggestions
+        stored_supply_crates = (
+            int(safe_operations.get("storedSupplyCrates", 0))
+            if safe_operations is not None
+            else 0
+        )
+        if self.basement_level == 4 and stored_supply_crates > 0:
+            self.objects.add(
+                OfficeObject(
+                    "basement-b4-supply-stock",
+                    "supply_crate",
+                    f"B4 VITAL SUPPLIES / {stored_supply_crates:,} CRATES",
+                    "basement_b4",
+                    (5_500, 7_500),
+                    "SERVER-TRACKED VITAL SUPPLY STOCK",
+                    interactive=False,
+                )
+            )
         drop_point = snapshot.get("carcassDropPoint")
         raw_ghost = snapshot.get("ghost")
         normalized_ghost: dict[str, object] | None = None

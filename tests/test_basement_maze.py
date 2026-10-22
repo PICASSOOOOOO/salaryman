@@ -56,6 +56,28 @@ class BasementMazeTests(unittest.TestCase):
             }],
         )
 
+    def test_b4_supply_stock_appears_as_a_server_counted_crate_stack(self) -> None:
+        scene = TowerScene()
+        self.assertTrue(scene.select_basement_level(4))
+
+        scene.set_basement_snapshot({
+            "level": 4,
+            "towerOperations": {"storedSupplyCrates": 37},
+        })
+
+        stock = scene.objects.get("basement-b4-supply-stock")
+        self.assertIsNotNone(stock)
+        self.assertEqual(stock.kind, "supply_crate")
+        self.assertEqual(stock.label, "B4 VITAL SUPPLIES / 37 CRATES")
+        self.assertFalse(stock.interactive)
+        self.assertTrue(scene._room_position_is_walkable(stock.position))
+
+        scene.set_basement_snapshot({
+            "level": 4,
+            "towerOperations": {"storedSupplyCrates": 0},
+        })
+        self.assertIsNone(scene.objects.get("basement-b4-supply-stock"))
+
     def test_tunnel_routes_are_connected_and_have_dead_ends(self) -> None:
         for level in (2, 3, 4, 5, 6):
             cells = maze_cells(level)

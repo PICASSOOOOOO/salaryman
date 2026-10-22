@@ -1488,16 +1488,16 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             (8_500, 5_000), (8_500, 6_000),
         ),
         4: (
-            (1_500, 4_500), (2_500, 4_500), (3_500, 4_500),
-            (4_500, 4_500), (5_500, 5_500),
+            (1_500, 2_500), (1_500, 3_500), (1_500, 4_500),
+            (2_500, 5_500), (2_500, 6_500),
         ),
         5: (
-            (2_500, 6_500), (3_500, 6_500), (4_500, 6_500),
-            (5_500, 6_500), (6_500, 6_500),
+            (2_500, 3_500), (2_500, 4_500), (2_500, 5_500),
+            (2_500, 6_500), (3_500, 3_500),
         ),
         6: (
-            (3_500, 7_500), (4_500, 7_500), (5_500, 7_500),
-            (6_500, 7_500), (7_500, 3_500),
+            (7_500, 2_500), (7_500, 3_500), (7_500, 4_500),
+            (7_500, 5_500), (8_500, 3_500),
         ),
     }
     fixture_kinds = (
@@ -1519,6 +1519,6 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 position,
                 "" if is_vending_fixture else prompt,
                 interactive=kind not in {"fire_extinguisher", "vending_machine"},
-            ))
+            ), scale_legacy_coordinates=False)
     registry.auto_scale_legacy_coordinates = False
     return registry

@@ -3,10 +3,10 @@ name: Tower business locations and stock
 description: Tower suite capacity and named rosters, plus the no-directory and read-only stock boundaries.
 ---
 
-Pablo Corp is the initial operator of the lobby, Floors 1–12, and basements B1–B6. The named shop scope covers existing locations on Floors 1–12 and B1–B6; Floors 13–67 remain under construction without named shop rosters. Floor 1 is an open lobby with reception and vehicle-dealership kiosks. Floors 2–6 and 8–12 have business suites; Floor 7 is a meditation temple with no business suite:
+The existing Tower plan contains named locations on Floors 1–12 and B1–B6, but the current shop expansion stays within Floors 1–7. Floors 13–67 remain under construction without named shop rosters. Floor 1 is an open lobby with reception and vehicle-dealership kiosks. Floors 2–6 and 8–12 have business suites; Floor 7 is a meditation temple with no business suite:
 - Floor 2: cafeteria (Common Table 67), clinic (Lumen Care Clinic), pharmacy (Third Shift Pharmacy), Banco Ombra currency/gold exchange, Pablo Corp Real Estate, fish, furniture, and Mender-9 Terminal Works.
 - Floor 3: phone, liquor/alcohol and cigarettes, office equipment, tools, jewelry/watches and gold exchange, tea, formal clothing, and shoes.
-- Floor 4: music, mirror, lighting, cafe, antique, record, book, and one intentionally unnamed eighth suite.
+- Floor 4: music, mirror, lighting, cafe, antique, record, book, and the public-locker shop in Unit 8.
 - Floor 5: restaurant, antique, phone, TV, mattress, hostel, salon, and barber.
 - Floor 6: radio, music studio, school, art supply, meeting room, public workspace, study hall, and flower shop.
 - Floor 8: landscaping, interior design, rugs, android/replicant repair, glasses, glass installation, plumbing, and electrical service.
@@ -34,8 +34,8 @@ marketplace. Keep unrelated browser features unchanged.
 **Why:** The user corrected the Tower business model and explicitly limited known assignments to confirmed locations.
 
 **How to apply:** Keep each listed business in its assigned physical suite,
-preserve the unnamed Floor 4 unit as unnamed, and do not add a Tower directory
-or marketplace. Maintain the shared-fixture, read-only-stock, and
+keep the Floor 4 public-locker shop distinct in Unit 8, and do not add a Tower
+directory or marketplace. Maintain the shared-fixture, read-only-stock, and
 Ghost-proximity boundaries.
 
 ## Updated vertical competition and property tiers

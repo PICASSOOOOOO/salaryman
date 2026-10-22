@@ -143,7 +143,7 @@
 - [Tower building vitality](tower-building-vitality.md) — Pablo Corp pays partner shop owners; owners pay employees and expand creatively over a five-real-time-year city/server plan.
 - [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
-- [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
+- [Tower basement layout and access](tower-basement-layout.md) — B1–B6 are the current top game-building priority; preserve each assigned department role.
 - [Tower wealth paths](tower-wealth-paths.md) — NPCs invest; all brands are tradable; player/NPC credit score is earned reputation that survives resets.
 - [Tower business locations and stock](floor-seven-marketplace-scope.md) — Current shop expansion stays within packed Floors 1–7, with one distinct location per listed shop.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
