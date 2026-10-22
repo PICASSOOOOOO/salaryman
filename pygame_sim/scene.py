@@ -31,7 +31,30 @@ FLOOR_COUNT = int(FLOOR_PLAN["floorCount"])
 OBJECT_INTERACTION_RADIUS = 1_400
 
 
-NPC_ROUTES: dict[str, tuple[tuple[tuple[int, int], ...], ...]] = {}
+def _build_office_npc_routes() -> dict[str, tuple[tuple[tuple[int, int], ...], ...]]:
+    """Give floor-six office workers small, deterministic routes within their suites."""
+    offices = {
+        str(item["id"]): tuple(int(value) for value in item["bounds"])
+        for item in FLOOR_PLAN["baseLayout"]["offices"]
+    }
+    routes: dict[str, list[tuple[tuple[int, int], ...]]] = {}
+    for business in FLOOR_PLAN["playableFloors"]["6"]["businesses"]:
+        room_id = str(business["officeRoom"])
+        x, y, width, height = offices[room_id]
+        half_width = width // 2
+        half_x = x if business["officeHalf"] == "west" else x + half_width
+        inset = 1_500
+        route = (
+            (half_x + inset, y + inset),
+            (half_x + half_width - inset, y + inset),
+            (half_x + half_width - inset, y + height - inset),
+            (half_x + inset, y + height - inset),
+        )
+        routes.setdefault(room_id, []).append(route)
+    return {room_id: tuple(room_routes) for room_id, room_routes in routes.items()}
+
+
+NPC_ROUTES = _build_office_npc_routes()
 
 CharacterAction = Literal["stand", "jump", "sit", "sleep", "fight", "sweep", "maintenance"]
 

@@ -32,7 +32,6 @@ class PygameSpatialTests(unittest.TestCase):
                 "vending_machine",
                 "elevator",
                 "stairs",
-                "arcade",
                 "desk",
                 "chair",
             }.issubset(kinds)
@@ -122,15 +121,16 @@ class PygameSpatialTests(unittest.TestCase):
     def test_nearby_interactions_route_without_renderer_logic(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
-        scene.select_room("recreation")
-        arcade = scene.objects.get("arcade-cyber-serpent")
-        scene.player_position = arcade.position
+        scene.select_floor(6)
+        vending = scene.objects.get("recreation-vending")
+        self.assertIsNotNone(vending)
+        scene.player_position = vending.position
 
         result = scene.interact(state)
 
         self.assertTrue(result.success)
-        self.assertEqual(result.route, "/arcade/cyber_serpent")
-        self.assertEqual(state.last_arcade_game, "cyber_serpent")
+        self.assertEqual(result.route, "tower-vending")
+        self.assertEqual(state.active_page, "vending")
 
     def test_lobby_spawn_can_interact_with_reception_desk(self):
         state = OfficeState.with_default_roster()
@@ -144,7 +144,8 @@ class PygameSpatialTests(unittest.TestCase):
 
     def test_movement_inside_office_does_not_snap_back_to_lobby(self):
         scene = build_tower_scene()
-        scene.select_room("executive")
+        self.assertTrue(scene.select_floor(6))
+        self.assertTrue(scene.select_room("executive"))
 
         scene.set_motion_input(1.0, 0.0)
         scene.update_motion(1 / 30)
@@ -236,7 +237,8 @@ class PygameSpatialTests(unittest.TestCase):
 
     def test_npc_routes_advance_without_player_input(self):
         scene = build_tower_scene()
-        scene.select_room("executive")
+        self.assertTrue(scene.select_floor(6))
+        self.assertTrue(scene.select_room("executive"))
 
         before = scene.npc_pose("executive", 0)
         scene.update_npc_motion(1.0)
@@ -271,35 +273,39 @@ class PygameSpatialTests(unittest.TestCase):
         self.assertTrue(crt_result.success)
         self.assertEqual(player.active_page, "systems")
 
-    def test_vending_purchase_uses_the_existing_ledger_boundary(self):
+    def test_vending_opens_server_priced_panel_without_local_purchase(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
-        scene.select_room("executive")
-        vending = scene.objects.get("executive-vending")
+        scene.select_floor(6)
+        vending = scene.objects.get("recreation-vending")
+        self.assertIsNotNone(vending)
         scene.player_position = vending.position
         funds_before = state.funds
 
         result = scene.interact(state, vending_item="desk_lamp")
 
         self.assertTrue(result.success)
-        self.assertEqual(state.office_inventory["desk_lamp"], 1)
-        self.assertEqual(state.funds, funds_before - 80.0)
+        self.assertEqual(result.route, "tower-vending")
+        self.assertEqual(state.active_page, "vending")
+        self.assertEqual(state.office_inventory.get("desk_lamp", 0), 0)
+        self.assertEqual(state.funds, funds_before)
 
-    def test_vending_coffee_reuses_selected_worker_recovery(self):
+    def test_vending_does_not_apply_unconfirmed_coffee_recovery_locally(self):
         state = OfficeState.with_default_roster()
         state.select_worker(0)
         worker = state.roster.workers[0]
         worker.stamina = 30.0
         scene = build_tower_scene()
-        scene.select_room("executive")
-        vending = scene.objects.get("executive-vending")
+        scene.select_floor(6)
+        vending = scene.objects.get("recreation-vending")
+        self.assertIsNotNone(vending)
         scene.player_position = vending.position
 
         result = scene.interact(state)
 
         self.assertTrue(result.success)
-        self.assertEqual(result.route, "coffee-break")
-        self.assertGreater(worker.stamina, 30.0)
+        self.assertEqual(result.route, "tower-vending")
+        self.assertEqual(worker.stamina, 30.0)
         self.assertNotIn("coffee", state.office_inventory)
 
     def test_physical_service_objects_open_native_game_panels_and_decor_is_not_interactive(self):
@@ -376,12 +382,13 @@ class PygameSpatialTests(unittest.TestCase):
     def test_elevator_and_stairs_update_physical_floor(self):
         state = OfficeState.with_default_roster()
         scene = build_tower_scene()
-        elevator = scene.objects.get("lobby-elevator")
+        self.assertTrue(scene.select_floor(6))
+        elevator = scene.objects.get("recreation-elevator")
         result = scene.interact(state, elevator.id)
         self.assertEqual(result.destination, "floor:1")
-        self.assertEqual(scene.current_room, "recreation")
+        self.assertEqual(scene.current_room, "lobby")
 
-        scene.current_floor = 3
+        self.assertTrue(scene.select_floor(3))
         stairs = scene.objects.get("floor-03-stairwell-2")
         result = scene.interact(state, stairs.id)
         self.assertEqual(result.destination, "floor:4")
