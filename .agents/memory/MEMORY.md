@@ -145,7 +145,7 @@
 - [Stats, skills, and item maintenance](game-skill-maintenance-system.md) — Build extensive point-spend skill trees with cooldowns, degrading gear, and a meaningful repair loop; start with water/power/safety/health.
 - [Tower basement layout and access](tower-basement-layout.md) — B1 has eight operations plus a half-floor yard/rear entrance; preserve B2–B6 roles and authorized vertical travel.
 - [Tower wealth paths](tower-wealth-paths.md) — NPCs invest; all brands are tradable; player/NPC credit score is earned reputation that survives resets.
-- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Lower floors are cheaper entry points; higher floors offer better quality and larger, pricier operations.
+- [Tower business locations and stock](floor-seven-marketplace-scope.md) — Current shop expansion stays within packed Floors 1–7, with one distinct location per listed shop.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.
 - [Brand rivalries and NPC personhood](game-only-rivalries.md) — each brand has shop-level bosses; NPCs act in real systems only with explicit access.

@@ -16,6 +16,12 @@ Pablo Corp is the initial operator of the lobby, Floors 1–12, and basements B1
 - Floor 12: printer, soda and candy, hotel, bar, chapel, library, pawn, and museum.
 - B1: administration, shipping, trash, food supply, construction, materials supply, power, and water.
 
+For the current game-development shop expansion, keep changes within Floors 1–7. The user wants the in-scope floors packed, with each listed shop a single, distinct location; do not expand this work above Floor 7. Floor 7 remains a meditation temple unless the user explicitly directs a change to that purpose. Existing higher-floor data is not authorization to expand this task there.
+
+**Why:** The user clarified that shop development should not be working above Floor 7, that each listed shop should be one-of-one and unique, and that floors should be packed.
+
+**How to apply:** Fill available in-scope shop locations with distinct listed businesses; do not clone shop types or use higher floors as expansion space. Preserve Floor 7's current use unless explicitly changed.
+
 The Tower has no marketplace or directory. Preserve confirmed core economy,
 infrastructure, niche, and specialized shops as unique rather than duplicating
 their primary role. ATM and vending machines are shared hallway fixtures, not
