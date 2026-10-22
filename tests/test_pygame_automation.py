@@ -30,6 +30,12 @@ class PygameAutomationTests(unittest.TestCase):
             room = next(room for room in scene.rooms if room.id == profile.room_id)
             self.assertTrue(all(room.contains(point) for point in profile.route), profile.domain)
             self.assertTrue((asset_root / profile.sprite).is_file(), profile.sprite)
+            scene.select_floor(6)
+            self.assertTrue(scene.select_room(profile.room_id), profile.domain)
+            self.assertTrue(
+                all(scene._room_position_is_walkable(point) for point in profile.route),
+                profile.domain,
+            )
 
     def test_automation_characters_open_native_game_modules_not_browser_routes(self):
         self.assertEqual(
@@ -44,6 +50,7 @@ class PygameAutomationTests(unittest.TestCase):
 
     def test_enabled_characters_walk_and_disabled_characters_wait_at_their_workstation(self):
         scene = build_tower_scene()
+        scene.select_floor(6)
         scene.select_room("office_03")
         ops = next(profile for profile in AUTOMATION_CHARACTERS if profile.domain == "business_ops")
         research = next(profile for profile in AUTOMATION_CHARACTERS if profile.domain == "market_research")
@@ -65,6 +72,7 @@ class PygameAutomationTests(unittest.TestCase):
 
     def test_nearby_character_inspection_opens_read_only_status_page(self):
         scene = build_tower_scene()
+        scene.select_floor(6)
         state = OfficeState.with_default_roster()
         scene.select_room("office_03")
         ops = next(profile for profile in AUTOMATION_CHARACTERS if profile.domain == "business_ops")
@@ -86,6 +94,7 @@ class PygameAutomationTests(unittest.TestCase):
 
     def test_unlinked_snapshot_does_not_mark_characters_as_running(self):
         scene = build_tower_scene()
+        scene.select_floor(6)
         scene.select_room("office_03")
 
         actors = scene.automation_character_states()
@@ -143,6 +152,7 @@ class PygameAutomationTests(unittest.TestCase):
 
     def test_bridge_snapshot_contains_agent_poses_but_never_device_credentials(self):
         scene = build_tower_scene()
+        scene.select_floor(6)
         scene.select_room("office_03")
         scene.set_autopilot_snapshot(AutopilotSnapshot(
             "connected",

@@ -38,13 +38,13 @@ class AutomationCharacter:
     phase_seconds: float = 0.0
 
 
-# Routes stay inside the existing first-floor rooms. They are deliberately
+# Routes stay inside the existing Floor 6 rooms. They are deliberately
 # separate from the employee loops so each automation has its own work circuit.
 AUTOMATION_CHARACTERS = (
     AutomationCharacter(
         "business_ops", "PIP", "SHIFT COORDINATOR", "office_03",
         "characters/char_1.png", (91, 208, 155),
-        ((5_250, 5_500), (6_700, 5_500), (6_700, 6_000), (5_250, 6_000)),
+        ((5_250, 37_413), (6_700, 37_413), (6_700, 37_913), (5_250, 37_913)),
         ("SORT TASKS", "CHECK STAFFING", "ROUTE WORK", "UPDATE BOARD"),
         76.0,
         app_label="JOB COMMAND",
@@ -62,7 +62,7 @@ AUTOMATION_CHARACTERS = (
     AutomationCharacter(
         "crm_calls", "ECHO", "CLIENT CARE", "public",
         "characters/char_3.png", (105, 198, 207),
-        ((3_150, 5_450), (4_650, 5_450), (4_650, 6_050), (3_150, 6_050)),
+        ((34_863, 5_450), (36_363, 5_450), (36_363, 6_050), (34_863, 6_050)),
         ("SORT INBOX", "CHECK OPT-OUTS", "QUEUE FOLLOW-UP", "LOG ACTIVITY"),
         82.0,
         app_label="CONTACTS",
@@ -71,7 +71,7 @@ AUTOMATION_CHARACTERS = (
     AutomationCharacter(
         "marketing", "KITE", "CAMPAIGN DESIGNER", "office_04",
         "characters/char_4.png", (238, 139, 103),
-        ((7_450, 5_450), (8_850, 5_450), (8_850, 6_050), (7_450, 6_050)),
+        ((39_163, 37_363), (40_563, 37_363), (40_563, 37_963), (39_163, 37_963)),
         ("DRAFT CAMPAIGN", "CHECK CHANNELS", "REVIEW QUEUE", "PREPARE POST"),
         79.0,
         app_label="MARKETING",
@@ -80,7 +80,7 @@ AUTOMATION_CHARACTERS = (
     AutomationCharacter(
         "creative_work", "MUSE", "CREATIVE PARTNER", "recreation",
         "characters/char_5.png", (177, 153, 219),
-        ((1_550, 3_700), (4_000, 3_700), (4_000, 4_900), (1_550, 4_900)),
+        ((30_700, 5_500), (31_500, 5_500), (31_500, 6_100), (30_700, 6_100)),
         ("SHAPE A BRIEF", "REVIEW PROJECT", "SORT REFERENCES", "PREPARE DRAFT"),
         72.0,
         app_label="DARKROOM",
@@ -89,7 +89,7 @@ AUTOMATION_CHARACTERS = (
     AutomationCharacter(
         "market_research", "SCOUT", "MARKET ANALYST", "office_03",
         "characters/char_1.png", (114, 187, 231),
-        ((5_300, 6_650), (6_700, 6_650), (6_700, 7_200), (5_300, 7_200)),
+        ((5_300, 38_563), (6_700, 38_563), (6_700, 39_113), (5_300, 39_113)),
         ("SCAN SOURCES", "COMPARE SIGNALS", "BUILD BRIEF", "QUEUE REVIEW"),
         70.0,
         app_label="INTELLIGENCE REPORTS",

@@ -828,7 +828,7 @@ class TowerScene:
 
     @property
     def nearby_automation_character(self) -> AutomationCharacter | None:
-        if self.current_floor != 1:
+        if self.current_floor != 6:
             return None
         candidates = []
         for profile in AUTOMATION_CHARACTERS:
@@ -843,7 +843,7 @@ class TowerScene:
         return min(candidates, key=lambda item: item[0])[1] if candidates else None
 
     def automation_character_states(self) -> list[dict[str, object]]:
-        if self.current_floor != 1:
+        if self.current_floor != 6:
             return []
         result: list[dict[str, object]] = []
         for profile in AUTOMATION_CHARACTERS:
