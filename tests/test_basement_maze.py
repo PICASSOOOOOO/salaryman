@@ -78,6 +78,33 @@ class BasementMazeTests(unittest.TestCase):
         })
         self.assertIsNone(scene.objects.get("basement-b4-supply-stock"))
 
+    def test_b1_incoming_supplies_appear_in_the_loading_yard_from_server_count(self) -> None:
+        scene = TowerScene()
+        self.assertTrue(scene.select_basement_level(1))
+
+        scene.set_basement_snapshot({
+            "level": 1,
+            "towerOperations": {"incomingSupplyCrates": 12},
+        })
+
+        stock = scene.objects.get("basement-b1-incoming-stock")
+        self.assertIsNotNone(stock)
+        self.assertEqual(stock.kind, "supply_crate")
+        self.assertEqual(stock.room, "basement_b1")
+        self.assertEqual(stock.label, "B1 INCOMING / 12 CRATES")
+        self.assertFalse(stock.interactive)
+        yard = FLOOR_PLAN["businessSuiteLayout"]["b1"]["exteriorLoadingYardHalf"]
+        self.assertGreaterEqual(stock.position[0], yard[0])
+        self.assertLess(stock.position[0], yard[0] + yard[2])
+        self.assertGreaterEqual(stock.position[1], yard[1])
+        self.assertLess(stock.position[1], yard[1] + yard[3])
+
+        scene.set_basement_snapshot({
+            "level": 1,
+            "towerOperations": {"incomingSupplyCrates": 0},
+        })
+        self.assertIsNone(scene.objects.get("basement-b1-incoming-stock"))
+
     def test_tunnel_routes_are_connected_and_have_dead_ends(self) -> None:
         for level in (2, 3, 4, 5, 6):
             cells = maze_cells(level)

@@ -136,6 +136,7 @@ class TowerScene:
     def set_basement_snapshot(self, snapshot: object) -> None:
         """Keep only bounded fields consumed by local game rendering and actions."""
         self.objects.remove("tower-ghost")
+        self.objects.remove("basement-b1-incoming-stock")
         self.objects.remove("basement-b4-supply-stock")
         if not self.is_basement or not isinstance(snapshot, dict):
             self.basement_snapshot = None
@@ -257,6 +258,23 @@ class TowerScene:
             if safe_operations is not None
             else 0
         )
+        incoming_supply_crates = (
+            int(safe_operations.get("incomingSupplyCrates", 0))
+            if safe_operations is not None
+            else 0
+        )
+        if self.basement_level == 1 and incoming_supply_crates > 0:
+            self.objects.add(
+                OfficeObject(
+                    "basement-b1-incoming-stock",
+                    "supply_crate",
+                    f"B1 INCOMING / {incoming_supply_crates:,} CRATES",
+                    "basement_b1",
+                    (44_000, 15_556),
+                    "SERVER-TRACKED INCOMING TOWER SUPPLIES",
+                    interactive=False,
+                )
+            )
         if self.basement_level == 4 and stored_supply_crates > 0:
             self.objects.add(
                 OfficeObject(
