@@ -10,7 +10,10 @@ export type TowerBusinessImprovement =
   | "durability"
   | "comfort"
   | "quality"
-  | "capacity";
+  | "capacity"
+  | "selection"
+  | "speed"
+  | "reliability";
 
 export type TowerBusinessStockLine = {
   id: string;
