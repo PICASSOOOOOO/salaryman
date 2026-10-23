@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { SignInPage } from "@/components/SignInPrompt";
+import OrgConnectorsTab from "./OrgConnectorsTab";
 import {
   Key, Webhook, Plug, FileText, Copy, Trash2, Plus, Check, AlertCircle,
   Loader2, ExternalLink, RefreshCw, Shield, Zap, Globe, ChevronRight,
@@ -12,12 +13,13 @@ import {
 const BASE = import.meta.env.BASE_URL ?? "/";
 const api = (path: string) => `${BASE}api${path}`;
 
-type Tab = "overview" | "keys" | "webhooks" | "endpoints" | "apps";
+type Tab = "overview" | "keys" | "webhooks" | "endpoints" | "apps" | "connectors";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "overview", label: "OVERVIEW", icon: Plug },
   { id: "keys", label: "API KEYS", icon: Key },
   { id: "apps", label: "CONNECTIONS", icon: Globe },
+  { id: "connectors", label: "ORG CONNECTORS", icon: Shield },
   { id: "webhooks", label: "WEBHOOKS", icon: Webhook },
   { id: "endpoints", label: "ENDPOINTS", icon: FileText },
 ];
@@ -784,6 +786,7 @@ export default function PlatformAPI({ embedded = false }: { embedded?: boolean }
         {activeTab === "webhooks" && <WebhooksTab />}
         {activeTab === "endpoints" && <EndpointsTab />}
         {activeTab === "apps" && <AppsTab />}
+        {activeTab === "connectors" && <OrgConnectorsTab />}
       </div>
     </div>
   );

@@ -78,6 +78,7 @@ export * from "./crm-sync";
 export * from "./server-regions";
 export * from "./insurance";
 export * from "./platform-api";
+export * from "./org-connectors";
 export * from "./bans";
 export * from "./city-buildings";
 export * from "./business-ops";
