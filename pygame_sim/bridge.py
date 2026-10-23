@@ -25,6 +25,7 @@ from .pest_work import (
     PEST_JOBS,
     PEST_JOB_BY_ID,
     STAMINA_SUPPLY_ITEMS,
+    USABLE_GAME_SUPPLY_ITEMS,
 )
 from .object_physics import interaction_profile_for
 from .npc_engine import COMPETITION_ACTIONS
@@ -183,7 +184,7 @@ def validate_command(command: object) -> tuple[bool, str]:
             return False, "PEST WORK ORDER NOT ALLOWED"
     elif name == "use_pest_supply":
         item_id = payload.get("item_id")
-        if not isinstance(item_id, str) or item_id not in STAMINA_SUPPLY_ITEMS:
+        if not isinstance(item_id, str) or item_id not in USABLE_GAME_SUPPLY_ITEMS:
             return False, "SUPPLY NOT ALLOWED"
     elif name == "sell_game_item":
         item_id = payload.get("item_id")

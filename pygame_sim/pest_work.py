@@ -44,6 +44,9 @@ STAMINA_SUPPLY_ITEMS = frozenset({
     "tower_food_supply_crate",
     "tower_water_ration",
 })
+USABLE_GAME_SUPPLY_ITEMS = STAMINA_SUPPLY_ITEMS | frozenset({
+    "tower_construction_starter_kit",
+})
 
 
 def normalize_work_orders(raw: object) -> dict[str, dict[str, int | bool]]:

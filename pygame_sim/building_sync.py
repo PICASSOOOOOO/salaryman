@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 from .business_services import PURCHASABLE_BUSINESSES
 
 from .automation import DesktopLink
-from .pest_work import STAMINA_SUPPLY_ITEMS
+from .pest_work import USABLE_GAME_SUPPLY_ITEMS
 from .scene import FLOOR_PLAN, TowerScene
 
 CONSTRUCTION_ROOMS = {f"construction_f{floor:02d}" for floor in range(2, 6)}
@@ -161,7 +161,7 @@ class DesktopBuildingSync:
                 },
             )
         elif action == "consume_supply":
-            if item_id not in STAMINA_SUPPLY_ITEMS:
+            if item_id not in USABLE_GAME_SUPPLY_ITEMS:
                 return False
             request = (
                 "POST",

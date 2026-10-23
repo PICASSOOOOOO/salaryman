@@ -283,6 +283,29 @@ class PygameBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_construction_starter_kit_can_be_used_from_the_inventory(self):
+        self.state.active_page = "inventory"
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
+        )
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "id": "use-construction-kit",
+            "name": "use_pest_supply",
+            "payload": {"item_id": "tower_construction_starter_kit"},
+        }
+
+        self.assertTrue(validate_command(command)[0])
+        result = apply_command(command, self.state, self.scene, building_sync)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(
+            requests,
+            [("consume_supply", "tower_construction_starter_kit")],
+        )
+
     def test_tower_work_advice_is_a_read_only_basement_command(self):
         command = {
             "type": "command",

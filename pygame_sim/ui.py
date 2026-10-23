@@ -20,7 +20,7 @@ from .customization import (
 )
 from .models import Worker
 from .objects import OfficeObject
-from .pest_work import MELEE_MOVES, PEST_JOBS, STAMINA_SUPPLY_ITEMS
+from .pest_work import MELEE_MOVES, PEST_JOBS, USABLE_GAME_SUPPLY_ITEMS
 from .scene import FLOOR_PLAN, TowerScene
 from .state import OfficeState
 
@@ -1986,7 +1986,7 @@ class SolarPunkRenderer:
                     quantity = max(1, int(entry.get("quantity", 1) or 1))
                     row = pygame.Rect(panel.x + 26, content_y + 34 + index * 39, panel.width - 52, 32)
                     pygame.draw.rect(self.screen, (229, 234, 224), row, border_radius=4)
-                    if raw_item_id in STAMINA_SUPPLY_ITEMS:
+                    if raw_item_id in USABLE_GAME_SUPPLY_ITEMS:
                         self.text(item_id[:32], (row.x + 12, row.y + 9), self.font_sm, (39, 64, 51))
                         self.text(f"×{quantity}", (row.right - 128, row.y + 9), self.font_sm, (61, 100, 74))
                         button(
