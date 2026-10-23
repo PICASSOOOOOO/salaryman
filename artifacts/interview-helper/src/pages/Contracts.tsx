@@ -22,11 +22,29 @@ const EMPTY_DRAFT = {
   type: "nda",
   partyA: "",
   partyB: "",
-  governingLaw: "Delaware, USA",
+  clientEmail: "",
+  country: "",
+  governingLaw: "",
   effectiveDate: new Date().toISOString().slice(0, 10),
   terms: "",
   extraInstructions: "",
 };
+
+interface SavedContract {
+  id: number;
+  templateType: string;
+  partyA: string;
+  partyB: string;
+  clientEmail: string;
+  country: string;
+  jurisdiction: string;
+  summary: string;
+  documentText: string;
+  status: string;
+  deliveryMethod: string;
+  deliveryReference: string;
+  sentAt: string | null;
+}
 
 export default function Contracts() {
   const { isAuthenticated } = useAuth();
@@ -41,6 +59,10 @@ export default function Contracts() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [savedContracts, setSavedContracts] = useState<SavedContract[]>([]);
+  const [savedId, setSavedId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLDivElement | null>(null);
 
@@ -52,6 +74,19 @@ export default function Contracts() {
       .catch(() => {});
     return () => { alive = false; };
   }, []);
+
+  const refreshSaved = useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/business/contracts/saved");
+      if (!res.ok) return;
+      const data = await res.json() as { contracts: SavedContract[] };
+      setSavedContracts(data.contracts);
+    } catch {
+      // The drafting tool remains usable if saved-contract history is unavailable.
+    }
+  }, []);
+
+  useEffect(() => { void refreshSaved(); }, [refreshSaved]);
 
   // Auto-scroll output as tokens stream in.
   useEffect(() => {
@@ -115,6 +150,11 @@ export default function Contracts() {
       setError("Both party names are required.");
       return;
     }
+    if (!draft.country.trim()) {
+      setError("Enter the country whose laws should be considered.");
+      return;
+    }
+    setSavedId(null);
     void runStream("/api/business/contracts/draft", draft);
   }, [draft, runStream]);
 
@@ -152,6 +192,83 @@ export default function Contracts() {
     URL.revokeObjectURL(url);
   }, [output, mode, draft.type]);
 
+  const extractSummary = useCallback((text: string) => {
+    const match = text.match(/##\s*Plain-language summary\s*([\s\S]*?)(?=\n##\s|$)/i);
+    return match?.[1]?.trim().slice(0, 6000) ?? "";
+  }, []);
+
+  const saveContract = useCallback(async () => {
+    if (!output.trim() || mode !== "draft") return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/api/business/contracts/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...draft,
+          documentText: output,
+          summary: extractSummary(output),
+        }),
+      });
+      const data = await res.json().catch(() => ({})) as { contract?: SavedContract; error?: string };
+      if (!res.ok || !data.contract) throw new Error(data.error || `Save failed (${res.status})`);
+      setSavedId(data.contract.id);
+      await refreshSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save contract.");
+    } finally {
+      setSaving(false);
+    }
+  }, [draft, output, mode, extractSummary, refreshSaved]);
+
+  const prepareEmail = useCallback(async () => {
+    if (!draft.clientEmail.trim()) {
+      setError("Add the client's email address before preparing an email.");
+      return;
+    }
+    if (!savedId) {
+      setError("Save this contract first so it is linked to the client record.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(output);
+    } catch {
+      setError("Copying the contract failed. Use COPY, then open the email draft.");
+      return;
+    }
+    const summary = extractSummary(output);
+    const subject = encodeURIComponent(`Contract for review — ${draft.partyA} and ${draft.partyB}`);
+    const body = encodeURIComponent(
+      `Hello ${draft.partyB},\n\nPlease review the contract draft. I have copied the full text to your clipboard so it can be pasted into this message or your signing application.\n\nSummary:\n${summary}\n\nThis is an AI-generated draft and should be reviewed by qualified counsel before signing.`,
+    );
+    window.location.href = `mailto:${encodeURIComponent(draft.clientEmail)}?subject=${subject}&body=${body}`;
+    setError(null);
+  }, [draft, savedId, output, extractSummary]);
+
+  const recordSent = useCallback(async (contractId: number) => {
+    const method = window.prompt("How did you send it? Enter email, Acrobat Sign, LegalZoom, or another provider.");
+    if (!method?.trim()) return;
+    const reference = window.prompt("Optional paper-trail reference (sent date, email subject, or provider envelope ID):") ?? "";
+    setDeliveryBusy(true);
+    try {
+      const res = await apiFetch(`/api/business/contracts/saved/${contractId}/delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: method.trim(), reference: reference.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error || "Could not save delivery record.");
+      }
+      await refreshSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save delivery record.");
+    } finally {
+      setDeliveryBusy(false);
+    }
+  }, [refreshSaved]);
+
   if (!isAuthenticated) {
     return <SignInPage context="CONTRACTS — Pablo's law desk" />;
   }
@@ -172,7 +289,7 @@ export default function Contracts() {
               {boomerMode ? "CONTRACTS" : "Contracts"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Draft enforceable, signature-ready contracts in seconds. Pablo runs the pen — you review and sign. AI-generated drafts are not legal advice; have a licensed attorney in your jurisdiction review before execution.
+                  Draft a plain-language summary and full contract for a selected country, save it with the client contact, then prepare an email or record a signing-provider paper trail. AI drafts are not legal advice; have a qualified local lawyer review before signing.
             </p>
           </div>
 
@@ -202,6 +319,7 @@ export default function Contracts() {
                   <li>Federal Defend Trade Secrets Act (DTSA) and state-level non-compete enforceability (CA / ND / OK ban most).</li>
                   <li>AAA and JAMS arbitration rules. Standard reps & warranties practice.</li>
                   <li>Mark unsupplied facts with [BRACKETED PLACEHOLDERS] so you know what to fill.</li>
+                  <li>Country and jurisdiction are inputs, not a guarantee of local legal compliance.</li>
                   <li>Always ends with an attorney-review notice plus signature blocks.</li>
                 </ul>
                 <div className="pt-2 text-[11px] text-amber-400/70 flex items-start gap-2">
@@ -269,10 +387,24 @@ export default function Contracts() {
                     testId="input-party-b"
                   />
                   <Field
-                    label="Governing Law / Venue"
+                    label="Client Email (optional)"
+                    value={draft.clientEmail}
+                    onChange={(v) => setDraft((d) => ({ ...d, clientEmail: v }))}
+                    placeholder="client@example.com"
+                    testId="input-client-email"
+                  />
+                  <Field
+                    label="Country"
+                    value={draft.country}
+                    onChange={(v) => setDraft((d) => ({ ...d, country: v }))}
+                    placeholder="Country whose laws should be considered"
+                    testId="input-contract-country"
+                  />
+                  <Field
+                    label="State / Province / Governing Law (optional)"
                     value={draft.governingLaw}
                     onChange={(v) => setDraft((d) => ({ ...d, governingLaw: v }))}
-                    placeholder="Delaware, USA"
+                    placeholder="State, province, or specific governing law"
                     testId="input-governing-law"
                   />
                   <Field
@@ -310,12 +442,12 @@ export default function Contracts() {
 
                 <button
                   onClick={streaming ? stop : generateDraft}
-                  disabled={!streaming && (!draft.partyA.trim() || !draft.partyB.trim())}
+                   disabled={!streaming && (!draft.partyA.trim() || !draft.partyB.trim() || !draft.country.trim())}
                   className="w-full flex items-center justify-center gap-2 bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-40 disabled:hover:bg-amber-500/15 border border-amber-500/40 text-amber-200 font-mono text-xs tracking-[0.25em] py-2.5 rounded-lg transition-colors"
                   data-testid="button-generate-draft"
                 >
                   {streaming ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> STOP</>
-                    : <><Sparkles className="w-3.5 h-3.5" /> DRAFT CONTRACT</>}
+                    : <><Sparkles className="w-3.5 h-3.5" /> DRAFT SUMMARY + CONTRACT</>}
                 </button>
               </>
             ) : (
@@ -394,6 +526,27 @@ export default function Contracts() {
                 >
                   <Download className="w-3 h-3" /> .MD
                 </button>
+                {mode === "draft" && (
+                  <>
+                    <button
+                      onClick={saveContract}
+                      disabled={!output || streaming || saving}
+                      className="text-[10px] font-mono tracking-[0.15em] px-2 py-1 rounded border border-border hover:bg-muted/30 disabled:opacity-40 transition-colors flex items-center gap-1"
+                      data-testid="button-save-contract"
+                    >
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+                      {savedId ? "SAVED" : "SAVE + LINK CLIENT"}
+                    </button>
+                    <button
+                      onClick={prepareEmail}
+                      disabled={!output || streaming || !savedId}
+                      className="text-[10px] font-mono tracking-[0.15em] px-2 py-1 rounded border border-border hover:bg-muted/30 disabled:opacity-40 transition-colors flex items-center gap-1"
+                      data-testid="button-prepare-email"
+                    >
+                      PREPARE EMAIL
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => { setOutput(""); setError(null); }}
                   disabled={!output || streaming}
@@ -420,6 +573,46 @@ export default function Contracts() {
             </div>
           </div>
         </div>
+        {mode === "draft" && (
+          <section className="rounded-lg border border-border bg-muted/10 p-4 space-y-3" aria-label="Saved contracts">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-mono tracking-[0.2em]">SAVED CONTRACTS / CLIENT PAPER TRAIL</h2>
+              <button onClick={() => void refreshSaved()} className="text-[10px] text-muted-foreground hover:text-foreground">REFRESH</button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              SALARYMAN does not currently connect to Acrobat Sign or LegalZoom APIs. Send through your chosen app, then record its name and reference here; the log does not confirm delivery or signature.
+            </p>
+            {savedContracts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Saved drafts and client contacts will appear here.</p>
+            ) : (
+              <div className="space-y-2">
+                {savedContracts.map((contract) => (
+                  <article key={contract.id} className="rounded-md border border-border p-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{contract.partyB} <span className="text-muted-foreground">({contract.clientEmail || "no email"})</span></div>
+                      <div className="text-[11px] text-muted-foreground">{contract.country}{contract.jurisdiction ? ` · ${contract.jurisdiction}` : ""} · {contract.status}</div>
+                      {contract.summary && <p className="text-xs mt-2 whitespace-pre-wrap">{contract.summary}</p>}
+                      {contract.sentAt && <p className="text-[11px] mt-1 text-muted-foreground">Sent: {new Date(contract.sentAt).toLocaleString()}{contract.deliveryReference ? ` · ${contract.deliveryMethod}: ${contract.deliveryReference}` : ` · ${contract.deliveryMethod}`}</p>}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => { setDraft((d) => ({ ...d, type: contract.templateType, partyA: contract.partyA, partyB: contract.partyB, clientEmail: contract.clientEmail, country: contract.country, governingLaw: contract.jurisdiction })); setOutput(contract.documentText); setSavedId(contract.id); }}
+                        className="text-[10px] font-mono px-2 py-1 border border-border rounded hover:bg-muted/30"
+                      >OPEN</button>
+                      {contract.status !== "sent" && (
+                        <button
+                          disabled={deliveryBusy}
+                          onClick={() => void recordSent(contract.id)}
+                          className="text-[10px] font-mono px-2 py-1 border border-border rounded hover:bg-muted/30 disabled:opacity-50"
+                        >RECORD SENT</button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );

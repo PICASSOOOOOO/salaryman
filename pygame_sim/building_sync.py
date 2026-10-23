@@ -102,6 +102,7 @@ class DesktopBuildingSync:
             "bank": ("GET", "/desktop-game/bank", None),
             "waste_deliver": ("POST", "/desktop-building/waste/deliver", {}),
             "supply_receive": ("POST", "/desktop-building/supplies/receive", {}),
+            "supply_issue": ("POST", "/desktop-building/supplies/issue", {}),
             "shop_freight_snapshot": ("GET", "/items/tower-business/shipments/dock", None),
         }
         if action in {"shop_freight_pickup", "shop_freight_receive"}:
@@ -334,6 +335,7 @@ class DesktopBuildingSync:
                     "waste_pickup": "TRASH PICKED UP / TAKE IT TO B1 SHIPPING",
                     "waste_deliver": "TRASH DELIVERED TO B1",
                     "supply_receive": "SUPPLIES RECEIVED AT B1",
+                    "supply_issue": "B4 MATERIALS KIT ISSUED",
                     "shop_freight_snapshot": "B1 SHOP FREIGHT STATUS LOADED",
                     "shop_freight_pickup": "SHOP SHIPMENT LOADED / TAKE IT TO THE DESTINATION",
                     "shop_freight_receive": "SHOP SHIPMENT DELIVERED TO STORAGE",

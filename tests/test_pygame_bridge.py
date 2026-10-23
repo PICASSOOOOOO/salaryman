@@ -232,6 +232,33 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.scene.current_room, "basement_b1")
         self.assertEqual(self.scene.basement_level, 1)
 
+    def test_b4_supply_counter_queues_a_server_authorized_issue_request(self):
+        self.assertTrue(self.scene.select_basement_level(4))
+        supply_store = self.scene.objects.get("basement-b4-supply-store")
+        self.assertIsNotNone(supply_store)
+        self.assertTrue(supply_store.interactive)
+        self.scene.player_position = supply_store.position
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
+        )
+
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "b4-issue-supplies",
+                "name": "interact",
+                "payload": {"object_id": supply_store.id},
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(requests, [("supply_issue", None)])
+
     def test_tower_work_advice_is_a_read_only_basement_command(self):
         command = {
             "type": "command",

@@ -7,6 +7,7 @@ import {
   desktopBasementPestsTable,
   desktopBasementPresenceTable,
   desktopOfficePresenceTable,
+  playerInventoryTable,
   playerLoadoutTable,
   towerOperationsStateTable,
   towerRestroomSessionsTable,
@@ -82,6 +83,9 @@ const TRASH_PICKUP_RADIUS = 500;
 const TRASH_DELIVERY_RADIUS = 650;
 const TRASH_CARRY_MAX = 5;
 const LOADING_GATE_RADIUS = 650;
+const B4_SUPPLY_STORE = { level: 4, x: 5_000, y: 6_500 };
+const B4_SUPPLY_STORE_RADIUS = 650;
+const CARRIED_ITEM_CAPACITY = 24;
 
 const MOVES = {
   stomp_kick: { damage: 18, stamina: 7, range: 500 },
@@ -1099,6 +1103,76 @@ router.post("/desktop-building/supplies/receive", async (req, res): Promise<void
   } catch (error) {
     req.log.error({ err: error }, "Desktop supplies receiving failed");
     res.status(500).json({ error: "Could not receive Tower supplies" });
+  }
+});
+
+router.post("/desktop-building/supplies/issue", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [presence] = await tx.select().from(desktopBasementPresenceTable)
+        .where(eq(desktopBasementPresenceTable.userId, link.userId)).for("update").limit(1);
+      if (!presence || presence.linkId !== link.id || !fresh(presence.lastSeenAt, now)
+        || presence.level !== B4_SUPPLY_STORE.level
+        || distance(presence, B4_SUPPLY_STORE) > B4_SUPPLY_STORE_RADIUS) {
+        return { error: "Move to the B4 vital-supplies issue counter" } as const;
+      }
+      const [assignment] = await tx.select().from(towerStaffAssignmentsTable)
+        .where(eq(towerStaffAssignmentsTable.userId, link.userId)).limit(1);
+      if (!assignment || !["operations", "maintenance"].includes(assignment.role)) {
+        return { error: "B4 supplies are restricted to assigned operations or maintenance staff" } as const;
+      }
+
+      const operations = await advanceTowerOperations(tx, now);
+      if (operations.state.storedSupplyCrates < 1) {
+        return { error: "B4 vital-supplies storage is empty" } as const;
+      }
+
+      const slotIndex = 0;
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${link.userId}), ${slotIndex})`);
+      const heldItems = await tx.select({ itemId: playerInventoryTable.itemId })
+        .from(playerInventoryTable)
+        .where(and(
+          eq(playerInventoryTable.userId, link.userId),
+          eq(playerInventoryTable.slotIndex, slotIndex),
+        ));
+      const alreadyHasKit = heldItems.some((item) => item.itemId === "tower_materials_bundle");
+      if (!alreadyHasKit && heldItems.length >= CARRIED_ITEM_CAPACITY) {
+        return { error: "Carried inventory is full; free a slot before collecting supplies" } as const;
+      }
+
+      await tx.insert(playerInventoryTable).values({
+        userId: link.userId,
+        slotIndex,
+        itemId: "tower_materials_bundle",
+        quantity: 1,
+        acquiredVia: "grant",
+      }).onConflictDoUpdate({
+        target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+        set: { quantity: sql`${playerInventoryTable.quantity} + 1` },
+      });
+      await tx.update(towerOperationsStateTable).set({
+        storedSupplyCrates: operations.state.storedSupplyCrates - 1,
+        updatedAt: now,
+      }).where(eq(towerOperationsStateTable.buildingKey, BUILDING_KEY));
+
+      return {
+        ok: true as const,
+        itemId: "tower_materials_bundle",
+        issued: 1,
+        storedSupplyCrates: operations.state.storedSupplyCrates - 1,
+      };
+    });
+    if ("error" in result && typeof result.error === "string") {
+      res.status(result.error.startsWith("B4 supplies") ? 403 : 409).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "B4 vital-supplies issue failed");
+    res.status(500).json({ error: "Could not issue B4 supplies" });
   }
 });
 

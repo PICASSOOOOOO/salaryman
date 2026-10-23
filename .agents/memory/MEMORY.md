@@ -119,6 +119,7 @@
 - [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — Use the added RDR2 Nemesis Rage mod for NPC shop rivals who cooperate and compete.
 - [Legacy purchase recovery](legacy-purchase-recovery.md) — Keep reset-independent purchase snapshots outside wipe tables; restore monotonically under identity-safe locking.
 - [Business data platform](business-data-platform.md) — Store canonical business data in Postgres and binary files in App Storage.
+- [Contract delivery paper trail](contract-delivery-paper-trail.md) — Keep provider sending user-initiated; record email/provider references without claiming an API is connected.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
 - [Browser API and game scope](browser-game-scope.md) — `/desktop` is the only browser companion; macOS/Windows/Linux builds use native game UI and keep paid gates.
 - [Godot office client runtime](godot-office-client.md) — Preserve controller support; keep controls/display details in a hidden menu, not the gameplay HUD.
