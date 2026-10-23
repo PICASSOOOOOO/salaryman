@@ -24,6 +24,7 @@ export function listNpcShopRestockCandidates(args: {
   stockByItem: Map<string, number>;
   storageCapacityByItem: Map<string, number>;
   blockedItemIds?: Set<string>;
+  priorityItemIds?: Set<string>;
 }): Array<{ itemId: string; quantity: number }> {
   const candidates = args.itemIds.flatMap((itemId, listingOrder) => {
     if (args.blockedItemIds?.has(itemId)) return [];
@@ -31,9 +32,11 @@ export function listNpcShopRestockCandidates(args: {
     if (onHand > NPC_SHOP_REORDER_THRESHOLD_UNITS) return [];
     const capacity = Math.max(0, args.storageCapacityByItem.get(itemId) ?? 1_000);
     const quantity = Math.min(NPC_SHOP_REORDER_TARGET_UNITS - onHand, capacity - onHand);
-    return quantity > 0 ? [{ itemId, quantity, onHand, listingOrder }] : [];
+    const priority = args.priorityItemIds?.has(itemId) ? 0 : 1;
+    return quantity > 0 ? [{ itemId, quantity, onHand, listingOrder, priority }] : [];
   });
-  candidates.sort((a, b) => a.onHand - b.onHand || a.listingOrder - b.listingOrder);
+  candidates.sort((a, b) =>
+    a.priority - b.priority || a.onHand - b.onHand || a.listingOrder - b.listingOrder);
   return candidates.map(({ itemId, quantity }) => ({ itemId, quantity }));
 }
 
@@ -42,6 +45,7 @@ export function chooseNpcShopRestockItem(args: {
   stockByItem: Map<string, number>;
   storageCapacityByItem: Map<string, number>;
   blockedItemIds?: Set<string>;
+  priorityItemIds?: Set<string>;
 }): { itemId: string; quantity: number } | null {
   return listNpcShopRestockCandidates(args)[0] ?? null;
 }

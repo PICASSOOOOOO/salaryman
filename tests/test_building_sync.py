@@ -1,4 +1,5 @@
 import json
+import time
 import unittest
 
 from pygame_sim.automation import DesktopLink
@@ -132,6 +133,38 @@ class BuildingSyncTests(unittest.TestCase):
         self.assertEqual(requests, [("GET", "/items/tower-business/fish-store/shelf-stock", None)])
         self.assertTrue(event.ok)
         self.assertEqual(event.data["payload"]["businessKey"], "fish-store")
+
+    def test_shop_floor_stock_loads_on_arrival_and_refreshes_at_a_bounded_interval(self):
+        requests = []
+
+        def opener(request, timeout):
+            del timeout
+            requests.append((request.get_method(), request.full_url.rsplit("/api", 1)[-1]))
+            return FakeResponse({"floorNumber": 2, "shops": [{"businessKey": "fish-store", "items": []}]})
+
+        sync = DesktopBuildingSync(
+            DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+            opener=opener,
+        )
+        scene = build_tower_scene()
+        self.assertTrue(scene.select_floor(2))
+        sync.update_scene(scene)
+        sync._sync_once()
+        first_event = sync.drain_events()[0]
+        self.assertTrue(first_event.ok)
+        self.assertEqual(first_event.data["action"], "shop_floor_shelf_stock:2")
+        self.assertEqual(
+            requests,
+            [("GET", "/items/tower-business/floor/2/shelf-stock")],
+        )
+
+        sync.update_scene(scene)
+        self.assertTrue(sync._game_requests.empty())
+        sync._last_shop_shelf_poll = time.monotonic() - 16.0
+        sync.update_scene(scene)
+        sync._sync_once()
+        self.assertEqual(len(requests), 2)
+        self.assertFalse(sync.queue_game_request("shop_floor_shelf_stock:7"))
 
     def test_restroom_trash_and_supply_interactions_use_only_the_expected_server_routes(self):
         requests = []
@@ -276,10 +309,14 @@ class BuildingSyncTests(unittest.TestCase):
         )
         scene = build_tower_scene()
         scene.current_floor = 3
+        sync._last_shop_shelf_poll_floor = 3
+        sync._last_shop_shelf_poll = time.monotonic()
         sync.update_scene(scene)
         self.assertTrue(sync.queue_action("hall-office-2-door", "clean"))
 
         scene.current_floor = 4
+        sync._last_shop_shelf_poll_floor = 4
+        sync._last_shop_shelf_poll = time.monotonic()
         sync.update_scene(scene)
         sync._sync_once()
 

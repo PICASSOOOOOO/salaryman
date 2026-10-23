@@ -54,6 +54,15 @@ describe("chooseNpcShopRestockItem", () => {
     })).toEqual({ itemId: "second", quantity: 12 });
   });
 
+  it("prioritizes common goods ahead of lower-stock non-common goods", () => {
+    expect(chooseNpcShopRestockItem({
+      itemIds: ["rare-item", "common-item"],
+      stockByItem: new Map([["rare-item", 0], ["common-item", 4]]),
+      storageCapacityByItem: new Map(),
+      priorityItemIds: new Set(["common-item"]),
+    })).toEqual({ itemId: "common-item", quantity: 8 });
+  });
+
   it("keeps affordable fallback items available when the first SKU is too expensive", () => {
     expect(listNpcShopRestockCandidates({
       itemIds: ["expensive", "affordable"],

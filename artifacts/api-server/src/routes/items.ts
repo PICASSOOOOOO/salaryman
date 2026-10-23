@@ -305,6 +305,8 @@ async function runNpcTowerShopRestockTick(now: Date): Promise<void> {
         stockByItem,
         storageCapacityByItem: capacityByItem,
         blockedItemIds,
+        priorityItemIds: new Set(itemIds.filter((itemId) =>
+          findCatalogItem(itemId)?.rarity === "common")),
       });
       for (const candidate of candidates) {
         const item = findCatalogItem(candidate.itemId);
@@ -832,6 +834,54 @@ router.get("/items/tower-business/shipments/dock", async (req, res) => {
   } catch (error: any) {
     console.error("[TowerShop] B1 dock snapshot failed:", error?.message);
     res.status(500).json({ error: "Could not load B1 shop freight." });
+  }
+});
+
+router.get("/items/tower-business/floor/:floorNumber/shelf-stock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const floorNumber = Number(req.params.floorNumber);
+  if (!Number.isInteger(floorNumber) || floorNumber < 2 || floorNumber > 6) {
+    res.status(400).json({ error: "Floor must be between 2 and 6." });
+    return;
+  }
+
+  const itemIdsByBusiness = new Map<string, Set<string>>();
+  for (const listing of TOWER_BUSINESS_STOCK_LINES) {
+    const businessKey = listing.sellerBusinessKey;
+    const shop = businessKey ? TOWER_BUSINESS_SHOP_LOCATIONS[businessKey] : undefined;
+    if (!businessKey || !shop || shop.floor !== floorNumber || listing.itemIds.length === 0) continue;
+    const itemIds = itemIdsByBusiness.get(businessKey) ?? new Set<string>();
+    listing.itemIds.forEach((itemId) => itemIds.add(itemId));
+    itemIdsByBusiness.set(businessKey, itemIds);
+  }
+
+  try {
+    const businessKeys = [...itemIdsByBusiness.keys()];
+    const rows = businessKeys.length > 0
+      ? await db.select().from(towerShopInventoryTable).where(and(
+        or(...businessKeys.map((businessKey) => eq(towerShopInventoryTable.businessKey, businessKey)))!,
+        sql`${towerShopInventoryTable.shelfQuantity} > 0`,
+      ))
+      : [];
+    const shops = businessKeys.map((businessKey) => ({
+      businessKey,
+      items: rows.flatMap((row) => {
+        if (row.businessKey !== businessKey || !itemIdsByBusiness.get(businessKey)?.has(row.itemId)) return [];
+        const item = findCatalogItem(row.itemId);
+        if (!item) return [];
+        return [{
+          itemId: item.id,
+          name: item.name,
+          itemType: item.type,
+          shelfQuantity: row.shelfQuantity,
+        }];
+      }),
+    }));
+    res.json({ floorNumber, shops });
+  } catch (error: any) {
+    console.error("[TowerShop] floor shelf stock snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load Tower floor shelf stock." });
   }
 });
 

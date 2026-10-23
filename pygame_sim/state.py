@@ -125,6 +125,7 @@ class OfficeState:
     vending_catalog: list[dict[str, object]] | None = None
     business_stock_lines: list[dict[str, object]] | None = None
     business_shelf_stock: dict[str, list[dict[str, object]]] = field(default_factory=dict)
+    business_shelf_stock_floor_keys: dict[int, list[str]] = field(default_factory=dict)
     ghost_listing: dict[str, object] | None = None
     fiat_balance: int | None = None
     fiat_spendable: int | None = None

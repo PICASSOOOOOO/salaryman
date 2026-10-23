@@ -22,6 +22,14 @@ class PygameBridgeTests(unittest.TestCase):
         self.scene = build_tower_scene()
 
     def test_snapshot_is_versioned_and_json_safe(self):
+        self.state.business_shelf_stock = {
+            "fish-store": [{
+                "itemId": "fish_goldfish",
+                "name": "Goldfish",
+                "itemType": "pet",
+                "shelfQuantity": 2,
+            }],
+        }
         snapshot = build_snapshot(self.state, self.scene, sequence=7)
         encoded = json.dumps(snapshot)
         decoded = json.loads(encoded)
@@ -33,6 +41,10 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertIn("mission", decoded["scene"]["navigation"])
         self.assertIsInstance(decoded["scene"]["navigation"]["exits"], list)
         self.assertFalse(decoded["office"]["musicEnabled"])
+        self.assertEqual(
+            decoded["office"]["businessShelfStock"]["fish-store"][0]["shelfQuantity"],
+            2,
+        )
         self.assertLessEqual(len(encoded.encode("utf-8")), MAX_OUTBOUND_LINE_BYTES)
 
     def test_business_door_snapshot_tracks_open_hours_for_godot(self):

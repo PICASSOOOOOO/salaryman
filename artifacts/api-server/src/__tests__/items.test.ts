@@ -481,6 +481,7 @@ describe("Tower shop logistics routes", () => {
     const requests = [
       request(app).get("/api/items/tower-business/fish-store/logistics"),
       request(app).get("/api/items/tower-business/fish-store/shelf-stock"),
+      request(app).get("/api/items/tower-business/floor/2/shelf-stock"),
       request(app).post("/api/items/tower-business/shipments/00000000-0000-4000-8000-000000000001/pickup").send({}),
       request(app).post("/api/items/tower-business/shipments/00000000-0000-4000-8000-000000000001/receive").send({}),
       request(app).post("/api/items/tower-business/restock").send({
@@ -573,6 +574,38 @@ describe("Tower shop logistics routes", () => {
         }
       }
     }
+  });
+
+  it("loads a current-floor snapshot without exposing directory or finance data", async () => {
+    authState.authed = false;
+    const desktop = await seedLinkedDesktopAtOffice({ floorNumber: 2, x: 7_628, y: 15_556 });
+    const res = await request(app).get("/api/items/tower-business/floor/2/shelf-stock")
+      .set("Authorization", `Bearer ${desktop.token}`)
+      .set("x-salaryman-device-id", desktop.deviceId);
+
+    expect(res.status).toBe(200);
+    expect(res.body.floorNumber).toBe(2);
+    expect(res.body.shops.map((shop: { businessKey: string }) => shop.businessKey)).toContain("fish-store");
+    for (const shop of res.body.shops) {
+      expect(shop).toHaveProperty("businessKey");
+      for (const item of shop.items) {
+        expect(item.shelfQuantity).toBeGreaterThan(0);
+        expect(item).not.toHaveProperty("priceFiat");
+        expect(item).not.toHaveProperty("storedQuantity");
+      }
+    }
+
+    const floorFour = await request(app).get("/api/items/tower-business/floor/4/shelf-stock")
+      .set("Authorization", `Bearer ${desktop.token}`)
+      .set("x-salaryman-device-id", desktop.deviceId);
+    expect(floorFour.status).toBe(200);
+    expect(floorFour.body.shops.map((shop: { businessKey: string }) => shop.businessKey))
+      .not.toContain("public_locker_shop");
+
+    const outOfScope = await request(app).get("/api/items/tower-business/floor/7/shelf-stock")
+      .set("Authorization", `Bearer ${desktop.token}`)
+      .set("x-salaryman-device-id", desktop.deviceId);
+    expect(outOfScope.status).toBe(400);
   });
 });
 

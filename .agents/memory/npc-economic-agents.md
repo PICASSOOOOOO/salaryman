@@ -177,6 +177,17 @@ confirmed the tiered intervals.
 order for that same shop and item. Enforce it inside the order transaction so
 concurrent requests cannot evade scarcity; don't apply it to manual shelf moves.
 
+A player purchase does not trigger immediate replenishment. Common items are
+the only goods prioritized for restocking; display refreshes must report actual
+shelf quantities without causing a supplier order or refill.
+
+**Why:** the user clarified that a sale should not automatically refill a shelf
+and that only common items have replenishment priority.
+
+**How to apply:** keep inventory reads and display refreshes side-effect-free.
+Do not tie purchase completion to a restock action; preserve the existing
+rarity-based supplier cooldowns for other items.
+
 Established Pablo Corp shops, companies, and systems should have room to hire
 NPC staff. Workers vary in speed, productivity, and attendance; some are lazy,
 miss work, or steal from their own shops. Poor service can push clients toward

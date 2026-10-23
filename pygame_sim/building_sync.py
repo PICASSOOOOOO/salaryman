@@ -70,6 +70,8 @@ class DesktopBuildingSync:
         self._actions: queue.Queue[tuple[int, str, str, str]] = queue.Queue()
         self._game_requests: queue.Queue[tuple[str, str, str, dict[str, Any] | None]] = queue.Queue()
         self._last_shop_freight_poll = time.monotonic()
+        self._last_shop_shelf_poll = 0.0
+        self._last_shop_shelf_poll_floor: int | None = None
         self._pending_game_actions: set[str] = set()
         self._restroom_sessions: dict[str, str] = {}
         self._events: queue.Queue[BuildingSyncEvent] = queue.Queue()
@@ -188,6 +190,15 @@ class DesktopBuildingSync:
                 f"/items/tower-business/{business_key}/shelf-stock",
                 None,
             )
+        elif action.startswith("shop_floor_shelf_stock:"):
+            floor_text = action.partition(":")[2]
+            if floor_text not in {"2", "3", "4", "5", "6"}:
+                return False
+            request = (
+                "GET",
+                f"/items/tower-business/floor/{floor_text}/shelf-stock",
+                None,
+            )
         else:
             request = requests.get(action)
             if request is None:
@@ -222,6 +233,16 @@ class DesktopBuildingSync:
             if self._authorized_destination == scene.current_floor:
                 self._authorized_destination = None
         now = time.monotonic()
+        if self.link is not None and 2 <= scene.current_floor <= 6:
+            floor_changed = scene.current_floor != self._last_shop_shelf_poll_floor
+            refresh_due = now - self._last_shop_shelf_poll >= 15.0
+            if floor_changed or refresh_due:
+                action = f"shop_floor_shelf_stock:{scene.current_floor}"
+                if self.queue_game_request(action):
+                    self._last_shop_shelf_poll_floor = scene.current_floor
+                    self._last_shop_shelf_poll = now
+        elif not 2 <= scene.current_floor <= 6:
+            self._last_shop_shelf_poll_floor = None
         if self.link is not None and now - self._last_shop_freight_poll >= 2.0:
             if self.queue_game_request("shop_freight_snapshot"):
                 self._last_shop_freight_poll = now

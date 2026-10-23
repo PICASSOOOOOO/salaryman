@@ -129,6 +129,15 @@ def run(argv: list[str] | None = None) -> int:
             state.business_shelf_stock.pop(business_key, None)
             state.game_service_loading.add("shop_shelf_stock")
 
+    def clear_business_shelf_stock_for_floor(floor_number: int) -> None:
+        floor_prefix = f"FLOOR {floor_number:02d} /"
+        for line in state.business_stock_lines or []:
+            if not isinstance(line, dict) or not str(line.get("sellerLocationLabel", "")).startswith(floor_prefix):
+                continue
+            business_key = line.get("sellerBusinessKey")
+            if isinstance(business_key, str):
+                state.business_shelf_stock.pop(business_key, None)
+
     def request_page_data(page: str | None) -> None:
         if page == "inventory":
             state.game_inventory = None
@@ -806,6 +815,30 @@ def run(argv: list[str] | None = None) -> int:
                                 and isinstance(row.get("name"), str)
                             ] if isinstance(rows, list) else []
                             state.notice = f"SHELF STOCK VERIFIED / {len(state.business_shelf_stock[business_key])} ITEMS"
+                    elif isinstance(action, str) and action.startswith("shop_floor_shelf_stock:"):
+                        floor_text = action.partition(":")[2]
+                        floor_number = int(floor_text)
+                        shops = payload.get("shops", [])
+                        if isinstance(shops, list):
+                            verified_keys: list[str] = []
+                            for shop in shops:
+                                if not isinstance(shop, dict):
+                                    continue
+                                business_key = shop.get("businessKey")
+                                rows = shop.get("items", [])
+                                if not isinstance(business_key, str) or not business_key:
+                                    continue
+                                verified_keys.append(business_key)
+                                state.business_shelf_stock[business_key] = [
+                                    row for row in rows
+                                    if isinstance(row, dict)
+                                    and isinstance(row.get("itemId"), str)
+                                    and isinstance(row.get("name"), str)
+                                    and isinstance(row.get("shelfQuantity"), int)
+                                    and row.get("shelfQuantity", 0) > 0
+                                ] if isinstance(rows, list) else []
+                            state.business_shelf_stock_floor_keys[floor_number] = verified_keys
+                            state.notice = f"FLOOR {floor_number:02d} SHELF STOCK REFRESHED"
                     elif action == "bank":
                         balance = payload.get("balance")
                         spendable = payload.get("spendable")
@@ -846,7 +879,16 @@ def run(argv: list[str] | None = None) -> int:
                         request_page_data("inventory")
                 else:
                     error_payload = data.get("errorPayload")
-                    if sync_event.code == "HTTP_402" and isinstance(error_payload, dict):
+                    if isinstance(action, str) and action.startswith("shop_floor_shelf_stock:"):
+                        try:
+                            floor_number = int(action.partition(":")[2])
+                            for business_key in state.business_shelf_stock_floor_keys.pop(floor_number, []):
+                                state.business_shelf_stock.pop(business_key, None)
+                            clear_business_shelf_stock_for_floor(floor_number)
+                        except ValueError:
+                            pass
+                        state.notice = "SHOP STOCK REFRESH FAILED / DISPLAYS CLEARED"
+                    elif sync_event.code == "HTTP_402" and isinstance(error_payload, dict):
                         required = error_payload.get("requiredFiat", error_payload.get("required"))
                         spendable = error_payload.get("spendableFiat", error_payload.get("spendable"))
                         if isinstance(required, (int, float)) and isinstance(spendable, (int, float)):
