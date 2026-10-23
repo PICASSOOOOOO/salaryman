@@ -245,7 +245,7 @@ export default function OrgConnectorsTab() {
           <Shield size={15} className="text-cyan-400" />
           <h3 className="text-xs font-bold tracking-wider text-zinc-200">REGISTER AN APP YOU OWN</h3>
         </div>
-        <p className="mb-3 text-xs text-zinc-500">Register the app-side connector and its requested access. Organization owners approve each connection separately. For now, tokens support connection identity checks only; CRM, call, and file data routes are not enabled.</p>
+        <p className="mb-3 text-xs text-zinc-500">Register the app-side connector and its requested access. Organization owners approve each connection separately. CRM scopes cover organization lead list/detail/create/update and custom-field metadata. Call and file data routes are not enabled.</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <input value={appName} onChange={(event) => setAppName(event.target.value)} maxLength={120} placeholder="App name" className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-200" />
           <input value={appDescription} onChange={(event) => setAppDescription(event.target.value)} maxLength={500} placeholder="What does this app connect?" className="rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-200" />

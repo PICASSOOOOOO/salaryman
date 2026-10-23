@@ -14,3 +14,9 @@ The STEC counterpart currently has no API or app. Build only the provider-indepe
 **Why:** The user explicitly said STEC does not exist yet and both sides need to be connected before provider sync can work.
 
 **How to apply:** Keep registration, organization approval, credential handling, and health checks generic. Add STEC-specific data routes only after the counterpart API and supported operations are available.
+
+Every connector-facing data API must enforce the matching organization-approved scope, not merely authenticate the token or gate the UI.
+
+**Why:** The user clarified that approved connector scopes must apply across all applicable APIs.
+
+**How to apply:** Require `crm:read` or `crm:write` on each supported CRM endpoint; keep call and file APIs behind their own scopes and unavailable until implemented.

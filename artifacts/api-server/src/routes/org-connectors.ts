@@ -17,6 +17,10 @@ import {
   ORG_CONNECTOR_SCOPE_LABELS,
   parseOrgConnectorScopes,
 } from "../lib/org-connectors";
+import {
+  authenticateOrgConnectorToken,
+  parseOrgConnectorBearer,
+} from "../lib/org-connector-auth";
 
 const router = Router();
 router.use("/platform/connectors", requireFeature("claw_bot"));
@@ -349,43 +353,12 @@ router.post("/platform/connectors/connections/:id/revoke", async (req, res) => {
 });
 
 router.get("/connectors/v1/whoami", async (req, res) => {
-  const authorization = req.get("authorization") ?? "";
-  const match = authorization.match(/^Bearer (sma_live_[a-f0-9]{64})$/);
-  if (!match) {
+  const token = parseOrgConnectorBearer(req.get("authorization"));
+  if (!token) {
     res.status(401).json({ error: "Valid connector bearer token required" });
     return;
   }
-  const tokenHash = hashOrgConnectorToken(match[1]);
-  const identity = await db.transaction(async (tx) => {
-    const [row] = await tx.select({
-      connectionId: orgConnectorConnectionsTable.id,
-      orgId: orgConnectorConnectionsTable.orgId,
-      appId: orgConnectorAppsTable.id,
-      appName: orgConnectorAppsTable.name,
-      appActive: orgConnectorAppsTable.active,
-      scopes: orgConnectorConnectionsTable.grantedScopes,
-      status: orgConnectorConnectionsTable.status,
-      lastActivityAt: orgConnectorConnectionsTable.lastActivityAt,
-    }).from(orgConnectorConnectionsTable)
-      .innerJoin(orgConnectorAppsTable, eq(orgConnectorAppsTable.id, orgConnectorConnectionsTable.appId))
-      .where(eq(orgConnectorConnectionsTable.tokenHash, tokenHash))
-      .limit(1);
-    if (!row || row.status !== "connected" || !row.appActive) return null;
-    const now = new Date();
-    await tx.update(orgConnectorConnectionsTable).set({ lastActivityAt: now })
-      .where(eq(orgConnectorConnectionsTable.id, row.connectionId));
-    if (!row.lastActivityAt || now.getTime() - row.lastActivityAt.getTime() >= 15 * 60 * 1000) {
-      await writeActivity(tx, {
-        orgId: row.orgId,
-        connectionId: row.connectionId,
-        appId: row.appId,
-        eventType: "api_authenticated",
-        resourceType: "connector",
-        summary: `${row.appName} authenticated with SALARYMAN.`,
-      });
-    }
-    return row;
-  });
+  const identity = await authenticateOrgConnectorToken(token);
   if (!identity) {
     res.status(401).json({ error: "Connector token is invalid or revoked" });
     return;

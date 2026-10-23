@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createOrgConnectorToken,
+  hasOrgConnectorScope,
   hashOrgConnectorToken,
   parseOrgConnectorScopes,
 } from "./org-connectors";
@@ -17,5 +18,10 @@ describe("organization connector credentials", () => {
     expect(token).toMatch(/^sma_live_[a-f0-9]{64}$/);
     expect(hashOrgConnectorToken(token)).toMatch(/^[a-f0-9]{64}$/);
     expect(hashOrgConnectorToken(token)).not.toBe(token);
+  });
+
+  it("allows only explicitly granted scopes", () => {
+    expect(hasOrgConnectorScope(["crm:read"], "crm:read")).toBe(true);
+    expect(hasOrgConnectorScope(["crm:read"], "crm:write")).toBe(false);
   });
 });

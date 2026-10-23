@@ -25,3 +25,10 @@ export function createOrgConnectorToken(): string {
 export function hashOrgConnectorToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
+
+export function hasOrgConnectorScope(
+  scopes: readonly OrgConnectorScope[],
+  required: OrgConnectorScope,
+): boolean {
+  return scopes.includes(required);
+}
