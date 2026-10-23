@@ -34,9 +34,12 @@ export const desktopBasementPresenceTable = pgTable(
     check("desktop_basement_presence_level_check", sql`${table.level} between 1 and 6`),
     check(
       "desktop_basement_presence_x_check",
-      sql`(${table.level} = 1 and ${table.x} between 0 and 20000) or (${table.level} between 2 and 6 and ${table.x} between 0 and 10000)`,
+      sql`(${table.level} = 1 and ${table.x} between 0 and 56569) or (${table.level} between 2 and 6 and ${table.x} between 0 and 10000)`,
     ),
-    check("desktop_basement_presence_y_check", sql`${table.y} between 0 and 10000`),
+    check(
+      "desktop_basement_presence_y_check",
+      sql`(${table.level} = 1 and ${table.y} between 0 and 28284) or (${table.level} between 2 and 6 and ${table.y} between 0 and 10000)`,
+    ),
     check("desktop_basement_presence_action_check", sql`${table.action} in ('stand', 'walk', 'attack', 'maintenance')`),
     check("desktop_basement_presence_work_target_check", sql`${table.workTarget} is null or ${table.workTarget} in ('power', 'plumbing', 'upkeep')`),
   ],

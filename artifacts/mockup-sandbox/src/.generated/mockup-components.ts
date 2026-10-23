@@ -10,6 +10,6 @@ export const modules: ModuleMap = {
   "./components/mockups/salaryman-mainnav/Consolidated.tsx": () => import("../components/mockups/salaryman-mainnav/Consolidated.tsx"),
   "./components/mockups/salaryman-mainnav/Current.tsx": () => import("../components/mockups/salaryman-mainnav/Current.tsx"),
   "./components/mockups/salaryman-pricing-clean/Plans.tsx": () => import("../components/mockups/salaryman-pricing-clean/Plans.tsx"),
-  "./components/mockups/salaryman-signal-field/SalarymanSignalField.tsx": () => import("../components/mockups/salaryman-signal-field/SalarymanSignalField.tsx"),
-  "./components/mockups/salaryman-professional-home/ProfessionalHome.tsx": () => import("../components/mockups/salaryman-professional-home/ProfessionalHome.tsx")
+  "./components/mockups/salaryman-professional-home/ProfessionalHome.tsx": () => import("../components/mockups/salaryman-professional-home/ProfessionalHome.tsx"),
+  "./components/mockups/salaryman-signal-field/SalarymanSignalField.tsx": () => import("../components/mockups/salaryman-signal-field/SalarymanSignalField.tsx")
 };

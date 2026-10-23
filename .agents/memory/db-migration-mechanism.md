@@ -26,3 +26,5 @@ The source of truth is the schema TS (`lib/db/src/schema/*`). The current post-m
 **Why:** The daily game-business schema addition triggered a proposed `career_positions` primary-key change and table truncation; inspection showed the existing primary key already matched the declared key.
 
 **How to apply:** Inspect the actual database constraint and keep the change additive. If the prompt still threatens unrelated data, stop the push and apply only the reviewed additive development DDL; never bypass production Publish schema review.
+
+The development schema push has also flagged a primary-key change on `tower_operations_state` alongside `career_positions`. Do not accept a truncate prompt to force through unrelated Tower schema changes; inspect and resolve the drift without deleting those rows.
