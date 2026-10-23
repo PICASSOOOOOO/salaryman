@@ -145,9 +145,15 @@ class BuildingSyncTests(unittest.TestCase):
             self.assertTrue(sync.queue_game_request("consume_supply", item_id))
             sync._sync_once()
             self.assertTrue(sync.drain_events()[0].ok)
-        self.assertTrue(sync.queue_game_request("consume_supply", "tower_construction_starter_kit"))
-        sync._sync_once()
-        self.assertTrue(sync.drain_events()[0].ok)
+        for item_id in (
+            "tower_construction_starter_kit",
+            "tower_priority_manifest",
+            "tower_waste_sorting_kit",
+            "tower_materials_bundle",
+        ):
+            self.assertTrue(sync.queue_game_request("consume_supply", item_id))
+            sync._sync_once()
+            self.assertTrue(sync.drain_events()[0].ok)
 
         self.assertEqual(
             requests,
@@ -165,6 +171,9 @@ class BuildingSyncTests(unittest.TestCase):
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_food_supply_crate", "qty": 1}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_water_ration", "qty": 1}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_construction_starter_kit", "qty": 1}),
+                ("POST", "/items/consume", {"slot": 0, "itemId": "tower_priority_manifest", "qty": 1}),
+                ("POST", "/items/consume", {"slot": 0, "itemId": "tower_waste_sorting_kit", "qty": 1}),
+                ("POST", "/items/consume", {"slot": 0, "itemId": "tower_materials_bundle", "qty": 1}),
             ],
         )
 

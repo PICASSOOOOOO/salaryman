@@ -289,21 +289,26 @@ class PygameBridgeTests(unittest.TestCase):
         building_sync = SimpleNamespace(
             queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
         )
-        command = {
-            "type": "command",
-            "version": PROTOCOL_VERSION,
-            "id": "use-construction-kit",
-            "name": "use_pest_supply",
-            "payload": {"item_id": "tower_construction_starter_kit"},
-        }
-
-        self.assertTrue(validate_command(command)[0])
-        result = apply_command(command, self.state, self.scene, building_sync)
-
-        self.assertTrue(result.ok)
+        item_ids = (
+            "tower_construction_starter_kit",
+            "tower_priority_manifest",
+            "tower_waste_sorting_kit",
+            "tower_materials_bundle",
+        )
+        for item_id in item_ids:
+            command = {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": f"use-{item_id}",
+                "name": "use_pest_supply",
+                "payload": {"item_id": item_id},
+            }
+            self.assertTrue(validate_command(command)[0], item_id)
+            result = apply_command(command, self.state, self.scene, building_sync)
+            self.assertTrue(result.ok, item_id)
         self.assertEqual(
             requests,
-            [("consume_supply", "tower_construction_starter_kit")],
+            [("consume_supply", item_id) for item_id in item_ids],
         )
 
     def test_tower_work_advice_is_a_read_only_basement_command(self):

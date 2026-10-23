@@ -46,6 +46,9 @@ STAMINA_SUPPLY_ITEMS = frozenset({
 })
 USABLE_GAME_SUPPLY_ITEMS = STAMINA_SUPPLY_ITEMS | frozenset({
     "tower_construction_starter_kit",
+    "tower_priority_manifest",
+    "tower_waste_sorting_kit",
+    "tower_materials_bundle",
 })
 
 
