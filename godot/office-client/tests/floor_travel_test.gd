@@ -52,26 +52,28 @@ func _run_tests() -> void:
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallNorthL") != null)
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallSouth") != null)
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStorageFloor") != null)
+	client._build_business_suite_layout(floor_plan)
+	for floor_number in range(2, 7):
+		var floor_data: Dictionary = floor_plan["playableFloors"][str(floor_number)]
+		var businesses: Array = floor_data["businesses"]
+		assert(businesses.size() == 8)
+		var assigned_units: Dictionary = {}
+		for business_value in businesses:
+			var business: Dictionary = business_value
+			var business_key := str(business["businessKey"])
+			var unit_number := int(business["unitNumber"])
+			assert(unit_number >= 1 and unit_number <= 8)
+			assert(not assigned_units.has(unit_number))
+			assigned_units[unit_number] = true
+			assert(client.get_node_or_null("BusinessSign_%s" % business_key) != null)
+			assert(client.world_root.get_node_or_null(
+				"Floor%02dUnit%02dStoreFinishFloor" % [floor_number, unit_number]
+			) != null)
 	var floor_four_businesses: Array = floor_plan["playableFloors"]["4"]["businesses"]
-	assert(floor_four_businesses.size() == 8)
-	var locker_business: Dictionary = floor_four_businesses.back()
-	assert(locker_business["businessKey"] == "public_locker_shop")
-	assert(int(locker_business["unitNumber"]) == 8)
-	var floor_four_unit_eight: Dictionary = floor_plan["businessSuiteLayout"]["standardFloorUnits"][7]
-	client._add_business_suite_finish(
-		"construction_f04",
-		"Floor04Unit08",
-		floor_four_unit_eight["bounds"],
-		locker_business,
-		str(floor_four_unit_eight["doorSide"]),
-	)
-	client._add_business_suite_sign(
-		"construction_f04",
-		locker_business,
-		floor_four_unit_eight["bounds"],
-	)
-	assert(client.world_root.get_node_or_null("Floor04Unit08StoreFinishFloor") != null)
-	assert(client.get_node_or_null("BusinessSign_public_locker_shop") != null)
+	assert(floor_four_businesses.back()["businessKey"] == "public_locker_shop")
+	assert(floor_plan["businessSuiteLayout"]["lobbyKiosks"].size() == 2)
+	assert(floor_plan["playableFloors"]["7"]["businesses"].is_empty())
+	assert(str(floor_plan["playableFloors"]["7"]["label"]).contains("MEDITATION TEMPLE"))
 	var base_layout: Dictionary = floor_plan["baseLayout"]
 	var lobby_bounds: Array = base_layout["elevatorLobby"]["bounds"]
 	var main_hall: Array = base_layout["hallways"][0]
