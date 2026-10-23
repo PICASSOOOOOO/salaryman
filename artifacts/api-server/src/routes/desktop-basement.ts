@@ -26,6 +26,7 @@ import {
 } from "../lib/desktop-building-objects";
 import { hasTowerStaffAssignment } from "../lib/tower-staff-access";
 import {
+  TOWER_BASEMENT_B1_BOUNDS,
   TOWER_RESTROOM_STALLS,
   TOWER_SERVICE_ELEVATOR_BASEMENT,
   TOWER_SERVICE_ELEVATOR_LOBBY,
@@ -53,8 +54,6 @@ import { completeInternalText } from "../lib/internal-ai";
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
 const BASEMENT_SIZE = 10_000;
-const B1_WIDTH = 56_569;
-const B1_HEIGHT = 28_284;
 const BASEMENT_STAIRS = { x: 5_000, y: 5_000 };
 const TOWER_BASEMENT_STAIRWELLS = [
   { x: 49_978_650, y: 50_000_800 },
@@ -183,8 +182,8 @@ function isNearTowerBackEntrance(floorNumber: number, point: { x: number; y: num
 }
 
 function positionIsValid(level: number, x: number, y: number): boolean {
-  const maxX = level === 1 ? B1_WIDTH : BASEMENT_SIZE;
-  const maxY = level === 1 ? B1_HEIGHT : BASEMENT_SIZE;
+  const maxX = level === 1 ? TOWER_BASEMENT_B1_BOUNDS.maxX : BASEMENT_SIZE;
+  const maxY = level === 1 ? TOWER_BASEMENT_B1_BOUNDS.maxY : BASEMENT_SIZE;
   return Number.isInteger(x) && Number.isInteger(y)
     && x >= 0 && x <= maxX && y >= 0 && y <= maxY
     && isTowerBasementMazePointWalkable(level, x, y);

@@ -12,7 +12,7 @@ import {
 } from "../lib/tower-basement-layout";
 
 type FloorPlan = {
-  rooms: Array<{ id: string; mazeCells?: number[][] }>;
+  rooms: Array<{ id: string; bounds: number[]; mazeCells?: number[][] }>;
   businessSuiteLayout: {
     lobbyBackEntrance: number[];
     b1: { exteriorGate: number[] };
