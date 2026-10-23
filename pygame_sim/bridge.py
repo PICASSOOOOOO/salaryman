@@ -366,7 +366,7 @@ def _handle_basement_interact(
     if nearby.id == "basement-b4-supply-store":
         if building_sync is None or not building_sync.queue_game_request("supply_issue"):
             return CommandResult(False, "B4 SUPPLY ISSUE UNAVAILABLE / TOWER STAFF ONLY")
-        state.notice = "REQUESTING ONE B4 MATERIALS KIT"
+        state.notice = "REQUESTING ONE B4 TRIAGE KIT"
         return CommandResult(True, state.notice)
 
     if nearby.id == "basement-b1-back-entrance":

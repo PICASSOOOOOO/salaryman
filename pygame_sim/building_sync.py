@@ -335,7 +335,7 @@ class DesktopBuildingSync:
                     "waste_pickup": "TRASH PICKED UP / TAKE IT TO B1 SHIPPING",
                     "waste_deliver": "TRASH DELIVERED TO B1",
                     "supply_receive": "SUPPLIES RECEIVED AT B1",
-                    "supply_issue": "B4 MATERIALS KIT ISSUED",
+                    "supply_issue": "B4 TRIAGE KIT ISSUED",
                     "shop_freight_snapshot": "B1 SHOP FREIGHT STATUS LOADED",
                     "shop_freight_pickup": "SHOP SHIPMENT LOADED / TAKE IT TO THE DESTINATION",
                     "shop_freight_receive": "SHOP SHIPMENT DELIVERED TO STORAGE",

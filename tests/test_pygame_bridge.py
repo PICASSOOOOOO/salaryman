@@ -237,6 +237,7 @@ class PygameBridgeTests(unittest.TestCase):
         supply_store = self.scene.objects.get("basement-b4-supply-store")
         self.assertIsNotNone(supply_store)
         self.assertTrue(supply_store.interactive)
+        self.assertIn("TRIAGE KIT", supply_store.label)
         self.scene.player_position = supply_store.position
         requests = []
         building_sync = SimpleNamespace(
@@ -258,6 +259,19 @@ class PygameBridgeTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(requests, [("supply_issue", None)])
+
+    def test_b4_triage_kit_appears_as_a_usable_stamina_supply(self):
+        self.state.game_inventory = [{
+            "itemId": "tower_clinic_triage_kit",
+            "quantity": 2,
+        }]
+
+        snapshot = build_snapshot(self.state, self.scene, sequence=9)
+
+        self.assertEqual(
+            snapshot["office"]["staminaSupplies"],
+            [{"itemId": "tower_clinic_triage_kit", "quantity": 2}],
+        )
 
     def test_tower_work_advice_is_a_read_only_basement_command(self):
         command = {

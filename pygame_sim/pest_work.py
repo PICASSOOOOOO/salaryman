@@ -37,7 +37,11 @@ PEST_JOBS: tuple[dict[str, Any], ...] = (
     },
 )
 PEST_JOB_BY_ID = {job["id"]: job for job in PEST_JOBS}
-STAMINA_SUPPLY_ITEMS = frozenset({"vend_shift_tonic", "vend_foreman_meal"})
+STAMINA_SUPPLY_ITEMS = frozenset({
+    "vend_shift_tonic",
+    "vend_foreman_meal",
+    "tower_clinic_triage_kit",
+})
 
 
 def normalize_work_orders(raw: object) -> dict[str, dict[str, int | bool]]:

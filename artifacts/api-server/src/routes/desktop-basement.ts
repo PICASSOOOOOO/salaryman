@@ -1138,7 +1138,7 @@ router.post("/desktop-building/supplies/issue", async (req, res): Promise<void> 
           eq(playerInventoryTable.userId, link.userId),
           eq(playerInventoryTable.slotIndex, slotIndex),
         ));
-      const alreadyHasKit = heldItems.some((item) => item.itemId === "tower_materials_bundle");
+      const alreadyHasKit = heldItems.some((item) => item.itemId === "tower_clinic_triage_kit");
       if (!alreadyHasKit && heldItems.length >= CARRIED_ITEM_CAPACITY) {
         return { error: "Carried inventory is full; free a slot before collecting supplies" } as const;
       }
@@ -1146,7 +1146,7 @@ router.post("/desktop-building/supplies/issue", async (req, res): Promise<void> 
       await tx.insert(playerInventoryTable).values({
         userId: link.userId,
         slotIndex,
-        itemId: "tower_materials_bundle",
+        itemId: "tower_clinic_triage_kit",
         quantity: 1,
         acquiredVia: "grant",
       }).onConflictDoUpdate({
@@ -1160,7 +1160,7 @@ router.post("/desktop-building/supplies/issue", async (req, res): Promise<void> 
 
       return {
         ok: true as const,
-        itemId: "tower_materials_bundle",
+        itemId: "tower_clinic_triage_kit",
         issued: 1,
         storedSupplyCrates: operations.state.storedSupplyCrates - 1,
       };

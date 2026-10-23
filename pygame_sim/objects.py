@@ -1362,7 +1362,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             registry.add(OfficeObject("basement-b3-maintenance", "desk", "MAINTENANCE BAY", room, (2_000, 6_000), "BUILDING MAINTENANCE", interactive=False))
             registry.add(OfficeObject("basement-b3-incinerator", "carcass_disposal", "INCINERATOR / CLAIMS", room, (5_000, 7_000), "SELL A CLAIMED CARCASS"))
         elif level == 4:
-            registry.add(OfficeObject("basement-b4-supply-store", "desk", "VITAL SUPPLIES / ISSUE KIT", room, (5_000, 6_500), "ISSUE ONE MATERIALS KIT / TOWER STAFF", interactive=True))
+            registry.add(OfficeObject("basement-b4-supply-store", "desk", "VITAL SUPPLIES / ISSUE TRIAGE KIT", room, (5_000, 6_500), "ISSUE ONE CLINIC TRIAGE KIT / TOWER STAFF", interactive=True))
         elif level == 5:
             registry.add(OfficeObject("basement-b5-power", "utility_station", "POWER / GENERATORS", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"), scale_legacy_coordinates=False)
         elif level == 6:
