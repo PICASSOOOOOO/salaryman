@@ -52,6 +52,26 @@ func _run_tests() -> void:
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallNorthL") != null)
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallSouth") != null)
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStorageFloor") != null)
+	var floor_four_businesses: Array = floor_plan["playableFloors"]["4"]["businesses"]
+	assert(floor_four_businesses.size() == 8)
+	var locker_business: Dictionary = floor_four_businesses.back()
+	assert(locker_business["businessKey"] == "public_locker_shop")
+	assert(int(locker_business["unitNumber"]) == 8)
+	var floor_four_unit_eight: Dictionary = floor_plan["businessSuiteLayout"]["standardFloorUnits"][7]
+	client._add_business_suite_finish(
+		"construction_f04",
+		"Floor04Unit08",
+		floor_four_unit_eight["bounds"],
+		locker_business,
+		str(floor_four_unit_eight["doorSide"]),
+	)
+	client._add_business_suite_sign(
+		"construction_f04",
+		locker_business,
+		floor_four_unit_eight["bounds"],
+	)
+	assert(client.world_root.get_node_or_null("Floor04Unit08StoreFinishFloor") != null)
+	assert(client.get_node_or_null("BusinessSign_public_locker_shop") != null)
 	var base_layout: Dictionary = floor_plan["baseLayout"]
 	var lobby_bounds: Array = base_layout["elevatorLobby"]["bounds"]
 	var main_hall: Array = base_layout["hallways"][0]

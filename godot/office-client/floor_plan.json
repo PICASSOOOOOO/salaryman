@@ -47,7 +47,8 @@
         {"businessKey": "cafe_f04", "label": "CAFE", "unitNumber": 4},
         {"businessKey": "antique_shop_f04", "label": "ANTIQUE SHOP", "unitNumber": 5},
         {"businessKey": "record_store", "label": "RECORD STORE", "unitNumber": 6},
-        {"businessKey": "book_store", "label": "BOOK STORE", "unitNumber": 7}
+        {"businessKey": "book_store", "label": "BOOK STORE", "unitNumber": 7},
+        {"businessKey": "public_locker_shop", "label": "PUBLIC LOCKER SHOP", "unitNumber": 8}
       ]
     },
     "5": {
