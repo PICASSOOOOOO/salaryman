@@ -146,6 +146,7 @@ class BuildingSyncTests(unittest.TestCase):
             sync._sync_once()
             self.assertTrue(sync.drain_events()[0].ok)
         for item_id in (
+            "tower_admin_pass",
             "tower_construction_starter_kit",
             "tower_priority_manifest",
             "tower_waste_sorting_kit",
@@ -170,6 +171,7 @@ class BuildingSyncTests(unittest.TestCase):
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_clinic_triage_kit", "qty": 1}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_food_supply_crate", "qty": 1}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_water_ration", "qty": 1}),
+                ("POST", "/items/consume", {"slot": 0, "itemId": "tower_admin_pass", "qty": 1}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_construction_starter_kit", "qty": 1}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_priority_manifest", "qty": 1}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_waste_sorting_kit", "qty": 1}),

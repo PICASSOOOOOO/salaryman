@@ -283,13 +283,14 @@ class PygameBridgeTests(unittest.TestCase):
             ],
         )
 
-    def test_construction_starter_kit_can_be_used_from_the_inventory(self):
+    def test_b1_work_bonus_items_can_be_used_from_the_inventory(self):
         self.state.active_page = "inventory"
         requests = []
         building_sync = SimpleNamespace(
             queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
         )
         item_ids = (
+            "tower_admin_pass",
             "tower_construction_starter_kit",
             "tower_priority_manifest",
             "tower_waste_sorting_kit",
