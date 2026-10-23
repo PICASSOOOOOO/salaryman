@@ -41,6 +41,8 @@ STAMINA_SUPPLY_ITEMS = frozenset({
     "vend_shift_tonic",
     "vend_foreman_meal",
     "tower_clinic_triage_kit",
+    "tower_food_supply_crate",
+    "tower_water_ration",
 })
 
 

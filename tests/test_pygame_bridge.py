@@ -260,17 +260,27 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(requests, [("supply_issue", None)])
 
-    def test_b4_triage_kit_appears_as_a_usable_stamina_supply(self):
+    def test_tower_food_water_and_triage_items_appear_as_usable_stamina_supplies(self):
         self.state.game_inventory = [{
             "itemId": "tower_clinic_triage_kit",
             "quantity": 2,
+        }, {
+            "itemId": "tower_food_supply_crate",
+            "quantity": 1,
+        }, {
+            "itemId": "tower_water_ration",
+            "quantity": 3,
         }]
 
         snapshot = build_snapshot(self.state, self.scene, sequence=9)
 
         self.assertEqual(
             snapshot["office"]["staminaSupplies"],
-            [{"itemId": "tower_clinic_triage_kit", "quantity": 2}],
+            [
+                {"itemId": "tower_clinic_triage_kit", "quantity": 2},
+                {"itemId": "tower_food_supply_crate", "quantity": 1},
+                {"itemId": "tower_water_ration", "quantity": 3},
+            ],
         )
 
     def test_tower_work_advice_is_a_read_only_basement_command(self):

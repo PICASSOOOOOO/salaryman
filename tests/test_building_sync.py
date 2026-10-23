@@ -141,6 +141,10 @@ class BuildingSyncTests(unittest.TestCase):
         self.assertTrue(sync.queue_game_request("consume_supply", "tower_clinic_triage_kit"))
         sync._sync_once()
         self.assertTrue(sync.drain_events()[0].ok)
+        for item_id in ("tower_food_supply_crate", "tower_water_ration"):
+            self.assertTrue(sync.queue_game_request("consume_supply", item_id))
+            sync._sync_once()
+            self.assertTrue(sync.drain_events()[0].ok)
 
         self.assertEqual(
             requests,
@@ -155,6 +159,8 @@ class BuildingSyncTests(unittest.TestCase):
                 ("POST", "/desktop-building/supplies/receive", {}),
                 ("POST", "/desktop-building/supplies/issue", {}),
                 ("POST", "/items/consume", {"slot": 0, "itemId": "tower_clinic_triage_kit", "qty": 1}),
+                ("POST", "/items/consume", {"slot": 0, "itemId": "tower_food_supply_crate", "qty": 1}),
+                ("POST", "/items/consume", {"slot": 0, "itemId": "tower_water_ration", "qty": 1}),
             ],
         )
 
