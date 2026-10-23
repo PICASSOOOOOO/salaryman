@@ -62,6 +62,11 @@ func _run_tests() -> void:
 		"furniture-store": "DisplayFurniturePlinth",
 		"fish-store": "DisplayLeftCase",
 	}
+	var service_businesses := [
+		"banco_ombra", "tower_realty", "tower_terminal_repair", "public_locker_shop",
+		"hostel", "radio_station", "music_studio", "school", "meeting_room",
+		"public_workspace", "study_hall",
+	]
 	for floor_number in range(2, 7):
 		var floor_data: Dictionary = floor_plan["playableFloors"][str(floor_number)]
 		var businesses: Array = floor_data["businesses"]
@@ -84,6 +89,10 @@ func _run_tests() -> void:
 			assert(client.world_root.get_node_or_null(
 				"Floor%02dUnit%02dDisplayPrimaryCollider" % [floor_number, unit_number]
 			) != null)
+			var product_prop: Node = client.world_root.get_node_or_null(
+				"Floor%02dUnit%02dProduct0" % [floor_number, unit_number]
+			)
+			assert((product_prop == null) == service_businesses.has(business_key))
 			if display_markers.has(business_key):
 				assert(client.world_root.get_node_or_null(
 					"Floor%02dUnit%02d%s" % [floor_number, unit_number, display_markers[business_key]]

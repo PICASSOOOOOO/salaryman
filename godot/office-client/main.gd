@@ -978,6 +978,13 @@ func _add_business_customer_displays(
 		Vector3(counter_width + 0.14, 0.08, 1.16),
 		top_material,
 	)
+	var service_businesses := [
+		"banco_ombra", "tower_realty", "tower_terminal_repair", "public_locker_shop",
+		"hostel", "radio_station", "music_studio", "school", "meeting_room",
+		"public_workspace", "study_hall",
+	]
+	if not service_businesses.has(business_key):
+		_add_business_display_stock(room, tag, center_x, sales_y, counter_width, base_y, business_key)
 
 	var left_x := x + width * 0.28
 	var right_x := x + width * 0.72
@@ -1006,6 +1013,50 @@ func _add_business_customer_displays(
 		_:
 			_add_display_island(room, "%sDisplayLeftCase" % tag, left_x, island_y, Vector3(fixture_width, 0.9, fixture_depth), top_material)
 			_add_display_island(room, "%sDisplayRightCase" % tag, right_x, island_y, Vector3(fixture_width, 0.9, fixture_depth), top_material)
+
+
+func _add_business_display_stock(
+	room: String,
+	tag: String,
+	center_x: float,
+	sales_y: float,
+	counter_width: float,
+	base_y: float,
+	business_key: String,
+) -> void:
+	var container_keys := [
+		"shadow_cafeteria", "tower_clinic", "tower_pharmacy", "cafe_f04",
+		"restaurant", "tea_shop", "liquor_store", "flower_shop", "salon", "barber",
+	]
+	var flat_display_keys := [
+		"music_shop", "record_store", "book_store", "office_equipment_store",
+		"formal_clothing_store", "shoe_store", "furniture-store", "mattress_store",
+	]
+	var stock_material := _material(Color("#c4ad83"), 0.78)
+	var stock_accent := _material(Color("#718579"), 0.72)
+	var item_spacing := minf(counter_width * 0.2, 1.4)
+	for index in range(3):
+		var item_x := center_x + (float(index) - 1.0) * item_spacing
+		var item_position := _pygame_to_world(item_x, sales_y, room)
+		if container_keys.has(business_key):
+			var container := CylinderMesh.new()
+			container.top_radius = 0.18
+			container.bottom_radius = 0.22
+			container.height = 0.52
+			container.material = stock_accent if index == 1 else stock_material
+			var container_instance := MeshInstance3D.new()
+			container_instance.name = "%sProduct%d" % [tag, index]
+			container_instance.mesh = container
+			container_instance.position = Vector3(item_position.x, base_y + 1.26, item_position.z)
+			world_root.add_child(container_instance)
+		else:
+			var item_height := 0.16 if flat_display_keys.has(business_key) else 0.44
+			_add_box(
+				"%sProduct%d" % [tag, index],
+				Vector3(item_position.x, base_y + 1.0 + item_height / 2.0, item_position.z),
+				Vector3(0.52, item_height, 0.4),
+				stock_accent if index == 1 else stock_material,
+			)
 
 
 func _add_display_island(
