@@ -297,6 +297,22 @@ describe("desktop basement survival authority", () => {
     expect(exit.body.floor).toBe(1);
   });
 
+  it("accepts server presence movement across the expanded B1 business floor", async () => {
+    await setLobbyPresence();
+    expect((await enterBasement()).status).toBe(200);
+
+    let x = 5_000;
+    let y = 5_000;
+    const targetX = 24_748;
+    const targetY = 21_920;
+    while (x !== targetX || y !== targetY) {
+      x += Math.sign(targetX - x) * Math.min(700, Math.abs(targetX - x));
+      y += Math.sign(targetY - y) * Math.min(700, Math.abs(targetY - y));
+      const movement = await moveBasement(1, x, y);
+      expect(movement.status).toBe(200);
+    }
+  });
+
   it("stores uniform state in the character save without creating basement presence", async () => {
     await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
     await setLobbyPresence();

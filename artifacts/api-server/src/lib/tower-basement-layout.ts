@@ -1,4 +1,5 @@
 export const TOWER_BASEMENT_MAZE_CELL_SIZE = 1_000;
+export const TOWER_BASEMENT_B1_BOUNDS = { maxX: 56_569, maxY: 28_284 } as const;
 export const TOWER_BASEMENT_MAZES: Record<number, readonly (readonly [number, number])[]> = {
   2: [
     [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7],
@@ -38,8 +39,9 @@ export const TOWER_BASEMENT_MAZES: Record<number, readonly (readonly [number, nu
 };
 
 export function isTowerBasementMazePointWalkable(level: number, x: number, y: number): boolean {
-  const maxX = level === 1 ? 20_000 : 10_000;
-  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > maxX || y < 0 || y > 10_000) {
+  const maxX = level === 1 ? TOWER_BASEMENT_B1_BOUNDS.maxX : 10_000;
+  const maxY = level === 1 ? TOWER_BASEMENT_B1_BOUNDS.maxY : 10_000;
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > maxX || y < 0 || y > maxY) {
     return false;
   }
   if (!Number.isInteger(level) || level < 1 || level > 6) return false;
@@ -88,7 +90,7 @@ export const TOWER_BASEMENT_STATIONS = {
   loadingGate: { level: 1, x: 18_500, y: 7_000 },
 } as const;
 
-export const TOWER_BASEMENT_BACK_ENTRANCE = { level: 1, x: 20_000, y: 7_000 } as const;
+export const TOWER_BASEMENT_BACK_ENTRANCE = { level: 1, x: 56_569, y: 19_799 } as const;
 export const TOWER_LOBBY_BACK_ENTRANCE = { x: 49_975_250, y: 50_000_800 } as const;
 
 export const TOWER_TRASH_BINS = {

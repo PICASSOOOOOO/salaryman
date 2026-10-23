@@ -5,6 +5,7 @@ import {
   isTowerBasementMazePointWalkable,
   isTowerBasementMazeSegmentWalkable,
   TOWER_BASEMENT_MAZES,
+  TOWER_BASEMENT_B1_BOUNDS,
   TOWER_BASEMENT_BACK_ENTRANCE,
   TOWER_GHOST_HIDEOUTS,
   TOWER_LOBBY_BACK_ENTRANCE,
@@ -28,13 +29,12 @@ function key([x, y]: readonly [number, number]): string {
 
 describe("Tower basement maze layout", () => {
   it("keeps the B1 exterior gate and lobby rear door aligned with the server route", () => {
-    const expandedCoordinate = (value: number) => Math.round(value * Math.sqrt(8));
     const lobbyCoordinate = (value: number, anchor: number) =>
       Math.round(anchor + (value - anchor) / Math.sqrt(8));
     expect(TOWER_BASEMENT_BACK_ENTRANCE).toEqual({
       level: 1,
-      x: Math.round(floorPlan.businessSuiteLayout.b1.exteriorGate[0] / Math.sqrt(8)),
-      y: Math.round(floorPlan.businessSuiteLayout.b1.exteriorGate[1] / Math.sqrt(8)),
+      x: floorPlan.businessSuiteLayout.b1.exteriorGate[0],
+      y: floorPlan.businessSuiteLayout.b1.exteriorGate[1],
     });
     expect(TOWER_LOBBY_BACK_ENTRANCE).toEqual({
       x: lobbyCoordinate(floorPlan.businessSuiteLayout.lobbyBackEntrance[0], 49_978_000),
@@ -45,6 +45,17 @@ describe("Tower basement maze layout", () => {
       TOWER_BASEMENT_BACK_ENTRANCE.x,
       TOWER_BASEMENT_BACK_ENTRANCE.y,
     )).toBe(true);
+  });
+
+  it("accepts the full physical B1 footprint used by the business suites and loading yard", () => {
+    expect(TOWER_BASEMENT_B1_BOUNDS).toEqual({
+      maxX: floorPlan.rooms.find((room) => room.id === "basement_b1")!.bounds[2],
+      maxY: floorPlan.rooms.find((room) => room.id === "basement_b1")!.bounds[3],
+    });
+    expect(isTowerBasementMazePointWalkable(1, 24_748, 21_920)).toBe(true);
+    expect(isTowerBasementMazePointWalkable(1, 56_569, 19_799)).toBe(true);
+    expect(isTowerBasementMazePointWalkable(1, 56_570, 19_799)).toBe(false);
+    expect(isTowerBasementMazePointWalkable(1, 24_748, 28_285)).toBe(false);
   });
 
   it("matches the Godot floor plan and keeps every corridor connected to the stair landing", () => {

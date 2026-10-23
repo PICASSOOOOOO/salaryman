@@ -18,7 +18,7 @@ from .scene import TowerScene
 
 BASEMENT_PATH = "/desktop-building/basement"
 BASEMENT_SERVICE_ELEVATOR_POSITION = (5_000, 4_000)
-BASEMENT_BACK_ENTRANCE_POSITION = (20_000, 7_000)
+BASEMENT_BACK_ENTRANCE_POSITION = (56_569, 19_799)
 WORK_TARGETS = frozenset({"power", "plumbing", "upkeep"})
 MELEE_MOVES = frozenset({
     "stomp_kick", "punch", "side_kick", "roundhouse_kick", "elbow",
