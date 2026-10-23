@@ -885,6 +885,9 @@ func _add_business_suite_finish(
 		threshold.y = FLOOR_HEIGHT + 0.102
 		_add_box("%sStoreThreshold" % tag, threshold, Vector3(minf(span_x * 0.35, 2.4), 0.025, 0.16), finish["trim"])
 	_add_business_storage_room(room, tag, x, y, width, height, door_side, finish)
+	var tagged_floor := tag.substr(5, 2).to_int() if tag.begins_with("Floor") and tag.length() >= 7 else 0
+	if tagged_floor == 0 or tagged_floor <= 7:
+		_add_business_customer_displays(room, tag, x, y, width, height, door_side, business, finish)
 
 
 func _add_business_storage_room(
@@ -932,6 +935,112 @@ func _add_business_storage_room(
 		var rack := _pygame_to_world(rack_x, start_y + depth * 0.5, room)
 		_add_solid_box("%sStorageRack%d" % [tag, index], Vector3(rack.x, 0.72, rack.z), Vector3(0.72, 1.35, 0.42), rack_material)
 		_add_box("%sStorageCrate%d" % [tag, index], Vector3(storage_center.x + (index - 0.5) * 0.55, 0.42, storage_center.z), Vector3(0.42, 0.62, 0.42), crate_material)
+
+
+func _add_business_customer_displays(
+	room: String,
+	tag: String,
+	x: int,
+	y: int,
+	width: int,
+	height: int,
+	door_side: String,
+	business: Dictionary,
+	finish: Dictionary,
+) -> void:
+	var storage_depth := int(height * 0.25)
+	var customer_depth := height - storage_depth
+	var showroom_start := y + storage_depth if door_side == "south" else y
+	var front_offset := int(customer_depth * 0.22)
+	var sales_y := showroom_start + customer_depth - front_offset if door_side == "south" else showroom_start + front_offset
+	var island_y := showroom_start + int(customer_depth * 0.58) if door_side == "south" else showroom_start + int(customer_depth * 0.42)
+	var center_x := x + width / 2.0
+	var world_scale_x := float(width) * WORLD_SCALE
+	var counter_width := clampf(world_scale_x * 0.28, 2.4, 8.5)
+	var fixture_width := clampf(world_scale_x * 0.11, 1.4, 3.8)
+	var fixture_depth := clampf(float(height) * WORLD_SCALE * 0.035, 1.2, 2.8)
+	var business_key := str(business.get("businessKey", ""))
+	var profile := _business_finish_style(business_key)
+	var base_y := FLOOR_HEIGHT + 0.115
+	var top_material: Material = finish["wall"]
+	var body_material: Material = finish["trim"]
+
+	var counter_position := _pygame_to_world(center_x, sales_y, room)
+	_add_box(
+		"%sDisplayPrimary" % tag,
+		Vector3(counter_position.x, base_y + 0.46, counter_position.z),
+		Vector3(counter_width, 0.92, 1.05),
+		body_material,
+	)
+	_add_box(
+		"%sDisplayPrimaryTop" % tag,
+		Vector3(counter_position.x, base_y + 0.96, counter_position.z),
+		Vector3(counter_width + 0.14, 0.08, 1.16),
+		top_material,
+	)
+
+	var left_x := x + width * 0.28
+	var right_x := x + width * 0.72
+	match profile:
+		"food":
+			_add_display_island(room, "%sDisplayLeft" % tag, left_x, island_y, Vector3(fixture_width, 0.72, fixture_depth), top_material)
+			_add_display_island(room, "%sDisplayRight" % tag, right_x, island_y, Vector3(fixture_width, 0.72, fixture_depth), top_material)
+		"care":
+			_add_display_cabinet(room, "%sDisplayLeftCabinet" % tag, left_x, island_y, fixture_width, 1.65, fixture_depth, body_material, top_material)
+			_add_display_cabinet(room, "%sDisplayRightCabinet" % tag, right_x, island_y, fixture_width, 1.65, fixture_depth, body_material, top_material)
+		"atelier":
+			_add_display_island(room, "%sDisplayLeftPlinth" % tag, left_x, island_y, Vector3(fixture_width, 0.38, fixture_depth), top_material)
+			_add_display_island(room, "%sDisplayRightPlinth" % tag, right_x, island_y, Vector3(fixture_width, 0.38, fixture_depth), top_material)
+		"workshop":
+			_add_display_cabinet(room, "%sDisplayBench" % tag, center_x, island_y, counter_width * 0.82, 0.9, fixture_depth, body_material, top_material)
+			_add_display_island(room, "%sDisplayToolTable" % tag, right_x, showroom_start + int(customer_depth * 0.34), Vector3(fixture_width, 0.78, fixture_depth), top_material)
+		"executive":
+			_add_display_island(room, "%sDisplayServiceDesk" % tag, center_x, island_y, Vector3(counter_width * 0.72, 0.86, fixture_depth), top_material)
+			_add_display_island(room, "%sDisplayWaitingTable" % tag, right_x, showroom_start + int(customer_depth * 0.33), Vector3(fixture_width, 0.46, fixture_depth), body_material)
+		"comfort":
+			_add_display_island(room, "%sDisplayFurniturePlinth" % tag, center_x, island_y, Vector3(counter_width * 0.82, 0.42, fixture_depth * 1.5), top_material)
+			_add_display_island(room, "%sDisplaySideTable" % tag, right_x, showroom_start + int(customer_depth * 0.34), Vector3(fixture_width, 0.52, fixture_depth), body_material)
+		"industrial":
+			_add_display_cabinet(room, "%sDisplayWorktable" % tag, center_x, island_y, counter_width * 0.84, 0.88, fixture_depth, body_material, top_material)
+			_add_display_island(room, "%sDisplaySupplyTable" % tag, right_x, showroom_start + int(customer_depth * 0.34), Vector3(fixture_width, 0.76, fixture_depth), top_material)
+		_:
+			_add_display_island(room, "%sDisplayLeftCase" % tag, left_x, island_y, Vector3(fixture_width, 0.9, fixture_depth), top_material)
+			_add_display_island(room, "%sDisplayRightCase" % tag, right_x, island_y, Vector3(fixture_width, 0.9, fixture_depth), top_material)
+
+
+func _add_display_island(
+	room: String,
+	node_name: String,
+	x: float,
+	y: float,
+	size: Vector3,
+	material: Material,
+) -> void:
+	var position := _pygame_to_world(x, y, room)
+	position.y = FLOOR_HEIGHT + 0.115 + size.y / 2.0
+	_add_box(node_name, position, size, material)
+
+
+func _add_display_cabinet(
+	room: String,
+	node_name: String,
+	x: float,
+	y: float,
+	width: float,
+	height: float,
+	depth: float,
+	body_material: Material,
+	top_material: Material,
+) -> void:
+	var position := _pygame_to_world(x, y, room)
+	position.y = FLOOR_HEIGHT + 0.115 + height / 2.0
+	_add_box(node_name, position, Vector3(width, height, depth), body_material)
+	_add_box(
+		"%sTop" % node_name,
+		position + Vector3(0.0, height / 2.0 + 0.04, 0.0),
+		Vector3(width + 0.12, 0.08, depth + 0.12),
+		top_material,
+	)
 
 
 func _store_side_panel_position(x: float, z: float, room: String, panel_y: float) -> Vector3:

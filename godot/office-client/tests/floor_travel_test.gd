@@ -53,6 +53,15 @@ func _run_tests() -> void:
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStoreWallSouth") != null)
 	assert(client.world_root.get_node_or_null("TestNorthDoorStoreStorageFloor") != null)
 	client._build_business_suite_layout(floor_plan)
+	var display_markers := {
+		"shadow_cafeteria": "DisplayLeft",
+		"tower_clinic": "DisplayLeftCabinet",
+		"formal_clothing_store": "DisplayLeftPlinth",
+		"tool_store": "DisplayBench",
+		"banco_ombra": "DisplayServiceDesk",
+		"furniture-store": "DisplayFurniturePlinth",
+		"fish-store": "DisplayLeftCase",
+	}
 	for floor_number in range(2, 7):
 		var floor_data: Dictionary = floor_plan["playableFloors"][str(floor_number)]
 		var businesses: Array = floor_data["businesses"]
@@ -69,11 +78,27 @@ func _run_tests() -> void:
 			assert(client.world_root.get_node_or_null(
 				"Floor%02dUnit%02dStoreFinishFloor" % [floor_number, unit_number]
 			) != null)
+			assert(client.world_root.get_node_or_null(
+				"Floor%02dUnit%02dDisplayPrimary" % [floor_number, unit_number]
+			) != null)
+			if display_markers.has(business_key):
+				assert(client.world_root.get_node_or_null(
+					"Floor%02dUnit%02d%s" % [floor_number, unit_number, display_markers[business_key]]
+				) != null)
 	var floor_four_businesses: Array = floor_plan["playableFloors"]["4"]["businesses"]
 	assert(floor_four_businesses.back()["businessKey"] == "public_locker_shop")
+	var locker_display: MeshInstance3D = client.world_root.get_node("Floor04Unit08DisplayPrimary")
+	var locker_display_mesh: BoxMesh = locker_display.mesh
+	assert(locker_display.position.y - locker_display_mesh.size.y / 2.0 >= 0.194)
 	assert(floor_plan["businessSuiteLayout"]["lobbyKiosks"].size() == 2)
 	assert(floor_plan["playableFloors"]["7"]["businesses"].is_empty())
 	assert(str(floor_plan["playableFloors"]["7"]["label"]).contains("MEDITATION TEMPLE"))
+	for floor_number in range(8, 13):
+		for business_value in floor_plan["playableFloors"][str(floor_number)]["businesses"]:
+			var high_floor_business: Dictionary = business_value
+			assert(client.world_root.get_node_or_null(
+				"Floor%02dUnit%02dDisplayPrimary" % [floor_number, int(high_floor_business["unitNumber"])]
+			) == null)
 	var base_layout: Dictionary = floor_plan["baseLayout"]
 	var lobby_bounds: Array = base_layout["elevatorLobby"]["bounds"]
 	var main_hall: Array = base_layout["hallways"][0]
