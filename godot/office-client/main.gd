@@ -966,7 +966,7 @@ func _add_business_customer_displays(
 	var body_material: Material = finish["trim"]
 
 	var counter_position := _pygame_to_world(center_x, sales_y, room)
-	_add_box(
+	_add_solid_box(
 		"%sDisplayPrimary" % tag,
 		Vector3(counter_position.x, base_y + 0.46, counter_position.z),
 		Vector3(counter_width, 0.92, 1.05),
@@ -1018,7 +1018,7 @@ func _add_display_island(
 ) -> void:
 	var position := _pygame_to_world(x, y, room)
 	position.y = FLOOR_HEIGHT + 0.115 + size.y / 2.0
-	_add_box(node_name, position, size, material)
+	_add_solid_box(node_name, position, size, material)
 
 
 func _add_display_cabinet(
@@ -1034,7 +1034,7 @@ func _add_display_cabinet(
 ) -> void:
 	var position := _pygame_to_world(x, y, room)
 	position.y = FLOOR_HEIGHT + 0.115 + height / 2.0
-	_add_box(node_name, position, Vector3(width, height, depth), body_material)
+	_add_solid_box(node_name, position, Vector3(width, height, depth), body_material)
 	_add_box(
 		"%sTop" % node_name,
 		position + Vector3(0.0, height / 2.0 + 0.04, 0.0),

@@ -81,6 +81,9 @@ func _run_tests() -> void:
 			assert(client.world_root.get_node_or_null(
 				"Floor%02dUnit%02dDisplayPrimary" % [floor_number, unit_number]
 			) != null)
+			assert(client.world_root.get_node_or_null(
+				"Floor%02dUnit%02dDisplayPrimaryCollider" % [floor_number, unit_number]
+			) != null)
 			if display_markers.has(business_key):
 				assert(client.world_root.get_node_or_null(
 					"Floor%02dUnit%02d%s" % [floor_number, unit_number, display_markers[business_key]]
@@ -90,6 +93,8 @@ func _run_tests() -> void:
 	var locker_display: MeshInstance3D = client.world_root.get_node("Floor04Unit08DisplayPrimary")
 	var locker_display_mesh: BoxMesh = locker_display.mesh
 	assert(locker_display.position.y - locker_display_mesh.size.y / 2.0 >= 0.194)
+	var locker_display_collider: StaticBody3D = client.world_root.get_node("Floor04Unit08DisplayPrimaryCollider")
+	assert(locker_display_collider.collision_layer == 1)
 	assert(floor_plan["businessSuiteLayout"]["lobbyKiosks"].size() == 2)
 	assert(floor_plan["playableFloors"]["7"]["businesses"].is_empty())
 	assert(str(floor_plan["playableFloors"]["7"]["label"]).contains("MEDITATION TEMPLE"))
