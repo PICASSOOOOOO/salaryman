@@ -176,6 +176,18 @@ class DesktopBuildingSync:
                 "/items/sell",
                 {"slot": 0, "itemId": item_id, "qty": 1, "source": "tower_vending"},
             )
+        elif action == "shop_shelf_stock":
+            if (
+                not isinstance(business_key, str) or not business_key
+                or len(business_key) > 64 or not business_key.isascii()
+                or any(not (char.isalnum() or char in "_-") for char in business_key)
+            ):
+                return False
+            request = (
+                "GET",
+                f"/items/tower-business/{business_key}/shelf-stock",
+                None,
+            )
         else:
             request = requests.get(action)
             if request is None:

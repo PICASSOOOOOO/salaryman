@@ -480,6 +480,7 @@ describe("Tower shop logistics routes", () => {
   it("requires a linked desktop credential for shipment and restocking actions", async () => {
     const requests = [
       request(app).get("/api/items/tower-business/fish-store/logistics"),
+      request(app).get("/api/items/tower-business/fish-store/shelf-stock"),
       request(app).post("/api/items/tower-business/shipments/00000000-0000-4000-8000-000000000001/pickup").send({}),
       request(app).post("/api/items/tower-business/shipments/00000000-0000-4000-8000-000000000001/receive").send({}),
       request(app).post("/api/items/tower-business/restock").send({
@@ -492,6 +493,85 @@ describe("Tower shop logistics routes", () => {
     for (const res of responses) {
       expect(res.status).toBe(401);
       expect(res.body.error).toMatch(/desktop credential required/i);
+    }
+  });
+
+  it("returns only allowlisted positive shelf quantities to a linked desktop", async () => {
+    authState.authed = false;
+    const businessKey = "fish-store";
+    const stockIds = ["fish_goldfish", "fish_koi", "furn_desk"];
+    const priorRows = await Promise.all(stockIds.map(async (itemId) => {
+      const [row] = await db.select().from(towerShopInventoryTable).where(and(
+        eq(towerShopInventoryTable.businessKey, businessKey),
+        eq(towerShopInventoryTable.itemId, itemId),
+      )).limit(1);
+      return row;
+    }));
+    const desktop = await seedLinkedDesktopAtOffice({ floorNumber: 2, x: 7_628, y: 15_556 });
+    await db.insert(towerShopAccountsTable).values({ businessKey }).onConflictDoNothing();
+    const quantities = new Map([
+      ["fish_goldfish", 2],
+      ["fish_koi", 0],
+      ["furn_desk", 5],
+    ]);
+
+    try {
+      for (const itemId of stockIds) {
+        await db.insert(towerShopInventoryTable).values({
+          businessKey,
+          itemId,
+          storedQuantity: 0,
+          shelfQuantity: quantities.get(itemId)!,
+          storageCapacity: 100,
+          shelfCapacity: 20,
+          updatedAt: new Date(),
+        }).onConflictDoUpdate({
+          target: [towerShopInventoryTable.businessKey, towerShopInventoryTable.itemId],
+          set: {
+            storedQuantity: 0,
+            shelfQuantity: quantities.get(itemId)!,
+            storageCapacity: 100,
+            shelfCapacity: 20,
+            updatedAt: new Date(),
+          },
+        });
+      }
+      const res = await request(app).get(`/api/items/tower-business/${businessKey}/shelf-stock`)
+        .set("Authorization", `Bearer ${desktop.token}`)
+        .set("x-salaryman-device-id", desktop.deviceId);
+
+      expect(res.status).toBe(200);
+      expect(res.body.businessKey).toBe(businessKey);
+      expect(res.body.items).toHaveLength(1);
+      expect(res.body.items[0]).toMatchObject({
+        itemId: "fish_goldfish",
+        shelfQuantity: 2,
+        name: findCatalogItem("fish_goldfish")?.name,
+        itemType: findCatalogItem("fish_goldfish")?.type,
+      });
+      expect(res.body.items[0]).not.toHaveProperty("storedQuantity");
+      expect(res.body.items[0]).not.toHaveProperty("priceFiat");
+    } finally {
+      for (const [index, itemId] of stockIds.entries()) {
+        const prior = priorRows[index];
+        if (prior) {
+          await db.update(towerShopInventoryTable).set({
+            storedQuantity: prior.storedQuantity,
+            shelfQuantity: prior.shelfQuantity,
+            storageCapacity: prior.storageCapacity,
+            shelfCapacity: prior.shelfCapacity,
+            updatedAt: prior.updatedAt,
+          }).where(and(
+            eq(towerShopInventoryTable.businessKey, businessKey),
+            eq(towerShopInventoryTable.itemId, itemId),
+          ));
+        } else {
+          await db.delete(towerShopInventoryTable).where(and(
+            eq(towerShopInventoryTable.businessKey, businessKey),
+            eq(towerShopInventoryTable.itemId, itemId),
+          ));
+        }
+      }
     }
   });
 });

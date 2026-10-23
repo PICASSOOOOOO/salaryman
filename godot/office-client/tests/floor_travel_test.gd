@@ -62,11 +62,6 @@ func _run_tests() -> void:
 		"furniture-store": "DisplayFurniturePlinth",
 		"fish-store": "DisplayLeftCase",
 	}
-	var service_businesses := [
-		"banco_ombra", "tower_realty", "tower_terminal_repair", "public_locker_shop",
-		"hostel", "radio_station", "music_studio", "school", "meeting_room",
-		"public_workspace", "study_hall",
-	]
 	for floor_number in range(2, 7):
 		var floor_data: Dictionary = floor_plan["playableFloors"][str(floor_number)]
 		var businesses: Array = floor_data["businesses"]
@@ -92,7 +87,7 @@ func _run_tests() -> void:
 			var product_prop: Node = client.world_root.get_node_or_null(
 				"Floor%02dUnit%02dProduct0" % [floor_number, unit_number]
 			)
-			assert((product_prop == null) == service_businesses.has(business_key))
+			assert(product_prop == null)
 			if display_markers.has(business_key):
 				assert(client.world_root.get_node_or_null(
 					"Floor%02dUnit%02d%s" % [floor_number, unit_number, display_markers[business_key]]
@@ -104,6 +99,20 @@ func _run_tests() -> void:
 	assert(locker_display.position.y - locker_display_mesh.size.y / 2.0 >= 0.194)
 	var locker_display_collider: StaticBody3D = client.world_root.get_node("Floor04Unit08DisplayPrimaryCollider")
 	assert(locker_display_collider.collision_layer == 1)
+	assert(client.world_root.get_node_or_null("VerifiedShelfStock_fish-store") == null)
+	client._sync_business_shelf_displays({
+		"fish-store": [{
+			"itemId": "fish_goldfish",
+			"name": "Goldfish",
+			"itemType": "pet",
+			"shelfQuantity": 2,
+		}],
+	})
+	var verified_stock: Node3D = client.world_root.get_node("VerifiedShelfStock_fish-store")
+	assert(verified_stock.get_child_count() == 3)
+	assert((verified_stock.get_node("StockLabel_0") as Label3D).text == "Goldfish · 2")
+	client._sync_business_shelf_displays({"fish-store": []})
+	assert(client.world_root.get_node_or_null("VerifiedShelfStock_fish-store") == null)
 	assert(floor_plan["businessSuiteLayout"]["lobbyKiosks"].size() == 2)
 	assert(floor_plan["playableFloors"]["7"]["businesses"].is_empty())
 	assert(str(floor_plan["playableFloors"]["7"]["label"]).contains("MEDITATION TEMPLE"))

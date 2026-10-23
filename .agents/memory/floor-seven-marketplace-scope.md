@@ -38,6 +38,21 @@ keep the Floor 4 public-locker shop distinct in Unit 8, and do not add a Tower
 directory or marketplace. Maintain the shared-fixture, read-only-stock, and
 Ghost-proximity boundaries.
 
+Game-world merchandise displays must use an authenticated, read-only shelf-stock
+source. The public vending catalog contains offers, not current shelf quantities.
+The shop logistics GET is not a safe substitute: it can advance shipment state
+and includes account/shipment details. Expose only allowlisted catalog item IDs
+with positive shelf quantities; the Floor 4 public-locker shop has no verified
+product catalog and stays merchandise-free.
+
+**Why:** displays must not imply unverified stock, and a read that changes
+shipment state or exposes unrelated financial/logistics data is not appropriate
+for rendering merchandise.
+
+**How to apply:** keep live display reads separate from catalog and logistics
+routes, scope them to the current in-scope shops, and render nothing when stock
+is missing, empty, or unavailable.
+
 ## Updated vertical competition and property tiers
 
 Add the new NPC shop competitors on higher floors, staggered across the Tower.

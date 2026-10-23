@@ -111,6 +111,24 @@ def run(argv: list[str] | None = None) -> int:
         scene.set_autopilot_snapshot(autopilot_poller.current())
     last_autopilot_revision = scene.autopilot_snapshot.revision
 
+    def request_current_business_shelf_stock() -> None:
+        active_object = scene.objects.get(state.active_object_id or "")
+        business_key = getattr(active_object, "business_key", None)
+        if not isinstance(business_key, str) or not business_key:
+            return
+        has_catalog_items = any(
+            isinstance(line, dict)
+            and line.get("sellerBusinessKey") == business_key
+            and isinstance(line.get("items"), list)
+            and bool(line.get("items"))
+            for line in (state.business_stock_lines or [])
+        )
+        if not has_catalog_items:
+            return
+        if building_sync.queue_game_request("shop_shelf_stock", business_key=business_key):
+            state.business_shelf_stock.pop(business_key, None)
+            state.game_service_loading.add("shop_shelf_stock")
+
     def request_page_data(page: str | None) -> None:
         if page == "inventory":
             state.game_inventory = None
@@ -136,6 +154,8 @@ def run(argv: list[str] | None = None) -> int:
                     state.game_service_loading.add("vending_catalog")
                 else:
                     state.notice = "LINK A GAME ACCOUNT TO LOAD BUSINESS STOCK"
+            elif page == "business_shop":
+                request_current_business_shelf_stock()
         elif page == "bank":
             state.fiat_balance = None
             state.fiat_spendable = None
@@ -771,6 +791,21 @@ def run(argv: list[str] | None = None) -> int:
                             if state.active_page in {"business_stock", "business_shop"}
                             else f"VENDING STOCK LOADED / {len(state.vending_catalog)} ITEMS"
                         )
+                        if state.active_page == "business_shop":
+                            request_current_business_shelf_stock()
+                    elif action == "shop_shelf_stock":
+                        business_key = payload.get("businessKey")
+                        rows = payload.get("items", [])
+                        if isinstance(business_key, str) and business_key:
+                            state.business_shelf_stock[business_key] = [
+                                row for row in rows
+                                if isinstance(row, dict)
+                                and isinstance(row.get("itemId"), str)
+                                and isinstance(row.get("shelfQuantity"), int)
+                                and row.get("shelfQuantity", 0) > 0
+                                and isinstance(row.get("name"), str)
+                            ] if isinstance(rows, list) else []
+                            state.notice = f"SHELF STOCK VERIFIED / {len(state.business_shelf_stock[business_key])} ITEMS"
                     elif action == "bank":
                         balance = payload.get("balance")
                         spendable = payload.get("spendable")
@@ -801,6 +836,7 @@ def run(argv: list[str] | None = None) -> int:
                         state.fiat_spendable = None
                         request_page_data("inventory")
                         request_page_data("bank")
+                        request_current_business_shelf_stock()
                     elif action == "consume_supply":
                         energy = payload.get("energy")
                         if isinstance(energy, int):

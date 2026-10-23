@@ -39,6 +39,7 @@ const PLAYER_GROUND_Y := FLOOR_HEIGHT + 0.08
 var connection := StreamPeerTCP.new()
 var receive_buffer := ""
 var snapshot: Dictionary = {}
+var rendered_business_shelf_stock: Dictionary = {}
 var connection_status := "connecting to Python…"
 var command_sequence := 0
 var visual_player_world := Vector3(0.0, PLAYER_GROUND_Y, 0.0)
@@ -978,14 +979,6 @@ func _add_business_customer_displays(
 		Vector3(counter_width + 0.14, 0.08, 1.16),
 		top_material,
 	)
-	var service_businesses := [
-		"banco_ombra", "tower_realty", "tower_terminal_repair", "public_locker_shop",
-		"hostel", "radio_station", "music_studio", "school", "meeting_room",
-		"public_workspace", "study_hall",
-	]
-	if not service_businesses.has(business_key):
-		_add_business_display_stock(room, tag, center_x, sales_y, counter_width, base_y, business_key)
-
 	var left_x := x + width * 0.28
 	var right_x := x + width * 0.72
 	match profile:
@@ -1015,48 +1008,95 @@ func _add_business_customer_displays(
 			_add_display_island(room, "%sDisplayRightCase" % tag, right_x, island_y, Vector3(fixture_width, 0.9, fixture_depth), top_material)
 
 
-func _add_business_display_stock(
-	room: String,
-	tag: String,
-	center_x: float,
-	sales_y: float,
-	counter_width: float,
-	base_y: float,
-	business_key: String,
-) -> void:
-	var container_keys := [
-		"shadow_cafeteria", "tower_clinic", "tower_pharmacy", "cafe_f04",
-		"restaurant", "tea_shop", "liquor_store", "flower_shop", "salon", "barber",
-	]
-	var flat_display_keys := [
-		"music_shop", "record_store", "book_store", "office_equipment_store",
-		"formal_clothing_store", "shoe_store", "furniture-store", "mattress_store",
-	]
-	var stock_material := _material(Color("#c4ad83"), 0.78)
-	var stock_accent := _material(Color("#718579"), 0.72)
-	var item_spacing := minf(counter_width * 0.2, 1.4)
-	for index in range(3):
-		var item_x := center_x + (float(index) - 1.0) * item_spacing
-		var item_position := _pygame_to_world(item_x, sales_y, room)
-		if container_keys.has(business_key):
-			var container := CylinderMesh.new()
-			container.top_radius = 0.18
-			container.bottom_radius = 0.22
-			container.height = 0.52
-			container.material = stock_accent if index == 1 else stock_material
-			var container_instance := MeshInstance3D.new()
-			container_instance.name = "%sProduct%d" % [tag, index]
-			container_instance.mesh = container
-			container_instance.position = Vector3(item_position.x, base_y + 1.26, item_position.z)
-			world_root.add_child(container_instance)
-		else:
-			var item_height := 0.16 if flat_display_keys.has(business_key) else 0.44
-			_add_box(
-				"%sProduct%d" % [tag, index],
-				Vector3(item_position.x, base_y + 1.0 + item_height / 2.0, item_position.z),
-				Vector3(0.52, item_height, 0.4),
-				stock_accent if index == 1 else stock_material,
-			)
+func _sync_business_shelf_displays(stock_by_business: Dictionary) -> void:
+	if stock_by_business == rendered_business_shelf_stock:
+		return
+	rendered_business_shelf_stock = stock_by_business.duplicate(true)
+	var floors: Dictionary = floor_plan_data.get("playableFloors", {})
+	for floor_number in range(2, 7):
+		var floor_data: Dictionary = floors.get(str(floor_number), {})
+		for business_value in floor_data.get("businesses", []):
+			var business: Dictionary = business_value
+			var business_key := str(business.get("businessKey", ""))
+			var unit_number := int(business.get("unitNumber", 0))
+			var tag := "Floor%02dUnit%02d" % [floor_number, unit_number]
+			var container_name := "VerifiedShelfStock_%s" % business_key
+			var existing := world_root.get_node_or_null(container_name)
+			if existing != null:
+				world_root.remove_child(existing)
+				existing.free()
+
+			var stock_value: Variant = stock_by_business.get(business_key, [])
+			if not stock_value is Array or stock_value.is_empty():
+				continue
+			var primary_top := world_root.get_node_or_null("%sDisplayPrimaryTop" % tag) as MeshInstance3D
+			if primary_top == null or not primary_top.mesh is BoxMesh:
+				continue
+			var top_mesh := primary_top.mesh as BoxMesh
+			var visible_items: Array[Dictionary] = []
+			for raw_item in stock_value:
+				if raw_item is Dictionary:
+					var item: Dictionary = raw_item
+					if str(item.get("itemId", "")).is_empty() or int(item.get("shelfQuantity", 0)) <= 0:
+						continue
+					visible_items.append(item)
+					if visible_items.size() >= 4:
+						break
+			if visible_items.is_empty():
+				continue
+
+			var stock_root := Node3D.new()
+			stock_root.name = container_name
+			stock_root.position = primary_top.position
+			world_root.add_child(stock_root)
+			var surface_y := top_mesh.size.y / 2.0
+			var slot_spacing := minf(1.25, (top_mesh.size.x - 0.8) / maxf(float(visible_items.size()), 1.0))
+			var colors: Array[Color] = [
+				Color("#c4ad83"),
+				Color("#718579"),
+				Color("#927c68"),
+				Color("#9b806f"),
+			]
+			for item_index in visible_items.size():
+				var item: Dictionary = visible_items[item_index]
+				var item_id := str(item.get("itemId", ""))
+				var item_name := str(item.get("name", item_id))
+				var item_type := str(item.get("itemType", "")).to_lower()
+				var shelf_quantity := int(item.get("shelfQuantity", 0))
+				var shown_units := mini(shelf_quantity, 3)
+				var slot_x := (float(item_index) - float(visible_items.size() - 1) / 2.0) * slot_spacing
+				var material := StandardMaterial3D.new()
+				material.albedo_color = colors[posmod(hash(item_id), colors.size())]
+				material.roughness = 0.76
+				for unit_index in shown_units:
+					var product := MeshInstance3D.new()
+					product.name = "Product_%d_%d" % [item_index, unit_index]
+					if item_type in ["consumable", "food", "drink", "medicine"]:
+						var product_cylinder := CylinderMesh.new()
+						product_cylinder.top_radius = 0.15
+						product_cylinder.bottom_radius = 0.18
+						product_cylinder.height = 0.42
+						product_cylinder.material = material
+						product.mesh = product_cylinder
+					else:
+						var product_box := BoxMesh.new()
+						product_box.size = Vector3(0.34, 0.42, 0.34)
+						product_box.material = material
+						product.mesh = product_box
+					product.position = Vector3(slot_x, surface_y + 0.21, (float(unit_index) - float(shown_units - 1) / 2.0) * 0.26)
+					stock_root.add_child(product)
+
+				var label := Label3D.new()
+				label.name = "StockLabel_%d" % item_index
+				label.text = "%s · %d" % [item_name, shelf_quantity]
+				label.font_size = 12
+				label.pixel_size = 0.004
+				label.modulate = Color("#f5ead0")
+				label.outline_size = 3
+				label.outline_modulate = Color("#242b28")
+				label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+				label.position = Vector3(slot_x, surface_y + 0.56, -0.43)
+				stock_root.add_child(label)
 
 
 func _add_display_island(
@@ -2553,6 +2593,11 @@ func _handle_message(message: Dictionary) -> void:
 	match message.get("type", ""):
 		"snapshot":
 			snapshot = message
+			var office_value: Variant = message.get("office", {})
+			if office_value is Dictionary:
+				var stock_value: Variant = office_value.get("businessShelfStock", {})
+				if stock_value is Dictionary:
+					_sync_business_shelf_displays(stock_value)
 			var sequence := int(message.get("sequence", -1))
 			if sequence != last_sequence:
 				last_sequence = sequence

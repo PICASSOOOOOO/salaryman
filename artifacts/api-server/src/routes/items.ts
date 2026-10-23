@@ -835,6 +835,42 @@ router.get("/items/tower-business/shipments/dock", async (req, res) => {
   }
 });
 
+router.get("/items/tower-business/:businessKey/shelf-stock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const businessKey = String(req.params.businessKey ?? "");
+  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+  if (!shop || shop.floor < 2 || shop.floor > 6) {
+    res.status(404).json({ error: "Unknown in-scope Tower shop." });
+    return;
+  }
+
+  const allowedItemIds = new Set(TOWER_BUSINESS_STOCK_LINES
+    .filter((line) => line.sellerBusinessKey === businessKey)
+    .flatMap((line) => line.itemIds));
+  try {
+    const rows = await db.select().from(towerShopInventoryTable).where(and(
+      eq(towerShopInventoryTable.businessKey, businessKey),
+      sql`${towerShopInventoryTable.shelfQuantity} > 0`,
+    ));
+    const items = rows.flatMap((row) => {
+      if (!allowedItemIds.has(row.itemId)) return [];
+      const item = findCatalogItem(row.itemId);
+      if (!item) return [];
+      return [{
+        itemId: item.id,
+        name: item.name,
+        itemType: item.type,
+        shelfQuantity: row.shelfQuantity,
+      }];
+    });
+    res.json({ businessKey, items });
+  } catch (error: any) {
+    console.error("[TowerShop] shelf stock snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load Tower shop shelf stock." });
+  }
+});
+
 router.get("/items/tower-business/:businessKey/logistics", async (req, res) => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;

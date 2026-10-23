@@ -104,6 +104,35 @@ class BuildingSyncTests(unittest.TestCase):
             ),
         )
 
+    def test_shelf_stock_request_is_authenticated_read_only_and_rejects_invalid_keys(self):
+        requests = []
+
+        def opener(request, timeout):
+            del timeout
+            requests.append((request.get_method(), request.full_url.rsplit("/api", 1)[-1], request.data))
+            return FakeResponse({
+                "businessKey": "fish-store",
+                "items": [{
+                    "itemId": "fish_goldfish",
+                    "name": "Goldfish",
+                    "itemType": "pet",
+                    "shelfQuantity": 2,
+                }],
+            })
+
+        sync = DesktopBuildingSync(
+            DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+            opener=opener,
+        )
+        self.assertFalse(sync.queue_game_request("shop_shelf_stock", business_key="../items"))
+        self.assertTrue(sync.queue_game_request("shop_shelf_stock", business_key="fish-store"))
+        sync._sync_once()
+        event = sync.drain_events()[0]
+
+        self.assertEqual(requests, [("GET", "/items/tower-business/fish-store/shelf-stock", None)])
+        self.assertTrue(event.ok)
+        self.assertEqual(event.data["payload"]["businessKey"], "fish-store")
+
     def test_restroom_trash_and_supply_interactions_use_only_the_expected_server_routes(self):
         requests = []
 

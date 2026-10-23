@@ -1129,6 +1129,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "competitionActions": COMPETITION_ACTIONS,
             "vendingCatalog": state.vending_catalog,
             "businessStockLines": state.business_stock_lines,
+            "businessShelfStock": state.business_shelf_stock,
             "shopShipment": state.active_shop_shipment,
             "ghostListing": state.ghost_listing,
             "pestUniformWorn": state.pest_uniform_worn,
