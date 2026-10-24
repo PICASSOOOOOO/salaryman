@@ -36,15 +36,17 @@ NPCs; their purchases are sales for the current business owner. This initial
 ownership is not a permanent monopoly: outside businesses may enter, and
 disruptors may dynamically change competitive conditions.
 
-The Tower restroom needs a hired attendant responsible for cleaning, and Tower
-funds may be used to pay salaries. Employees are paid daily in real time, while
-salary ledgers are monthly.
+The Tower restroom is an operated shop whose attendant is its owner. That owner
+is accountable for cleaning every Tower restroom and reports to the water and
+power departments because restrooms use substantial water. Employees are paid
+daily in real time, while salary ledgers are monthly.
 
-**Why:** The user explicitly asked to remember the bathroom-attendant role and
-the daily-pay/monthly-ledger cadence.
+**Why:** The user clarified the restroom attendant is the restroom shop owner,
+is responsible for every Tower restroom, and reports to water and power.
 
 **How to apply:** Keep daily salary settlement distinct from monthly ledger
-recording, and use Tower funds only for authorized Tower staffing costs.
+recording. Route restroom cleaning accountability through the owner and keep
+water/power oversight visible; confirm the payer account before settlement.
 
 NPCs should develop AI-driven creative and innovative ambitions. They may leave
 a job, join another employer, or start a business when they have enough capital.

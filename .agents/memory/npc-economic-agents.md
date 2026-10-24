@@ -117,6 +117,21 @@ funded by the shop's budget. Up to 3–5 employees per shift is the maximum
 staffing example, not a requirement for every shop; staffing needs vary by
 business.
 
+Every shop should keep hiring because people always need help. Building-wide
+detection of its aspects should accelerate over real months, increasing visible
+maintenance needs; businesses with budget should hire to meet those needs.
+
+The Tower receptionist handles all hires. Keep jobs discoverable on the web
+job board and through in-world classifieds posted on walls, newspapers, and
+magazines. Roles remain available while labor is sufficient; shortages raise
+wages and lower rents through supply and demand.
+
+Track every shop's daily and monthly budget: consumables and operating resources,
+payroll for employees, owners, and managers, and expected additional payments
+from Pablo Corp. Compare inflows with resources and payroll; owners retain the
+remaining profit. Restroom supplies include paper, towels, chemicals, mops, and
+rags.
+
 NPCs have routines and family obligations that shape their work and choices.
 They can get sick, marry, feel sadness or depression, and commit suicide, among
 other human life events. NPCs walking around can talk about their routines,
