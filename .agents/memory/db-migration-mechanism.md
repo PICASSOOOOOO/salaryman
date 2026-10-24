@@ -36,3 +36,5 @@ When a composite foreign key references `(id, org_id)` even though `id` is alrea
 **Why:** A publish-time diff omitted the standalone `(id, org_id)` unique index but emitted the composite self-reference, and PostgreSQL rejected it because `id`'s primary key does not satisfy uniqueness on the exact referenced column set.
 
 **How to apply:** Keep the explicit unique constraint in the Drizzle schema and development database; when converting an existing equivalent unique index, use `UNIQUE USING INDEX` so the physical index is retained. Then retry through Publish; never add production DDL or deploy-time schema mutations.
+
+The explicit table-level unique constraint was confirmed to let Publish complete after the standalone-index diff failed.
