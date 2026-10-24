@@ -82,6 +82,7 @@ const Marketing = lazy(() => import("@/pages/Marketing"));
 const Autopilot = lazy(() => import("@/pages/Autopilot"));
 const Armory = lazy(() => import("@/pages/Armory"));
 const OrgHub = lazy(() => import("@/pages/OrgHub"));
+const OrganizationDocuments = lazy(() => import("@/pages/OrganizationDocuments"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
@@ -731,6 +732,7 @@ function AppShell() {
             {/* ORG module — dedicated org-management hub (separate from OFFICE) */}
             <Route path="/org" component={OrgHub} />
             <Route path="/organizations" component={OrgHub} />
+            <Route path="/business/shared-documents" component={OrganizationDocuments} />
 
             {/* Legacy agent status page now belongs to the Agent Command Center. */}
             <Route path="/console/agents">{() => <Redirect to="/pricing" />}</Route>

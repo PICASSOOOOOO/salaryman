@@ -117,7 +117,8 @@ export type OrgDocument = typeof orgDocumentsTable.$inferSelect;
 export const orgDocumentUploadIntentsTable = pgTable("org_document_upload_intents", {
   id: varchar("id", { length: 36 }).primaryKey(),
   orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
-  connectionId: integer("connection_id").notNull().references(() => orgConnectorConnectionsTable.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").references(() => orgConnectorConnectionsTable.id, { onDelete: "cascade" }),
+  uploadedByUserId: varchar("uploaded_by_user_id", { length: 255 }),
   idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
   name: varchar("name", { length: 300 }).notNull(),
   parentId: integer("parent_id"),

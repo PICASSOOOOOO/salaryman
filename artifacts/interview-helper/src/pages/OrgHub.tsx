@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import {
-  Building2, Users, Briefcase, BookOpen, ArrowRight,
+  Building2, Users, Briefcase, BookOpen, ArrowRight, Files,
   ShieldCheck, Loader2, Plus, Settings,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -14,6 +14,15 @@ import { OrgConstructionOverview } from '@/components/ConstructionOverview';
 // surfaces (team roster, hiring/firing, roles & permissions, finances) as
 // linked cards. Distinct from the OFFICE tab (the playable office floor).
 const MANAGEMENT_SECTIONS = [
+  {
+    path: '/business/shared-documents',
+    label: 'SHARED DOCUMENTS',
+    desc: 'Organization-owned files and folders, separate from personal storage.',
+    icon: Files,
+    color: 'text-black',
+    bg: 'bg-[#fffaf0]',
+    border: 'border-black',
+  },
   {
     path: '/business/team',
     label: 'TEAM',

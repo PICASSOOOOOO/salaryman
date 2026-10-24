@@ -19,6 +19,7 @@ import { createOrgConnectorToken, hashOrgConnectorToken } from "../lib/org-conne
 import orgConnectorCrmRouter from "../routes/org-connector-crm";
 import orgConnectorCallsRouter from "../routes/org-connector-calls";
 import orgConnectorDocumentsRouter from "../routes/org-connector-documents";
+import orgDocumentMembersRouter from "../routes/org-document-members";
 import orgConnectorsRouter from "../routes/org-connectors";
 import storageRouter from "../routes/storage";
 
@@ -47,7 +48,13 @@ vi.mock("../lib/objectStorage", () => ({
 
 const app = express();
 app.use(express.json());
-app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter, orgConnectorCallsRouter, orgConnectorDocumentsRouter, storageRouter);
+app.use((req, _res, next) => {
+  const testUserId = req.get("x-test-user");
+  (req as any).isAuthenticated = () => !!testUserId;
+  if (testUserId) (req as any).user = { id: testUserId };
+  next();
+});
+app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter, orgConnectorCallsRouter, orgConnectorDocumentsRouter, orgDocumentMembersRouter, storageRouter);
 
 const userIds: string[] = [];
 const orgIds: number[] = [];
@@ -413,6 +420,55 @@ describe("organization connector CRM API", () => {
 
     const canonical = await request(app).get(`/api/storage/objects/organization-documents/${primaryDocumentId}`);
     expect(canonical.status).toBe(404);
+  });
+
+  it("lets an authenticated org member manage only their active organization's documents", async () => {
+    const list = await request(app)
+      .get("/api/org/documents")
+      .set("x-test-user", userIds[0]);
+    expect(list.status).toBe(200);
+    expect(list.body.documents.map((item: { id: number }) => item.id)).toContain(primaryDocumentId);
+    expect(list.body.documents.map((item: { id: number }) => item.id)).not.toContain(secondaryDocumentId);
+    expect(list.text).not.toContain("/objects/");
+    expect(list.body.documents[0]).not.toHaveProperty("uploadedByUserId");
+
+    const createdFolder = await request(app)
+      .post("/api/org/documents/folders")
+      .set("x-test-user", userIds[0])
+      .send({ name: "Shared contracts" });
+    expect(createdFolder.status).toBe(201);
+    expect(createdFolder.body.document).toMatchObject({ name: "Shared contracts", isFolder: true, parentId: null });
+
+    const upload = await request(app)
+      .post("/api/org/documents/uploads")
+      .set("x-test-user", userIds[0])
+      .send({ name: "Team.txt", contentType: "text/plain", size: 7, parentId: createdFolder.body.document.id });
+    expect(upload.status).toBe(201);
+    expect(upload.body.uploadURL).toContain("organization-document-staging");
+    expect(upload.body).not.toHaveProperty("objectPath");
+
+    const completed = await request(app)
+      .post(`/api/org/documents/uploads/${upload.body.uploadId}/complete`)
+      .set("x-test-user", userIds[0])
+      .send({});
+    expect(completed.status).toBe(201);
+    expect(completed.body.document).toMatchObject({ name: "Team.txt", isFolder: false, fileSize: 7 });
+    expect(completed.body.document).not.toHaveProperty("objectPath");
+    expect(completed.body.document).not.toHaveProperty("uploadedByUserId");
+
+    const folderDelete = await request(app)
+      .delete(`/api/org/documents/${createdFolder.body.document.id}`)
+      .set("x-test-user", userIds[0]);
+    expect(folderDelete.status).toBe(409);
+
+    const foreign = await request(app)
+      .patch(`/api/org/documents/${secondaryDocumentId}`)
+      .set("x-test-user", userIds[0])
+      .send({ name: "Stolen.txt" });
+    expect(foreign.status).toBe(404);
+
+    const unauthenticated = await request(app).get("/api/org/documents");
+    expect(unauthenticated.status).toBe(401);
   });
 
   it("rejects the health and CRM endpoints after a token is revoked", async () => {
