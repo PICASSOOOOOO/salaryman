@@ -28,3 +28,11 @@ The source of truth is the schema TS (`lib/db/src/schema/*`). The current post-m
 **How to apply:** Inspect the actual database constraint and keep the change additive. If the prompt still threatens unrelated data, stop the push and apply only the reviewed additive development DDL; never bypass production Publish schema review.
 
 The development schema push has also flagged a primary-key change on `tower_operations_state` alongside `career_positions`. Do not accept a truncate prompt to force through unrelated Tower schema changes; inspect and resolve the drift without deleting those rows.
+
+## Composite foreign-key targets in Publish diffs
+
+When a composite foreign key references `(id, org_id)` even though `id` is already a primary key, model the target key as an explicit table-level `UNIQUE` constraint rather than only a standalone unique index. Publish validation may omit a redundant composite index when creating a new table, leaving the foreign key without a matching referenced key.
+
+**Why:** A publish-time diff omitted the standalone `(id, org_id)` unique index but emitted the composite self-reference, and PostgreSQL rejected it because `id`'s primary key does not satisfy uniqueness on the exact referenced column set.
+
+**How to apply:** Keep the explicit unique constraint in the Drizzle schema and development database; when converting an existing equivalent unique index, use `UNIQUE USING INDEX` so the physical index is retained. Then retry through Publish; never add production DDL or deploy-time schema mutations.

@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, timestamp, json, index, boolean, foreignKey, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, integer, timestamp, json, index, boolean, foreignKey, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -96,7 +96,7 @@ export const orgDocumentsTable = pgTable("org_documents", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  uniqueIndex("org_documents_id_org_id_uidx").on(table.id, table.orgId),
+  unique("org_documents_id_org_id_uidx").on(table.id, table.orgId),
   uniqueIndex("org_documents_object_path_uidx").on(table.objectPath),
   index("org_documents_org_parent_created_idx").on(table.orgId, table.parentId, table.createdAt),
   foreignKey({

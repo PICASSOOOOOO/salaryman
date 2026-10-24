@@ -6,7 +6,7 @@
 - [Phone tests and voice](phone-system-daily-test.md) — Mocked and live tests differ; see the [harness](twilio-phone-tests.md), [bridge](browser-phone-bridge.md), and [toll-free retry](twilio-tollfree-resubmission.md).
 - [Shared demo phone number](shared-demo-phone-number.md) — the shared SALARYMAN number is for tester/admin checks and tightly limited demos to new users.
 - [Composite workspace-library declarations](composite-workspace-library-builds.md) — consumers may read stale emitted types; rebuild composite libraries after adding exports or schemas.
-- [DB migration mechanism](db-migration-mechanism.md) — dev schema sync may stop on unrelated destructive drift; inspect first, keep changes additive, and use Publish for production.
+- [DB migration mechanism](db-migration-mechanism.md) — inspect dev drift, keep changes additive, use Publish for prod; model composite FK targets as explicit unique constraints.
 - [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.
 - [Pablo persona prompts](pablo-persona-prompts.md) — browser/phone use a shared professional core; industry follows the active org for all members, with sensitive data current-user/org scoped.
 - [Pablo Corp atmosphere](pablo-corp-atmosphere.md) — there is always an air of corruption at Pablo Corp; you never know what's happening behind the scenes.

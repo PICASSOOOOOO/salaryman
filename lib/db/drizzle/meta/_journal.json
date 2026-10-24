@@ -596,6 +596,13 @@
       "when": 1792820000000,
       "tag": "0084_member_organization_document_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1792852217202,
+      "tag": "0085_org_documents_composite_unique_constraint",
+      "breakpoints": true
     }
   ]
 }
