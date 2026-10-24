@@ -400,6 +400,7 @@ router.get("/platform/endpoints", async (_req, res) => {
     { method: "DELETE", path: "/api/platform/webhooks/:id", description: "DELETE WEBHOOK", scope: "webhooks:write" },
     { method: "GET", path: "/api/platform/apps", description: "LIST CONNECTED APPS", scope: "apps:read" },
     { method: "GET", path: "/api/connectors/v1/whoami", description: "CHECK CONNECTOR TOKEN", scope: "connector:health" },
+    { method: "GET", path: "/api/connectors/v1/calls", description: "READ ORGANIZATION CALL METADATA", scope: "calls:read" },
     { method: "GET", path: "/api/connectors/v1/crm/leads", description: "LIST ORGANIZATION CRM LEADS", scope: "crm:read" },
     { method: "GET", path: "/api/connectors/v1/crm/leads/:id", description: "READ ORGANIZATION CRM LEAD", scope: "crm:read" },
     { method: "GET", path: "/api/connectors/v1/crm/custom-fields", description: "LIST ORGANIZATION CRM FIELDS", scope: "crm:read" },

@@ -1,6 +1,7 @@
 # Organization connector calls and files API contract
 
-**Status: Draft proposal — calls/files routes are not implemented.**
+**Status: Partial — `calls:read` is implemented; `calls:write` and all
+documents/files routes remain proposals.**
 
 This contract defines provider-independent behavior for organization connector
 tokens. It does not connect STEC or any other provider, and a granted scope does
@@ -30,7 +31,7 @@ not mean its routes are live.
 
 ## Existing connector CRM contract
 
-The following CRM routes are implemented separately from this draft:
+The following connector routes are implemented:
 
 | Method | Path | Required scope |
 | --- | --- | --- |
@@ -39,12 +40,13 @@ The following CRM routes are implemented separately from this draft:
 | `GET` | `/crm/custom-fields` | `crm:read` |
 | `POST` | `/crm/leads` | `crm:write` |
 | `PATCH` | `/crm/leads/{id}` | `crm:write` |
+| `GET` | `/calls` | `calls:read` |
 
 No delete operation is implied by `crm:write`.
 
 ## Calls
 
-### `calls:read` — proposed
+### `calls:read` — implemented
 
 `GET /calls` returns organization CRM call and voicemail *metadata* only. It
 must read from organization-scoped activity records and must not use a
@@ -143,7 +145,7 @@ access to a member's personal files.
 
 ## Implementation gates
 
-Before enabling any proposed route:
+Before enabling any remaining proposed route:
 
 1. Have SALARYMAN product and security owners approve the data categories,
    member-consent flow, and organization document ownership model.

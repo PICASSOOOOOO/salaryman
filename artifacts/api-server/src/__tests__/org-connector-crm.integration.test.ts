@@ -5,6 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   db,
+  crmActivitiesTable,
   leadRecordsTable,
   orgConnectorActivityTable,
   orgConnectorAppsTable,
@@ -15,11 +16,12 @@ import {
 } from "@workspace/db";
 import { createOrgConnectorToken, hashOrgConnectorToken } from "../lib/org-connectors";
 import orgConnectorCrmRouter from "../routes/org-connector-crm";
+import orgConnectorCallsRouter from "../routes/org-connector-calls";
 import orgConnectorsRouter from "../routes/org-connectors";
 
 const app = express();
 app.use(express.json());
-app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter);
+app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter, orgConnectorCallsRouter);
 
 const userIds: string[] = [];
 const orgIds: number[] = [];
@@ -30,10 +32,13 @@ let secondaryOrgId = 0;
 let readToken = "";
 let writeToken = "";
 let revokeToken = "";
+let callReadToken = "";
 let writeConnectionId = 0;
 let revokeConnectionId = 0;
 let primaryLeadId = 0;
 let secondaryLeadId = 0;
+let primaryCallId = 0;
+let secondaryCallId = 0;
 
 async function createUser(): Promise<string> {
   const [user] = await db.insert(usersTable)
@@ -100,6 +105,25 @@ async function createLead(orgId: number, ownerUserId: string, name: string): Pro
   return lead.id;
 }
 
+async function createCallActivity(orgId: number, userId: string, leadId: number, contactName: string) {
+  const [activity] = await db.insert(crmActivitiesTable).values({
+    orgId,
+    userId,
+    leadId,
+    channel: "call",
+    direction: "outbound",
+    phone: "555-0111",
+    contactName,
+    body: "private message content",
+    summary: "private call summary",
+    recordingUrl: "https://recordings.example/private.wav",
+    durationSeconds: 94,
+    status: "completed",
+    twilioSid: `CA${randomUUID().replace(/-/g, "")}`,
+  }).returning({ id: crmActivitiesTable.id });
+  return activity.id;
+}
+
 beforeAll(async () => {
   const ownerA = await createUser();
   const ownerB = await createUser();
@@ -108,6 +132,7 @@ beforeAll(async () => {
 
   const readConnection = await createConnection(primaryOrgId, ["crm:read"]);
   readToken = readConnection.token;
+  callReadToken = (await createConnection(primaryOrgId, ["calls:read"])).token;
   const writeConnection = await createConnection(primaryOrgId, ["crm:write"]);
   writeToken = writeConnection.token;
   writeConnectionId = writeConnection.connectionId;
@@ -117,12 +142,15 @@ beforeAll(async () => {
 
   primaryLeadId = await createLead(primaryOrgId, ownerA, "Primary Org Lead");
   secondaryLeadId = await createLead(secondaryOrgId, ownerB, "Secondary Org Lead");
+  primaryCallId = await createCallActivity(primaryOrgId, ownerA, primaryLeadId, "Primary Private Contact");
+  secondaryCallId = await createCallActivity(secondaryOrgId, ownerB, secondaryLeadId, "Foreign Private Contact");
 });
 
 afterAll(async () => {
   if (orgIds.length) {
     await db.delete(orgConnectorActivityTable).where(inArray(orgConnectorActivityTable.orgId, orgIds));
     await db.delete(orgConnectorConnectionsTable).where(inArray(orgConnectorConnectionsTable.orgId, orgIds));
+    await db.delete(crmActivitiesTable).where(inArray(crmActivitiesTable.orgId, orgIds));
     await db.delete(leadRecordsTable).where(inArray(leadRecordsTable.orgId, orgIds));
     await db.delete(orgMembersTable).where(inArray(orgMembersTable.orgId, orgIds));
     await db.delete(organizationsTable).where(inArray(organizationsTable.id, orgIds));
@@ -188,6 +216,46 @@ describe("organization connector CRM API", () => {
       .get("/api/connectors/v1/crm/custom-fields")
       .set("Authorization", `Bearer ${readToken}`);
     expect(customFields.status).toBe(200);
+  });
+
+  it("returns only safe call metadata for the token organization", async () => {
+    const response = await request(app)
+      .get("/api/connectors/v1/calls?limit=10")
+      .set("Authorization", `Bearer ${callReadToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.activities.map((activity: { id: number }) => activity.id)).toContain(primaryCallId);
+    expect(response.body.activities.map((activity: { id: number }) => activity.id)).not.toContain(secondaryCallId);
+    expect(response.body.activities[0]).toMatchObject({
+      channel: "call",
+      direction: "outbound",
+      status: "completed",
+      durationSeconds: 94,
+    });
+    for (const forbidden of [
+      "phone",
+      "contactName",
+      "body",
+      "summary",
+      "recordingUrl",
+      "twilioSid",
+    ]) {
+      expect(response.body.activities[0]).not.toHaveProperty(forbidden);
+    }
+    expect(response.text).not.toContain("555-0111");
+    expect(response.text).not.toContain("Primary Private Contact");
+    expect(response.text).not.toContain("private call summary");
+    expect(response.text).not.toContain("private.wav");
+
+    const wrongScope = await request(app)
+      .get("/api/connectors/v1/calls")
+      .set("Authorization", `Bearer ${readToken}`);
+    expect(wrongScope.status).toBe(403);
+
+    const foreignLead = await request(app)
+      .get(`/api/connectors/v1/calls?leadId=${secondaryLeadId}`)
+      .set("Authorization", `Bearer ${callReadToken}`);
+    expect(foreignLead.status).toBe(404);
   });
 
   it("creates and updates leads with write scope and logs no lead content", async () => {
