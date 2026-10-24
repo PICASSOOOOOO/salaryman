@@ -109,10 +109,41 @@ The existing `files_folders` records are owned by `userId`, not by an
 organization. They must not be returned, modified, or downloaded using an
 organization connector token just because the user belongs to that organization.
 
-Before implementation, SALARYMAN needs a canonical organization-owned document
-record (or an equally explicit organization-sharing relationship), including
-rules for upload attribution, folder membership, and member access. Until that
-model exists, `documents:read` and `documents:write` expose no data routes.
+#### Recommended ownership model
+
+- Store organization documents as organization-owned records, separate from
+  `files_folders`. The organization is the owner; `uploadedByUserId` is
+  attribution only and must never determine connector authorization.
+- Put `orgId` on every document and folder record. A parent folder must belong to
+  the same organization. Every lookup, list, move, and content operation must
+  constrain by the token organization in the database query.
+- Keep personal files personal. Membership in an organization does not share a
+  member's files; sharing or moving one into the organization must be an
+  explicit, user-initiated copy/import into the organization document area.
+- Keep document bytes in App Storage and metadata in PostgreSQL. Storage paths
+  remain server-controlled and are never returned by the API.
+- Preserve uploader attribution for audit, but do not make a connector call as
+  that user. Connector activity is attributed to the app/connection.
+
+#### Organization API preferences
+
+The current connector model stores API preferences per organization-app
+connection as `grantedScopes`. The organization owner selects a subset of the
+app's requested scopes when approving it; `documents:read` and
+`documents:write` are independent choices. Enforce those live grants on every
+request. Revoking a connection or changing its grants must immediately remove
+the corresponding access.
+
+Do not add a second organization-wide document API preference or infer access
+from organization membership. If SALARYMAN later introduces a separate
+organization-level API setting, treat it as an additional gate, not a
+replacement for the connection's granted scopes.
+
+This model is a design recommendation, not an implemented schema or route.
+Before implementation, confirm the document metadata, member upload/import
+flow, and any organization-level setting with product and security owners.
+Until the organization-owned record exists, `documents:read` and
+`documents:write` expose no data routes.
 
 ### `documents:read` — proposed after the ownership prerequisite
 
