@@ -1,7 +1,7 @@
 # Organization connector calls and files API contract
 
-**Status: Partial — `calls:read` is implemented; `calls:write` and all
-documents/files routes remain proposals.**
+**Status: Partial — `calls:read` and the organization document metadata schema
+are implemented; `calls:write` and all documents/files routes remain proposals.**
 
 This contract defines provider-independent behavior for organization connector
 tokens. It does not connect STEC or any other provider, and a granted scope does
@@ -139,11 +139,11 @@ from organization membership. If SALARYMAN later introduces a separate
 organization-level API setting, treat it as an additional gate, not a
 replacement for the connection's granted scopes.
 
-This model is a design recommendation, not an implemented schema or route.
-Before implementation, confirm the document metadata, member upload/import
-flow, and any organization-level setting with product and security owners.
-Until the organization-owned record exists, `documents:read` and
-`documents:write` expose no data routes.
+The `org_documents` metadata schema exists, but it does not provide storage,
+upload/import, download, or connector routes. Before adding those routes, confirm
+the member upload/import flow and any separate organization-level setting with
+product and security owners. `documents:read` and `documents:write` still expose
+no data routes.
 
 ### `documents:read` — proposed after the ownership prerequisite
 
