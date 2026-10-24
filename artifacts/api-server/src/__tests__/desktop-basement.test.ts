@@ -25,6 +25,7 @@ import {
 import { TOWER_ELEVATOR_POSITIONS } from "../lib/desktop-building-objects";
 import {
   TOWER_BASEMENT_BACK_ENTRANCE,
+  TOWER_BASEMENT_STATIONS,
   TOWER_LOBBY_BACK_ENTRANCE,
   TOWER_SERVICE_ELEVATOR_BASEMENT,
   TOWER_SERVICE_ELEVATOR_LOBBY,
@@ -534,6 +535,11 @@ describe("desktop basement survival authority", () => {
       incomingSupplyCrates: 1,
       storedSupplyCrates: 2,
       processedTrash: 0,
+      operatingBalanceFiat: 250_000,
+      powerBillDueFiat: 0,
+      waterBillDueFiat: 0,
+      lastUtilityBillAt: now,
+      backupFuelDays: 5,
       lastTrashTickAt: now,
       lastTrashHaulAt: now,
       lastSupplyDeliveryAt: now,
@@ -541,15 +547,15 @@ describe("desktop basement survival authority", () => {
       lastPumpWorkAt: now,
       updatedAt: now,
     };
-    await db.insert(towerOperationsStateTable).values({
-      buildingKey: "shadow_tower",
-      ...testOperations,
-    }).onConflictDoUpdate({
-      target: towerOperationsStateTable.buildingKey,
-      set: testOperations,
-    });
 
     try {
+      await db.insert(towerOperationsStateTable).values({
+        buildingKey: "shadow_tower",
+        ...testOperations,
+      }).onConflictDoUpdate({
+        target: towerOperationsStateTable.buildingKey,
+        set: testOperations,
+      });
       await db.update(salarymanSavesTable).set({
         data: { energy: 80, energyUpdatedAt: new Date().toISOString() },
       }).where(and(
@@ -628,8 +634,8 @@ describe("desktop basement survival authority", () => {
       await setLobbyPresence();
       expect((await enterBasement()).status).toBe(200);
       await db.update(desktopBasementPresenceTable).set({
-        x: 9_000,
-        y: 9_000,
+        x: TOWER_BASEMENT_STATIONS.shippingWaste.x,
+        y: TOWER_BASEMENT_STATIONS.shippingWaste.y,
         lastSeenAt: new Date(),
       }).where(eq(desktopBasementPresenceTable.userId, userId));
       await db.update(towerWasteHaulsTable).set({
@@ -643,8 +649,8 @@ describe("desktop basement survival authority", () => {
       expect(delivered.body.deliveredUnits).toBe(4);
 
       await db.update(desktopBasementPresenceTable).set({
-        x: 9_000,
-        y: 7_000,
+        x: TOWER_BASEMENT_STATIONS.loadingGate.x,
+        y: TOWER_BASEMENT_STATIONS.loadingGate.y,
         lastSeenAt: new Date(),
       }).where(eq(desktopBasementPresenceTable.userId, userId));
       const denied = await desktopPost("/api/desktop-building/supplies/receive").send({});
@@ -672,6 +678,11 @@ describe("desktop basement survival authority", () => {
           incomingSupplyCrates: originalOperations.incomingSupplyCrates,
           storedSupplyCrates: originalOperations.storedSupplyCrates,
           processedTrash: originalOperations.processedTrash,
+          operatingBalanceFiat: originalOperations.operatingBalanceFiat,
+          powerBillDueFiat: originalOperations.powerBillDueFiat,
+          waterBillDueFiat: originalOperations.waterBillDueFiat,
+          lastUtilityBillAt: originalOperations.lastUtilityBillAt,
+          backupFuelDays: originalOperations.backupFuelDays,
           lastTrashTickAt: originalOperations.lastTrashTickAt,
           lastTrashHaulAt: originalOperations.lastTrashHaulAt,
           lastSupplyDeliveryAt: originalOperations.lastSupplyDeliveryAt,
@@ -683,6 +694,63 @@ describe("desktop basement survival authority", () => {
         await db.delete(towerOperationsStateTable)
           .where(eq(towerOperationsStateTable.buildingKey, "shadow_tower"));
       }
+    }
+  });
+
+  it("rejects restroom use during a water outage without opening a session", async () => {
+    const originalOperations = (await db.select().from(towerOperationsStateTable)
+      .where(eq(towerOperationsStateTable.buildingKey, "shadow_tower")).limit(1))[0];
+    const now = new Date();
+    const testOperations = {
+      operatingBalanceFiat: 0,
+      powerBillDueFiat: 0,
+      waterBillDueFiat: 1,
+      lastUtilityBillAt: now,
+      backupFuelDays: 5,
+      updatedAt: now,
+    };
+
+    try {
+      await db.insert(towerOperationsStateTable).values({
+        buildingKey: "shadow_tower",
+        ...testOperations,
+      }).onConflictDoUpdate({
+        target: towerOperationsStateTable.buildingKey,
+        set: testOperations,
+      });
+      await db.delete(towerRestroomSessionsTable)
+        .where(eq(towerRestroomSessionsTable.userId, userId));
+      await db.update(desktopOfficePresenceTable).set({
+        roomKey: "lobby:minx_city",
+        room: "lobby",
+        floorNumber: 1,
+        x: 49_978_300,
+        y: 50_002_200,
+        action: "stand",
+        lastSeenAt: now,
+      }).where(eq(desktopOfficePresenceTable.userId, userId));
+      const response = await desktopPost("/api/desktop-building/restroom/start")
+        .send({ stallKey: "lobby-restroom-stall-1" });
+      expect(response.status).toBe(503);
+      const sessions = await db.select().from(towerRestroomSessionsTable)
+        .where(eq(towerRestroomSessionsTable.userId, userId));
+      expect(sessions).toHaveLength(0);
+    } finally {
+      if (originalOperations) {
+        await db.update(towerOperationsStateTable).set({
+          operatingBalanceFiat: originalOperations.operatingBalanceFiat,
+          powerBillDueFiat: originalOperations.powerBillDueFiat,
+          waterBillDueFiat: originalOperations.waterBillDueFiat,
+          lastUtilityBillAt: originalOperations.lastUtilityBillAt,
+          backupFuelDays: originalOperations.backupFuelDays,
+          updatedAt: originalOperations.updatedAt,
+        }).where(eq(towerOperationsStateTable.buildingKey, "shadow_tower"));
+      } else {
+        await db.delete(towerOperationsStateTable)
+          .where(eq(towerOperationsStateTable.buildingKey, "shadow_tower"));
+      }
+      await db.delete(towerRestroomSessionsTable)
+        .where(eq(towerRestroomSessionsTable.userId, userId));
     }
   });
 

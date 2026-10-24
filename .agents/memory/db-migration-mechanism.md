@@ -33,6 +33,12 @@ Before relying on a push prompt as a complete account of drift, compare live `pg
 
 **How to apply:** For development-only repairs, verify nulls, duplicates, and existing row ranges first, then change only the specific missing or stale constraint. Never force a broader push to work around unrelated drift.
 
+For singleton state tables, `ON CONFLICT DO NOTHING` is not idempotent unless the live database has a matching unique constraint. Without it, repeated initialization can create duplicate rows, and fixtures using targeted `ON CONFLICT DO UPDATE` fail.
+
+**Why:** The development Tower vitality table had duplicate building rows despite the declared primary key, which made a deterministic test upsert fail.
+
+**How to apply:** Confirm live uniqueness before relying on singleton semantics. Keep test fixtures away from duplicate global rows unless they can snapshot and restore them safely; repair schema drift separately after validating duplicates.
+
 The development schema push has also flagged a primary-key change on `tower_operations_state` alongside `career_positions`. Do not accept a truncate prompt to force through unrelated Tower schema changes; inspect and resolve the drift without deleting those rows.
 
 ## Composite foreign-key targets in Publish diffs
