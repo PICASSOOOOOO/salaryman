@@ -41,3 +41,13 @@ service elevator.
 rear-entry routing, and shared building utility state consistent. Security communications and
 investigations are fictional in-game systems; never turn them into access to
 real-world private systems.
+
+Basement object positions already use the compact server/maze coordinate grid.
+Register new basement objects with legacy-coordinate scaling disabled.
+
+**Why:** The object registry expands legacy room-local coordinates, while
+basement movement and access checks use 1,000-unit maze cells. Scaled fixtures
+can appear in the registry but land outside the playable tunnel.
+
+**How to apply:** Explicitly opt basement objects out of legacy scaling and test
+their positions against the matching floor's walkable cells.

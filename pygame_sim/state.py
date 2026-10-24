@@ -32,6 +32,7 @@ OverlayPage = Literal[
     "player", "settings", "inventory", "vending", "bank",
     "pest_jobs", "pest_uniform", "melee", "competition", "basement_stairs",
     "utility_work", "company_relocation", "merchant", "reception", "business_stock",
+    "collections_case",
 ]
 PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone", "competition"})
 RECRUITMENT_REFRESH_COST = 50.0
@@ -139,6 +140,7 @@ class OfficeState:
         default_factory=lambda: normalize_work_orders({})
     )
     active_pest_job: str | None = None
+    collections_case_stage: int = 0
     tower_work_advice: str = ""
     utility_work_target: str | None = None
     utility_work_started_at: float = 0.0
@@ -280,6 +282,33 @@ class OfficeState:
                 self.begin_relocation_cutscene()
         else:
             self.notice = f"{job['progressLabel']} / {order['progress']} OF {job['goal']}"
+        return True
+
+    def advance_collections_case(self, station: str) -> bool:
+        """Advance the local B2 evidence review only from its expected station."""
+        expected_stations = ("clerk", "ledger", "security", "evidence", "clerk")
+        if self.collections_case_stage >= len(expected_stations):
+            self.notice = "CASE FILED / RECORDS PRESERVED FOR SUPERVISOR REVIEW"
+            return False
+        expected = expected_stations[self.collections_case_stage]
+        if station != expected:
+            next_step = {
+                "clerk": "COLLECTIONS CLERK",
+                "ledger": "COLLECTIONS LEDGER",
+                "security": "SECURITY DISPATCH LOG",
+                "evidence": "INVESTIGATIONS DESK",
+            }[expected]
+            self.notice = f"CASE REVIEW / NEXT: {next_step}"
+            return False
+
+        self.collections_case_stage += 1
+        self.notice = (
+            "CASE OPENED / CHECK THE COLLECTIONS LEDGER",
+            "LEDGER FLAGGED / CHECK THE SECURITY DISPATCH LOG",
+            "ACCESS TIMELINE FLAGGED / REVIEW THE EVIDENCE AT INVESTIGATIONS",
+            "CONFLICTING RECORDS / RETURN TO THE COLLECTIONS CLERK",
+            "CASE FILED / RECORDS PRESERVED FOR SUPERVISOR REVIEW",
+        )[self.collections_case_stage - 1]
         return True
 
     def begin_relocation_cutscene(self) -> None:
@@ -501,6 +530,9 @@ class OfficeState:
                 "active_order": self.active_pest_job,
                 "relocation_seen": self.relocation_cutscene_seen,
             },
+            "collections_case": {
+                "stage": max(0, min(5, self.collections_case_stage)),
+            },
             "workers": [
                 {
                     "name": worker.name,
@@ -600,6 +632,14 @@ class OfficeState:
                     else None
                 )
                 state.relocation_cutscene_seen = pest_work.get("relocation_seen") is True
+            collections_case = payload.get("collections_case", {})
+            if isinstance(collections_case, dict):
+                try:
+                    state.collections_case_stage = max(
+                        0, min(5, int(collections_case.get("stage", 0)))
+                    )
+                except (TypeError, ValueError):
+                    state.collections_case_stage = 0
             entries = payload.get("ledger", [])
             if entries:
                 state.ledger = [

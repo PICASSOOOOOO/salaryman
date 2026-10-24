@@ -2139,6 +2139,7 @@ class SolarPunkRenderer:
             "melee": "NON-GRAPHIC MELEE",
             "utility_work": "TOWER UTILITY WORK",
             "company_relocation": "COMPANY GROWTH",
+            "collections_case": "COLLECTIONS CASE REVIEW",
             "business": "TOWER BUSINESS OFFICE",
         }
         self.text(
@@ -2295,6 +2296,68 @@ class SolarPunkRenderer:
         page: pygame.Rect,
     ) -> None:
         content = page.y + 92
+        if state.active_page == "collections_case":
+            stage = max(0, min(5, state.collections_case_stage))
+            steps = (
+                "1  OPEN THE CASE WITH THE COLLECTIONS CLERK",
+                "2  CHECK COLLECTIONS LEDGER / DESK 01",
+                "3  REVIEW CORPORATE SECURITY DISPATCH LOG",
+                "4  COMPARE RECORDS AT INVESTIGATIONS",
+                "5  FILE THE FINDINGS WITH THE CLERK",
+            )
+            for index, label in enumerate(steps):
+                complete = stage > index
+                current = stage == index
+                color = (
+                    Palette.MATRIX_GREEN
+                    if complete
+                    else Palette.MATRIX_BRIGHT
+                    if current
+                    else Palette.MATRIX_DIM
+                )
+                marker = "✓" if complete else "›" if current else "·"
+                self.text(
+                    f"{marker}  {label}",
+                    (page.x + 28, content + index * 31),
+                    self.font_mono,
+                    color,
+                )
+            findings = (
+                ("UNOPENED", "The case file has not been assigned."),
+                (
+                    "CASE OPEN",
+                    "B1 supply paperwork and the B4 count do not agree.",
+                ),
+                (
+                    "LEDGER NOTE",
+                    "One crate was signed out before the loading gate logged receipt.",
+                ),
+                (
+                    "ACCESS NOTE",
+                    "The B4 service-elevator entry predates the approved ledger copy.",
+                ),
+                (
+                    "EVIDENCE NOTE",
+                    "Two manifests conflict; a routing note appears to have been replaced.",
+                ),
+                (
+                    "FILED",
+                    "Records are preserved for supervisor review. No person is accused.",
+                ),
+            )
+            heading, finding = findings[stage]
+            note = pygame.Rect(page.x + 28, content + 174, page.width - 56, 112)
+            self.panel(note, Palette.MATRIX_PANEL_2, Palette.MATRIX_GRID, radius=3, width=1)
+            self.text(heading, (note.x + 16, note.y + 14), self.font_lg, Palette.MATRIX_BRIGHT)
+            self.text(finding, (note.x + 16, note.y + 56), self.font_md, Palette.MATRIX_DIM)
+            self.text(
+                "PROGRESS SAVES ON THIS COMPUTER  /  INTERACT AT EACH MARKED STATION",
+                (page.x + 28, page.bottom - 40),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+            return
+
         if state.active_page == "pest_jobs":
             for index, job in enumerate(PEST_JOBS):
                 x = page.x + 24 + index * ((page.width - 60) // 2 + 12)

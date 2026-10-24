@@ -165,6 +165,29 @@ class BasementMazeTests(unittest.TestCase):
                     self.assertIn((item.position[0] // 1_000, item.position[1] // 1_000), cells)
             self.assertTrue(any(item.id.startswith(f"basement-b{level}-maze-") for item in registry.objects))
 
+    def test_department_case_and_maintenance_stations_are_inside_walkable_cells(self) -> None:
+        registry = build_tower_object_registry()
+        station_floors = {
+            "basement-b2-collections-clerk": 2,
+            "basement-b2-collections-desk-01": 2,
+            "basement-b2-security-desk": 2,
+            "basement-b2-investigations-desk": 2,
+            "basement-b3-upkeep": 3,
+            "basement-b4-supply-store": 4,
+            "basement-b5-power": 5,
+            "basement-b6-plumbing": 6,
+        }
+        scene = TowerScene()
+        for object_id, level in station_floors.items():
+            station = registry.get(object_id)
+            self.assertIsNotNone(station, object_id)
+            assert station is not None
+            self.assertTrue(scene.select_basement_level(level))
+            self.assertTrue(
+                scene._room_position_is_walkable(station.position),
+                f"{object_id} at {station.position} must be reachable on B{level}",
+            )
+
     def test_b2_and_b3_have_physical_corridor_walls_and_reachable_department_bays(self) -> None:
         registry = build_tower_object_registry()
         for level, department_points in {

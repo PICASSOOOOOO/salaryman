@@ -22,6 +22,7 @@ class PygameBridgeTests(unittest.TestCase):
         self.scene = build_tower_scene()
 
     def test_snapshot_is_versioned_and_json_safe(self):
+        self.state.collections_case_stage = 2
         self.state.business_shelf_stock = {
             "fish-store": [{
                 "itemId": "fish_goldfish",
@@ -41,6 +42,7 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertIn("mission", decoded["scene"]["navigation"])
         self.assertIsInstance(decoded["scene"]["navigation"]["exits"], list)
         self.assertFalse(decoded["office"]["musicEnabled"])
+        self.assertEqual(decoded["office"]["collectionsCaseStage"], 2)
         self.assertEqual(
             decoded["office"]["businessShelfStock"]["fish-store"][0]["shelfQuantity"],
             2,
@@ -271,6 +273,55 @@ class PygameBridgeTests(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(requests, [("supply_issue", None)])
+
+    def test_b2_collections_case_requires_each_physical_station_in_order(self):
+        self.assertTrue(self.scene.select_basement_level(2))
+        stations = (
+            ("basement-b2-collections-clerk", 1),
+            ("basement-b2-collections-desk-01", 2),
+            ("basement-b2-security-desk", 3),
+            ("basement-b2-investigations-desk", 4),
+            ("basement-b2-collections-clerk", 5),
+        )
+
+        # Investigations cannot be filed before the clerk opens the case.
+        evidence_desk = self.scene.objects.get("basement-b2-investigations-desk")
+        self.assertIsNotNone(evidence_desk)
+        self.scene.player_position = evidence_desk.position
+        denied = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "b2-case-out-of-order",
+                "name": "interact",
+                "payload": {"object_id": evidence_desk.id},
+            },
+            self.state,
+            self.scene,
+        )
+        self.assertFalse(denied.ok)
+        self.assertEqual(self.state.collections_case_stage, 0)
+
+        for index, (object_id, expected_stage) in enumerate(stations):
+            station = self.scene.objects.get(object_id)
+            self.assertIsNotNone(station, object_id)
+            self.assertTrue(station.interactive, object_id)
+            self.assertTrue(self.scene._room_position_is_walkable(station.position), object_id)
+            self.scene.player_position = station.position
+            result = apply_command(
+                {
+                    "type": "command",
+                    "version": PROTOCOL_VERSION,
+                    "id": f"b2-case-step-{index}",
+                    "name": "interact",
+                    "payload": {"object_id": object_id},
+                },
+                self.state,
+                self.scene,
+            )
+            self.assertTrue(result.ok, result.message)
+            self.assertEqual(self.state.collections_case_stage, expected_stage)
+            self.assertEqual(self.state.active_page, "collections_case")
 
     def test_tower_food_water_and_triage_items_appear_as_usable_stamina_supplies(self):
         self.state.game_inventory = [{

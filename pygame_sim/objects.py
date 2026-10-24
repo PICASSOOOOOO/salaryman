@@ -1344,25 +1344,28 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                     "desk",
                     f"COLLECTIONS {office_index + 1:02d}",
                     room,
-                    (1_700 + (office_index % 3) * 1_750, 1_800 + (office_index // 3) * 1_900),
+                    (
+                        1_700 + (office_index % 3) * 1_750,
+                        2_500 + (office_index // 3) * 1_900,
+                    ),
                     "COLLECTIONS FACILITY",
-                    interactive=False,
-                ))
-            registry.add(OfficeObject("basement-b2-jail-door", "door", "DETENTION CELLS", room, (7_300, 2_200), "CORPORATE DETENTION", interactive=False))
-            registry.add(OfficeObject("basement-b2-security-desk", "desk", "CORPORATE SECURITY", room, (7_200, 5_000), "SECURITY / LIMITED PATROL", interactive=False))
-            registry.add(OfficeObject("basement-b2-investigations-desk", "desk", "INVESTIGATIONS", room, (7_200, 7_100), "EVIDENCE-BASED INVESTIGATIONS", interactive=False))
-            registry.add(OfficeObject("basement-b2-collections-clerk", "receptionist", "COLLECTIONS CLERK", room, (2_800, 5_400), "COLLECTIONS FACILITY", interactive=False))
-            registry.add(OfficeObject("basement-b2-security-patrol", "receptionist", "CORPORATE SECURITY / PATROL", room, (7_800, 6_000), "CORPORATE STAFF / NOT POLICE", interactive=False))
+                    interactive=office_index == 0,
+                ), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b2-jail-door", "door", "DETENTION CELLS", room, (7_300, 2_200), "CORPORATE DETENTION", interactive=False), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b2-security-desk", "desk", "CORPORATE SECURITY", room, (7_200, 5_000), "REVIEW THE DISPATCH LOG"), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b2-investigations-desk", "desk", "INVESTIGATIONS", room, (7_200, 7_100), "COMPARE THE CONFLICTING RECORDS"), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b2-collections-clerk", "receptionist", "COLLECTIONS CLERK", room, (2_800, 5_400), "OPEN / FILE A COLLECTIONS CASE"), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b2-security-patrol", "receptionist", "CORPORATE SECURITY / PATROL", room, (7_800, 6_000), "CORPORATE STAFF / NOT POLICE", interactive=False), scale_legacy_coordinates=False)
         elif level == 3:
-            registry.add(OfficeObject("basement-b3-job-board", "pest_job_board", "PEST RESPONSE WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"))
-            registry.add(OfficeObject("basement-b3-uniform", "pest_uniform_station", "RESPONSE UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"))
-            registry.add(OfficeObject("basement-b3-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"))
-            registry.add(OfficeObject("basement-b3-disaster-response", "desk", "DISASTER RESPONSE", room, (2_000, 2_000), "EMERGENCY RESPONSE", interactive=False))
-            registry.add(OfficeObject("basement-b3-fire-station", "desk", "FIRE STATION", room, (2_000, 4_000), "TOWER FIRE RESPONSE", interactive=False))
-            registry.add(OfficeObject("basement-b3-maintenance", "desk", "MAINTENANCE BAY", room, (2_000, 6_000), "BUILDING MAINTENANCE", interactive=False))
-            registry.add(OfficeObject("basement-b3-incinerator", "carcass_disposal", "INCINERATOR / CLAIMS", room, (5_000, 7_000), "SELL A CLAIMED CARCASS"))
+            registry.add(OfficeObject("basement-b3-job-board", "pest_job_board", "PEST RESPONSE WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b3-uniform", "pest_uniform_station", "RESPONSE UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b3-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b3-disaster-response", "desk", "DISASTER RESPONSE", room, (2_000, 2_000), "EMERGENCY RESPONSE", interactive=False), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b3-fire-station", "desk", "FIRE STATION", room, (2_000, 4_000), "TOWER FIRE RESPONSE", interactive=False), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b3-maintenance", "desk", "MAINTENANCE BAY", room, (2_000, 6_000), "BUILDING MAINTENANCE", interactive=False), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b3-incinerator", "carcass_disposal", "INCINERATOR / CLAIMS", room, (5_000, 7_000), "SELL A CLAIMED CARCASS"), scale_legacy_coordinates=False)
         elif level == 4:
-            registry.add(OfficeObject("basement-b4-supply-store", "desk", "VITAL SUPPLIES / ISSUE TRIAGE KIT", room, (5_000, 6_500), "ISSUE ONE CLINIC TRIAGE KIT / TOWER STAFF", interactive=True))
+            registry.add(OfficeObject("basement-b4-supply-store", "desk", "VITAL SUPPLIES / ISSUE TRIAGE KIT", room, (5_000, 6_500), "ISSUE ONE CLINIC TRIAGE KIT / TOWER STAFF", interactive=True), scale_legacy_coordinates=False)
         elif level == 5:
             registry.add(OfficeObject("basement-b5-power", "utility_station", "POWER / GENERATORS", room, (7_500, 2_000), "MAINTAIN SHARED TOWER POWER"), scale_legacy_coordinates=False)
         elif level == 6:

@@ -4551,6 +4551,33 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_title.text = "ROOM CUSTOMIZATION"
 			native_app_body.text = "Room finishes and decor are part of the game world. Editing is disabled in this read-only view."
 			native_app_footer.text = "READ-ONLY  ·  ESC CLOSE"
+		"collections_case":
+			native_app_title.text = "B2 COLLECTIONS / CASE REVIEW"
+			var stage := clampi(int(office.get("collectionsCaseStage", 0)), 0, 5)
+			var case_steps := [
+				"1  OPEN CASE WITH COLLECTIONS CLERK",
+				"2  CHECK COLLECTIONS LEDGER / DESK 01",
+				"3  REVIEW CORPORATE SECURITY DISPATCH LOG",
+				"4  COMPARE RECORDS AT INVESTIGATIONS",
+				"5  FILE FINDINGS WITH THE CLERK",
+			]
+			var step_lines: Array[String] = []
+			for index in case_steps.size():
+				var marker := "✓" if stage > index else "›" if stage == index else "·"
+				step_lines.append("%s  %s" % [marker, case_steps[index]])
+			var findings := [
+				"The case file has not been assigned.",
+				"B1 supply paperwork and the B4 count do not agree.",
+				"One crate was signed out before the loading gate logged receipt.",
+				"The B4 service-elevator entry predates the approved ledger copy.",
+				"Two manifests conflict; a routing note appears to have been replaced.",
+				"Records are preserved for supervisor review. No person is accused.",
+			]
+			native_app_body.text = "TOWER SUPPLY RECORD / PRELIMINARY REVIEW\n\n%s\n\n%s" % [
+				"\n".join(step_lines),
+				findings[stage],
+			]
+			native_app_footer.text = "MOVE BETWEEN B2 STATIONS  ·  E INTERACT  ·  ESC CLOSE"
 		"pest_jobs":
 			native_app_title.text = "BASEMENT PEST WORK"
 			var jobs: Variant = office.get("pestJobs", [])
@@ -4754,6 +4781,8 @@ static func feature_panel_template_for(page: String, object_kind: String) -> Str
 	if normalized_page == "economy" or normalized_kind == "atm":
 		return "finance"
 	if normalized_page in ["tools", "utility_work", "pest_jobs", "pest_uniform", "melee"]:
+		return "operations"
+	if normalized_page == "collections_case":
 		return "operations"
 	return "field"
 

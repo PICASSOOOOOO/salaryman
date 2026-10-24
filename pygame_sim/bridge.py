@@ -325,6 +325,25 @@ def _handle_basement_interact(
     if not scene.is_basement:
         return None
 
+    collections_case_stations = {
+        "basement-b2-collections-clerk": "clerk",
+        "basement-b2-collections-desk-01": "ledger",
+        "basement-b2-security-desk": "security",
+        "basement-b2-investigations-desk": "evidence",
+    }
+    station = collections_case_stations.get(nearby.id if nearby is not None else "")
+    if scene.basement_level == 2 and station is not None and nearby is not None:
+        advanced = state.advance_collections_case(station)
+        message = state.notice
+        state.open_page(
+            "collections_case",
+            from_object=True,
+            source=nearby.label,
+            source_object_id=nearby.id,
+        )
+        state.notice = message
+        return CommandResult(advanced, message)
+
     if nearby is not None and nearby.kind == "carcass_disposal":
         snapshot = scene.basement_snapshot or {}
         pests = snapshot.get("pests", [])
@@ -1136,6 +1155,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "pestStamina": state.pest_stamina,
             "pestWorkOrders": state.pest_work_orders,
             "activePestJob": state.active_pest_job,
+            "collectionsCaseStage": state.collections_case_stage,
             "utilityWorkActive": state.utility_work_active,
             "utilityWorkTarget": state.utility_work_target,
             "utilityWorkStartedAt": state.utility_work_started_at,
