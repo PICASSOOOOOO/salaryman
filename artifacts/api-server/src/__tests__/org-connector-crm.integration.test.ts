@@ -2,11 +2,12 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { eq, inArray } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   db,
   crmActivitiesTable,
   leadRecordsTable,
+  orgDocumentsTable,
   orgConnectorActivityTable,
   orgConnectorAppsTable,
   orgConnectorConnectionsTable,
@@ -17,11 +18,34 @@ import {
 import { createOrgConnectorToken, hashOrgConnectorToken } from "../lib/org-connectors";
 import orgConnectorCrmRouter from "../routes/org-connector-crm";
 import orgConnectorCallsRouter from "../routes/org-connector-calls";
+import orgConnectorDocumentsRouter from "../routes/org-connector-documents";
 import orgConnectorsRouter from "../routes/org-connectors";
+
+const storageFixture = vi.hoisted(() => ({ size: "7", contentType: "text/plain" }));
+vi.mock("../lib/objectStorage", () => ({
+  ObjectNotFoundError: class ObjectNotFoundError extends Error {},
+  ObjectStorageService: class {
+    async getObjectEntityUploadURL(id: string) {
+      return `https://storage.googleapis.com/test-bucket/uploads/${id}`;
+    }
+    normalizeObjectEntityPath(url: string) {
+      return `/objects/uploads/${url.split("/").at(-1)}`;
+    }
+    async getObjectEntityFile() {
+      return {
+        getMetadata: async () => [{ size: storageFixture.size, contentType: storageFixture.contentType }],
+      };
+    }
+    async copyUploadToOrganizationDocument(_path: string, id: string) {
+      return `/objects/organization-documents/${id}`;
+    }
+    async deleteObject() { return true; }
+  },
+}));
 
 const app = express();
 app.use(express.json());
-app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter, orgConnectorCallsRouter);
+app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter, orgConnectorCallsRouter, orgConnectorDocumentsRouter);
 
 const userIds: string[] = [];
 const orgIds: number[] = [];
@@ -33,12 +57,16 @@ let readToken = "";
 let writeToken = "";
 let revokeToken = "";
 let callReadToken = "";
+let documentReadToken = "";
+let documentWriteToken = "";
 let writeConnectionId = 0;
 let revokeConnectionId = 0;
 let primaryLeadId = 0;
 let secondaryLeadId = 0;
 let primaryCallId = 0;
 let secondaryCallId = 0;
+let primaryDocumentId = 0;
+let secondaryDocumentId = 0;
 
 async function createUser(): Promise<string> {
   const [user] = await db.insert(usersTable)
@@ -139,11 +167,33 @@ beforeAll(async () => {
   const revokedConnection = await createConnection(primaryOrgId, ["crm:read"]);
   revokeToken = revokedConnection.token;
   revokeConnectionId = revokedConnection.connectionId;
+  documentReadToken = (await createConnection(primaryOrgId, ["documents:read"])).token;
+  documentWriteToken = (await createConnection(primaryOrgId, ["documents:write"])).token;
 
   primaryLeadId = await createLead(primaryOrgId, ownerA, "Primary Org Lead");
   secondaryLeadId = await createLead(secondaryOrgId, ownerB, "Secondary Org Lead");
   primaryCallId = await createCallActivity(primaryOrgId, ownerA, primaryLeadId, "Primary Private Contact");
   secondaryCallId = await createCallActivity(secondaryOrgId, ownerB, secondaryLeadId, "Foreign Private Contact");
+  const [primaryDocument] = await db.insert(orgDocumentsTable).values({
+    orgId: primaryOrgId,
+    name: "Organization brief",
+    isFolder: false,
+    objectPath: "/objects/private/primary",
+    mimeType: "text/plain",
+    fileSize: 7,
+    uploadedByUserId: ownerA,
+  }).returning({ id: orgDocumentsTable.id });
+  const [secondaryDocument] = await db.insert(orgDocumentsTable).values({
+    orgId: secondaryOrgId,
+    name: "Foreign brief",
+    isFolder: false,
+    objectPath: "/objects/private/secondary",
+    mimeType: "text/plain",
+    fileSize: 7,
+    uploadedByUserId: ownerB,
+  }).returning({ id: orgDocumentsTable.id });
+  primaryDocumentId = primaryDocument.id;
+  secondaryDocumentId = secondaryDocument.id;
 });
 
 afterAll(async () => {
@@ -289,6 +339,69 @@ describe("organization connector CRM API", () => {
     expect(events.map((event) => event.eventType)).toContain("crm_lead_created");
     expect(events.map((event) => event.eventType)).toContain("crm_lead_updated");
     expect(events.map((event) => event.summary).join(" ")).not.toContain("External App Lead");
+  });
+
+  it("scopes organization document reads and omits storage paths and uploader identity", async () => {
+    const listed = await request(app)
+      .get("/api/connectors/v1/documents")
+      .set("Authorization", `Bearer ${documentReadToken}`);
+    expect(listed.status).toBe(200);
+    expect(listed.body.documents.map((item: { id: number }) => item.id)).toContain(primaryDocumentId);
+    expect(listed.body.documents.map((item: { id: number }) => item.id)).not.toContain(secondaryDocumentId);
+    expect(listed.text).not.toContain("/objects/private");
+    expect(listed.text).not.toContain(userIds[0]);
+    expect(listed.body.documents[0]).not.toHaveProperty("uploadedByUserId");
+
+    const foreign = await request(app)
+      .get(`/api/connectors/v1/documents/${secondaryDocumentId}`)
+      .set("Authorization", `Bearer ${documentReadToken}`);
+    expect(foreign.status).toBe(404);
+
+    const wrongScope = await request(app)
+      .get("/api/connectors/v1/documents")
+      .set("Authorization", `Bearer ${readToken}`);
+    expect(wrongScope.status).toBe(403);
+  });
+
+  it("creates idempotent upload intents, verifies completion, and logs no file details", async () => {
+    const body = { name: "Notes.txt", contentType: "text/plain", size: 7 };
+    const first = await request(app)
+      .post("/api/connectors/v1/documents/uploads")
+      .set("Authorization", `Bearer ${documentWriteToken}`)
+      .set("Idempotency-Key", "upload-notes-1")
+      .send(body);
+    expect(first.status).toBe(201);
+    expect(first.body).toHaveProperty("uploadId");
+    expect(first.body).not.toHaveProperty("objectPath");
+
+    const retry = await request(app)
+      .post("/api/connectors/v1/documents/uploads")
+      .set("Authorization", `Bearer ${documentWriteToken}`)
+      .set("Idempotency-Key", "upload-notes-1")
+      .send(body);
+    expect(retry.status).toBe(200);
+    expect(retry.body.uploadId).toBe(first.body.uploadId);
+
+    const complete = await request(app)
+      .post(`/api/connectors/v1/documents/uploads/${first.body.uploadId}/complete`)
+      .set("Authorization", `Bearer ${documentWriteToken}`)
+      .send({});
+    expect(complete.status).toBe(201);
+    expect(complete.body.document).toMatchObject({ name: "Notes.txt", mimeType: "text/plain", fileSize: 7 });
+    expect(complete.body.document).not.toHaveProperty("objectPath");
+    expect(complete.body.document).not.toHaveProperty("uploadedByUserId");
+
+    const retryComplete = await request(app)
+      .post(`/api/connectors/v1/documents/uploads/${first.body.uploadId}/complete`)
+      .set("Authorization", `Bearer ${documentWriteToken}`)
+      .send({});
+    expect(retryComplete.status).toBe(200);
+    expect(retryComplete.body.document.id).toBe(complete.body.document.id);
+
+    const events = await db.select().from(orgConnectorActivityTable)
+      .where(eq(orgConnectorActivityTable.orgId, primaryOrgId));
+    expect(events.map((event) => event.eventType)).toContain("org_document_uploaded");
+    expect(events.map((event) => event.summary).join(" ")).not.toContain("Notes.txt");
   });
 
   it("rejects the health and CRM endpoints after a token is revoked", async () => {

@@ -106,7 +106,13 @@ export class ObjectStorageService {
     return new Response(webStream, { headers });
   }
 
-  async getObjectEntityUploadURL(): Promise<string> {
+  async getObjectEntityUploadURL(
+    objectId: string = randomUUID(),
+    namespace: "uploads" | "organization-document-staging" = "uploads",
+  ): Promise<string> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(objectId)) {
+      throw new Error("Invalid object ID");
+    }
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -115,8 +121,7 @@ export class ObjectStorageService {
       );
     }
 
-    const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const fullPath = `${privateObjectDir}/${namespace}/${objectId}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
@@ -126,6 +131,18 @@ export class ObjectStorageService {
       method: "PUT",
       ttlSec: 900,
     });
+  }
+
+  async copyUploadToOrganizationDocument(objectPath: string, uploadId: string): Promise<string> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadId)) {
+      throw new Error("Invalid upload ID");
+    }
+    const source = await this.getObjectEntityFile(objectPath);
+    const privateObjectDir = this.getPrivateObjectDir();
+    const { bucketName, objectName } = parseObjectPath(`${privateObjectDir}/organization-documents/${uploadId}`);
+    const destination = objectStorageClient.bucket(bucketName).file(objectName);
+    await source.copy(destination);
+    return `/objects/organization-documents/${uploadId}`;
   }
 
   // Upload a raw buffer into the private object dir and return its canonical
