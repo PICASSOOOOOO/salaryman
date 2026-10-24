@@ -219,6 +219,8 @@ class TowerFloorTravelTests(unittest.TestCase):
         sync.update_scene(scene)
         self.assertEqual(tuple(scene.player_position), tuple(scene.room_spawn("recreation")))
         sync._sync_once()
+        floor_refresh_events = sync.drain_events()
+        self.assertTrue(any(event.source == "game_service" for event in floor_refresh_events))
 
         recreation_elevator = scene.objects.get("recreation-elevator")
         self.assertIsNotNone(recreation_elevator)
