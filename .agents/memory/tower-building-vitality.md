@@ -36,6 +36,16 @@ NPCs; their purchases are sales for the current business owner. This initial
 ownership is not a permanent monopoly: outside businesses may enter, and
 disruptors may dynamically change competitive conditions.
 
+The Tower restroom needs a hired attendant responsible for cleaning, and Tower
+funds may be used to pay salaries. Employees are paid daily in real time, while
+salary ledgers are monthly.
+
+**Why:** The user explicitly asked to remember the bathroom-attendant role and
+the daily-pay/monthly-ledger cadence.
+
+**How to apply:** Keep daily salary settlement distinct from monthly ledger
+recording, and use Tower funds only for authorized Tower staffing costs.
+
 NPCs should develop AI-driven creative and innovative ambitions. They may leave
 a job, join another employer, or start a business when they have enough capital.
 Players and NPCs with sufficient funds may purchase a business. Business concepts
