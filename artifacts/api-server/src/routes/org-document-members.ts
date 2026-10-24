@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { Router, type Request, type Response } from "express";
 import {
   db,
@@ -205,14 +205,61 @@ router.patch("/org/documents/:id", async (req, res) => {
   const user = await context(req, res);
   if (!user) return;
   const id = Number(req.params.id);
-  if (!Number.isSafeInteger(id) || id <= 0 || !validName(req.body?.name)) {
-    res.status(400).json({ error: "Invalid document ID or name" }); return;
+  const body = req.body ?? {};
+  const hasName = Object.prototype.hasOwnProperty.call(body, "name");
+  const hasParentId = Object.prototype.hasOwnProperty.call(body, "parentId");
+  const parentId = body.parentId === null ? null : Number(body.parentId);
+  if (!Number.isSafeInteger(id) || id <= 0 || (!hasName && !hasParentId) ||
+      (hasName && !validName(body.name)) ||
+      (hasParentId && parentId !== null && (!Number.isSafeInteger(parentId) || parentId <= 0))) {
+    res.status(400).json({ error: "Invalid document ID, name, or parentId" }); return;
   }
-  const [document] = await db.update(orgDocumentsTable).set({ name: req.body.name.trim(), updatedAt: new Date() })
-    .where(and(eq(orgDocumentsTable.id, id), eq(orgDocumentsTable.orgId, user.orgId)))
-    .returning(fields);
-  if (!document) { res.status(404).json({ error: "Document not found" }); return; }
-  res.json({ document });
+  const result = await db.transaction(async (tx) => {
+    // Serialize tree moves within an organization so simultaneous moves cannot
+    // create a cycle by each validating against the other's old location.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(192837465, ${user.orgId})`);
+    const [current] = await tx.select({
+      id: orgDocumentsTable.id,
+      parentId: orgDocumentsTable.parentId,
+    }).from(orgDocumentsTable).where(and(
+      eq(orgDocumentsTable.id, id),
+      eq(orgDocumentsTable.orgId, user.orgId),
+    )).for("update").limit(1);
+    if (!current) return { kind: "not_found" as const };
+
+    if (hasParentId && parentId !== null) {
+      const visited = new Set<number>();
+      let ancestorId: number | null = parentId;
+      while (ancestorId !== null) {
+        if (ancestorId === id || visited.has(ancestorId)) return { kind: "cycle" as const };
+        visited.add(ancestorId);
+        const [ancestor] = await tx.select({
+          id: orgDocumentsTable.id,
+          parentId: orgDocumentsTable.parentId,
+          isFolder: orgDocumentsTable.isFolder,
+        }).from(orgDocumentsTable).where(and(
+          eq(orgDocumentsTable.id, ancestorId),
+          eq(orgDocumentsTable.orgId, user.orgId),
+        )).limit(1);
+        if (!ancestor || !ancestor.isFolder) return { kind: "invalid_parent" as const };
+        ancestorId = ancestor.parentId;
+      }
+    }
+
+    const updates: { name?: string; parentId?: number | null; updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
+    if (hasName) updates.name = body.name.trim();
+    if (hasParentId) updates.parentId = parentId;
+    const [document] = await tx.update(orgDocumentsTable).set(updates)
+      .where(and(eq(orgDocumentsTable.id, id), eq(orgDocumentsTable.orgId, user.orgId)))
+      .returning(fields);
+    return { kind: "updated" as const, document };
+  });
+  if (result.kind === "not_found") { res.status(404).json({ error: "Document not found" }); return; }
+  if (result.kind === "invalid_parent") { res.status(404).json({ error: "Destination folder not found" }); return; }
+  if (result.kind === "cycle") { res.status(409).json({ error: "A folder cannot be moved into itself or a descendant" }); return; }
+  res.json({ document: result.document });
 });
 
 router.delete("/org/documents/:id", async (req, res) => {

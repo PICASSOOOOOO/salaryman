@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Download, File, Folder, FolderPlus, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Download, File, Folder, FolderPlus, Loader2, MoveRight, RefreshCw, Trash2, Upload } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrg } from "@/hooks/use-org";
@@ -23,6 +23,11 @@ export default function OrganizationDocuments() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [moveItem, setMoveItem] = useState<DocumentItem | null>(null);
+  const [moveFolderId, setMoveFolderId] = useState<number | null>(null);
+  const [moveCrumbs, setMoveCrumbs] = useState<{ id: number | null; name: string }[]>([{ id: null, name: "Shared files" }]);
+  const [moveFolders, setMoveFolders] = useState<DocumentItem[]>([]);
+  const [moveLoading, setMoveLoading] = useState(false);
 
   const loadItems = useCallback(async () => {
     if (!org) return;
@@ -42,6 +47,49 @@ export default function OrganizationDocuments() {
   }, [folderId, org]);
 
   useEffect(() => { void loadItems(); }, [loadItems]);
+
+  const loadMoveFolders = async (parentId: number | null) => {
+    setMoveLoading(true);
+    try {
+      const query = parentId === null ? "" : `?parentId=${parentId}`;
+      const response = await apiFetch(`/api/org/documents${query}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load destination folders");
+      setMoveFolders((Array.isArray(data.documents) ? data.documents : []).filter((item: DocumentItem) => item.isFolder));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load destination folders");
+    } finally {
+      setMoveLoading(false);
+    }
+  };
+
+  const openMovePicker = (item: DocumentItem) => {
+    setMoveItem(item);
+    setMoveFolderId(null);
+    setMoveCrumbs([{ id: null, name: "Shared files" }]);
+    void loadMoveFolders(null);
+  };
+
+  const move = async () => {
+    if (!moveItem) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await apiFetch(`/api/org/documents/${moveItem.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentId: moveFolderId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not move item");
+      setMoveItem(null);
+      await loadItems();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not move item");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const createFolder = async () => {
     const name = window.prompt("Folder name");
@@ -165,11 +213,41 @@ export default function OrganizationDocuments() {
               {item.isFolder ? <button className="min-w-0 flex-1 truncate text-left text-sm font-medium text-zinc-900" onClick={() => { setFolderId(item.id); setCrumbs([...crumbs, { id: item.id, name: item.name }]); }}>{item.name}</button> :
                 <span className="min-w-0 flex-1 truncate text-sm text-zinc-900">{item.name}<small className="ml-2 text-zinc-500">{item.mimeType || "File"}{item.fileSize ? ` · ${Math.ceil(item.fileSize / 1024)} KB` : ""}</small></span>}
               {!item.isFolder && <button onClick={() => void download(item)} aria-label={`Download ${item.name}`} className="rounded p-2 hover:bg-black/5"><Download className="h-4 w-4" /></button>}
+              <button data-testid={`move-document-${item.id}`} disabled={busy} onClick={() => openMovePicker(item)} aria-label={`Move ${item.name}`} className="rounded p-2 hover:bg-black/5"><MoveRight className="h-4 w-4" /></button>
               <button disabled={busy} onClick={() => void rename(item)} aria-label={`Rename ${item.name}`} className="rounded px-2 py-1 text-xs hover:bg-black/5">Rename</button>
               {!item.isFolder && <button disabled={busy} onClick={() => void remove(item)} aria-label={`Delete ${item.name}`} className="rounded p-2 text-red-700 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>}
             </li>)}
           </ul>}
       </> : <p className="rounded-lg border border-black/15 bg-[#fffaf0] p-6 text-sm text-zinc-600">Join or create an organization to view shared documents.</p>}
+      {moveItem && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <section role="dialog" aria-modal="true" aria-labelledby="move-dialog-title" className="w-full max-w-md rounded-lg border border-black/20 bg-[#fffaf0] p-4 text-zinc-900 shadow-xl">
+          <h2 id="move-dialog-title" className="text-base font-semibold">Move “{moveItem.name}”</h2>
+          <p className="mt-1 text-sm text-zinc-600">Choose a destination folder.</p>
+          <nav aria-label="Destination folder" className="my-3 flex flex-wrap items-center gap-1 text-sm">
+            {moveCrumbs.map((crumb, index) => <button key={`${crumb.id}-${index}`} onClick={() => {
+              const next = moveCrumbs.slice(0, index + 1);
+              setMoveCrumbs(next);
+              setMoveFolderId(crumb.id);
+              void loadMoveFolders(crumb.id);
+            }} className="underline-offset-4 hover:underline">{index ? " / " : ""}{crumb.name}</button>)}
+          </nav>
+          <div className="max-h-64 overflow-y-auto rounded border border-black/15">
+            {moveLoading ? <p className="p-4 text-sm text-zinc-500">Loading folders…</p> : moveFolders.length === 0 ?
+              <p className="p-4 text-sm text-zinc-500">No folders here.</p> :
+              <ul className="divide-y divide-black/10">{moveFolders.map(folder => <li key={folder.id}>
+                <button data-testid={`open-move-folder-${folder.id}`} className="flex w-full items-center gap-2 p-3 text-left text-sm hover:bg-black/5" onClick={() => {
+                  setMoveFolderId(folder.id);
+                  setMoveCrumbs([...moveCrumbs, { id: folder.id, name: folder.name }]);
+                  void loadMoveFolders(folder.id);
+                }}><Folder className="h-4 w-4" />{folder.name}</button>
+              </li>)}</ul>}
+          </div>
+          <footer className="mt-4 flex justify-end gap-2">
+            <button data-testid="cancel-move-document" disabled={busy} onClick={() => setMoveItem(null)} className="rounded border border-black/20 px-3 py-2 text-sm">Cancel</button>
+            <button data-testid="confirm-move-document" disabled={busy || moveLoading || moveFolderId === moveItem.parentId} onClick={() => void move()} className="rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-50">{busy ? "Moving…" : "Move here"}</button>
+          </footer>
+        </section>
+      </div>}
     </main>
   );
 }

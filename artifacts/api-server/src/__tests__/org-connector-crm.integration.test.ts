@@ -456,6 +456,51 @@ describe("organization connector CRM API", () => {
     expect(completed.body.document).not.toHaveProperty("objectPath");
     expect(completed.body.document).not.toHaveProperty("uploadedByUserId");
 
+    const nestedFolder = await request(app)
+      .post("/api/org/documents/folders")
+      .set("x-test-user", userIds[0])
+      .send({ name: "Archive", parentId: createdFolder.body.document.id });
+    expect(nestedFolder.status).toBe(201);
+
+    const destinationFolder = await request(app)
+      .post("/api/org/documents/folders")
+      .set("x-test-user", userIds[0])
+      .send({ name: "Projects" });
+    expect(destinationFolder.status).toBe(201);
+
+    const movedFolder = await request(app)
+      .patch(`/api/org/documents/${createdFolder.body.document.id}`)
+      .set("x-test-user", userIds[0])
+      .send({ parentId: destinationFolder.body.document.id });
+    expect(movedFolder.status).toBe(200);
+    expect(movedFolder.body.document.parentId).toBe(destinationFolder.body.document.id);
+
+    const movedToRoot = await request(app)
+      .patch(`/api/org/documents/${completed.body.document.id}`)
+      .set("x-test-user", userIds[0])
+      .send({ parentId: null });
+    expect(movedToRoot.status).toBe(200);
+    expect(movedToRoot.body.document.parentId).toBeNull();
+
+    const movedIntoFolder = await request(app)
+      .patch(`/api/org/documents/${completed.body.document.id}`)
+      .set("x-test-user", userIds[0])
+      .send({ parentId: nestedFolder.body.document.id });
+    expect(movedIntoFolder.status).toBe(200);
+    expect(movedIntoFolder.body.document.parentId).toBe(nestedFolder.body.document.id);
+
+    const cycle = await request(app)
+      .patch(`/api/org/documents/${createdFolder.body.document.id}`)
+      .set("x-test-user", userIds[0])
+      .send({ parentId: nestedFolder.body.document.id });
+    expect(cycle.status).toBe(409);
+
+    const nonFolderDestination = await request(app)
+      .patch(`/api/org/documents/${completed.body.document.id}`)
+      .set("x-test-user", userIds[0])
+      .send({ parentId: secondaryDocumentId });
+    expect(nonFolderDestination.status).toBe(404);
+
     const folderDelete = await request(app)
       .delete(`/api/org/documents/${createdFolder.body.document.id}`)
       .set("x-test-user", userIds[0]);
