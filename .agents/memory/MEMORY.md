@@ -90,6 +90,7 @@
 - [SALARYMAN product manifesto](pablo-creation-workspace.md) — Gamified office automation; browser funnels users to desktop and free creator tools.
 - [Lab naming](lab-name-1999.md) — the lab is called 1999; preserve established project names and do not rename them.
 - [Authoritative world economy](authoritative-world-economy.md) — FIAT, quick-job runs, cargo, quotes, and economy-gated position are server-owned; client saves/UI only cache returned snapshots.
+- [Collections case cross-device progress](collections-case-cross-device.md) — server progress controls linked play; preserve unauthenticated local-only progress for offline compatibility.
 - [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
 - [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
 - [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.

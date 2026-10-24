@@ -4,6 +4,7 @@ import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import {
   db,
   desktopBasementAttackEventsTable,
+  desktopBasementCollectionsCasesTable,
   desktopBasementPestsTable,
   desktopBasementPresenceTable,
   desktopOfficePresenceTable,
@@ -76,6 +77,14 @@ const CARCASS_CLAIM_MS = 10 * 60_000;
 const CARCASS_PICKUP_RADIUS = 500;
 const CARCASS_DROP_POINT = { x: 5_000, y: 7_000 };
 const CARCASS_DROP_RADIUS = 650;
+const COLLECTIONS_CASE_STATIONS = {
+  clerk: { x: 2_800, y: 5_400 },
+  ledger: { x: 1_700, y: 2_500 },
+  security: { x: 7_200, y: 5_000 },
+  evidence: { x: 7_200, y: 7_100 },
+} as const;
+const COLLECTIONS_CASE_SEQUENCE = ["clerk", "ledger", "security", "evidence", "clerk"] as const;
+const COLLECTIONS_CASE_INTERACTION_RADIUS = 1_250;
 const RESTROOM_USE_DURATION_MS = 8_000;
 const RESTROOM_MAX_AGE_MS = 10 * 60_000;
 const RESTROOM_STAMINA_RESTORE = 20;
@@ -623,6 +632,90 @@ router.post("/desktop-building/basement/uniform", async (req, res): Promise<void
   }
 });
 
+router.get("/desktop-building/basement/collections-case", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const presence = await activePresence(link.userId, link.id, 2);
+  if (!presence) {
+    res.status(409).json({ error: "Enter B2 to view the Collections case" });
+    return;
+  }
+  try {
+    const [caseRow] = await db.select({ stage: desktopBasementCollectionsCasesTable.stage })
+      .from(desktopBasementCollectionsCasesTable)
+      .where(eq(desktopBasementCollectionsCasesTable.userId, link.userId))
+      .limit(1);
+    res.json({ stage: caseRow?.stage ?? 0, complete: (caseRow?.stage ?? 0) >= 5 });
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop Collections case load failed");
+    res.status(500).json({ error: "Could not load Collections case" });
+  }
+});
+
+router.post("/desktop-building/basement/collections-case/station", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const station = req.body?.station;
+  if (typeof station !== "string" || !Object.hasOwn(COLLECTIONS_CASE_STATIONS, station)) {
+    res.status(400).json({ error: "Choose a valid Collections case station" });
+    return;
+  }
+  const target = COLLECTIONS_CASE_STATIONS[
+    station as keyof typeof COLLECTIONS_CASE_STATIONS
+  ];
+  const presence = await activePresence(link.userId, link.id, 2);
+  if (!presence) {
+    res.status(409).json({ error: "Enter B2 to continue the Collections case" });
+    return;
+  }
+  if (distance(presence, target) > COLLECTIONS_CASE_INTERACTION_RADIUS) {
+    res.status(409).json({ error: "Move closer to the requested case station" });
+    return;
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.insert(desktopBasementCollectionsCasesTable)
+        .values({ userId: link.userId })
+        .onConflictDoNothing();
+      const [caseRow] = await tx.select().from(desktopBasementCollectionsCasesTable)
+        .where(eq(desktopBasementCollectionsCasesTable.userId, link.userId))
+        .for("update")
+        .limit(1);
+      if (!caseRow) throw new Error("Collections case row could not be locked");
+      const stage = Math.max(0, Math.min(5, caseRow.stage));
+      if (stage >= COLLECTIONS_CASE_SEQUENCE.length) {
+        return { accepted: false, stage, nextStation: null, complete: true };
+      }
+      const expected = COLLECTIONS_CASE_SEQUENCE[stage];
+      if (station !== expected) {
+        return { accepted: false, stage, nextStation: expected, complete: false };
+      }
+      const nextStage = stage + 1;
+      await tx.update(desktopBasementCollectionsCasesTable)
+        .set({ stage: nextStage, updatedAt: new Date() })
+        .where(eq(desktopBasementCollectionsCasesTable.userId, link.userId));
+      return {
+        accepted: true,
+        stage: nextStage,
+        nextStation: COLLECTIONS_CASE_SEQUENCE[nextStage] ?? null,
+        complete: nextStage >= COLLECTIONS_CASE_SEQUENCE.length,
+      };
+    });
+    if (!result.accepted && !result.complete) {
+      res.status(409).json({
+        error: `Continue at the ${result.nextStation} station`,
+        ...result,
+      });
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop Collections case station failed");
+    res.status(500).json({ error: "Could not update Collections case" });
+  }
+});
+
 router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
@@ -654,6 +747,11 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
         eq(salarymanSavesTable.userId, link.userId),
         eq(salarymanSavesTable.slotIndex, 0),
       )).limit(1);
+    const [collectionsCase] = await db.select({
+      stage: desktopBasementCollectionsCasesTable.stage,
+    }).from(desktopBasementCollectionsCasesTable)
+      .where(eq(desktopBasementCollectionsCasesTable.userId, link.userId))
+      .limit(1);
     const [activeHaul] = await db.select({ units: towerWasteHaulsTable.units })
       .from(towerWasteHaulsTable).where(and(
         eq(towerWasteHaulsTable.userId, link.userId),
@@ -697,6 +795,7 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
       accessModeTemporary: BASEMENT_ACCESS_MODE_TEMPORARY,
       level,
       observedAt: now.toISOString(),
+      collectionsCaseStage: collectionsCase?.stage ?? 0,
       player: {
         stamina: save ? getEnergy(save.data as Record<string, unknown>, now).stamina : 100,
         uniformWorn: save ? hasPestResponseUniform(save.data as Record<string, unknown>) : false,

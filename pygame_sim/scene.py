@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 from math import hypot
 from pathlib import Path
@@ -51,6 +51,9 @@ def _build_office_npc_routes() -> dict[str, tuple[tuple[tuple[int, int], ...], .
             (half_x + inset, y + height - inset),
         )
         routes.setdefault(room_id, []).append(route)
+    routes["basement_b2"] = [
+        ((4_000, 6_500), (5_500, 6_500), (5_500, 7_500), (4_000, 7_500)),
+    ]
     return {room_id: tuple(room_routes) for room_id, room_routes in routes.items()}
 
 
@@ -810,6 +813,23 @@ class TowerScene:
         """Advance deterministic office routes independently of player input."""
         if delta_seconds > 0:
             self.npc_motion_seconds += delta_seconds
+        if self.is_basement and self.basement_level == 2:
+            patrol = self.objects.get("basement-b2-security-patrol")
+            pose = self.npc_pose("basement_b2", 0)
+            if patrol is not None and pose is not None:
+                position, _facing = pose
+                if self._room_position_is_walkable(position):
+                    patrol_index = next(
+                        (index for index, item in enumerate(self.objects.objects)
+                         if item.id == patrol.id),
+                        None,
+                    )
+                    if patrol_index is not None:
+                        self.objects.objects[patrol_index] = replace(
+                            patrol,
+                            position=position,
+                            display_position=position,
+                        )
 
     def set_autopilot_snapshot(self, snapshot: AutopilotSnapshot) -> None:
         self.autopilot_snapshot = snapshot

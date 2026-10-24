@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -16,7 +17,7 @@ import { deviceLinksTable } from "./device-links";
 export const desktopBasementPresenceTable = pgTable(
   "desktop_basement_presence",
   {
-    userId: varchar("user_id", { length: 256 }).notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 256 }).notNull(),
     linkId: uuid("link_id").notNull().references(() => deviceLinksTable.id, { onDelete: "cascade" }),
     level: integer("level").notNull(),
     x: integer("x").notNull(),
@@ -101,6 +102,24 @@ export const desktopBasementAttackEventsTable = pgTable(
     index("desktop_basement_attack_pest_created_idx").on(table.pestId, table.createdAt),
     check("desktop_basement_attack_damage_check", sql`${table.damage} between 0 and 100`),
     check("desktop_basement_attack_stamina_check", sql`${table.staminaAfter} between 0 and 100`),
+  ],
+);
+
+export const desktopBasementCollectionsCasesTable = pgTable(
+  "desktop_basement_collections_cases",
+  {
+    userId: varchar("user_id", { length: 256 }).notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    stage: integer("stage").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ name: "desktop_basement_collections_cases_user_pk", columns: [table.userId] }),
+    foreignKey({
+      name: "desktop_basement_collections_cases_user_id_fk",
+      columns: [table.userId],
+      foreignColumns: [usersTable.id],
+    }).onDelete("cascade"),
+    check("desktop_basement_collections_cases_stage_check", sql`${table.stage} between 0 and 5`),
   ],
 );
 

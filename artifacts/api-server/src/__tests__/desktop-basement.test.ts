@@ -8,6 +8,7 @@ import {
   bankTransactionsTable,
   db,
   desktopBasementAttackEventsTable,
+  desktopBasementCollectionsCasesTable,
   desktopBasementPestsTable,
   desktopBasementPresenceTable,
   desktopOfficePresenceTable,
@@ -147,6 +148,8 @@ describe("desktop basement survival authority", () => {
         .where(eq(desktopBasementPestsTable.id, pestIds[0]));
     }
     await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
+    await db.delete(desktopBasementCollectionsCasesTable)
+      .where(eq(desktopBasementCollectionsCasesTable.userId, userId));
     await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
     await db.delete(towerStaffAssignmentsTable).where(eq(towerStaffAssignmentsTable.userId, userId));
     if (userIds.length) {
@@ -677,5 +680,75 @@ describe("desktop basement survival authority", () => {
           .where(eq(towerOperationsStateTable.buildingKey, "shadow_tower"));
       }
     }
+  });
+
+  it("persists ordered B2 Collections case progress and rejects duplicate or out-of-order stations", async () => {
+    await db.delete(desktopBasementPresenceTable)
+      .where(eq(desktopBasementPresenceTable.userId, userId));
+    await db.insert(desktopBasementPresenceTable).values({
+      userId,
+      linkId,
+      level: 2,
+      x: 2_800,
+      y: 5_400,
+      action: "stand",
+      lastSeenAt: new Date(),
+    });
+    const positionAt = async (x: number, y: number) => {
+      await db.update(desktopBasementPresenceTable).set({
+        level: 2,
+        x,
+        y,
+        lastSeenAt: new Date(),
+      }).where(eq(desktopBasementPresenceTable.userId, userId));
+    };
+    const station = (name: string) =>
+      desktopPost("/api/desktop-building/basement/collections-case/station").send({ station: name });
+
+    await positionAt(2_800, 5_400);
+    const tooFar = await station("ledger");
+    expect(tooFar.status).toBe(409);
+    expect(tooFar.body.error).toMatch(/Move closer/);
+
+    await positionAt(1_700, 2_500);
+    const outOfOrder = await station("ledger");
+    expect(outOfOrder.status).toBe(409);
+    expect(outOfOrder.body.stage).toBe(0);
+    expect(outOfOrder.body.nextStation).toBe("clerk");
+
+    await positionAt(2_800, 5_400);
+    const [firstRequest, concurrentRequest] = await Promise.all([
+      station("clerk"),
+      station("clerk"),
+    ]);
+    const opened = firstRequest.status === 200 ? firstRequest : concurrentRequest;
+    const duplicate = firstRequest.status === 409 ? firstRequest : concurrentRequest;
+    expect(opened.status).toBe(200);
+    expect(opened.body).toMatchObject({ accepted: true, stage: 1 });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body).toMatchObject({ stage: 1, nextStation: "ledger" });
+
+    for (const step of [
+      { name: "ledger", x: 1_700, y: 2_500 },
+      { name: "security", x: 7_200, y: 5_000 },
+      { name: "evidence", x: 7_200, y: 7_100 },
+      { name: "clerk", x: 2_800, y: 5_400 },
+    ]) {
+      await positionAt(step.x, step.y);
+      const response = await station(step.name);
+      expect(response.status).toBe(200);
+      expect(response.body.accepted).toBe(true);
+    }
+
+    const loaded = await desktopGet("/api/desktop-building/basement/collections-case");
+    expect(loaded.status).toBe(200);
+    expect(loaded.body).toMatchObject({ stage: 5, complete: true });
+    const snapshot = await desktopGet("/api/desktop-building/basement/snapshot?level=2");
+    expect(snapshot.status).toBe(200);
+    expect(snapshot.body.collectionsCaseStage).toBe(5);
+    const duplicateFinal = await station("clerk");
+    expect(duplicateFinal.status).toBe(200);
+    expect(duplicateFinal.body.stage).toBe(5);
+    expect(duplicateFinal.body.accepted).toBe(false);
   });
 });

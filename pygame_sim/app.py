@@ -199,6 +199,11 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = event.message.upper()
                 continue
             if not event.ok:
+                if event.source == "collections_case_station":
+                    error_payload = data.get("errorPayload")
+                    stage = error_payload.get("stage") if isinstance(error_payload, dict) else None
+                    if isinstance(stage, int) and not isinstance(stage, bool):
+                        state.collections_case_server_stage = max(0, min(5, stage))
                 if event.source in {"basement_work_start", "basement_work_complete"}:
                     state.utility_work_active = False
                     state.utility_work_target = None
@@ -238,6 +243,14 @@ def run(argv: list[str] | None = None) -> int:
                     "WORN" if state.pest_uniform_worn else "REMOVED"
                 )
                 state.save_to_file(args.save_file)
+            elif event.source == "collections_case_station":
+                stage = data.get("stage")
+                if isinstance(stage, int) and not isinstance(stage, bool):
+                    state.collections_case_server_stage = max(0, min(5, stage))
+                    if stage > state.collections_case_stage:
+                        state.collections_case_stage = max(0, min(5, stage))
+                        state.save_to_file(args.save_file)
+                state.notice = event.message.upper()
             elif event.source == "basement_attack":
                 pest = data.get("pest")
                 if isinstance(pest, dict):
@@ -725,6 +738,12 @@ def run(argv: list[str] | None = None) -> int:
         basement_snapshot = basement_sync.latest_snapshot()
         scene.set_basement_snapshot(basement_snapshot)
         if isinstance(basement_snapshot, dict):
+            remote_case_stage = basement_snapshot.get("collectionsCaseStage")
+            if isinstance(remote_case_stage, int) and not isinstance(remote_case_stage, bool):
+                state.collections_case_server_stage = max(0, min(5, remote_case_stage))
+                if remote_case_stage > state.collections_case_stage:
+                    state.collections_case_stage = max(0, min(5, remote_case_stage))
+                    state.save_to_file(args.save_file)
             player_snapshot = basement_snapshot.get("player")
             if isinstance(player_snapshot, dict):
                 stamina = player_snapshot.get("stamina")

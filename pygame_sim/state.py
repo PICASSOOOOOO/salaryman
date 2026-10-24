@@ -141,6 +141,7 @@ class OfficeState:
     )
     active_pest_job: str | None = None
     collections_case_stage: int = 0
+    collections_case_server_stage: int | None = None
     tower_work_advice: str = ""
     utility_work_target: str | None = None
     utility_work_started_at: float = 0.0
@@ -148,6 +149,15 @@ class OfficeState:
     relocation_cutscene_pending: bool = False
     relocation_cutscene_elapsed: float = 0.0
     relocation_cutscene_seen: bool = False
+
+    @property
+    def displayed_collections_case_stage(self) -> int:
+        stage = (
+            self.collections_case_server_stage
+            if self.collections_case_server_stage is not None
+            else self.collections_case_stage
+        )
+        return max(0, min(5, stage))
 
     @classmethod
     def with_default_roster(

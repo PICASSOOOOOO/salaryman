@@ -333,8 +333,17 @@ def _handle_basement_interact(
     }
     station = collections_case_stations.get(nearby.id if nearby is not None else "")
     if scene.basement_level == 2 and station is not None and nearby is not None:
-        advanced = state.advance_collections_case(station)
-        message = state.notice
+        online_case = basement_sync is not None and basement_sync.link is not None
+        if online_case:
+            advanced = basement_sync.queue_collections_case_station(station)
+            message = (
+                "COLLECTIONS CASE / SAVING TO ACCOUNT"
+                if advanced
+                else "COLLECTIONS CASE / WAIT FOR THE CURRENT SAVE"
+            )
+        else:
+            advanced = state.advance_collections_case(station)
+            message = state.notice
         state.open_page(
             "collections_case",
             from_object=True,
@@ -1155,7 +1164,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "pestStamina": state.pest_stamina,
             "pestWorkOrders": state.pest_work_orders,
             "activePestJob": state.active_pest_job,
-            "collectionsCaseStage": state.collections_case_stage,
+            "collectionsCaseStage": state.displayed_collections_case_stage,
             "utilityWorkActive": state.utility_work_active,
             "utilityWorkTarget": state.utility_work_target,
             "utilityWorkStartedAt": state.utility_work_started_at,

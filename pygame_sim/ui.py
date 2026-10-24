@@ -2297,7 +2297,7 @@ class SolarPunkRenderer:
     ) -> None:
         content = page.y + 92
         if state.active_page == "collections_case":
-            stage = max(0, min(5, state.collections_case_stage))
+            stage = state.displayed_collections_case_stage
             steps = (
                 "1  OPEN THE CASE WITH THE COLLECTIONS CLERK",
                 "2  CHECK COLLECTIONS LEDGER / DESK 01",

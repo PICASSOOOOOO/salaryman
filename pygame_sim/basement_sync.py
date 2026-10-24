@@ -24,6 +24,7 @@ MELEE_MOVES = frozenset({
     "stomp_kick", "punch", "side_kick", "roundhouse_kick", "elbow",
     "biting", "headbutting", "dirty_fighting", "stabbing",
 })
+COLLECTIONS_CASE_STATIONS = frozenset({"clerk", "ledger", "security", "evidence"})
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,7 @@ class DesktopBasementSync:
         self._thread: threading.Thread | None = None
         self._last_error: str | None = None
         self._last_advice_request = float("-inf")
+        self._collections_case_request_pending = False
 
     def start(self) -> None:
         if self.link is None or self._thread is not None:
@@ -204,6 +206,20 @@ class DesktopBasementSync:
             {},
         )
 
+    def queue_collections_case_station(self, station: str) -> bool:
+        if self.link is None or station not in COLLECTIONS_CASE_STATIONS:
+            return False
+        with self._lock:
+            if self._collections_case_request_pending:
+                return False
+            self._collections_case_request_pending = True
+        self._actions.put((
+            "collections_case_station",
+            f"{BASEMENT_PATH}/collections-case/station",
+            {"station": station},
+        ))
+        return True
+
     def latest_snapshot(self) -> dict[str, Any] | None:
         with self._lock:
             return json.loads(json.dumps(self._snapshot)) if self._snapshot is not None else None
@@ -262,6 +278,10 @@ class DesktopBasementSync:
                 except (OSError, URLError, TimeoutError, ValueError) as error:
                     self._events.put(BasementSyncEvent(False, "BASEMENT SERVER OFFLINE", source, code="NETWORK_ERROR"))
                     self._last_error = str(error)
+                finally:
+                    if source == "collections_case_station":
+                        with self._lock:
+                            self._collections_case_request_pending = False
                 continue
 
             with self._lock:
@@ -417,4 +437,6 @@ class DesktopBasementSync:
             return "TOWER MAINTENANCE IN PROGRESS"
         if source == "basement_work_advice":
             return "TOWER WORK ADVICE READY"
+        if source == "collections_case_station":
+            return "COLLECTIONS CASE PROGRESS SAVED TO ACCOUNT"
         return "BASEMENT SYNC COMPLETE"

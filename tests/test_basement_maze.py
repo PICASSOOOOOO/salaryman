@@ -188,6 +188,49 @@ class BasementMazeTests(unittest.TestCase):
                 f"{object_id} at {station.position} must be reachable on B{level}",
             )
 
+    def test_b2_security_patrol_moves_only_through_walkable_tunnel_cells(self) -> None:
+        scene = TowerScene()
+        self.assertTrue(scene.select_basement_level(2))
+        patrol = scene.objects.get("basement-b2-security-patrol")
+        self.assertIsNotNone(patrol)
+        assert patrol is not None
+        start = patrol.position
+        self.assertEqual(patrol.collision_half_extents, (0, 0))
+        interaction_stations = (
+            (2_800, 5_400),
+            (1_700, 2_500),
+            (3_450, 2_500),
+            (5_200, 2_500),
+            (7_200, 5_000),
+            (7_200, 7_100),
+            (1_700, 4_400),
+            (3_450, 4_400),
+            (5_200, 4_400),
+        )
+
+        for _ in range(20):
+            scene.update_npc_motion(10.0)
+            patrol = scene.objects.get("basement-b2-security-patrol")
+            assert patrol is not None
+            self.assertTrue(scene._room_position_is_walkable(patrol.position))
+            self.assertGreater(
+                min(
+                    ((patrol.position[0] - x) ** 2 + (patrol.position[1] - y) ** 2) ** 0.5
+                    for x, y in interaction_stations
+                ),
+                1_250,
+            )
+
+        self.assertNotEqual(patrol.position, start)
+        self.assertEqual(
+            sum(
+                item.room == "basement_b2"
+                and item.id == "basement-b2-security-patrol"
+                for item in scene.objects.objects
+            ),
+            1,
+        )
+
     def test_b2_and_b3_have_physical_corridor_walls_and_reachable_department_bays(self) -> None:
         registry = build_tower_object_registry()
         for level, department_points in {
