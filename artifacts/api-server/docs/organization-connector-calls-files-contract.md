@@ -103,13 +103,11 @@ Until then, `calls:write` has no callable route and cannot initiate a call.
 
 ## Documents and files
 
-### Ownership prerequisite
+### Ownership model
 
 The existing `files_folders` records are owned by `userId`, not by an
 organization. They must not be returned, modified, or downloaded using an
 organization connector token just because the user belongs to that organization.
-
-#### Recommended ownership model
 
 - Store organization documents as organization-owned records, separate from
   `files_folders`. The organization is the owner; `uploadedByUserId` is
@@ -139,31 +137,29 @@ from organization membership. If SALARYMAN later introduces a separate
 organization-level API setting, treat it as an additional gate, not a
 replacement for the connection's granted scopes.
 
-The `org_documents` metadata schema exists, but it does not provide storage,
-upload/import, download, or connector routes. Before adding those routes, confirm
-the member upload/import flow and any separate organization-level setting with
-product and security owners. `documents:read` and `documents:write` still expose
-no data routes.
+The organization document model, private storage flow, and connector routes are
+implemented. Connector access is provider-neutral; no provider-specific file
+sync is implied.
 
-### `documents:read` — proposed after the ownership prerequisite
+### `documents:read`
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| `GET` | `/documents` | List metadata for documents explicitly owned/shared with the token organization. |
-| `GET` | `/documents/{id}` | Read one document's metadata after organization-scoped lookup. |
-| `GET` | `/documents/{id}/content` | Stream the bytes after the same authorization check; never return an unrestricted storage URL. |
+| `GET` | `/api/connectors/v1/documents` | List metadata for the token organization's documents, optionally filtered by `parentId`. |
+| `GET` | `/api/connectors/v1/documents/{id}` | Read one document's metadata after organization-scoped lookup. |
+| `GET` | `/api/connectors/v1/documents/{id}/content` | Stream bytes after the same authorization check; never return an unrestricted storage URL. |
 
 Metadata may include `id`, `name`, `parentId`, `isFolder`, `mimeType`,
 `fileSize`, and timestamps. It must omit `userId`, raw object paths, storage
 keys, public share tokens, and unrelated user-file metadata.
 
-### `documents:write` — proposed after the ownership prerequisite
+### `documents:write`
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| `POST` | `/documents/uploads` | Create a short-lived upload intent for a validated organization folder and file metadata. |
-| `POST` | `/documents/uploads/{uploadId}/complete` | Verify the uploaded object, then register it as an organization document. |
-| `PATCH` | `/documents/{id}` | Update allow-listed metadata, such as a name or parent folder within the same organization. |
+| `POST` | `/api/connectors/v1/documents/uploads` | Create a short-lived upload intent for a validated organization folder and file metadata. |
+| `POST` | `/api/connectors/v1/documents/uploads/{uploadId}/complete` | Verify the staged object, then register it as an organization document. |
+| `PATCH` | `/api/connectors/v1/documents/{id}` | Update allow-listed metadata, such as a name or parent folder within the same organization. |
 
 Upload creation and completion must be bound to the token organization, limited
 by platform size/type rules, and safe to retry with an `Idempotency-Key`.
@@ -174,18 +170,17 @@ object path or return a reusable public share token.
 `documents:write` does not grant delete, public sharing, permission changes, or
 access to a member's personal files.
 
-## Implementation gates
+## Implementation and security requirements
 
-Before enabling any remaining proposed route:
+For these routes and any future connector operations:
 
-1. Have SALARYMAN product and security owners approve the data categories,
-   member-consent flow, and organization document ownership model.
-2. Keep the API provider-neutral. Do not claim STEC or another provider sync is
+1. Keep the API provider-neutral. Do not claim STEC or another provider sync is
    connected until its counterpart API and supported operations actually exist.
-3. Implement database-backed tests for scope denial, organization isolation,
+2. Maintain database-backed tests for scope denial, organization isolation,
    revoked/inactive tokens, and sensitive-field omission.
-4. For call actions, test that no phone-provider call occurs before explicit
+3. For call actions, test that no phone-provider call occurs before explicit
    member confirmation and that retries cannot create duplicate calls.
-5. For files, test that user-owned files and cross-organization objects remain
-   inaccessible and that upload/download capabilities expire and stay scoped.
-6. Update the Platform API catalog only when the routes are mounted and verified.
+4. For files, test that user-owned files and cross-organization objects remain
+   inaccessible; upload capabilities must expire and stay scoped, and generic
+   storage routes must not serve staging or canonical organization-document objects.
+5. Keep the Platform API catalog aligned with mounted and verified routes.

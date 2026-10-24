@@ -20,16 +20,18 @@ import orgConnectorCrmRouter from "../routes/org-connector-crm";
 import orgConnectorCallsRouter from "../routes/org-connector-calls";
 import orgConnectorDocumentsRouter from "../routes/org-connector-documents";
 import orgConnectorsRouter from "../routes/org-connectors";
+import storageRouter from "../routes/storage";
 
 const storageFixture = vi.hoisted(() => ({ size: "7", contentType: "text/plain" }));
 vi.mock("../lib/objectStorage", () => ({
   ObjectNotFoundError: class ObjectNotFoundError extends Error {},
   ObjectStorageService: class {
-    async getObjectEntityUploadURL(id: string) {
-      return `https://storage.googleapis.com/test-bucket/uploads/${id}`;
+    async getObjectEntityUploadURL(id: string, namespace = "uploads") {
+      return `https://storage.googleapis.com/test-bucket/${namespace}/${id}`;
     }
     normalizeObjectEntityPath(url: string) {
-      return `/objects/uploads/${url.split("/").at(-1)}`;
+      const [, namespace, id] = url.match(/\/([^/]+)\/([^/]+)$/) ?? [];
+      return `/objects/${namespace}/${id}`;
     }
     async getObjectEntityFile() {
       return {
@@ -45,7 +47,7 @@ vi.mock("../lib/objectStorage", () => ({
 
 const app = express();
 app.use(express.json());
-app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter, orgConnectorCallsRouter, orgConnectorDocumentsRouter);
+app.use("/api", orgConnectorsRouter, orgConnectorCrmRouter, orgConnectorCallsRouter, orgConnectorDocumentsRouter, storageRouter);
 
 const userIds: string[] = [];
 const orgIds: number[] = [];
@@ -402,6 +404,15 @@ describe("organization connector CRM API", () => {
       .where(eq(orgConnectorActivityTable.orgId, primaryOrgId));
     expect(events.map((event) => event.eventType)).toContain("org_document_uploaded");
     expect(events.map((event) => event.summary).join(" ")).not.toContain("Notes.txt");
+  });
+
+  it("does not serve staged or canonical organization documents through generic storage", async () => {
+    const stagingId = randomUUID();
+    const staging = await request(app).get(`/api/storage/objects/organization-document-staging/${stagingId}`);
+    expect(staging.status).toBe(404);
+
+    const canonical = await request(app).get(`/api/storage/objects/organization-documents/${primaryDocumentId}`);
+    expect(canonical.status).toBe(404);
   });
 
   it("rejects the health and CRM endpoints after a token is revoked", async () => {
