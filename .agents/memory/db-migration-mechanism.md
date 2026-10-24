@@ -27,6 +27,12 @@ The source of truth is the schema TS (`lib/db/src/schema/*`). The current post-m
 
 **How to apply:** Inspect the actual database constraint and keep the change additive. If the prompt still threatens unrelated data, stop the push and apply only the reviewed additive development DDL; never bypass production Publish schema review.
 
+Before relying on a push prompt as a complete account of drift, compare live `pg_constraint` and `pg_indexes` metadata with the declared schema and check current rows against intended bounds. A failed upsert can come from a missing unique target, while a stale check can reject valid newly supported coordinates.
+
+**Why:** The development basement table lacked its declared primary key and still had older B1 bounds even though the schema supported the expanded floor; neither issue was called out in the unrelated destructive prompt.
+
+**How to apply:** For development-only repairs, verify nulls, duplicates, and existing row ranges first, then change only the specific missing or stale constraint. Never force a broader push to work around unrelated drift.
+
 The development schema push has also flagged a primary-key change on `tower_operations_state` alongside `career_positions`. Do not accept a truncate prompt to force through unrelated Tower schema changes; inspect and resolve the drift without deleting those rows.
 
 ## Composite foreign-key targets in Publish diffs

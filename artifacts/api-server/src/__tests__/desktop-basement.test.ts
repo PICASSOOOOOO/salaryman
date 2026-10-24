@@ -244,7 +244,11 @@ describe("desktop basement survival authority", () => {
     expect(entered.status).toBe(200);
     expect(entered.body.accessMode).toBe("back_entrance");
 
-    const awayFromGate = await moveBasement(1, 5_000, 5_000);
+    const awayFromGate = await moveBasement(
+      1,
+      TOWER_BASEMENT_BACK_ENTRANCE.x - 900,
+      TOWER_BASEMENT_BACK_ENTRANCE.y,
+    );
     expect(awayFromGate.status).toBe(200);
     const blockedExit = await desktopPost("/api/desktop-building/basement/exit").send({});
     expect(blockedExit.status).toBe(409);
