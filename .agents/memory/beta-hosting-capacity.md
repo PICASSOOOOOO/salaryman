@@ -19,3 +19,6 @@ use the app concurrently, not that they are literal organization members.
 1,000 concurrent authenticated app users across sign-in, sessions, API, database,
 and realtime services. Treat GitHub as the code source and deployment origin;
 ask which destination server systems they choose before platform-specific work.
+Require a container startup smoke test in addition to image construction; pass
+the eagerly imported AI provider settings even when the smoke test uses dummy
+values and exercises only health/static routes.
