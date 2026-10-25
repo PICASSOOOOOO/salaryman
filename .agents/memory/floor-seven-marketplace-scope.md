@@ -3,7 +3,7 @@ name: Tower business locations and stock
 description: Tower suite capacity and named rosters, plus the no-directory and read-only stock boundaries.
 ---
 
-The existing Tower plan contains named locations on Floors 1–12 and B1–B6, but the current shop expansion stays within Floors 1–7. Floors 13–67 remain under construction without named shop rosters. Floor 1 is an open lobby with reception and vehicle-dealership kiosks. Floors 2–6 and 8–12 have business suites; Floor 7 is a meditation temple with no business suite:
+The approved Tower shop scope is Floors 1–7. Floor 1 is an open lobby with reception and vehicle-dealership kiosks. Floors 2–6 have business suites. The user has directed that Floor 7 be populated, but the approved tenant roster is not yet specified. Older Floor 8–12 lists and higher-floor catalog entries are not approval to add or move businesses.
 - Floor 2: cafeteria (Common Table 67), clinic (Lumen Care Clinic), pharmacy (Third Shift Pharmacy), Banco Ombra currency/gold exchange, Pablo Corp Real Estate, fish, furniture, and Mender-9 Terminal Works.
 - Floor 3: phone, liquor/alcohol and cigarettes, office equipment, tools, jewelry/watches and gold exchange, tea, formal clothing, and shoes.
 - Floor 4: music, mirror, lighting, cafe, antique, record, book, and the public-locker shop in Unit 8.
@@ -16,11 +16,11 @@ The existing Tower plan contains named locations on Floors 1–12 and B1–B6, b
 - Floor 12: printer, soda and candy, hotel, bar, chapel, library, pawn, and museum.
 - B1: administration, shipping, trash, food supply, construction, materials supply, power, and water.
 
-For the current game-development shop expansion, keep changes within Floors 1–7. The user wants the in-scope floors packed, with each listed shop a single, distinct location; do not expand this work above Floor 7. Floor 7 remains a meditation temple unless the user explicitly directs a change to that purpose. Existing higher-floor data is not authorization to expand this task there.
+For Tower shop development, keep the roster within Floors 1–7, use exactly one location for each approved business, and consolidate overlapping specialties into existing businesses. Do not infer approval for additional tenants from old floor plans, catalogues, or prior brainstorming. The user has directed that Floor 7 be populated, but the specific tenant roster must be confirmed rather than invented.
 
 **Why:** The user clarified that shop development should not be working above Floor 7, that each listed shop should be one-of-one and unique, and that floors should be packed.
 
-**How to apply:** Fill available in-scope shop locations with distinct listed businesses; do not clone shop types or use higher floors as expansion space. Preserve Floor 7's current use unless explicitly changed.
+**How to apply:** Fill available in-scope locations only with approved businesses. Keep unapproved businesses above Floor 7 out of the active roster, merge duplicate specialties, and ask for the intended Floor 7 roster.
 
 The Tower has no marketplace or directory. Preserve confirmed core economy,
 infrastructure, niche, and specialized shops as unique rather than duplicating
