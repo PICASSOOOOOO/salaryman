@@ -27,6 +27,12 @@ The source of truth is the schema TS (`lib/db/src/schema/*`). The current post-m
 
 **How to apply:** Inspect the actual database constraint and keep the change additive. If the prompt still threatens unrelated data, stop the push and apply only the reviewed additive development DDL; never bypass production Publish schema review.
 
+The installed Drizzle Kit CLI has no read-only `push` diff mode. Its public `pushSchema()` helper wraps PostgreSQL introspection queries with `sql.raw()` but drops bound parameters, so it fails on parameterized metadata queries. `introspect` is read-only, but use a separate config with an isolated output directory; do not run its default output into the tracked migration folder.
+
+**Why:** The attempted helper failed with PostgreSQL `there is no parameter $1`; CLI help exposes only interactive `--strict` and data-loss-approving `--force` options.
+
+**How to apply:** For safe schema evidence, use catalog queries or isolated `drizzle-kit introspect`; never invoke the returned `pushSchema().apply()` or `--force` as a substitute for a reviewed diff.
+
 Before relying on a push prompt as a complete account of drift, compare live `pg_constraint` and `pg_indexes` metadata with the declared schema and check current rows against intended bounds. A failed upsert can come from a missing unique target, while a stale check can reject valid newly supported coordinates.
 
 **Why:** The development basement table lacked its declared primary key and still had older B1 bounds even though the schema supported the expanded floor; neither issue was called out in the unrelated destructive prompt.
