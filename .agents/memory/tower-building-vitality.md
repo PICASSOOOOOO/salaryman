@@ -41,12 +41,21 @@ is accountable for cleaning every Tower restroom and reports to the water and
 power departments because restrooms use substantial water. Employees are paid
 daily in real time, while salary ledgers are monthly.
 
+Place small, open-entry restrooms on odd-numbered floors from 1 through 67.
+They have no door or barrier; entering the restroom area shifts the room focus.
+The event mezzanine is a separate, otherwise empty party/event room, supported
+by one unique event-planning shop.
+
 **Why:** The user clarified the restroom attendant is the restroom shop owner,
 is responsible for every Tower restroom, and reports to water and power.
+The user also specified odd-floor placement, open entries with focus-on-entry,
+an empty event mezzanine, and the need for one event-planning shop.
 
 **How to apply:** Keep daily salary settlement distinct from monthly ledger
 recording. Route restroom cleaning accountability through the owner and keep
 water/power oversight visible; confirm the payer account before settlement.
+Keep restrooms small and barrier-free, and do not duplicate the event-planning
+business or fill the mezzanine with permanent fixtures.
 
 NPCs should develop AI-driven creative and innovative ambitions. They may leave
 a job, join another employer, or start a business when they have enough capital.
