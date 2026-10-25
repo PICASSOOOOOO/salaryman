@@ -27,6 +27,12 @@ The source of truth is the schema TS (`lib/db/src/schema/*`). The current post-m
 
 **How to apply:** Inspect the actual database constraint and keep the change additive. If the prompt still threatens unrelated data, stop the push and apply only the reviewed additive development DDL; never bypass production Publish schema review.
 
+Do not assume a `--tablesFilter` preview has limited a Drizzle push. In this workspace, filtered verbose previews still emitted a full-schema plan. A temporary partial schema is not a safe workaround: Drizzle planned to drop every omitted table, including populated ones.
+
+**Why:** A filtered organization-table preview continued to include unrelated table creation, sequence drops, and constraint changes. A three-table schema preview proposed deleting 55 existing tables. Strict mode was needed to ensure both plans aborted.
+
+**How to apply:** Inspect the complete proposed SQL before any push. If unrelated statements remain or omitted tables are treated as deletions, stop; do not use partial schema files or force to narrow the push.
+
 The installed Drizzle Kit CLI has no read-only `push` diff mode. Its public `pushSchema()` helper wraps PostgreSQL introspection queries with `sql.raw()` but drops bound parameters, so it fails on parameterized metadata queries. `introspect` is read-only, but use a separate config with an isolated output directory; do not run its default output into the tracked migration folder.
 
 **Why:** The attempted helper failed with PostgreSQL `there is no parameter $1`; CLI help exposes only interactive `--strict` and data-loss-approving `--force` options.
