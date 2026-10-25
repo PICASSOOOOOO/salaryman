@@ -186,7 +186,7 @@ async function findProductForFeature(feature: FeatureKey): Promise<string | unde
   }
 }
 
-async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undefined> {
+export async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undefined> {
   const envPrice = process.env[FEATURE_PRICE_ENV[feature]];
   const catalog = FEATURE_CATALOG[feature];
   const expectedUnitAmount = catalog.price * 100;
@@ -1045,6 +1045,37 @@ router.post(
       }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const subscriptionId = typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id;
+        if (session.metadata?.type === "org_plan" && subscriptionId
+          && ["paid", "no_payment_required"].includes(session.payment_status ?? "")) {
+          const orgId = Number(session.metadata.orgId);
+          const plan = session.metadata.plan;
+          if (Number.isInteger(orgId) && orgId > 0 && ["calll_home", "pablo_prime"].includes(plan ?? "")) {
+            await db.update(organizationsTable)
+              .set({ billingPlan: plan!, stripePlanSubscriptionId: subscriptionId, hasPaidHistory: true })
+              .where(eq(organizationsTable.id, orgId));
+          }
+          break;
+        }
+        if (session.metadata?.type === "org_seat" && subscriptionId
+          && ["paid", "no_payment_required"].includes(session.payment_status ?? "")) {
+          const orgId = Number(session.metadata.orgId);
+          const memberUserId = session.metadata.memberUserId;
+          const payer = session.metadata.payer === "company" ? "company" : "individual";
+          if (Number.isInteger(orgId) && orgId > 0 && memberUserId) {
+            await db.update(orgMembersTable)
+              .set({ seatBilling: payer, seatStatus: "active", stripeSeatSubscriptionId: subscriptionId })
+              .where(and(
+                eq(orgMembersTable.orgId, orgId),
+                eq(orgMembersTable.userId, memberUserId),
+                eq(orgMembersTable.status, "active"),
+              ));
+            await db.update(organizationsTable).set({ hasPaidHistory: true }).where(eq(organizationsTable.id, orgId));
+          }
+          break;
+        }
         if (session.metadata?.type === "organization_payment") {
           await handleStripeOrganizationPaymentEvent(event, stripe);
           break;
@@ -1064,10 +1095,6 @@ router.post(
             }
           });
         }
-        const subscriptionId = typeof (session as any).subscription === "string"
-          ? (session as any).subscription
-          : (session as any).subscription?.id;
-
         if (type === "merch") {
           await handleMerchWebhookEvent(event);
         } else if (type === "pledge") {
@@ -1203,6 +1230,53 @@ router.post(
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const subId = subscription.id;
+
+        if (subscription.metadata?.type === "org_plan") {
+          const orgId = Number(subscription.metadata.orgId);
+          if (!Number.isInteger(orgId) || orgId < 1) break;
+          const seats = await db.select({
+            orgId: orgMembersTable.orgId,
+            userId: orgMembersTable.userId,
+            stripeSeatSubscriptionId: orgMembersTable.stripeSeatSubscriptionId,
+          }).from(orgMembersTable).where(and(
+            eq(orgMembersTable.orgId, orgId),
+            isNotNull(orgMembersTable.stripeSeatSubscriptionId),
+          ));
+          for (const seat of seats) {
+            if (!seat.stripeSeatSubscriptionId) continue;
+            try {
+              await stripe.subscriptions.cancel(seat.stripeSeatSubscriptionId);
+            } catch (error) {
+              console.error("[Stripe] Could not cancel dependent org seat subscription", seat.stripeSeatSubscriptionId,
+                error instanceof Error ? error.message : error);
+            }
+          }
+          if (seats.length) {
+            await db.update(orgMembersTable)
+              .set({ seatStatus: "canceled", stripeSeatSubscriptionId: null })
+              .where(eq(orgMembersTable.orgId, orgId));
+          }
+          await db.update(organizationsTable)
+            .set({ billingPlan: "free", stripePlanSubscriptionId: null })
+            .where(and(
+              eq(organizationsTable.id, orgId),
+              eq(organizationsTable.stripePlanSubscriptionId, subId),
+            ));
+          break;
+        }
+        if (subscription.metadata?.type === "org_seat") {
+          const orgId = Number(subscription.metadata.orgId);
+          const memberUserId = subscription.metadata.memberUserId;
+          if (!Number.isInteger(orgId) || orgId < 1 || !memberUserId) break;
+          await db.update(orgMembersTable)
+            .set({ seatStatus: "canceled", stripeSeatSubscriptionId: null })
+            .where(and(
+              eq(orgMembersTable.orgId, orgId),
+              eq(orgMembersTable.userId, memberUserId),
+              eq(orgMembersTable.stripeSeatSubscriptionId, subId),
+            ));
+          break;
+        }
 
         const botUserId = await deactivateBotSubscription(subId);
         if (botUserId) {

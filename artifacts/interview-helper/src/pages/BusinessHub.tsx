@@ -33,6 +33,7 @@ interface Org {
   legalEntityName: string | null;
   entityType: string | null;
   ownerUserId: string | null;
+  billingPlan?: string;
 }
 
 interface ProtectedRecord {
@@ -56,6 +57,8 @@ interface Member {
   lastName: string | null;
   profileImageUrl: string | null;
   username: string | null;
+  seatBilling?: string;
+  seatStatus?: string;
 }
 
 interface OrgData {
@@ -276,10 +279,13 @@ export default function BusinessHub() {
 
   const [showInvite, setShowInvite] = useState(false);
   const [inviteInput, setInviteInput] = useState('');
+  const [inviteSeatBilling, setInviteSeatBilling] = useState<'individual' | 'company'>('individual');
   const [inviteUrl, setInviteUrl] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState('');
 
   const [editingOrg, setEditingOrg] = useState(false);
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
@@ -422,6 +428,7 @@ export default function BusinessHub() {
           email: inviteInput.trim(),
           offeredRole: 'specialist',
           offeredMemberType: 'employee',
+          offeredSeatBilling: inviteSeatBilling,
         }),
       });
       const data = await res.json();
@@ -429,9 +436,41 @@ export default function BusinessHub() {
       setInviteUrl(data.inviteUrl || '');
       if (!data.emailSent) setInviteError('INVITATION CREATED — EMAIL DELIVERY FAILED. COPY THE LINK BELOW.');
       setInviteInput('');
+      setInviteSeatBilling('individual');
       await loadData();
     } catch { setInviteError('NETWORK ERROR'); }
     setInviting(false);
+  };
+
+  const startOrgPlanCheckout = async (plan: 'calll_home' | 'pablo_prime') => {
+    if (!activeOrg) return;
+    setBillingBusy(true);
+    setBillingError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${activeOrg.id}/billing/plan-checkout`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) { setBillingError(data.error || 'CHECKOUT COULD NOT BE STARTED'); return; }
+      window.location.assign(data.url);
+    } catch { setBillingError('NETWORK ERROR'); }
+    finally { setBillingBusy(false); }
+  };
+
+  const startSeatCheckout = async (memberUserId?: string) => {
+    if (!activeOrg) return;
+    setBillingBusy(true);
+    setBillingError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${activeOrg.id}/billing/seat-checkout`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(memberUserId ? { memberUserId } : {}),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) { setBillingError(data.error || 'SEAT CHECKOUT COULD NOT BE STARTED'); return; }
+      window.location.assign(data.url);
+    } catch { setBillingError('NETWORK ERROR'); }
+    finally { setBillingBusy(false); }
   };
 
   const handleEditOrg = async () => {
@@ -782,6 +821,33 @@ export default function BusinessHub() {
               {/* RIGHT COLUMN: Settings & Admin */}
               <div className="lg:col-span-4 space-y-6">
 
+                {activeOrg && (
+                  <section className="border border-border rounded-md bg-card p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-xs font-bold uppercase tracking-widest">ORG PLAN</h2>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {activeOrg.billingPlan === 'calll_home' ? 'CALLL HOME · $100/month · $25/month per member seat' :
+                           activeOrg.billingPlan === 'pablo_prime' ? 'PABLO PRIME · $200/month · $50/month per member seat' :
+                           activeOrg.billingPlan === 'custom' ? 'CUSTOM · seat pricing by agreement' :
+                           'FREE · member seats are unavailable'}
+                        </p>
+                      </div>
+                      {isOwner && activeOrg.billingPlan !== 'calll_home' && activeOrg.billingPlan !== 'pablo_prime' && activeOrg.billingPlan !== 'custom' && (
+                        <div className="flex gap-2">
+                          <button disabled={billingBusy} onClick={() => void startOrgPlanCheckout('calll_home')} className="px-3 py-2 border border-border text-[9px] font-bold uppercase tracking-widest disabled:opacity-50">
+                            CALLL HOME · $100/MO
+                          </button>
+                          <button disabled={billingBusy} onClick={() => void startOrgPlanCheckout('pablo_prime')} className="px-3 py-2 bg-primary text-primary-foreground text-[9px] font-bold uppercase tracking-widest disabled:opacity-50">
+                            PABLO PRIME · $200/MO
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {billingError && <p className="text-[9px] text-destructive font-bold uppercase tracking-widest">{billingError}</p>}
+                  </section>
+                )}
+
                 <div className="border border-border rounded-md bg-card flex flex-col">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -868,6 +934,12 @@ export default function BusinessHub() {
                           {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'ADD'}
                         </button>
                       </div>
+                      {isOwner && (
+                        <label className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+                          <input type="checkbox" checked={inviteSeatBilling === 'company'} onChange={e => setInviteSeatBilling(e.target.checked ? 'company' : 'individual')} />
+                          Organization pays this seat
+                        </label>
+                      )}
                       {inviteError && <p className="text-[9px] text-destructive font-bold uppercase tracking-widest">{inviteError}</p>}
                       {inviteUrl && (
                         <div className="flex items-center gap-2 p-2 border border-primary bg-primary/10 rounded-sm">
@@ -932,6 +1004,11 @@ export default function BusinessHub() {
                               {canEdit && (
                                 <button onClick={() => { setEditingMember(m.userId); setMemberEditForm({ role: m.role, title: m.title || '', salary: m.salary || '' }); }} className="p-1.5 hover:text-primary transition-colors text-muted-foreground">
                                   <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {(m.seatStatus !== 'active') && (isSelf || (isOwner && m.seatBilling === 'company')) && (
+                                <button disabled={billingBusy} onClick={() => void startSeatCheckout(isSelf ? undefined : m.userId)} className="px-2 py-1 border border-primary text-primary text-[8px] font-bold uppercase tracking-wider disabled:opacity-50">
+                                  {m.seatBilling === 'company' ? 'PAY SEAT' : 'PAY MY SEAT'}
                                 </button>
                               )}
                             </div>

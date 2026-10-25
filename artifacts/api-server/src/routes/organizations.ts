@@ -35,7 +35,7 @@ import {
 import { eq, and, or, sql, inArray, desc } from "drizzle-orm";
 import twilio from "twilio";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
-import { getStripe } from "./stripe";
+import { getStripe, getPriceIdForFeature } from "./stripe";
 import { getOrgPermissionPolicy, canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { getUncachableResendClient } from "../lib/resend";
 import { removeAdminDiscordRole } from "../lib/seed-picasso";
@@ -83,6 +83,32 @@ async function getCallerMembership(userId: string, orgId: number): Promise<OrgMe
       )
     );
   return rows[0] ?? null;
+}
+
+async function getOrgSeatPriceId(stripe: ReturnType<typeof getStripe>, amount: 25 | 50): Promise<string | undefined> {
+  const configuredId = process.env[`STRIPE_PRICE_ORG_SEAT_${amount}`];
+  if (configuredId) {
+    try {
+      const configured = await stripe.prices.retrieve(configuredId);
+      if (configured.active && configured.currency === "usd" && configured.unit_amount === amount * 100
+        && configured.type === "recurring" && configured.recurring?.interval === "month") return configured.id;
+    } catch (error) {
+      console.warn(`[Org Billing] Could not validate configured $${amount} seat price:`, error instanceof Error ? error.message : error);
+    }
+  }
+  try {
+    const products = await stripe.products.search({ query: "metadata['salaryman_product']:'org_seat'", limit: 1 });
+    const product = products.data.find((item) => item.active);
+    if (!product) return undefined;
+    const prices = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
+    return prices.data.find((price) =>
+      price.currency === "usd" && price.unit_amount === amount * 100
+      && price.type === "recurring" && price.recurring?.interval === "month"
+    )?.id;
+  } catch (error) {
+    console.error(`[Org Billing] Could not resolve $${amount} seat price:`, error instanceof Error ? error.message : error);
+    return undefined;
+  }
 }
 
 // POST /api/orgs/switch — set the user's active organization context.
@@ -629,6 +655,9 @@ router.get("/orgs/:orgId", async (req, res) => {
       role: orgMembersTable.role,
       department: orgMembersTable.department,
       featureBilling: orgMembersTable.featureBilling,
+      seatBilling: orgMembersTable.seatBilling,
+      seatStatus: orgMembersTable.seatStatus,
+      stripeSeatSubscriptionId: orgMembersTable.stripeSeatSubscriptionId,
       status: orgMembersTable.status,
       title: orgMembersTable.title,
       salary: orgMembersTable.salary,
@@ -950,6 +979,7 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
     offeredTitle,
     offeredDepartment,
     offeredMemberType,
+    offeredSeatBilling,
     offeredSalary,
     offerMessage,
   } = (req.body ?? {}) as {
@@ -959,6 +989,7 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
     offeredTitle?: string;
     offeredDepartment?: string;
     offeredMemberType?: string;
+    offeredSeatBilling?: string;
     offeredSalary?: number | string;
     offerMessage?: string;
   };
@@ -973,6 +1004,21 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
   const cleanMemberType = offeredMemberType && validMemberTypes.has(offeredMemberType as typeof ORG_MEMBER_TYPES[number])
     ? offeredMemberType as typeof ORG_MEMBER_TYPES[number]
     : null;
+  const cleanSeatBilling = offeredSeatBilling === "company" ? "company" : "individual";
+  const [billingOrg] = await db.select({ billingPlan: organizationsTable.billingPlan })
+    .from(organizationsTable).where(eq(organizationsTable.id, orgId));
+  if (!billingOrg || !["calll_home", "pablo_prime"].includes(billingOrg.billingPlan)) {
+    res.status(409).json({
+      error: billingOrg?.billingPlan === "custom"
+        ? "Custom-plan seats require the negotiated agreement."
+        : "This organization needs a paid CALLL HOME or PABLO PRIME plan before adding member seats.",
+    });
+    return;
+  }
+  if (cleanSeatBilling === "company" && caller.role !== "owner") {
+    res.status(403).json({ error: "Only the organization owner can designate a company-paid seat." });
+    return;
+  }
   const cleanSalary = offeredSalary !== undefined && offeredSalary !== null && offeredSalary !== ""
     ? Math.max(0, Math.floor(Number(offeredSalary))) || null
     : null;
@@ -994,6 +1040,7 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
       offeredTitle: offeredTitle ? String(offeredTitle).slice(0, 200).trim() : null,
       offeredDepartment: offeredDepartment ? String(offeredDepartment).slice(0, 120).trim() : null,
       offeredMemberType: cleanMemberType,
+      offeredSeatBilling: cleanSeatBilling,
       offeredSalary: cleanSalary,
       offerMessage: offerMessage ? String(offerMessage).slice(0, 2000) : null,
     })
@@ -1120,6 +1167,8 @@ router.post("/orgs/invite/accept", async (req, res) => {
     ...(invite.offeredTitle ? { title: invite.offeredTitle } : {}),
     ...(invite.offeredDepartment ? { department: invite.offeredDepartment } : {}),
     ...(acceptedMemberType ? { memberType: acceptedMemberType } : {}),
+    seatBilling: invite.offeredSeatBilling === "company" ? "company" : "individual",
+    seatStatus: "pending",
     ...(invite.offeredSalary != null ? { salary: String(invite.offeredSalary) } : {}),
   };
 
@@ -1134,6 +1183,8 @@ router.post("/orgs/invite/accept", async (req, res) => {
       userId,
       role: invite.offeredRole ?? "specialist",
       featureBilling: "individual",
+      seatBilling: invite.offeredSeatBilling === "company" ? "company" : "individual",
+      seatStatus: "pending",
       memberType: acceptedMemberType ?? "employee",
       status: "active",
       invitedByUserId: invite.invitedByUserId,
@@ -1708,6 +1759,109 @@ router.post("/orgs/:orgId/stripe-customer", async (req, res) => {
     .where(eq(organizationsTable.id, orgId));
 
   res.json({ stripeCustomerId: customer.id });
+});
+
+router.post("/orgs/:orgId/billing/plan-checkout", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  if (!Number.isInteger(orgId) || orgId < 1) { res.status(400).json({ error: "Invalid org ID" }); return; }
+  const caller = await getCallerMembership(req.user.id, orgId);
+  if (!caller || caller.role !== "owner") {
+    res.status(403).json({ error: "Only the organization owner can manage its plan" }); return;
+  }
+  const plan = req.body?.plan;
+  const feature = plan === "calll_home" ? "phone_system" : plan === "pablo_prime" ? "claw_bot" : null;
+  if (!feature) {
+    res.status(400).json({ error: "Choose CALLL HOME or PABLO PRIME. Free has no member seats; Custom requires a quote." });
+    return;
+  }
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
+  if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
+  if (org.stripePlanSubscriptionId) {
+    res.status(409).json({ error: "This organization already has a plan subscription. Contact support to change it." });
+    return;
+  }
+  const priceId = await getPriceIdForFeature(feature);
+  if (!priceId) { res.status(503).json({ error: "Plan pricing is not configured in Stripe yet" }); return; }
+  const stripe = getStripe();
+  let customerId = org.stripeCustomerId;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      name: org.name,
+      metadata: { orgId: String(orgId), ownerUserId: org.ownerUserId, product_line: "SALARYMAN" },
+    });
+    customerId = customer.id;
+    await db.update(organizationsTable).set({ stripeCustomerId: customerId }).where(eq(organizationsTable.id, orgId));
+  }
+  const baseUrl = process.env.APP_BASE_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${baseUrl}/business/company?org_plan_checkout=success`,
+    cancel_url: `${baseUrl}/business/company?org_plan_checkout=cancel`,
+    client_reference_id: req.user.id,
+    metadata: { type: "org_plan", orgId: String(orgId), plan, product_line: "SALARYMAN" },
+    subscription_data: { metadata: { type: "org_plan", orgId: String(orgId), plan, product_line: "SALARYMAN" } },
+  });
+  res.json({ url: session.url });
+});
+
+router.post("/orgs/:orgId/billing/seat-checkout", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  const memberUserId = typeof req.body?.memberUserId === "string" ? req.body.memberUserId : req.user.id;
+  if (!Number.isInteger(orgId) || orgId < 1) { res.status(400).json({ error: "Invalid org ID" }); return; }
+  const caller = await getCallerMembership(req.user.id, orgId);
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
+  const [member] = await db.select().from(orgMembersTable).where(and(
+    eq(orgMembersTable.orgId, orgId),
+    eq(orgMembersTable.userId, memberUserId),
+    eq(orgMembersTable.status, "active"),
+  ));
+  if (!caller || !org || !member) { res.status(404).json({ error: "Active organization member not found" }); return; }
+  if (!["calll_home", "pablo_prime"].includes(org.billingPlan)) {
+    res.status(409).json({ error: org.billingPlan === "custom" ? "Custom seats require the negotiated agreement." : "Choose a paid organization plan before adding seats." });
+    return;
+  }
+  const ownerPays = member.seatBilling === "company";
+  if (ownerPays ? caller.role !== "owner" : memberUserId !== req.user.id) {
+    res.status(403).json({ error: "Only the member can pay their own seat; company-paid seats must be started by the owner." });
+    return;
+  }
+  if (member.seatStatus === "active" && member.stripeSeatSubscriptionId) {
+    res.status(409).json({ error: "This member already has an active paid seat." }); return;
+  }
+  const amount = org.billingPlan === "calll_home" ? 25 : 50;
+  const stripe = getStripe();
+  const priceId = await getOrgSeatPriceId(stripe, amount);
+  if (!priceId) { res.status(503).json({ error: `Monthly $${amount} seat price is not configured in Stripe yet.` }); return; }
+  let orgCustomerId = org.stripeCustomerId;
+  if (ownerPays && !orgCustomerId) {
+    const customer = await stripe.customers.create({
+      name: org.name,
+      metadata: { orgId: String(orgId), ownerUserId: org.ownerUserId, product_line: "SALARYMAN" },
+    });
+    orgCustomerId = customer.id;
+    await db.update(organizationsTable).set({ stripeCustomerId: orgCustomerId }).where(eq(organizationsTable.id, orgId));
+  }
+  const price = await stripe.prices.retrieve(priceId);
+  if (!price.active || price.currency !== "usd" || price.unit_amount !== amount * 100
+    || price.type !== "recurring" || price.recurring?.interval !== "month") {
+    res.status(503).json({ error: `Configured $${amount} seat price is invalid.` }); return;
+  }
+  const baseUrl = process.env.APP_BASE_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    ...(ownerPays ? { customer: orgCustomerId! } : { customer_email: req.user.email ?? undefined }),
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${baseUrl}/business/company?seat_checkout=success`,
+    cancel_url: `${baseUrl}/business/company?seat_checkout=cancel`,
+    client_reference_id: memberUserId,
+    metadata: { type: "org_seat", orgId: String(orgId), memberUserId, payer: ownerPays ? "company" : "individual" },
+    subscription_data: { metadata: { type: "org_seat", orgId: String(orgId), memberUserId, payer: ownerPays ? "company" : "individual" } },
+  });
+  res.json({ url: session.url });
 });
 
 router.post("/orgs/:orgId/stripe-checkout", async (req, res) => {
