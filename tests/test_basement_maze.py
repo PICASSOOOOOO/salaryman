@@ -188,6 +188,17 @@ class BasementMazeTests(unittest.TestCase):
                 f"{object_id} at {station.position} must be reachable on B{level}",
             )
 
+    def test_b3_disaster_response_board_is_interactive_and_reachable(self) -> None:
+        registry = build_tower_object_registry()
+        board = registry.get("basement-b3-disaster-response")
+        self.assertIsNotNone(board)
+        assert board is not None
+        self.assertTrue(board.interactive)
+
+        scene = TowerScene()
+        self.assertTrue(scene.select_basement_level(3))
+        self.assertTrue(scene._room_position_is_walkable(board.position))
+
     def test_b2_security_patrol_moves_only_through_walkable_tunnel_cells(self) -> None:
         scene = TowerScene()
         self.assertTrue(scene.select_basement_level(2))

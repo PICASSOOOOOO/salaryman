@@ -2140,6 +2140,7 @@ class SolarPunkRenderer:
             "utility_work": "TOWER UTILITY WORK",
             "company_relocation": "COMPANY GROWTH",
             "collections_case": "COLLECTIONS CASE REVIEW",
+            "disaster_response": "B3 DISASTER RESPONSE",
             "business": "TOWER BUSINESS OFFICE",
         }
         self.text(
@@ -2296,7 +2297,86 @@ class SolarPunkRenderer:
         page: pygame.Rect,
     ) -> None:
         content = page.y + 92
-        if state.active_page == "collections_case":
+        if state.active_page == "disaster_response":
+            snapshot = scene.basement_snapshot or {}
+            building = snapshot.get("building", {})
+            operations = snapshot.get("towerOperations", {})
+            if not isinstance(building, dict):
+                building = {}
+            if not isinstance(operations, dict):
+                operations = {}
+
+            self.text(
+                "TOWER SYSTEMS / MOST RECENT SERVER SNAPSHOT",
+                (page.x + 28, content + 8),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
+            system_rows = (
+                ("GRID POWER", "powerCondition", "powerOperational"),
+                ("PLUMBING", "plumbingCondition", "waterOperational"),
+                ("B3 UPKEEP", "upkeepCondition", None),
+            )
+            for index, (label, condition_key, operational_key) in enumerate(system_rows):
+                y = content + 48 + index * 76
+                condition = building.get(condition_key)
+                percent = (
+                    max(0, min(100, condition))
+                    if isinstance(condition, int) and not isinstance(condition, bool)
+                    else None
+                )
+                operational = building.get(operational_key) if operational_key else None
+                if percent is None:
+                    state_label = "NO LIVE LINK"
+                    color = Palette.MATRIX_DIM
+                elif operational is False:
+                    state_label = "OFFLINE"
+                    color = Palette.MATRIX_AMBER
+                elif percent < 30:
+                    state_label = "CRITICAL"
+                    color = Palette.MATRIX_AMBER
+                else:
+                    state_label = "AVAILABLE" if operational is not False else "CHECK STATUS"
+                    color = Palette.MATRIX_GREEN
+                value_label = f"{percent}%" if percent is not None else "--"
+                self.text(
+                    f"{label}  /  {value_label}  /  {state_label}",
+                    (page.x + 28, y),
+                    self.font_mono,
+                    color,
+                )
+                bar = pygame.Rect(page.x + 28, y + 27, page.width - 56, 16)
+                pygame.draw.rect(self.screen, Palette.MATRIX_PANEL_2, bar)
+                if percent is not None:
+                    pygame.draw.rect(
+                        self.screen,
+                        color,
+                        (bar.x, bar.y, int(bar.width * percent / 100), bar.height),
+                    )
+
+            supplies = operations.get("storedSupplyCrates")
+            backup = operations.get("backupInfrastructureUnitsPowered")
+            supplies_label = str(supplies) if isinstance(supplies, int) else "--"
+            backup_label = str(backup) if isinstance(backup, int) else "--"
+            self.text(
+                f"B4 STORED SUPPLIES  /  {supplies_label} CRATES",
+                (page.x + 28, content + 286),
+                self.font_mono,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                f"INFRASTRUCTURE BACKUP  /  {backup_label} UNITS",
+                (page.x + 28, content + 316),
+                self.font_mono,
+                Palette.MATRIX_BRIGHT,
+            )
+            self.text(
+                "REPAIR WORK IS COMPLETED AT ITS ASSIGNED BASEMENT STATION.",
+                (page.x + 28, content + 366),
+                self.font_sm,
+                Palette.MATRIX_DIM,
+            )
+        elif state.active_page == "collections_case":
             stage = state.displayed_collections_case_stage
             steps = (
                 "1  OPEN THE CASE WITH THE COLLECTIONS CLERK",

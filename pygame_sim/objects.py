@@ -1360,7 +1360,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             registry.add(OfficeObject("basement-b3-job-board", "pest_job_board", "PEST RESPONSE WORK ORDERS", room, (5_000, 3_200), "W-2 / 1099 LOCAL JOBS"), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b3-uniform", "pest_uniform_station", "RESPONSE UNIFORM ISSUE", room, (4_300, 5_000), "EQUIP / REMOVE PEST RESPONSE UNIFORM"), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b3-upkeep", "utility_station", "UPKEEP BENCH", room, (7_500, 7_500), "MAINTAIN SHARED TOWER UPKEEP"), scale_legacy_coordinates=False)
-            registry.add(OfficeObject("basement-b3-disaster-response", "desk", "DISASTER RESPONSE", room, (2_000, 2_000), "EMERGENCY RESPONSE", interactive=False), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b3-disaster-response", "desk", "DISASTER RESPONSE", room, (2_000, 2_000), "CHECK LIVE TOWER RESPONSE STATUS"), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b3-fire-station", "desk", "FIRE STATION", room, (2_000, 4_000), "TOWER FIRE RESPONSE", interactive=False), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b3-maintenance", "desk", "MAINTENANCE BAY", room, (2_000, 6_000), "BUILDING MAINTENANCE", interactive=False), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b3-incinerator", "carcass_disposal", "INCINERATOR / CLAIMS", room, (5_000, 7_000), "SELL A CLAIMED CARCASS"), scale_legacy_coordinates=False)

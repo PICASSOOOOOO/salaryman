@@ -325,6 +325,20 @@ def _handle_basement_interact(
     if not scene.is_basement:
         return None
 
+    if (
+        scene.basement_level == 3
+        and nearby is not None
+        and nearby.id == "basement-b3-disaster-response"
+    ):
+        state.open_page(
+            "disaster_response",
+            from_object=True,
+            source=nearby.label,
+            source_object_id=nearby.id,
+        )
+        state.notice = "B3 RESPONSE BOARD / TOWER CONDITIONS"
+        return CommandResult(True, state.notice)
+
     collections_case_stations = {
         "basement-b2-collections-clerk": "clerk",
         "basement-b2-collections-desk-01": "ledger",

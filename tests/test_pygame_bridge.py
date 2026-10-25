@@ -333,6 +333,29 @@ class PygameBridgeTests(unittest.TestCase):
             self.assertEqual(self.state.collections_case_stage, expected_stage)
             self.assertEqual(self.state.active_page, "collections_case")
 
+    def test_b3_disaster_response_board_opens_the_live_status_page(self):
+        self.assertTrue(self.scene.select_basement_level(3))
+        board = self.scene.objects.get("basement-b3-disaster-response")
+        self.assertIsNotNone(board)
+        assert board is not None
+        self.scene.player_position = board.position
+
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "b3-response-board",
+                "name": "interact",
+                "payload": {"object_id": board.id},
+            },
+            self.state,
+            self.scene,
+        )
+
+        self.assertTrue(result.ok, result.message)
+        self.assertEqual(self.state.active_page, "disaster_response")
+        self.assertEqual(self.state.active_object_id, board.id)
+
     def test_tower_food_water_and_triage_items_appear_as_usable_stamina_supplies(self):
         self.state.game_inventory = [{
             "itemId": "tower_clinic_triage_kit",
