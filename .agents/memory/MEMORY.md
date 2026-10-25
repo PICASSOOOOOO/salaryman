@@ -140,7 +140,7 @@
 - [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is January 2027; defer pledge offers until the asset catalog is decided and keep the base game free.
-- [Beta hosting capacity](beta-hosting-capacity.md) — deploy from GitHub to other server systems; prepare for at least 1,000 concurrent MMO members.
+- [Beta hosting capacity](beta-hosting-capacity.md) — deploy from GitHub to other server systems; prepare for at least 1,000 concurrent signed-in app users.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
 - [Replicant power lore](replicant-power-lore.md) — intrinsic power is replicant-only; unique recruit powers can be used by any player.
 - [Tower building vitality](tower-building-vitality.md) — Pablo Corp pays partner shop owners; owners pay employees and expand creatively over a five-real-time-year city/server plan.
