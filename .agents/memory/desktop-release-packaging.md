@@ -39,6 +39,12 @@ layout plus available system fonts differ from Linux.
 **How to apply:** Build and smoke-test macOS on macOS; the Linux environment can
 only validate the launcher template and shared source behavior.
 
+The paired Pygame/Godot release smoke test runs 1,800 frames and can take several minutes in the Replit build container. Keep its timeout at 300 seconds or more; do not reduce the frame count to mask slow headless execution.
+
+**Why:** The full paired test exceeded the former 120-second limit while both clients were actively using CPU, then passed with the longer timeout.
+
+**How to apply:** Preserve the 1,800-frame coverage in the local packaging script and native CI, with enough time for both clients to complete.
+
 ## Native CI source integrity
 
 Dispatch a native build only from a ref containing the exact workspace source.
