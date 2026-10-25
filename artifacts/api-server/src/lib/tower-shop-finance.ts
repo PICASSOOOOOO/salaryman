@@ -64,7 +64,9 @@ export async function ensureTowerShopWorkingCapitalTx(
 
   await tx.insert(towerOperationsLedgerTable).values({
     eventKey: capitalEventKey,
-    eventType: "shop_capital_transfer",
+    // Keep opening shop funding on the established event type that production
+    // schemas already accept; the key, category, and description retain its detail.
+    eventType: "opening_capital",
     category: businessKey.slice(0, 32),
     amountFiat,
     balanceAfterFiat: towerBalanceAfterFiat,

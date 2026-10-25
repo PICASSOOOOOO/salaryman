@@ -50,3 +50,9 @@ When a composite foreign key references `(id, org_id)` even though `id` is alrea
 **How to apply:** Keep the explicit unique constraint in the Drizzle schema and development database; when converting an existing equivalent unique index, use `UNIQUE USING INDEX` so the physical index is retained. Then retry through Publish; never add production DDL or deploy-time schema mutations.
 
 The explicit table-level unique constraint was confirmed to let Publish complete after the standalone-index diff failed.
+
+Do not assume Publish reconciles changed PostgreSQL `CHECK` definitions. A successful build can leave production enforcing an older allowed-value set even while development uses the newer constraint.
+
+**Why:** Production rejected a newly supported ledger value, while `explainSchemaDiff()` reported no changes; the next successful Publish still showed the same rejection.
+
+**How to apply:** Compare live `pg_constraint` definitions before and after Publish. Keep runtime writes compatible with the older production constraint until a supported schema diff actually applies the change; never repair production with direct DDL.

@@ -192,7 +192,7 @@ def _smoke_test_godot(engine: Path, project: Path) -> None:
             ],
             cwd=ROOT,
             check=False,
-                timeout=300,
+            timeout=300,
             capture_output=True,
             text=True,
         )
