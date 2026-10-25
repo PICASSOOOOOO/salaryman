@@ -2,6 +2,10 @@ import { getStripe } from "../routes/stripe";
 
 async function main() {
   const stripe = getStripe();
+  const balance = await stripe.balance.retrieve();
+  if (!balance.livemode) {
+    throw new Error("Refusing to create organization seat prices: STRIPE_SECRET_KEY is not in live mode.");
+  }
   const found = await stripe.products.search({
     query: "metadata['salaryman_product']:'org_seat'",
     limit: 1,

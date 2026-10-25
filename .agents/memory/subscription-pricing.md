@@ -8,3 +8,9 @@ The approved ladder is FREE, CALLL HOME at $100/month, PABLO PRIME at $200/month
 **Why:** The user wants advertised prices and Stripe checkout items to match while letting international buyers view localized prices without unintentionally changing billing.
 
 **How to apply:** Keep public pricing copy, feature entitlements, Checkout product/price metadata, and SEO offer data aligned. Treat currency conversion as informational only and never migrate existing subscriptions implicitly.
+
+Organization billing is separate from personal subscriptions: the owner pays the organization's monthly base plan (FREE, CALLL HOME $100, PABLO PRIME $200, or CUSTOM by quote). CALLL HOME seats are $25/month and PABLO PRIME seats are $50/month. Members pay their own seats by default; the owner may designate a company-paid seat when creating the invitation. FREE has no member seats, and CUSTOM seat billing is negotiated outside self-service checkout.
+
+**Why:** The organization owner covers the base plan while member seat costs are individually billed unless the owner explicitly commits the organization to paying at invitation time.
+
+**How to apply:** Keep seat prices monthly in USD. Do not migrate existing subscriptions or change existing live prices implicitly.

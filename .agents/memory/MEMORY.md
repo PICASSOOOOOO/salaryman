@@ -98,7 +98,7 @@
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
 - [Currency boundaries](fiat-gold-rail.md) — Keep FIAT, GOLD, and Credits separate; live BTC reference adjusts FIAT buying power without making BTC owned currency.
-- [Subscription pricing and localization](subscription-pricing.md) — PABLO PRIME includes CALLL HOME; currency conversion is display-only and does not change USD billing.
+- [Subscription pricing and localization](subscription-pricing.md) — Keep base-plan and seat prices in USD; seats default individual, and existing subscriptions never migrate implicitly.
 - [Cross-client economy](cross-client-economy.md) — desktop/browser game FIAT shares server ledgers; browser Credits are distinct from FIAT and GOLD and remain a separate service-use balance.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
