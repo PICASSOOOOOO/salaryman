@@ -98,7 +98,7 @@
 - [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
 - [Responsive navigation chrome](responsive-navigation-chrome.md) — mobile has one minimal top header and no fixed bottom nav; Back trusts only current-session app history, then `/`.
 - [Currency boundaries](fiat-gold-rail.md) — Keep FIAT, GOLD, and Credits separate; live BTC reference adjusts FIAT buying power without making BTC owned currency.
-- [Subscription pricing and localization](subscription-pricing.md) — Planned 2027 +$50 increase for tiers 2/3; org seat rates stay fixed, and tier scope needs confirmation.
+- [Subscription pricing and localization](subscription-pricing.md) — In 2027, org base tiers 2/3 rise by $50; seat prices and personal subscriptions stay unchanged.
 - [Cross-client economy](cross-client-economy.md) — desktop/browser game FIAT shares server ledgers; browser Credits are distinct from FIAT and GOLD and remain a separate service-use balance.
 - [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
 - [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
@@ -140,7 +140,7 @@
 - [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Desktop release packaging](desktop-release-packaging.md) — build each target natively; preserve Windows/Linux and dispatch CI only from the exact workspace source.
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is January 2027; defer pledge offers until the asset catalog is decided and keep the base game free.
-- [Beta hosting capacity](beta-hosting-capacity.md) — plan to move deployment off Replit and support more than 1,000 simultaneous live MMO members; target platform is undecided.
+- [Beta hosting capacity](beta-hosting-capacity.md) — move off Replit, target 1,000+ concurrent MMO members, and prefer GitHub-friendly migration; host undecided.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
 - [Replicant power lore](replicant-power-lore.md) — intrinsic power is replicant-only; unique recruit powers can be used by any player.
 - [Tower building vitality](tower-building-vitality.md) — Pablo Corp pays partner shop owners; owners pay employees and expand creatively over a five-real-time-year city/server plan.
