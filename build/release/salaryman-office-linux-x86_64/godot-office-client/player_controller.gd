@@ -9,10 +9,12 @@ const ACCELERATION := 15.0
 const FRICTION := 20.0
 const GRAVITY := 18.0
 const JUMP_SPEED := 5.0
-const MODEL_SCALE := 2.15
-const CHARACTER_ALBEDO := preload("res://agentshire-assets/characters/Textures/colormap.png")
+const MODEL_SCALE := 3.0
+const GAMEPAD_DEADZONE := 0.22
+const AvatarStyle = preload("res://characters/voxel_avatar.gd")
 
 var character_scene: PackedScene
+var character_wardrobe: Dictionary = {}
 var visual_root: Node3D
 var animation_player: AnimationPlayer
 var bridge_connected := false
@@ -51,8 +53,63 @@ static func is_jump_input(event: InputEvent) -> bool:
 	return false
 
 
+static func gamepad_movement_vector(
+	axis_x: float,
+	axis_y: float,
+	dpad_x: float = 0.0,
+	dpad_y: float = 0.0,
+	deadzone: float = GAMEPAD_DEADZONE,
+) -> Vector2:
+	var stick := Vector2(axis_x, axis_y)
+	if stick.length() <= deadzone:
+		stick = Vector2.ZERO
+	else:
+		stick = stick.limit_length(1.0)
+	if not stick.is_zero_approx():
+		return stick
+	return Vector2(dpad_x, dpad_y).limit_length(1.0)
+
+
+static func keycode_for_joypad_button(button_index: int, menu_open: bool = false) -> int:
+	match button_index:
+		JOY_BUTTON_A:
+			return KEY_ENTER if menu_open else KEY_E
+		JOY_BUTTON_B, JOY_BUTTON_START:
+			return KEY_ESCAPE
+		JOY_BUTTON_X:
+			return KEY_SPACE
+		JOY_BUTTON_Y:
+			return KEY_V
+		JOY_BUTTON_LEFT_SHOULDER:
+			return KEY_SHIFT
+		JOY_BUTTON_RIGHT_SHOULDER:
+			return KEY_F
+		JOY_BUTTON_LEFT_STICK:
+			return KEY_Q
+		JOY_BUTTON_DPAD_UP:
+			return KEY_UP
+		JOY_BUTTON_DPAD_DOWN:
+			return KEY_DOWN
+		JOY_BUTTON_DPAD_LEFT:
+			return KEY_LEFT
+		JOY_BUTTON_DPAD_RIGHT:
+			return KEY_RIGHT
+	return 0
+
+
 func configure_character(scene: PackedScene) -> void:
 	character_scene = scene
+
+
+func set_character_wardrobe(wardrobe: Dictionary) -> void:
+	character_wardrobe = wardrobe.duplicate(true)
+	if visual_root == null or not is_instance_valid(visual_root):
+		return
+	AvatarStyle.set_wardrobe(visual_root, character_wardrobe)
+
+
+func set_character_wardrobe_preset(preset_name: String) -> void:
+	set_character_wardrobe(AvatarStyle.wardrobe_preset(preset_name))
 
 
 func _ready() -> void:
@@ -79,23 +136,17 @@ func _ready() -> void:
 		return
 	visual_root.name = "CharacterModel"
 	add_child(visual_root)
-	animation_player = configure_character_model(visual_root)
+	animation_player = configure_character_model(visual_root, MODEL_SCALE, character_wardrobe)
 	_play_animation("idle")
 
 
-static func configure_character_model(model: Node3D, scale_value: float = MODEL_SCALE) -> AnimationPlayer:
+static func configure_character_model(
+	model: Node3D,
+	scale_value: float = MODEL_SCALE,
+	wardrobe: Dictionary = {},
+) -> AnimationPlayer:
 	model.scale = Vector3.ONE * scale_value
-	for node in model.find_children("*", "MeshInstance3D", true, false):
-		var mesh_instance := node as MeshInstance3D
-		if mesh_instance.mesh == null:
-			continue
-		for surface_index in range(mesh_instance.mesh.get_surface_count()):
-			var source_material := mesh_instance.get_active_material(surface_index)
-			var material := source_material.duplicate() as StandardMaterial3D if source_material is StandardMaterial3D else StandardMaterial3D.new()
-			material.albedo_texture = CHARACTER_ALBEDO
-			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-			material.roughness = 0.82
-			mesh_instance.set_surface_override_material(surface_index, material)
+	AvatarStyle.apply(model, wardrobe)
 	var animation_nodes := model.find_children("*", "AnimationPlayer", true, false)
 	if animation_nodes.is_empty():
 		return null
@@ -113,17 +164,38 @@ func requested_movement() -> Vector2:
 	x -= float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
 	var y := float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN))
 	y -= float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
-	return Vector2(x, y).limit_length(1.0)
+	var movement := Vector2(x, y)
+	var devices := Input.get_connected_joypads()
+	if not devices.is_empty():
+		var device := devices[0]
+		var pad_x := float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_RIGHT))
+		pad_x -= float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_LEFT))
+		var pad_y := float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_DOWN))
+		pad_y -= float(Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_UP))
+		movement += gamepad_movement_vector(
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_X),
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_Y),
+			pad_x,
+			pad_y,
+		)
+	return movement.limit_length(1.0)
 
 
 func wants_sprint() -> bool:
 	return (
 		not requested_movement().is_zero_approx()
 		and sprint_input_active(
-			Input.is_key_pressed(KEY_SHIFT),
+			Input.is_key_pressed(KEY_SHIFT) or _gamepad_sprint_pressed(),
 			mouse_sprint_toggled,
 		)
 	)
+
+
+func _gamepad_sprint_pressed() -> bool:
+	for device in Input.get_connected_joypads():
+		if Input.is_joy_button_pressed(device, JOY_BUTTON_LEFT_SHOULDER):
+			return true
+	return false
 
 
 func set_authoritative_action(action: String) -> void:

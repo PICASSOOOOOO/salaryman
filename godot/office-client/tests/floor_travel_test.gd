@@ -113,7 +113,7 @@ func _run_tests() -> void:
 	assert((verified_stock.get_node("StockLabel_0") as Label3D).text == "Goldfish · 2")
 	client._sync_business_shelf_displays({"fish-store": []})
 	assert(client.world_root.get_node_or_null("VerifiedShelfStock_fish-store") == null)
-	assert(floor_plan["businessSuiteLayout"]["lobbyKiosks"].size() == 2)
+	assert(floor_plan["businessSuiteLayout"]["lobbyKiosks"].size() == 4)
 	assert(floor_plan["playableFloors"]["7"]["businesses"].is_empty())
 	assert(str(floor_plan["playableFloors"]["7"]["label"]).contains("MEDITATION TEMPLE"))
 	for floor_number in range(8, 13):

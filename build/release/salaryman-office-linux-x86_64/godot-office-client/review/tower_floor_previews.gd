@@ -8,9 +8,11 @@ const Service = preload("res://office_service_prop.gd")
 const FLOOR_TOP := 0.14
 const WALL_HEIGHT := 2.35
 const WALL_THICKNESS := 0.3
-const STANDARD_SCALE := 0.01
-const BASEMENT_SCALE := 0.01
-const LOBBY_SCALE := 0.01
+# Compress simulation coordinates to readable room-scale dioramas; native prop
+# dimensions and wall heights remain unchanged.
+const STANDARD_SCALE := 0.001
+const BASEMENT_SCALE := 0.001
+const LOBBY_SCALE := 0.001
 
 const PALETTE := {
 	"lobby": "#3d655a",
@@ -84,17 +86,25 @@ func _capture_all() -> void:
 		var basement_job: Dictionary = {"id": "B%d" % basement, "floor": 0, "basement": basement}
 		if basement == 2 or basement == 3:
 			basement_job["cameraFocus"] = "basement-department"
+		elif basement == 1:
+			basement_job["cameraFocus"] = "b1-interior"
 		jobs.append(basement_job)
-		if basement == 2 or basement == 3:
-			jobs.append({
-				"id": "B%d-OVERVIEW" % basement,
-				"floor": 0,
-				"basement": basement,
-				"title": "SALARYMAN OS  /  TOWER B%d OVERVIEW" % basement,
-				"subtitle": "FULL 282.84 M × 282.84 M FLOOR FOOTPRINT",
-			})
 	for floor_number in range(1, 13):
-		jobs.append({"id": "F%d" % floor_number, "floor": floor_number, "basement": 0})
+		var camera_focus := ""
+		if floor_number == 1:
+			camera_focus = "lobby-interior"
+		elif floor_number == 6:
+			camera_focus = "office-interior"
+		elif floor_number == 7:
+			camera_focus = "temple-interior"
+		else:
+			camera_focus = "business-interior"
+		jobs.append({
+			"id": "F%d" % floor_number,
+			"floor": floor_number,
+			"basement": 0,
+			"cameraFocus": camera_focus,
+		})
 	jobs.append({
 		"id": "B1-YARD",
 		"floor": 0,
@@ -1188,9 +1198,9 @@ func _update_camera(job: Dictionary) -> void:
 		var gate: Array = plan.get("businessSuiteLayout", {}).get("b1", {}).get("exteriorGate", [])
 		if gate.size() >= 2:
 			var gate_target := Vector3(float(gate[0]) * STANDARD_SCALE, 0.82, float(gate[1]) * STANDARD_SCALE)
-			camera.size = 18.0
+			camera.size = 4.6
 			camera.far = 90.0
-			camera.position = gate_target + Vector3(-12.0, 8.0, 0.0)
+			camera.position = gate_target + Vector3(-3.5, 2.4, 0.0)
 			camera.look_at(gate_target, Vector3.UP)
 			return
 	elif camera_focus == "b1-yard":
@@ -1212,7 +1222,7 @@ func _update_camera(job: Dictionary) -> void:
 				0.8,
 				(min_z + max_z) * 0.5 * STANDARD_SCALE,
 			)
-			camera.size = maxf((max_z - min_z) * STANDARD_SCALE * 1.15, 72.0)
+			camera.size = maxf((max_z - min_z) * STANDARD_SCALE * 1.15, 7.2)
 			camera.far = camera.size * 4.0
 			camera.position = focus_center + Vector3(0.0, camera.size * 1.5, 0.0)
 			camera.look_at(focus_center, Vector3(0.0, 0.0, 1.0))
@@ -1225,11 +1235,79 @@ func _update_camera(job: Dictionary) -> void:
 		camera.look_at(window_center, Vector3.UP)
 		return
 	elif camera_focus == "basement-department":
-		var focus_center := Vector3(50.0, 0.0, 45.0)
-		camera.size = 112.0
-		camera.far = 280.0
-		camera.position = focus_center + Vector3(70.0, 125.0, 95.0)
+		var focus_center := Vector3(5.0, 0.0, 4.5)
+		camera.size = 8.6
+		camera.far = 28.0
+		camera.position = focus_center + Vector3(7.0, 12.5, 9.5)
 		camera.look_at(focus_center + Vector3(0.0, 0.3, 0.0), Vector3.UP)
+		return
+	elif camera_focus == "b1-interior":
+		var business_half: Array = plan.get("businessSuiteLayout", {}).get("b1", {}).get("interiorBusinessHalf", [])
+		if business_half.size() >= 4:
+			var focus_center := Vector3(
+				(float(business_half[0]) + float(business_half[2]) * 0.5) * STANDARD_SCALE,
+				0.4,
+				(float(business_half[1]) + float(business_half[3]) * 0.5) * STANDARD_SCALE,
+			)
+			camera.size = 11.8
+			camera.far = 42.0
+			camera.position = focus_center + Vector3(8.2, 14.5, 11.2)
+			camera.look_at(focus_center, Vector3.UP)
+			return
+	elif camera_focus == "lobby-interior":
+		camera.size = 11.0
+		camera.far = 30.0
+		camera.position = center + Vector3(7.8, 13.8, 10.2)
+		camera.look_at(center + Vector3(0.0, 0.3, 0.0), Vector3.UP)
+		return
+	elif camera_focus == "business-interior":
+		var floor_data: Dictionary = plan.get("playableFloors", {}).get(str(floor_number), {})
+		var layout_key := str(floor_data.get("suiteLayout", "standardFloorUnits"))
+		var units: Array = plan.get("businessSuiteLayout", {}).get(layout_key, [])
+		var businesses: Array = floor_data.get("businesses", [])
+		if not businesses.is_empty():
+			var first_business: Dictionary = businesses[0]
+			var target_unit := int(first_business.get("unitNumber", 1))
+			for unit_value in units:
+				var unit: Dictionary = unit_value
+				if int(unit.get("unitNumber", 0)) != target_unit:
+					continue
+				var unit_bounds: Array = unit.get("bounds", [])
+				if unit_bounds.size() >= 4:
+					var focus_center := Vector3(
+						(float(unit_bounds[0]) + float(unit_bounds[2]) * 0.5) * STANDARD_SCALE,
+						0.55,
+						(float(unit_bounds[1]) + float(unit_bounds[3]) * 0.5) * STANDARD_SCALE,
+					)
+					camera.size = 11.8
+					camera.far = 70.0
+					camera.position = focus_center + Vector3(16.0, 27.0, 20.5)
+					camera.look_at(focus_center, Vector3.UP)
+					return
+	elif camera_focus == "office-interior":
+		var first_business: Dictionary = plan["playableFloors"]["6"]["businesses"][0]
+		var office_bounds: Array = []
+		for office_value in plan.get("baseLayout", {}).get("offices", []):
+			var office: Dictionary = office_value
+			if str(office.get("id", "")) == str(first_business.get("officeRoom", "")):
+				office_bounds = office.get("bounds", [])
+				break
+		if office_bounds.size() >= 4:
+			var focus_center := Vector3(
+				(float(office_bounds[0]) + float(office_bounds[2]) * 0.25) * STANDARD_SCALE,
+				0.55,
+				(float(office_bounds[1]) + float(office_bounds[3]) * 0.5) * STANDARD_SCALE,
+			)
+			camera.size = 11.8
+			camera.far = 70.0
+			camera.position = focus_center + Vector3(16.0, 27.0, 20.5)
+			camera.look_at(focus_center, Vector3.UP)
+			return
+	elif camera_focus == "temple-interior":
+		camera.size = 48.0
+		camera.far = 150.0
+		camera.position = center + Vector3(33.0, 56.0, 42.0)
+		camera.look_at(center + Vector3(0.0, 0.3, 0.0), Vector3.UP)
 		return
 	var camera_center := center
 	var framing_scale := 1.30

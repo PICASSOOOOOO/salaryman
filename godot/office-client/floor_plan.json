@@ -11,14 +11,14 @@
       "label": "FLOOR 02 / BUSINESS SUITES + CONSTRUCTION",
       "initialBusinessOperator": "PABLO CORP",
       "businesses": [
-        {"businessKey": "shadow_cafeteria", "label": "COMMON TABLE 67 / CAFETERIA", "unitNumber": 1},
+        {"businessKey": "shadow_cafeteria", "label": "ECON'S CAFETERIA", "unitNumber": 1},
         {"businessKey": "tower_clinic", "label": "LUMEN CARE CLINIC", "unitNumber": 2},
         {"businessKey": "tower_pharmacy", "label": "THIRD SHIFT PHARMACY", "unitNumber": 3},
-        {"businessKey": "banco_ombra", "label": "BANCO OMBRA / CURRENCY + GOLD EXCHANGE", "unitNumber": 4},
+        {"businessKey": "banco_ombra", "label": "BANCO OMBRA / BANK + FIAT CURRENCY", "unitNumber": 4},
         {"businessKey": "tower_realty", "label": "PABLO CORP REAL ESTATE", "unitNumber": 5},
         {"businessKey": "fish-store", "label": "FISH STORE", "unitNumber": 6},
         {"businessKey": "furniture-store", "label": "FURNITURE STORE", "unitNumber": 7},
-        {"businessKey": "tower_terminal_repair", "label": "MENDER-9 TERMINAL WORKS", "unitNumber": 8}
+        {"businessKey": "tower_terminal_repair", "label": "COMPWORLD / TERMINAL + REPLICANT REPAIR", "unitNumber": 8}
       ]
     },
     "3": {
@@ -368,7 +368,9 @@
     "lobbyBackEntrance": [49970222, 50002263],
     "lobbyKiosks": [
       {"businessKey": "tower_reception_kiosk", "label": "RECEPTION KIOSK", "position": [49976586, 50006505]},
-      {"businessKey": "vehicle_dealership", "label": "VEHICLE DEALERSHIP", "position": [49979414, 50006505]}
+      {"businessKey": "vehicle_dealership", "label": "VEHICLE DEALERSHIP", "position": [49979414, 50006505]},
+      {"businessKey": "tower_gold_exchange", "label": "AURUM / GOLD EXCHANGE", "position": [49976586, 50003600]},
+      {"businessKey": "tower_event_planning", "label": "EVENT PLANNING", "position": [49979414, 50003600]}
     ]
   },
   "publicOfficeSales": {

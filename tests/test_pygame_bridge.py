@@ -87,6 +87,16 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "business_shop")
         self.assertEqual(self.state.active_object_id, dealership.id)
 
+    def test_gold_exchange_is_a_dedicated_lobby_kiosk_and_banco_ombra_stays_bank_only(self):
+        exchange = self.scene.objects.get("lobby-kiosk-tower_gold_exchange")
+        self.assertIsNotNone(exchange)
+        self.assertEqual(exchange.service_actions, ("gold_exchange",))
+        bank = next(
+            item for item in self.scene.objects.objects
+            if item.business_key == "banco_ombra" and item.kind == "business_suite"
+        )
+        self.assertEqual(bank.service_actions, ("bank_balance",))
+
     def test_full_default_snapshot_is_delivered_to_connected_client(self):
         bridge = OfficeBridge(port=0)
         self.assertTrue(bridge.start())

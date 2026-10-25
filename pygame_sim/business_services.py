@@ -10,7 +10,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 BUSINESS_SERVICE_ACTIONS: dict[str, tuple[str, ...]] = {
-    "banco_ombra": ("bank_balance", "gold_exchange"),
+    "banco_ombra": ("bank_balance",),
+    "tower_gold_exchange": ("gold_exchange",),
     "tower_realty": ("real_estate",),
     "shadow_cafeteria": ("read_only_stock",),
     "tower_clinic": ("read_only_stock",),
@@ -19,7 +20,8 @@ BUSINESS_SERVICE_ACTIONS: dict[str, tuple[str, ...]] = {
     "furniture-store": ("read_only_stock",),
     "phone_store_f03": ("phone", "read_only_stock"),
     "phone_store_f05": ("phone",),
-    "jewelry_store": ("gold_exchange", "read_only_stock"),
+    "jewelry_store": ("read_only_stock",),
+    "tower_event_planning": ("read_only_stock",),
 }
 
 PURCHASABLE_BUSINESSES = frozenset({

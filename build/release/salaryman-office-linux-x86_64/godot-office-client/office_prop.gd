@@ -6,6 +6,7 @@ const SUPPORTED_KINDS := [
 	"desk", "telephone", "pay_phone", "desk_lamp", "trash_can", "fire_extinguisher",
 	"temple_tree", "reflection_screen", "meditation_cushion", "temple_audio_control",
 	"chapel_pew", "chapel_altar", "library_shelf", "reading_table", "museum_case",
+	"furniture_lounge_chair", "furniture_couch", "furniture_sideboard", "furniture_display_shelf",
 ]
 var finish: StandardMaterial3D
 var surface_base := Color("#35574a")
@@ -13,9 +14,9 @@ var dust_marks: Array[MeshInstance3D] = []
 var repair_seam: MeshInstance3D
 
 
-static func create(kind: String, reception := false) -> Node3D:
+static func create(kind: String, reception := false, variant := 0) -> Node3D:
 	var prop := new()
-	prop._build(kind, reception)
+	prop._build(kind, reception, variant)
 	return prop
 
 
@@ -27,7 +28,7 @@ func _finish(color: String, metal := 0.0) -> StandardMaterial3D:
 	return material
 
 
-func _build(kind: String, reception: bool) -> void:
+func _build(kind: String, reception: bool, variant: int) -> void:
 	var wood := _finish("#78523b")
 	var edge := _finish("#b28a59")
 	var brass := _finish("#ad884e", 0.55)
@@ -65,7 +66,15 @@ func _build(kind: String, reception: bool) -> void:
 		"reading_table":
 			_reading_table(wood, brass, cream)
 		"museum_case":
-			_museum_case(wood, brass, cream)
+			_museum_case(wood, brass, cream, variant)
+		"furniture_lounge_chair":
+			_furniture_lounge_chair(wood, edge, brass)
+		"furniture_couch":
+			_furniture_couch(wood, edge, brass)
+		"furniture_sideboard":
+			_furniture_sideboard(wood, edge, brass, cream)
+		"furniture_display_shelf":
+			_furniture_display_shelf(wood, edge, brass)
 	set_surface_state(100, 100)
 
 
@@ -211,6 +220,7 @@ func _fire_extinguisher(brass: Material, dark: Material) -> void:
 	_box("SafetyPin", Vector3(-0.08, 1.08, 0), Vector3(0.06, 0.10, 0.025), brass)
 	_box("Label", Vector3(0, 0.60, 0.151), Vector3(0.12, 0.20, 0.008), _finish("#e7dfc6"))
 	_box("Hose", Vector3(0.20, 0.74, 0.02), Vector3(0.045, 0.42, 0.045), dark)
+	_wear_detail(Vector3(0, 0.50, 0.153), Vector3(0.075, 0.003, 0.006), brass)
 
 
 func _temple_tree(wood: Material, brass: Material) -> void:
@@ -229,6 +239,7 @@ func _temple_tree(wood: Material, brass: Material) -> void:
 			sin(float(index) * TAU / 4.0) * 0.48,
 		)
 		_mesh("Canopy", Vector3(at.x, 2.35 + at.y, at.z), canopy, self)
+	_wear_detail(Vector3(0, 0.28, 0.58), Vector3(0.18, 0.004, 0.012), brass)
 
 
 func _reflection_screen(wood: Material, brass: Material) -> void:
@@ -238,6 +249,7 @@ func _reflection_screen(wood: Material, brass: Material) -> void:
 	for side in [-1.0, 1.0]:
 		_box("ScreenPost", Vector3(side * 1.94, 1.05, 0), Vector3(0.12, 2.0, 0.18), wood)
 		_box("ScreenFoot", Vector3(side * 1.94, 0.06, 0), Vector3(0.50, 0.10, 0.38), brass)
+	_wear_detail(Vector3(0, 0.30, 0.071), Vector3(0.20, 0.004, 0.006), brass)
 
 
 func _meditation_cushion(wood: Material, brass: Material) -> void:
@@ -253,6 +265,7 @@ func _temple_audio_control(brass: Material, cream: Material, dark: Material) -> 
 	_box("PlaqueInset", Vector3(0, 1.32, 0.071), Vector3(0.91, 0.43, 0.02), cream)
 	_box("MusicSwitch", Vector3(-0.22, 1.30, 0.093), Vector3(0.18, 0.12, 0.03), brass)
 	_box("SilenceSwitch", Vector3(0.22, 1.30, 0.093), Vector3(0.18, 0.12, 0.03), dark)
+	_wear_detail(Vector3(0, 1.08, 0.083), Vector3(0.16, 0.004, 0.006), brass)
 
 
 func _chapel_pew(wood: Material, brass: Material) -> void:
@@ -262,6 +275,7 @@ func _chapel_pew(wood: Material, brass: Material) -> void:
 	for side in [-1.0, 1.0]:
 		_box("Support", Vector3(side * 1.08, 0.27, 0), Vector3(0.12, 0.50, 0.48), brass)
 		_box("EndCap", Vector3(side * 1.20, 0.72, 0.02), Vector3(0.16, 0.38, 0.54), wood)
+	_wear_detail(Vector3(0, 0.56, 0.306), Vector3(0.18, 0.004, 0.008), brass)
 
 
 func _chapel_altar(wood: Material, brass: Material, cream: Material) -> void:
@@ -269,6 +283,7 @@ func _chapel_altar(wood: Material, brass: Material, cream: Material) -> void:
 	_box("AltarBase", Vector3(0, 0.48, 0), Vector3(2.8, 0.88, 1.2), finish)
 	_box("AltarTop", Vector3(0, 0.96, 0), Vector3(3.1, 0.12, 1.4), brass)
 	_box("AltarCloth", Vector3(0, 0.89, 0.62), Vector3(2.5, 0.18, 0.025), cream)
+	_wear_detail(Vector3(0, 0.48, 0.604), Vector3(0.20, 0.004, 0.008), brass)
 
 
 func _library_shelf(wood: Material, brass: Material) -> void:
@@ -286,6 +301,7 @@ func _library_shelf(wood: Material, brass: Material) -> void:
 				Vector3(0.20, height, 0.30),
 				cover,
 			)
+	_wear_detail(Vector3(-0.80, 0.30, 0.285), Vector3(0.16, 0.004, 0.008), brass)
 
 
 func _reading_table(wood: Material, brass: Material, cream: Material) -> void:
@@ -294,14 +310,131 @@ func _reading_table(wood: Material, brass: Material, cream: Material) -> void:
 	_cylinder("TableBase", Vector3(0, 0.38, 0), 0.12, 0.68, brass)
 	_cylinder("TableFoot", Vector3(0, 0.06, 0), 0.48, 0.10, brass)
 	_box("OpenBook", Vector3(0.16, 0.86, 0), Vector3(0.48, 0.02, 0.34), cream)
+	_wear_detail(Vector3(0, 0.844, 0.68), Vector3(0.18, 0.004, 0.008), brass)
 
 
-func _museum_case(wood: Material, brass: Material, cream: Material) -> void:
+func _museum_case(wood: Material, brass: Material, cream: Material, variant: int) -> void:
 	finish = _finish("#8b7659")
 	_box("DisplayBase", Vector3(0, 0.32, 0), Vector3(1.6, 0.54, 0.85), wood)
 	_box("GlassTop", Vector3(0, 0.90, 0), Vector3(1.52, 0.62, 0.77), _finish("#a9c6b8"))
-	_box("DisplayArtifact", Vector3(0, 0.74, 0), Vector3(0.34, 0.20, 0.28), cream)
+	match posmod(variant, 3):
+		0:
+			var medallion := CylinderMesh.new()
+			medallion.top_radius = 0.18
+			medallion.bottom_radius = 0.18
+			medallion.height = 0.07
+			medallion.radial_segments = 24
+			medallion.material = brass
+			var medallion_instance := _mesh(
+				"DisplayArtifactMedallion",
+				Vector3(0, 0.78, 0),
+				medallion,
+				self,
+			)
+			medallion_instance.rotation.x = PI / 2.0
+			_cylinder("MedallionStand", Vector3(0, 0.63, 0), 0.045, 0.20, wood)
+		1:
+			var crystal := PrismMesh.new()
+			crystal.size = Vector3(0.34, 0.38, 0.28)
+			crystal.material = _finish("#6f9c8e")
+			_mesh("DisplayArtifactCrystal", Vector3(0, 0.78, 0), crystal, self)
+			_box("CrystalFoot", Vector3(0, 0.62, 0), Vector3(0.42, 0.035, 0.34), brass)
+		_:
+			_box("DisplayArtifactModelBase", Vector3(0, 0.62, 0), Vector3(0.48, 0.06, 0.36), brass)
+			for index in range(3):
+				var width := 0.10 + float(index % 2) * 0.035
+				var height := 0.18 + float(index) * 0.07
+				_box(
+					"DisplayArtifactTower%d" % index,
+					Vector3(float(index - 1) * 0.13, 0.66 + height / 2.0, 0),
+					Vector3(width, height, 0.12),
+					cream,
+				)
 	_box("BrassEdge", Vector3(0, 0.60, 0.43), Vector3(1.62, 0.06, 0.04), brass)
+	_wear_detail(Vector3(0, 0.34, 0.428), Vector3(0.18, 0.004, 0.008), brass)
+
+
+func _furniture_lounge_chair(wood: Material, edge: Material, brass: Material) -> void:
+	finish = _finish("#35574a")
+	surface_base = Color("#35574a")
+	# Low, generous seat; the walnut frame and brass feet keep it in the
+	# approved mid-century Tower furniture language.
+	_box("SeatFrame", Vector3(0, 0.48, 0), Vector3(1.08, 0.20, 0.92), wood)
+	_box("UpholsteredSeat", Vector3(0, 0.66, 0.035), Vector3(0.98, 0.20, 0.80), finish)
+	_box("BackFrame", Vector3(0, 1.15, -0.34), Vector3(1.08, 0.94, 0.16), wood)
+	_box("UpholsteredBack", Vector3(0, 1.15, -0.235), Vector3(0.92, 0.78, 0.11), finish)
+	_box("BackSeam", Vector3(0, 1.14, -0.173), Vector3(0.035, 0.60, 0.012), edge)
+	for side in [-1.0, 1.0]:
+		_box("ArmSupport", Vector3(side * 0.49, 0.78, 0.02), Vector3(0.10, 0.54, 0.12), wood)
+		_box("WalnutArm", Vector3(side * 0.49, 1.07, 0.12), Vector3(0.16, 0.10, 0.92), edge)
+		for depth in [-0.34, 0.34]:
+			_box("ChairLeg", Vector3(side * 0.42, 0.22, depth), Vector3(0.085, 0.42, 0.085), wood)
+			_cylinder("BrassFoot", Vector3(side * 0.42, 0.025, depth), 0.058, 0.05, brass)
+	_wear_detail(Vector3(0, 0.56, 0.468), Vector3(0.18, 0.004, 0.008), brass)
+
+
+func _furniture_couch(wood: Material, edge: Material, brass: Material) -> void:
+	finish = _finish("#35574a")
+	finish.roughness = 0.43
+	surface_base = Color("#35574a")
+	_box("WalnutBase", Vector3(0, 0.37, 0), Vector3(2.55, 0.30, 0.92), wood)
+	_box("LeatherSeatDeck", Vector3(0, 0.57, 0.02), Vector3(2.38, 0.14, 0.84), finish)
+	_box("CouchBackFrame", Vector3(0, 1.06, -0.34), Vector3(2.52, 0.90, 0.20), wood)
+	_box("CouchBackUpholstery", Vector3(0, 1.08, -0.205), Vector3(2.34, 0.78, 0.09), finish)
+	for cushion in range(3):
+		var x := -0.77 + float(cushion) * 0.77
+		_box("SeatCushion", Vector3(x, 0.70, 0.055), Vector3(0.73, 0.22, 0.67), finish)
+		_box("CushionPiping", Vector3(x, 0.812, 0.38), Vector3(0.60, 0.012, 0.014), edge)
+	for side in [-1.0, 1.0]:
+		_box("UpholsteredArm", Vector3(side * 1.14, 0.82, 0.0), Vector3(0.28, 0.75, 0.94), finish)
+		_box("WalnutArmCap", Vector3(side * 1.14, 1.22, 0.0), Vector3(0.32, 0.08, 1.00), wood)
+		for depth in [-0.34, 0.34]:
+			_box("CouchLeg", Vector3(side * 0.98, 0.16, depth), Vector3(0.12, 0.30, 0.12), wood)
+			_cylinder("BrassFoot", Vector3(side * 0.98, 0.025, depth), 0.075, 0.05, brass)
+	_wear_detail(Vector3(0, 0.49, 0.466), Vector3(0.22, 0.004, 0.008), brass)
+
+
+func _furniture_sideboard(wood: Material, edge: Material, brass: Material, cream: Material) -> void:
+	finish = _finish("#35574a")
+	surface_base = Color("#35574a")
+	_box("CabinetBody", Vector3(0, 0.62, 0), Vector3(2.05, 0.94, 0.70), finish)
+	_box("WalnutTop", Vector3(0, 1.13, 0), Vector3(2.16, 0.12, 0.79), wood)
+	_box("TopInlay", Vector3(0, 1.196, 0.398), Vector3(2.02, 0.018, 0.022), edge)
+	for index in range(3):
+		var x := -0.68 + float(index) * 0.68
+		_box("DoorInset", Vector3(x, 0.62, 0.358), Vector3(0.61, 0.77, 0.035), edge)
+		_box("DoorPanel", Vector3(x, 0.62, 0.382), Vector3(0.55, 0.71, 0.025), finish)
+		_cylinder("BrassPull", Vector3(x + 0.20, 0.62, 0.410), 0.035, 0.045, brass)
+	for side in [-1.0, 1.0]:
+		_box("CabinetFoot", Vector3(side * 0.82, 0.12, 0), Vector3(0.12, 0.24, 0.58), wood)
+		_box("FootCap", Vector3(side * 0.82, 0.025, 0), Vector3(0.14, 0.05, 0.60), brass)
+	_box("CeramicVase", Vector3(-0.54, 1.33, -0.04), Vector3(0.18, 0.26, 0.18), cream)
+	_cylinder("BrassDish", Vector3(0.42, 1.22, 0.08), 0.20, 0.035, brass)
+	_wear_detail(Vector3(0.0, 0.32, 0.365), Vector3(0.20, 0.004, 0.008), brass)
+
+
+func _furniture_display_shelf(wood: Material, edge: Material, brass: Material) -> void:
+	finish = _finish("#35574a")
+	surface_base = Color("#35574a")
+	_box("ShelfBack", Vector3(0, 1.30, -0.12), Vector3(2.25, 2.55, 0.12), finish)
+	for shelf in range(4):
+		var y := 0.43 + float(shelf) * 0.58
+		_box("WalnutShelf", Vector3(0, y, 0.06), Vector3(2.42, 0.10, 0.56), wood)
+		_box("BrassShelfEdge", Vector3(0, y + 0.015, 0.35), Vector3(2.40, 0.025, 0.035), brass)
+		for item_index in range(4):
+			var x := -0.78 + float(item_index) * 0.52
+			var height := 0.20 + float((shelf + item_index) % 3) * 0.06
+			var accent: Material = [edge, brass, wood, finish][(shelf + item_index) % 4]
+			_box(
+				"DisplayObject",
+				Vector3(x, y + 0.05 + height / 2.0, 0.06),
+				Vector3(0.18, height, 0.24),
+				accent,
+			)
+	for side in [-1.0, 1.0]:
+		_box("BrassUpright", Vector3(side * 1.13, 1.30, 0.13), Vector3(0.055, 2.62, 0.055), brass)
+		_box("WalnutFoot", Vector3(side * 1.13, 0.12, 0.04), Vector3(0.20, 0.20, 0.64), wood)
+	_wear_detail(Vector3(0, 0.28, 0.302), Vector3(0.18, 0.004, 0.008), brass)
 
 
 func _wear_detail(at: Vector3, size: Vector3, material: Material) -> void:

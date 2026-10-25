@@ -3,6 +3,7 @@ extends SceneTree
 const Prop = preload("res://office_prop.gd")
 const Service = preload("res://office_service_prop.gd")
 const Client = preload("res://main.gd")
+const ArcadeProp = preload("res://office_arcade_prop.gd")
 var failures := 0
 
 
@@ -37,6 +38,18 @@ func _run() -> void:
 	var lamp := Prop.create("desk_lamp")
 	check(lamp.has_node("ShadePivot") and lamp.has_node("TaskLight"), "Lamp must have an articulated shade and native light")
 	lamp.free()
+	var lounge_chair := Prop.create("furniture_lounge_chair")
+	check(lounge_chair.has_node("UpholsteredSeat") and lounge_chair.has_node("WalnutArm"), "Furniture-store chair must use the authored upholstery and walnut frame")
+	lounge_chair.free()
+	var couch := Prop.create("furniture_couch")
+	check(couch.has_node("LeatherSeatDeck") and couch.has_node("CouchBackUpholstery"), "Furniture-store couch must have its own upholstered seat and back")
+	couch.free()
+	var sideboard := Prop.create("furniture_sideboard")
+	check(sideboard.has_node("CabinetBody") and sideboard.has_node("BrassPull"), "Furniture-store sideboard must have its own cabinet and brass hardware")
+	sideboard.free()
+	var display_shelf := Prop.create("furniture_display_shelf")
+	check(display_shelf.has_node("ShelfBack") and display_shelf.has_node("BrassUpright"), "Furniture-store display must use native shelf geometry")
+	display_shelf.free()
 	for kind in Service.SERVICE_KINDS:
 		var service := Service.create_service(kind)
 		check(service is Prop, "Service models must reuse the same surface-state contract")
@@ -52,10 +65,77 @@ func _run() -> void:
 	var vending := Service.create_service("vending_machine")
 	check(vending.has_node("PickupHatchPivot"), "Vending hatch must remain independently animatable")
 	vending.free()
+	var arcade_ids := [
+		"arcade-cyber-serpent",
+		"arcade-void-invaders",
+		"arcade-barrel-runner",
+		"arcade-neon-breaker",
+	]
+	var arcade_accents := {}
+	for arcade_id in arcade_ids:
+		var arcade := ArcadeProp.create(arcade_id, arcade_id.trim_prefix("arcade-").replace("-", " ").to_upper())
+		check(arcade.has_node("CabinetBody"), "Arcade must have a full cabinet")
+		check(arcade.has_node("GameTitle"), "Arcade must show its game title")
+		check(arcade.has_node("ScreenField"), "Arcade must have a distinct screen")
+		check(arcade.has_node("JoystickKnob"), "Arcade must have player controls")
+		check(arcade.get_node("GameTitle").text != "", "Arcade title cannot be blank")
+		check(arcade.has_node("ScreenAsciiArt"), "Arcade screens should use distinct ASCII art")
+		arcade_accents[arcade.get_node("MarqueeFace").mesh.material.albedo_color] = true
+		var sprite := arcade.get_node("ScreenSpriteMain") as MeshInstance3D
+		var initial_sprite_position := sprite.position
+		arcade.update_attract_mode(0.4)
+		check(sprite.position != initial_sprite_position, "Arcade screen should animate in attract mode")
+		arcade.free()
+	check(arcade_accents.size() == 4, "Each approved arcade must have a distinct cabinet accent")
+	check(Client.museum_case_variant("floor-12-interior-prop-12") == 0, "First museum case must select exhibit one")
+	check(Client.museum_case_variant("floor-12-interior-prop-13") == 1, "Second museum case must select exhibit two")
+	check(Client.museum_case_variant("floor-12-interior-prop-14") == 2, "Third museum case must select exhibit three")
+	var medallion_case := Prop.create("museum_case", false, 0)
+	var crystal_case := Prop.create("museum_case", false, 1)
+	var tower_case := Prop.create("museum_case", false, 2)
+	check(medallion_case.has_node("DisplayArtifactMedallion"), "First exhibit must show the medallion")
+	check(crystal_case.has_node("DisplayArtifactCrystal"), "Second exhibit must show the crystal")
+	check(tower_case.has_node("DisplayArtifactTower0"), "Third exhibit must show the miniature tower")
+	medallion_case.free()
+	crystal_case.free()
+	tower_case.free()
 
 	var client := Client.new()
+	client._build_materials()
 	client.dynamic_root = Node3D.new()
 	client.add_child(client.dynamic_root)
+	var arcade_from_bridge := client._build_bridge_object(
+		"arcade",
+		Vector3(2.0, 0.0, 3.0),
+		"arcade-cyber-serpent",
+		"CYBER SERPENT",
+	)
+	check(arcade_from_bridge.get_node("GameTitle").text == "CYBER SERPENT", "Bridge title reaches cabinet marquee")
+	check(arcade_from_bridge.position == Vector3(2.0, 0.0, 3.0), "Arcade cabinet keeps bridge position")
+	var terminal := client._build_bridge_object(
+		"crt_terminal",
+		Vector3.ZERO,
+		"terminal-art-test",
+	)
+	check(terminal != null, "CRT terminal keeps its physical monitor model")
+	check(
+		client.dynamic_root.has_node("terminal-art-test-screen-scanline-00"),
+		"CRT scanlines are attached to terminal displays",
+	)
+	var tv := client._build_bridge_object("tv", Vector3(3.0, 0.0, 0.0), "tv-art-test")
+	check(tv.name == "tv-art-test", "TVs use a distinct native model")
+	check(
+		client.dynamic_root.has_node("tv-art-test-screen-scanline-00"),
+		"CRT scanlines are attached to TV displays",
+	)
+	check(
+		not arcade_from_bridge.get_node("ScreenAsciiArt").text.is_empty(),
+		"Arcade display art remains ASCII",
+	)
+	check(
+		arcade_from_bridge.get_node_or_null("ScreenScanline") == null,
+		"Arcade screens must not receive CRT scanline overlays",
+	)
 	var objects := [
 		{"id": "office1-desk", "kind": "desk", "x": 1800, "y": 6250, "condition": 85, "cleanliness": 90},
 		{"id": "lobby-reception-desk", "kind": "desk", "x": 1900, "y": 2200, "condition": 50, "cleanliness": 40},

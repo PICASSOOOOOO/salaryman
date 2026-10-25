@@ -148,6 +148,7 @@
 - [Tower basement layout and access](tower-basement-layout.md) — B1–B6 are the current top game-building priority; preserve each assigned department role.
 - [Tower wealth paths](tower-wealth-paths.md) — NPCs invest; all brands are tradable; player/NPC credit score is earned reputation that survives resets.
 - [Tower business locations and stock](floor-seven-marketplace-scope.md) — Current shop expansion stays within packed Floors 1–7, with one distinct location per listed shop.
+- [Protected school campuses](school-protection-and-campus.md) — Apply server-enforced minor access limits and area-based rent to current and future school businesses.
 - [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
 - [Game business licensing and economy](game-business-economy.md) — keep in-game licenses separate from Business Hub; gate work, shops, illegal contracts, credit, daily taxes, and closures by distinct rules.
 - [Brand rivalries and NPC personhood](game-only-rivalries.md) — each brand has shop-level bosses; NPCs act in real systems only with explicit access.

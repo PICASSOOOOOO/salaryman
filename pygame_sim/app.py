@@ -335,7 +335,7 @@ def run(argv: list[str] | None = None) -> int:
                 state.open_page(
                     "economy",
                     from_object=True,
-                    source="BANCO OMBRA / FIAT + GOLD",
+                    source="AURUM / GOLD EXCHANGE",
                     source_object_id=state.active_object_id,
                 )
             elif service == "real_estate":
