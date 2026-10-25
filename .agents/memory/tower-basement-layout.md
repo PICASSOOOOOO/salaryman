@@ -3,7 +3,7 @@ name: Tower basement departments and access
 description: Department assignments, vertical circulation, construction power exports, and pest pressure for the primary Tower.
 ---
 
-The Tower basement departments are:
+The Tower basements have no public retail shops; department offices and the restroom-services office are operational spaces, not retail tenants. The Tower basement departments are:
 - B1: eight named operations—admin, shipping, trash, food supplier, construction, materials supplies, power, and water—in the interior half; the other half is an outside loading/staging yard. The yard gate connects to a rear entrance in the F1 lobby, and freight/waste stations stay in the yard.
 - B2: jail, corporate security, and the Collections department share one floor. Collections is the dominant, frequently used department and the main crime in the story is committed there. Security and investigators are corporate staff, not police; only one or two patrol the building. Include cells, Collections offices, a small security office/armory, investigations, and fictional emergency communications to other servers/buildings.
 - B3: disaster response for fires, floods, outages, biohazards, and corpses, with an incinerator, fire station, and maintenance crew.
@@ -13,9 +13,9 @@ The Tower basement departments are:
 
 Basement development is currently the top game-building priority; finish and deepen B1–B6 before returning to Tower shop-floor expansion.
 
-**Why:** The user explicitly said to build out the basements too and make them the top priority.
+**Why:** The user explicitly said to build out the basements too and make them the top priority, and confirmed the basement inventory has no public retail shops.
 
-**How to apply:** Prioritize functional, role-specific basement gameplay across B1–B6 over additional shop-floor work.
+**How to apply:** Prioritize functional, role-specific basement gameplay across B1–B6 over additional shop-floor work. Keep internal departments distinct from public shops.
 
 One service elevator serves the basements and the upper Tower. The lobby also has
 about four passenger elevators and two separate stairwells. This supersedes the
