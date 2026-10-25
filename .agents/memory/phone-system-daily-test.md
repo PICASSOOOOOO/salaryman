@@ -47,3 +47,12 @@ phone, CRM, or game-bridge route is available.
 
 **How to apply:** Keep production dependencies available in the published API image and verify the
 API starts before interpreting downstream phone/CRM health failures.
+
+The production bundle rebases staged package links to absolute paths under the API dist tree. A
+multi-stage image must preserve that same absolute path or rewrite the links after copying; moving
+the runtime tree elsewhere can leave external packages unresolved even though the image builds.
+
+**Why:** Image-build success does not validate that copied pnpm symlink targets resolve at runtime.
+
+**How to apply:** Keep the runtime tree at its staged path and smoke-test API startup after building
+the image.
