@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  boolean,
   foreignKey,
   index,
   integer,
@@ -139,5 +140,50 @@ export const towerBuildingVitalsTable = pgTable(
     check("tower_building_vitals_power_check", sql`${table.powerCondition} between 0 and 100`),
     check("tower_building_vitals_plumbing_check", sql`${table.plumbingCondition} between 0 and 100`),
     check("tower_building_vitals_upkeep_check", sql`${table.upkeepCondition} between 0 and 100`),
+  ],
+);
+
+export const towerAlarmEventsTable = pgTable(
+  "tower_alarm_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    buildingKey: varchar("building_key", { length: 64 }).notNull().default("shadow_tower"),
+    eventKey: varchar("event_key", { length: 160 }).notNull(),
+    alarmType: varchar("alarm_type", { length: 24 }).notNull(),
+    floorKey: varchar("floor_key", { length: 12 }).notNull(),
+    zoneKey: varchar("zone_key", { length: 64 }).notNull(),
+    organizationKey: varchar("organization_key", { length: 120 }),
+    x: integer("x").notNull(),
+    y: integer("y").notNull(),
+    radius: integer("radius").notNull().default(1_500),
+    mode: varchar("mode", { length: 16 }).notNull(),
+    summary: varchar("summary", { length: 220 }).notNull(),
+    requiresManualShutdown: boolean("requires_manual_shutdown").notNull().default(true),
+    soundUntilAt: timestamp("sound_until_at", { withTimezone: true }),
+    status: varchar("status", { length: 12 }).notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    silencedAt: timestamp("silenced_at", { withTimezone: true }),
+    silencedByUserId: varchar("silenced_by_user_id", { length: 256 })
+      .references(() => usersTable.id, { onDelete: "set null" }),
+    silencedByNpc: boolean("silenced_by_npc").notNull().default(false),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("tower_alarm_events_event_key_unique").on(table.eventKey),
+    uniqueIndex("tower_alarm_events_one_active_type_idx")
+      .on(
+        table.buildingKey,
+        table.alarmType,
+        table.floorKey,
+        table.zoneKey,
+        sql`coalesce(${table.organizationKey}, '')`,
+      )
+      .where(sql`${table.status} in ('active', 'silenced')`),
+    index("tower_alarm_events_status_created_idx").on(table.buildingKey, table.status, table.createdAt),
+    check("tower_alarm_events_type_check", sql`${table.alarmType} in ('power_failure', 'water_failure', 'fire', 'smoke', 'flood', 'poison', 'crime_scene', 'sprinkler_failure')`),
+    check("tower_alarm_events_floor_check", sql`${table.floorKey} ~ '^(B[1-6]|F(0[1-9]|[1-5][0-9]|6[0-7]))$'`),
+    check("tower_alarm_events_position_check", sql`${table.x} between 0 and 100000000 and ${table.y} between 0 and 100000000 and ${table.radius} between 100 and 10000`),
+    check("tower_alarm_events_mode_check", sql`${table.mode} in ('silent', 'lights_only', 'quiet', 'medium', 'loud')`),
+    check("tower_alarm_events_status_check", sql`${table.status} in ('active', 'silenced', 'resolved')`),
   ],
 );

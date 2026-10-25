@@ -32,7 +32,7 @@ OverlayPage = Literal[
     "player", "settings", "inventory", "vending", "bank",
     "pest_jobs", "pest_uniform", "melee", "competition", "basement_stairs",
     "utility_work", "company_relocation", "merchant", "reception", "business_stock",
-    "collections_case", "disaster_response",
+    "collections_case", "disaster_response", "alarm_console",
 ]
 PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone", "competition"})
 RECRUITMENT_REFRESH_COST = 50.0

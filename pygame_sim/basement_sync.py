@@ -220,6 +220,26 @@ class DesktopBasementSync:
         ))
         return True
 
+    def queue_alarm_shutdown(self, alarm_id: str) -> bool:
+        if self.link is None or not isinstance(alarm_id, str) or len(alarm_id) != 36:
+            return False
+        return self._queue(
+            "alarm_shutdown",
+            f"{BASEMENT_PATH.rsplit('/', 1)[0]}/alarms/shutdown",
+            {"alarmId": alarm_id},
+        )
+
+    def queue_alarm_mode(self, alarm_id: str, mode: str) -> bool:
+        if self.link is None or not isinstance(alarm_id, str) or len(alarm_id) != 36:
+            return False
+        if mode not in {"silent", "lights_only", "quiet", "medium", "loud"}:
+            return False
+        return self._queue(
+            "alarm_mode",
+            f"{BASEMENT_PATH.rsplit('/', 1)[0]}/alarms/mode",
+            {"alarmId": alarm_id, "mode": mode},
+        )
+
     def latest_snapshot(self) -> dict[str, Any] | None:
         with self._lock:
             return json.loads(json.dumps(self._snapshot)) if self._snapshot is not None else None
@@ -439,4 +459,8 @@ class DesktopBasementSync:
             return "TOWER WORK ADVICE READY"
         if source == "collections_case_station":
             return "COLLECTIONS CASE PROGRESS SAVED TO ACCOUNT"
+        if source == "alarm_shutdown":
+            return "TOWER ALARM SILENCED"
+        if source == "alarm_mode":
+            return "TOWER ALARM MODE UPDATED"
         return "BASEMENT SYNC COMPLETE"

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from array import array
+from datetime import datetime, timezone
 import math
 import os
 from pathlib import Path
@@ -102,6 +103,8 @@ class SolarPunkRenderer:
         self._camera_y = 0.0
         self._camera_room: tuple[int, str] | None = None
         self.game_page_actions: dict[str, pygame.Rect] = {}
+        self._alarm_channels: dict[str, tuple[str, pygame.mixer.Channel]] = {}
+        self._alarm_sounds: dict[str, pygame.mixer.Sound] = {}
 
     def set_pablo_status(self, status: dict[str, object]) -> None:
         model = str(status.get("model") or "offline").upper()
@@ -187,6 +190,7 @@ class SolarPunkRenderer:
     ) -> None:
         """Render the authoritative scene as a camera-following pixel-art room."""
         self.screen.fill((8, 43, 49))
+        self._update_local_alarm_sound(scene)
         self.draw_tower_header(state, scene)
         viewport = pygame.Rect(18, 68, self.width - 36, 520)
         self._draw_pixel_room(viewport, scene, state, delta_seconds=delta_seconds)
@@ -524,10 +528,114 @@ class SolarPunkRenderer:
         pygame.draw.circle(self.screen, accent, (x, label_y + 5), 4)
         self.text(name.upper()[:14], (x - 34, label_y - 8), self.font_mono, accent)
 
+    def _update_local_alarm_sound(self, scene: TowerScene) -> None:
+        mixer_config = pygame.mixer.get_init()
+        if mixer_config is None:
+            self._alarm_channels.clear()
+            return
+        frequency, sample_format, channel_count = mixer_config
+        if sample_format != -16:
+            return
+
+        now = datetime.now(timezone.utc)
+        wanted: dict[str, str] = {}
+        snapshot = scene.basement_snapshot if scene.is_basement else None
+        alarms = snapshot.get("alarms", []) if isinstance(snapshot, dict) else []
+        if isinstance(alarms, list):
+            for alarm in alarms:
+                if not isinstance(alarm, dict) or alarm.get("status") != "active":
+                    continue
+                mode = alarm.get("mode")
+                if mode not in {"quiet", "medium", "loud"}:
+                    continue
+                if alarm.get("floor") != f"B{scene.basement_level}":
+                    continue
+                if math.hypot(
+                    int(alarm.get("x", 0)) - scene.player_position[0],
+                    int(alarm.get("y", 0)) - scene.player_position[1],
+                ) > int(alarm.get("radius", 1_500)):
+                    continue
+                sound_until = alarm.get("soundUntilAt")
+                if not isinstance(sound_until, str):
+                    continue
+                try:
+                    until = datetime.fromisoformat(sound_until.replace("Z", "+00:00"))
+                except ValueError:
+                    continue
+                if until.tzinfo is None:
+                    until = until.replace(tzinfo=timezone.utc)
+                if until > now and isinstance(alarm.get("id"), str):
+                    wanted[alarm["id"]] = mode
+
+        for alarm_id, (playing_mode, channel) in tuple(self._alarm_channels.items()):
+            if wanted.get(alarm_id) != playing_mode:
+                channel.stop()
+                del self._alarm_channels[alarm_id]
+
+        for alarm_id, mode in wanted.items():
+            if alarm_id in self._alarm_channels:
+                continue
+            sound = self._alarm_sounds.get("tower-alarm")
+            if sound is None:
+                sample_count = int(frequency * 0.48)
+                samples = array("h")
+                for frame in range(sample_count):
+                    beat = (frame / frequency) % 0.48
+                    tone = 720 if beat < 0.12 else 880 if 0.17 <= beat < 0.29 else 0
+                    value = int(5_500 * math.sin(2 * math.pi * tone * frame / frequency)) if tone else 0
+                    samples.extend([value] * channel_count)
+                try:
+                    sound = pygame.mixer.Sound(buffer=samples.tobytes())
+                except pygame.error:
+                    return
+                self._alarm_sounds["tower-alarm"] = sound
+            channel = sound.play(loops=-1)
+            if channel is None:
+                continue
+            channel.set_volume({"quiet": 0.12, "medium": 0.28, "loud": 0.5}[mode])
+            self._alarm_channels[alarm_id] = (mode, channel)
+
     def _draw_basement_actors(self, point: object, scene: TowerScene) -> None:
         if not scene.is_basement or scene.basement_snapshot is None:
             return
         snapshot = scene.basement_snapshot
+        alarms = snapshot.get("alarms", [])
+        if isinstance(alarms, list):
+            local_active = [
+                alarm for alarm in alarms
+                if isinstance(alarm, dict)
+                and alarm.get("status") == "active"
+                and alarm.get("mode") != "silent"
+                and alarm.get("floor") == f"B{scene.basement_level}"
+                and math.hypot(
+                    int(alarm.get("x", 0)) - scene.player_position[0],
+                    int(alarm.get("y", 0)) - scene.player_position[1],
+                ) <= int(alarm.get("radius", 1_500))
+            ]
+            for index, alarm in enumerate(local_active[:2]):
+                mode = str(alarm.get("mode", "medium"))
+                color = {
+                    "lights_only": Palette.MATRIX_AMBER,
+                    "quiet": (175, 188, 122),
+                    "medium": Palette.MATRIX_AMBER,
+                    "loud": (236, 113, 91),
+                }.get(mode, Palette.MATRIX_AMBER)
+                if mode == "lights_only" and self._anim_tick % 24 >= 12:
+                    color = Palette.MATRIX_GRID
+                rect = pygame.Rect(28, 170 + index * 42, min(390, self.width - 56), 34)
+                self.panel(rect, (27, 20, 17), color, radius=3, width=2)
+                self.text(
+                    f"{str(alarm.get('type', 'alarm')).replace('_', ' ').upper()} / {mode.upper()}",
+                    (rect.x + 10, rect.y + 5),
+                    self.font_mono,
+                    color,
+                )
+                self.text(
+                    str(alarm.get("summary", "Tower alert"))[:48],
+                    (rect.x + 10, rect.y + 18),
+                    self.font_sm,
+                    Palette.WHITE,
+                )
         building = snapshot.get("building")
         if isinstance(building, dict):
             vitals = (
@@ -2141,6 +2249,7 @@ class SolarPunkRenderer:
             "company_relocation": "COMPANY GROWTH",
             "collections_case": "COLLECTIONS CASE REVIEW",
             "disaster_response": "B3 DISASTER RESPONSE",
+            "alarm_console": "B2 TOWER ALARM CONSOLE",
             "business": "TOWER BUSINESS OFFICE",
         }
         self.text(
@@ -2297,7 +2406,69 @@ class SolarPunkRenderer:
         page: pygame.Rect,
     ) -> None:
         content = page.y + 92
-        if state.active_page == "disaster_response":
+        if state.active_page == "alarm_console":
+            snapshot = scene.basement_snapshot or {}
+            alarms = snapshot.get("alarms", [])
+            allowed = snapshot.get("securityConsoleAccess") is True
+            if not allowed:
+                self.text(
+                    "ASSIGNED TOWER SECURITY STAFF ONLY",
+                    (page.x + 28, content + 12),
+                    self.font_mono,
+                    Palette.MATRIX_AMBER,
+                )
+                return
+            if not isinstance(alarms, list) or not alarms:
+                self.text(
+                    "NO ACTIVE TOWER ALARMS",
+                    (page.x + 28, content + 14),
+                    self.font_mono,
+                    Palette.MATRIX_GREEN,
+                )
+            for index, alarm in enumerate(alarms[:5]):
+                if not isinstance(alarm, dict):
+                    continue
+                alarm_id = alarm.get("id")
+                if not isinstance(alarm_id, str):
+                    continue
+                y = content + 8 + index * 76
+                mode = str(alarm.get("mode", "medium"))
+                status = str(alarm.get("status", "active")).upper()
+                self.text(
+                    f"{alarm.get('floor', '??')} / {str(alarm.get('type', 'alarm')).replace('_', ' ').upper()} / {status}",
+                    (page.x + 28, y),
+                    self.font_mono,
+                    Palette.MATRIX_AMBER if status == "ACTIVE" else Palette.MATRIX_DIM,
+                )
+                self.text(
+                    str(alarm.get("summary", "Tower alert"))[:72],
+                    (page.x + 28, y + 22),
+                    self.font_sm,
+                    Palette.MATRIX_BRIGHT,
+                )
+                for mode_index, (option, label) in enumerate((
+                    ("silent", "SILENT"),
+                    ("lights_only", "LIGHTS"),
+                    ("quiet", "QUIET"),
+                    ("medium", "MED"),
+                    ("loud", "LOUD"),
+                )):
+                    rect = pygame.Rect(page.x + 28 + mode_index * 88, y + 43, 80, 24)
+                    self.game_page_actions[f"alarm_mode:{alarm_id}:{option}"] = rect
+                    self.panel(
+                        rect,
+                        Palette.MATRIX_PANEL_2,
+                        Palette.MATRIX_GREEN if mode == option else Palette.MATRIX_GRID,
+                        radius=2,
+                        width=1,
+                    )
+                    self.text(label, (rect.x + 7, rect.y + 6), self.font_mono, Palette.MATRIX_BRIGHT)
+                if status == "ACTIVE":
+                    rect = pygame.Rect(page.x + 492, y + 43, 98, 24)
+                    self.game_page_actions[f"alarm_shutdown:{alarm_id}"] = rect
+                    self.panel(rect, Palette.MATRIX_PANEL_2, Palette.MATRIX_AMBER, radius=2, width=1)
+                    self.text("SILENCE", (rect.x + 12, rect.y + 6), self.font_mono, Palette.MATRIX_AMBER)
+        elif state.active_page == "disaster_response":
             snapshot = scene.basement_snapshot or {}
             building = snapshot.get("building", {})
             operations = snapshot.get("towerOperations", {})

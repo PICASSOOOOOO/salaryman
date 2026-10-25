@@ -22,3 +22,14 @@ small, badly managed workforce.
 **How to apply:** Route game-world camera incidents to the appropriate security
 or debt-collection roles, model limited capacity and poor management, and keep
 investigations evidence-led and within authorized room boundaries.
+
+Alarm sound, lights, and local notifications must stay inside the affected
+area/floor and organization. The security console may coordinate response, but
+must not broadcast distractions into unaffected floors or separate businesses.
+
+**Why:** The user specified that alarms, including incidents routed from cameras,
+must not disturb unrelated businesses or unaffected parts of the building.
+
+**How to apply:** Store an explicit alarm scope and filter local effects and
+client snapshots by current floor/zone and organization. Keep the central
+security view separate from local sound and light output.

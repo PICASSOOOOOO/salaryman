@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { Router } from "express";
-import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
+import { Router, type Response } from "express";
+import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import {
   db,
   desktopBasementAttackEventsTable,
@@ -15,6 +15,7 @@ import {
   salarymanSavesTable,
   towerStaffAssignmentsTable,
   towerBuildingVitalsTable,
+  towerAlarmEventsTable,
   towerWasteHaulsTable,
 } from "@workspace/db";
 import { creditFiat } from "../lib/fiat-wallet";
@@ -51,6 +52,11 @@ import {
 } from "../lib/tower-operations";
 import { recordVerifiedCareerWork } from "../lib/career-progression";
 import { completeInternalText } from "../lib/internal-ai";
+import {
+  getDailyTowerIncident,
+  isAlarmLocalToArea,
+  TOWER_ALARM_MODES,
+} from "../lib/tower-alarms";
 
 const router = Router();
 const BUILDING_KEY = "shadow_tower";
@@ -94,6 +100,8 @@ const TRASH_CARRY_MAX = 5;
 const LOADING_GATE_RADIUS = 650;
 const B4_SUPPLY_STORE = { level: 4, x: 5_000, y: 6_500 };
 const B4_SUPPLY_STORE_RADIUS = 650;
+const SECURITY_ALARM_STATION = { level: 2, x: 7_200, y: 5_000 };
+const SECURITY_ALARM_RADIUS = 1_250;
 const CARRIED_ITEM_CAPACITY = 24;
 
 const MOVES = {
@@ -731,10 +739,116 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
       res.status(409).json({ error: "Basement presence is missing or expired" });
       return;
     }
-    const operations = await db.transaction(async (tx) => {
+    let isSecurityConsole = false;
+    if (level === SECURITY_ALARM_STATION.level
+      && distance(presence, SECURITY_ALARM_STATION) <= SECURITY_ALARM_RADIUS) {
+      const [assignment] = await db.select({ role: towerStaffAssignmentsTable.role })
+        .from(towerStaffAssignmentsTable)
+        .where(eq(towerStaffAssignmentsTable.userId, link.userId))
+        .limit(1);
+      isSecurityConsole = assignment?.role === "security";
+    }
+    const { operations, alarms } = await db.transaction(async (tx) => {
       await ensurePestWave(tx, level, now);
       await ensureVitals(tx);
-      return towerOperationsSnapshot(tx, now, link.userId);
+      const operations = await towerOperationsSnapshot(tx, now, link.userId);
+      const insertAlarm = async (spec: ReturnType<typeof getDailyTowerIncident>) => {
+        if (!spec) return;
+        await tx.insert(towerAlarmEventsTable).values({
+          buildingKey: BUILDING_KEY,
+          ...spec,
+          soundUntilAt: spec.soundSeconds > 0
+            ? new Date(now.getTime() + spec.soundSeconds * 1_000)
+            : null,
+        }).onConflictDoNothing();
+      };
+      const powerUnavailable = (operations.vitals?.powerCondition ?? 100) <= 20
+        || !operations.finance.powerBillPaid;
+      const waterUnavailable = (operations.vitals?.plumbingCondition ?? 100) <= 20
+        || !operations.finance.waterBillPaid;
+      if (powerUnavailable) {
+        await insertAlarm({
+          eventKey: `tower-power-fault:${now.toISOString().slice(0, 10)}`,
+          alarmType: "power_failure",
+          floorKey: "B5",
+          zoneKey: "b5-generator-room",
+          x: TOWER_BASEMENT_STATIONS.power.x,
+          y: TOWER_BASEMENT_STATIONS.power.y,
+          summary: "Critical generator or grid-power failure",
+          mode: "medium",
+          requiresManualShutdown: false,
+          soundSeconds: 18,
+        });
+      } else {
+        await tx.update(towerAlarmEventsTable).set({
+          status: "resolved",
+          resolvedAt: now,
+        }).where(and(
+          eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+          eq(towerAlarmEventsTable.alarmType, "power_failure"),
+          inArray(towerAlarmEventsTable.status, ["active", "silenced"]),
+        ));
+      }
+      if (waterUnavailable) {
+        await insertAlarm({
+          eventKey: `tower-water-fault:${now.toISOString().slice(0, 10)}`,
+          alarmType: "water_failure",
+          floorKey: "B6",
+          zoneKey: "b6-pump-room",
+          x: TOWER_BASEMENT_STATIONS.plumbing.x,
+          y: TOWER_BASEMENT_STATIONS.plumbing.y,
+          summary: "Critical pump or water-system failure",
+          mode: "medium",
+          requiresManualShutdown: false,
+          soundSeconds: 18,
+        });
+      } else {
+        await tx.update(towerAlarmEventsTable).set({
+          status: "resolved",
+          resolvedAt: now,
+        }).where(and(
+          eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+          eq(towerAlarmEventsTable.alarmType, "water_failure"),
+          inArray(towerAlarmEventsTable.status, ["active", "silenced"]),
+        ));
+      }
+
+      const rareIncident = getDailyTowerIncident(now);
+      await insertAlarm(rareIncident);
+      if (rareIncident?.alarmType === "fire" && waterUnavailable) {
+        await insertAlarm({
+          eventKey: `${rareIncident.eventKey}:sprinkler`,
+          alarmType: "sprinkler_failure",
+          floorKey: "B3",
+          zoneKey: rareIncident.zoneKey,
+          x: rareIncident.x,
+          y: rareIncident.y,
+          summary: "Sprinkler response impaired by the B6 water failure",
+          mode: "medium",
+          requiresManualShutdown: true,
+          soundSeconds: 12,
+        });
+      }
+
+      // The small, inconsistently staffed security team eventually acknowledges
+      // manual alarms; local sounders still stop on their own short timers.
+      const npcResponseBefore = new Date(now.getTime() - 120_000);
+      await tx.update(towerAlarmEventsTable).set({
+        status: "silenced",
+        silencedAt: now,
+        silencedByNpc: true,
+      }).where(and(
+        eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+        eq(towerAlarmEventsTable.status, "active"),
+        eq(towerAlarmEventsTable.requiresManualShutdown, true),
+        lt(towerAlarmEventsTable.createdAt, npcResponseBefore),
+      ));
+
+      const alarmRows = await tx.select().from(towerAlarmEventsTable).where(and(
+        eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+        inArray(towerAlarmEventsTable.status, ["active", "silenced"]),
+      )).orderBy(desc(towerAlarmEventsTable.createdAt)).limit(40);
+      return { operations, alarms: alarmRows };
     });
     const [vitalsRow] = await db.select().from(towerBuildingVitalsTable)
       .where(eq(towerBuildingVitalsTable.buildingKey, BUILDING_KEY)).limit(1);
@@ -829,6 +943,27 @@ router.get("/desktop-building/basement/snapshot", async (req, res): Promise<void
         backupCustomerUnitsPowered: operations.backup.poweredCustomers,
         backupInfrastructureUnitsPowered: operations.backup.poweredInfrastructureUnits,
       },
+      alarms: alarms.filter((alarm) => {
+        if (alarm.organizationKey && alarm.organizationKey !== "shadow_tower") return false;
+        if (isSecurityConsole) return true;
+        return isAlarmLocalToArea(alarm, level, presence.x, presence.y);
+      }).map((alarm) => ({
+        id: alarm.id,
+        type: alarm.alarmType,
+        floor: alarm.floorKey,
+        zone: alarm.zoneKey,
+        summary: alarm.summary,
+        mode: alarm.mode,
+        status: alarm.status,
+        soundUntilAt: alarm.soundUntilAt?.toISOString() ?? null,
+        requiresManualShutdown: alarm.requiresManualShutdown,
+        silencedByNpc: alarm.silencedByNpc,
+        createdAt: alarm.createdAt.toISOString(),
+        x: alarm.x,
+        y: alarm.y,
+        radius: alarm.radius,
+      })),
+      securityConsoleAccess: isSecurityConsole,
       pests: pests.map((pest) => serializePest(pest, link.userId, now)),
       npcCrew,
       ghost,
@@ -1644,6 +1779,93 @@ router.post("/desktop-building/basement/work/complete", async (req, res): Promis
   } catch (error) {
     req.log.error({ err: error }, "Desktop basement maintenance completion failed");
     res.status(500).json({ error: "Could not complete utility work" });
+  }
+});
+
+async function requireSecurityAlarmConsole(
+  userId: string,
+  linkId: string,
+  res: Response,
+) {
+  const presence = await activePresence(userId, linkId, SECURITY_ALARM_STATION.level);
+  if (!presence || distance(presence, SECURITY_ALARM_STATION) > SECURITY_ALARM_RADIUS) {
+    res.status(409).json({ error: "Use the alarm console at the B2 security office" });
+    return null;
+  }
+  const [assignment] = await db.select({ role: towerStaffAssignmentsTable.role })
+    .from(towerStaffAssignmentsTable)
+    .where(eq(towerStaffAssignmentsTable.userId, userId))
+    .limit(1);
+  if (assignment?.role !== "security") {
+    res.status(403).json({ error: "Only assigned Tower security staff can operate alarms" });
+    return null;
+  }
+  return presence;
+}
+
+router.post("/desktop-building/alarms/shutdown", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const presence = await requireSecurityAlarmConsole(link.userId, link.id, res);
+  if (!presence) return;
+  const alarmId = req.body?.alarmId;
+  if (typeof alarmId !== "string" || !/^[0-9a-f-]{36}$/i.test(alarmId)) {
+    res.status(400).json({ error: "Choose an active alarm" });
+    return;
+  }
+  const now = new Date();
+  try {
+    const [alarm] = await db.update(towerAlarmEventsTable).set({
+      status: "silenced",
+      silencedAt: now,
+      silencedByUserId: link.userId,
+      silencedByNpc: false,
+    }).where(and(
+      eq(towerAlarmEventsTable.id, alarmId),
+      eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+      eq(towerAlarmEventsTable.status, "active"),
+    )).returning({ id: towerAlarmEventsTable.id, alarmType: towerAlarmEventsTable.alarmType });
+    if (!alarm) {
+      res.status(409).json({ error: "Alarm is no longer active" });
+      return;
+    }
+    res.json({ ok: true, alarmId: alarm.id, type: alarm.alarmType, status: "silenced" });
+  } catch (error) {
+    req.log.error({ err: error }, "Tower alarm shutdown failed");
+    res.status(500).json({ error: "Could not silence alarm" });
+  }
+});
+
+router.post("/desktop-building/alarms/mode", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const presence = await requireSecurityAlarmConsole(link.userId, link.id, res);
+  if (!presence) return;
+  const { alarmId, mode } = req.body ?? {};
+  if (typeof alarmId !== "string" || !/^[0-9a-f-]{36}$/i.test(alarmId)
+    || typeof mode !== "string" || !TOWER_ALARM_MODES.includes(mode as (typeof TOWER_ALARM_MODES)[number])) {
+    res.status(400).json({ error: "Choose an alarm and a supported alarm mode" });
+    return;
+  }
+  try {
+    const [alarm] = await db.update(towerAlarmEventsTable).set({
+      mode,
+      soundUntilAt: mode === "silent" || mode === "lights_only"
+        ? null
+        : new Date(Date.now() + 10_000),
+    }).where(and(
+      eq(towerAlarmEventsTable.id, alarmId),
+      eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+      inArray(towerAlarmEventsTable.status, ["active", "silenced"]),
+    )).returning({ id: towerAlarmEventsTable.id, mode: towerAlarmEventsTable.mode });
+    if (!alarm) {
+      res.status(404).json({ error: "Alarm not found" });
+      return;
+    }
+    res.json({ ok: true, alarmId: alarm.id, mode: alarm.mode });
+  } catch (error) {
+    req.log.error({ err: error }, "Tower alarm mode update failed");
+    res.status(500).json({ error: "Could not update alarm mode" });
   }
 });
 

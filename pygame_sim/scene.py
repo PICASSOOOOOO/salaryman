@@ -256,6 +256,51 @@ class TowerScene:
                         "advisoryOnly": True,
                     })
             safe_operations["workSuggestions"] = normalized_suggestions
+        safe_alarms: list[dict[str, object]] = []
+        raw_alarms = snapshot.get("alarms")
+        if isinstance(raw_alarms, list):
+            for alarm in raw_alarms[:20]:
+                if not isinstance(alarm, dict):
+                    continue
+                if (
+                    not isinstance(alarm.get("id"), str)
+                    or alarm.get("type") not in {
+                        "power_failure", "water_failure", "fire", "smoke",
+                        "flood", "poison", "crime_scene", "sprinkler_failure",
+                    }
+                    or alarm.get("mode") not in {
+                        "silent", "lights_only", "quiet", "medium", "loud",
+                    }
+                    or alarm.get("status") not in {"active", "silenced"}
+                    or not isinstance(alarm.get("summary"), str)
+                ):
+                    continue
+                safe_alarms.append({
+                    "id": alarm["id"][:36],
+                    "type": alarm["type"],
+                    "floor": str(alarm.get("floor", ""))[:12],
+                    "zone": str(alarm.get("zone", ""))[:64],
+                    "summary": alarm["summary"][:120],
+                    "mode": alarm["mode"],
+                    "status": alarm["status"],
+                    "soundUntilAt": alarm.get("soundUntilAt")
+                    if isinstance(alarm.get("soundUntilAt"), str)
+                    else None,
+                    "requiresManualShutdown": alarm.get("requiresManualShutdown") is True,
+                    "silencedByNpc": alarm.get("silencedByNpc") is True,
+                    "createdAt": alarm.get("createdAt")
+                    if isinstance(alarm.get("createdAt"), str)
+                    else "",
+                    "x": max(0, min(100_000_000, alarm["x"]))
+                    if isinstance(alarm.get("x"), int) and not isinstance(alarm.get("x"), bool)
+                    else 0,
+                    "y": max(0, min(100_000_000, alarm["y"]))
+                    if isinstance(alarm.get("y"), int) and not isinstance(alarm.get("y"), bool)
+                    else 0,
+                    "radius": max(100, min(10_000, alarm["radius"]))
+                    if isinstance(alarm.get("radius"), int) and not isinstance(alarm.get("radius"), bool)
+                    else 1_500,
+                })
         stored_supply_crates = (
             int(safe_operations.get("storedSupplyCrates", 0))
             if safe_operations is not None
@@ -332,6 +377,8 @@ class TowerScene:
             "player": safe_player,
             "building": safe_building,
             "towerOperations": safe_operations,
+            "alarms": safe_alarms,
+            "securityConsoleAccess": snapshot.get("securityConsoleAccess") is True,
             "pests": normalized_pests,
             "npcCrew": normalized_crew,
             "ghost": normalized_ghost,

@@ -1353,6 +1353,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
                 ), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b2-jail-door", "door", "DETENTION CELLS", room, (7_300, 2_200), "CORPORATE DETENTION", interactive=False), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b2-security-desk", "desk", "CORPORATE SECURITY", room, (7_200, 5_000), "REVIEW THE DISPATCH LOG"), scale_legacy_coordinates=False)
+            registry.add(OfficeObject("basement-b2-alarm-console", "desk", "TOWER ALARM CONSOLE", room, (8_000, 4_500), "REVIEW LOCAL ALARMS / SECURITY STAFF ONLY"), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b2-investigations-desk", "desk", "INVESTIGATIONS", room, (7_200, 7_100), "COMPARE THE CONFLICTING RECORDS"), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b2-collections-clerk", "receptionist", "COLLECTIONS CLERK", room, (2_800, 5_400), "OPEN / FILE A COLLECTIONS CASE"), scale_legacy_coordinates=False)
             registry.add(OfficeObject("basement-b2-security-patrol", "receptionist", "CORPORATE SECURITY / PATROL", room, (7_800, 6_000), "CORPORATE STAFF / NOT POLICE", interactive=False), scale_legacy_coordinates=False)

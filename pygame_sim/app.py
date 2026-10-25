@@ -291,7 +291,15 @@ def run(argv: list[str] | None = None) -> int:
             request_page_data(page)
 
     def activate_game_page_action(action: str) -> None:
-        if action.startswith("pest_job:"):
+        if action.startswith("alarm_shutdown:"):
+            alarm_id = action.split(":", 1)[1]
+            if basement_sync is None or not basement_sync.queue_alarm_shutdown(alarm_id):
+                state.notice = "ALARM SHUTDOWN REQUIRES SECURITY CONSOLE ACCESS"
+        elif action.startswith("alarm_mode:"):
+            parts = action.split(":", 2)
+            if len(parts) != 3 or basement_sync is None or not basement_sync.queue_alarm_mode(parts[1], parts[2]):
+                state.notice = "ALARM MODE CHANGE REQUIRES SECURITY CONSOLE ACCESS"
+        elif action.startswith("pest_job:"):
             dispatch_game_command("start_pest_job", {"job_id": action.split(":", 1)[1]})
         elif action.startswith("pest_move:"):
             dispatch_game_command("basement_attack", {"move_id": action.split(":", 1)[1]})

@@ -326,6 +326,20 @@ def _handle_basement_interact(
         return None
 
     if (
+        scene.basement_level == 2
+        and nearby is not None
+        and nearby.id == "basement-b2-alarm-console"
+    ):
+        state.open_page(
+            "alarm_console",
+            from_object=True,
+            source=nearby.label,
+            source_object_id=nearby.id,
+        )
+        state.notice = "B2 SECURITY / LOCAL ALARM CONSOLE"
+        return CommandResult(True, state.notice)
+
+    if (
         scene.basement_level == 3
         and nearby is not None
         and nearby.id == "basement-b3-disaster-response"
