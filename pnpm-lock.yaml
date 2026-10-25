@@ -501,7 +501,7 @@ importers:
         specifier: ^8.6.0
         version: 8.6.0(react@19.1.0)
       fflate:
-        specifier: ^0.8.3
+        specifier: 0.8.3
         version: 0.8.3
       framer-motion:
         specifier: 'catalog:'
