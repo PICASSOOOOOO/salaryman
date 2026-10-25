@@ -3,7 +3,7 @@ name: Release and pledge-store roadmap
 description: SALARYMAN's beta target, publishing readiness, and the dependency that puts pledge-store work after the asset catalog.
 ---
 
-SALARYMAN is in alpha. The user's target is to reach beta by December 31, 2026,
+SALARYMAN is in alpha. The user's target is to reach beta by January 2027,
 with the game and its areas of interest looking ready before live publication.
 Keep the game free and preserve the planned macOS, Windows, Linux, itch.io, and
 Twitch/watch paths.
