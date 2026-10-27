@@ -57,7 +57,7 @@ export function needsLiveSearch(text: string): boolean {
  */
 export async function pabloWebSearch(
   query: string,
-  timeoutMs = 6000,
+  timeoutMs = 3000,
 ): Promise<string | null> {
   try {
     const r = await openai.responses.create(

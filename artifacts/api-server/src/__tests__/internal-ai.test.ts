@@ -81,6 +81,33 @@ describe("Replit-managed internal AI fallback", () => {
     expect(anthropicCreate).not.toHaveBeenCalled();
   });
 
+  it("does not repeat a failed Astra readiness probe on every chat turn", async () => {
+    const previousAstra = process.env.PABLO_ASTRA_ENABLED;
+    const previousModel = process.env.OPENAI_TEXT_MODEL;
+    process.env.PABLO_ASTRA_ENABLED = "1";
+    process.env.OPENAI_TEXT_MODEL = "gpt-6-astra";
+    vi.resetModules();
+    openaiCreate.mockRejectedValue(new Error("Astra is unavailable"));
+    anthropicCreate.mockResolvedValue({
+      content: [{ type: "text", text: "fallback" }],
+      usage: { input_tokens: 3, output_tokens: 2 },
+    });
+
+    try {
+      const { completeInternalText } = await import("../lib/internal-ai");
+      await completeInternalText([{ role: "user", content: "first" }]);
+      await completeInternalText([{ role: "user", content: "second" }]);
+      // First turn: one failed readiness probe plus one GPT attempt.
+      // Second turn: only the GPT attempt; the failed probe is cached briefly.
+      expect(openaiCreate).toHaveBeenCalledTimes(3);
+    } finally {
+      if (previousAstra === undefined) delete process.env.PABLO_ASTRA_ENABLED;
+      else process.env.PABLO_ASTRA_ENABLED = previousAstra;
+      if (previousModel === undefined) delete process.env.OPENAI_TEXT_MODEL;
+      else process.env.OPENAI_TEXT_MODEL = previousModel;
+    }
+  });
+
   it("lets Claude select image and finance tools when GPT is unavailable", async () => {
     anthropicCreate.mockResolvedValue({
       content: [

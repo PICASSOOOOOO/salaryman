@@ -1340,9 +1340,16 @@ async function runPabloCompletion(
 ): Promise<{ reply: string; usages: Array<{ prompt_tokens: number; completion_tokens: number }>; imageCount: number }> {
   const log = requestLog ?? logger;
   const usages: Array<{ prompt_tokens: number; completion_tokens: number }> = [];
-  // The finance tool only makes sense for a signed-in user (it reads their books).
-  const tools: any[] = [PABLO_IMAGE_TOOL];
-  if (userId) tools.push(PABLO_FINANCE_TOOL);
+  // Keep ordinary turns lean: expose specialized tools only when the latest
+  // message needs them instead of sending every schema on every request.
+  const latestUserText = [...messages].reverse().find(message => message.role === "user")?.content ?? "";
+  const tools: any[] = [];
+  if (/\b(?:draw|generate|create|design|make)\b.{0,50}\b(?:image|picture|photo|artwork|logo|character|visual)\b/i.test(latestUserText)) {
+    tools.push(PABLO_IMAGE_TOOL);
+  }
+  if (userId && /\b(?:financ|money|revenue|profit|cash flow|accounting|invoice|payroll|budget|expenses?|accounts?|bank|balance|credit|owed|spending|receivable|payable)\b/i.test(latestUserText)) {
+    tools.push(PABLO_FINANCE_TOOL);
+  }
   if (userId && sheetsAccess?.canView) {
     tools.push(...PABLO_SHEETS_TOOLS.filter((tool) =>
       tool.function.name !== "write_google_sheets_row" || sheetsAccess.canEdit,
@@ -1356,8 +1363,7 @@ async function runPabloCompletion(
       model: await getInternalOpenAiModel(),
       messages,
       max_completion_tokens: 600,
-      tools: tools as any,
-      tool_choice: "auto",
+      ...(tools.length ? { tools: tools as any, tool_choice: "auto" as const } : {}),
     });
   } catch (gptError) {
     log.warn(

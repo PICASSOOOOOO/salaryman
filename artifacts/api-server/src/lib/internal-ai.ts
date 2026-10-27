@@ -28,6 +28,10 @@ export class InternalAiUnavailableError extends Error {
   }
 }
 
+let astraProbePromise: Promise<boolean> | null = null;
+let astraProbeCheckedUntil = 0;
+const ASTRA_FAILED_PROBE_COOLDOWN_MS = 30_000;
+
 function safeError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   return raw
@@ -40,29 +44,37 @@ function safeError(err: unknown): string {
 async function verifyAstra(): Promise<boolean> {
   if (!isAstraRequested()) return false;
   if (isAstraVerified()) return true;
+  if (Date.now() < astraProbeCheckedUntil) return false;
+  if (astraProbePromise) return astraProbePromise;
 
-  const { openai } = await import("@workspace/integrations-openai-ai-server");
-  try {
-    const result = await Promise.race([
-      openai.chat.completions.create({
-        model: OPENAI_ASTRA_MODEL,
-        max_completion_tokens: 8,
-        messages: [
-          { role: "system", content: "Provider readiness probe. Reply with OK only." },
-          { role: "user", content: "ping" },
-        ],
-      }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Astra readiness timeout")), 5_000)),
-    ]);
-    const content = result.choices[0]?.message?.content?.trim();
-    if (!content) throw new Error("Astra readiness returned no content");
-    markAstraVerified();
-    return true;
-  } catch (error) {
-    markAstraUnverified();
-    console.warn("[internal-ai] Astra readiness failed; using verified GPT fallback:", safeError(error));
-    return false;
-  }
+  astraProbePromise = (async () => {
+    try {
+      const { openai } = await import("@workspace/integrations-openai-ai-server");
+      const result = await Promise.race([
+        openai.chat.completions.create({
+          model: OPENAI_ASTRA_MODEL,
+          max_completion_tokens: 8,
+          messages: [
+            { role: "system", content: "Provider readiness probe. Reply with OK only." },
+            { role: "user", content: "ping" },
+          ],
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Astra readiness timeout")), 5_000)),
+      ]);
+      const content = result.choices[0]?.message?.content?.trim();
+      if (!content) throw new Error("Astra readiness returned no content");
+      markAstraVerified();
+      return true;
+    } catch (error) {
+      markAstraUnverified();
+      astraProbeCheckedUntil = Date.now() + ASTRA_FAILED_PROBE_COOLDOWN_MS;
+      console.warn("[internal-ai] Astra readiness failed; using verified GPT fallback:", safeError(error));
+      return false;
+    } finally {
+      astraProbePromise = null;
+    }
+  })();
+  return astraProbePromise;
 }
 
 /** Returns Astra only after the provider-only probe has passed. */

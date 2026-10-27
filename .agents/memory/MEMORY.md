@@ -28,6 +28,7 @@
 - [Pablo nebula visuals](pablo-nebula-canonical.md) — Approved `/pablo` uses a painterly wave field; see [screenshot orb fallback](pablo-nebula-orb.md).
 - [Pablo voice safety](pablo-voice-output-gating.md) — TTS is gated; see [campaign consent](pablo-outbound-campaign-consent.md) and [signature voice rules](elevenlabs-signature-voices.md).
 - [Pablo front-door controls](pablo-frontdoor-controls.md) — Keep “Tap to talk” visible and separate bottom controls from reply bubbles.
+- [Pablo mobile chat continuity](pablo-mobile-chat-continuity.md) — Keep conversation history scrollable and route-persistent; attachments come only from user-selected device files.
 - [Tester program](tester-program.md) — 20 slots, atomic approvals, 3-day inactivity sweep, and a dismissible Discord banner.
 - [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — browser and game use one canonical assistant backend; keep its in-game character a visual representation, not a duplicate agent.
 - [Per-user Google Calendar](google-calendar-user-oauth.md) — each user links their own Google account in-app; never use the owner’s Replit Google connection for customer calendars.

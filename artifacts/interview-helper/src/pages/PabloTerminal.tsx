@@ -2207,7 +2207,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               <p className="text-zinc-100 text-sm leading-snug">{transcript}</p>
             </div>
           )}
-          {(reply || status === "thinking") && history[history.length - 1]?.content !== reply && (
+          {(reply || status === "thinking") && (
             <div
               className="pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border border-pink-400/55"
               style={{ boxShadow: "0 0 32px rgba(236,72,153,0.32)" }}
