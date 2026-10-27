@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Radio, Upload, FileImage, FileAudio, FileVideo, X, MoreHorizontal } from 'lucide-react';
-import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
+import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode, type PrepScenario } from '@/hooks/use-interview';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { useMediaAnalyzer, detectMediaFileType, validateMediaFile } from '@/hooks/use-media-analyzer';
 import { ActionPanel } from '@/components/ActionPanel';
@@ -27,6 +27,7 @@ export default function Console() {
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan' | 'media'>('solve');
+  const [prepScenario, setPrepScenario] = useState<PrepScenario>('interview');
   const [typeMode, setTypeMode] = useState(false);
   const [showTowerLife, setShowTowerLife] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
@@ -113,7 +114,7 @@ export default function Console() {
     if (isRecording) { stopListening(); return; }
     setActivePanel('listen'); setTypeMode(false);
     reset(); resetScan();
-    startListening();
+    startListening(prepScenario);
   };
 
   const handleScanOnce = () => {
@@ -372,6 +373,26 @@ export default function Console() {
                 </button>
               </div>
             </div>
+            <label className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-sky-200/70">
+              <span className="font-bold tracking-[0.08em]">COACHING CONTEXT</span>
+              <select
+                value={prepScenario}
+                onChange={e => setPrepScenario(e.target.value as PrepScenario)}
+                disabled={isRecording || isListenProcessing}
+                className="min-h-9 rounded-md border border-sky-500/25 bg-background px-2 text-xs text-foreground"
+                aria-label="Live coaching context"
+              >
+                <option value="interview">Interview</option>
+                <option value="meeting">Meeting</option>
+                <option value="pitch">Pitch or negotiation</option>
+                <option value="presentation">Presentation</option>
+                <option value="management">Management conversation</option>
+                <option value="hiring">Hiring</option>
+                <option value="firing">Termination conversation</option>
+                <option value="difficult_conversation">Difficult conversation</option>
+              </select>
+              <span className="text-muted-foreground">Pablo gives three concise, truthful lines to say next.</span>
+            </label>
             {consoleConv.isConvMode ? (
               <div className="flex items-center gap-2 mt-1.5">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${

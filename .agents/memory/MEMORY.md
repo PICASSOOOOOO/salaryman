@@ -9,6 +9,7 @@
 - [DB migration mechanism](db-migration-mechanism.md) — inspect dev drift, keep changes additive, use Publish for prod; model composite FK targets as explicit unique constraints.
 - [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.
 - [Pablo persona prompts](pablo-persona-prompts.md) — browser/phone use a shared professional core; industry follows the active org for all members, with sensitive data current-user/org scoped.
+- [Universal preparation tools](universal-prep-tools.md) — expand the original code/interviewer helper to prepare users for interviews, meetings, conversations, pitches, presentations, and management situations.
 - [Pablo Corp atmosphere](pablo-corp-atmosphere.md) — there is always an air of corruption at Pablo Corp; you never know what's happening behind the scenes.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [COMMS delivery + presence](comms-outgoing-delivery.md) — Send via acknowledged HTTP; browser org channels stay separate from game proximity/voice. See [presence](comms-presence.md) and [toaster](comms-notification-toaster.md).
