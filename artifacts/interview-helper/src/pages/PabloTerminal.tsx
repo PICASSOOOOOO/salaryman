@@ -838,6 +838,26 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   const shouldSpeakInitialGreetingRef = useRef(reply === PABLO_INITIAL_GREETING);
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const pabloHistoryKey = `pablo-conversation:${user?.id ?? "guest"}`;
+  const hydratedHistoryKey = useRef<string | null>(null);
+  const conversationScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (hydratedHistoryKey.current !== pabloHistoryKey) return;
+    try { sessionStorage.setItem(pabloHistoryKey, JSON.stringify(history.slice(-40))); } catch {}
+  }, [history, pabloHistoryKey]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(pabloHistoryKey) ?? "[]");
+      setHistory(Array.isArray(saved) ? saved.filter((item): item is { role: "user" | "assistant"; content: string } =>
+        item && (item.role === "user" || item.role === "assistant") && typeof item.content === "string",
+      ).slice(-40) : []);
+    } catch { setHistory([]); }
+    hydratedHistoryKey.current = pabloHistoryKey;
+  }, [pabloHistoryKey]);
+  useEffect(() => {
+    const region = conversationScrollRef.current;
+    if (region) region.scrollTop = region.scrollHeight;
+  }, [history, transcript, reply, status]);
   // Default to TEXT on EVERY device. The nebula opens quiet — Pablo waits
   // for the user to type. Voice-first auto-listen on open used to arm the
   // mic the instant the screen loaded, which on a browser without a real
@@ -1200,7 +1220,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     setIsReplyReplaying(false);
     if (file) {
       if (!isAuthenticated) {
-        setReply("Sign in and choose an organization with CRM edit access to import a file.");
+        setReply("Sign in to share a file with Pablo.");
         return;
       }
       setStatus("thinking");
@@ -1815,7 +1835,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       // on `mode === "voice"` left mobile users with a permanently silent
       // Pablo ("voice response isn't working"). The onboarding intake already
       // speaks regardless of mode — this makes normal chat replies match.
-      await speak(say);
+      const speech = speak(say);
+      if (action) await speech;
+      else void speech.catch(() => setVoiceNotice("Pablo's voice couldn't play. Tap Hear reply to try again."));
       if (action?.kind === "navigate") {
         // The server authorizes exact routes before returning a navigation
         // action. Keep client-side same-origin and /api checks as defense in
@@ -2153,12 +2175,30 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       )}
 
       {/* Shared conversation surface for visitors and returning users. */}
-      {(transcript || reply || status === "thinking") && (
+      {(history.length > 0 || transcript || reply || status === "thinking") && (
         <div
-          className="pablo-conversation mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
+          ref={conversationScrollRef}
+          className="pablo-conversation mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto overscroll-contain touch-pan-y px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-auto z-10"
           style={{ bottom: `calc(${mode === "text" ? 104 : 124}px)` }}
+          aria-label="Pablo conversation"
         >
-          {transcript && (
+          {history.slice(-40).map((message, index, items) => {
+            const isCurrentReply = message.role === "assistant" && index === items.length - 1 && message.content === reply;
+            const isCurrentPrompt = message.role === "user" && message.content === transcript;
+            if (isCurrentReply || isCurrentPrompt) return null;
+            return (
+              <div
+                key={`${index}-${message.role}`}
+                className={`pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg px-3 py-2 border ${message.role === "user" ? "self-end bg-black/55 border-cyan-400/25" : "self-start bg-black/65 border-pink-400/25"}`}
+              >
+                <div className={`text-[9px] font-mono tracking-[0.3em] mb-0.5 ${message.role === "user" ? "text-cyan-300/80" : "text-pink-200"}`}>
+                  {message.role === "user" ? "YOU" : personaLabel}
+                </div>
+                <p className="text-zinc-100 text-sm leading-snug whitespace-pre-wrap">{message.content}</p>
+              </div>
+            );
+          })}
+          {transcript && history[history.length - 2]?.content !== transcript && (
             <div
               className="pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/60 backdrop-blur px-3 py-2 border border-cyan-400/25"
               data-testid="pablo-user-transcript"
@@ -2167,7 +2207,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               <p className="text-zinc-100 text-sm leading-snug">{transcript}</p>
             </div>
           )}
-          {(reply || status === "thinking") && (
+          {(reply || status === "thinking") && history[history.length - 1]?.content !== reply && (
             <div
               className="pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border border-pink-400/55"
               style={{ boxShadow: "0 0 32px rgba(236,72,153,0.32)" }}
@@ -2262,13 +2302,13 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
            className="pablo-text-form absolute left-1/2 z-30 -translate-x-1/2 w-full max-w-2xl px-4 sm:px-6 flex items-center gap-2"
-           style={{ bottom: "20px" }}
+             style={{ bottom: "calc(3rem + var(--app-safe-bottom, 0px))" }}
           data-testid="pablo-text-form"
         >
           <input
             ref={uploadRef}
             type="file"
-            accept=".csv,.xls,.xlsx,.xlsm,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept="image/png,image/jpeg,image/gif,image/webp,.pdf,.docx,.txt,.md,.markdown,.csv,.json,.xml,.html,.log,.xlsx,.xls,.xlsm"
             className="hidden"
             onChange={(event) => {
               const file = event.currentTarget.files?.[0] ?? null;
@@ -2277,12 +2317,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               if (!file) return;
               if (file.size > 10 * 1024 * 1024) {
                 setUploadFile(null);
-                setUploadError("CRM files must be 10 MB or smaller.");
-                return;
-              }
-              if (!/\.(csv|xls|xlsx|xlsm)$/i.test(file.name)) {
-                setUploadFile(null);
-                setUploadError("Choose a CSV or Excel spreadsheet.");
+                 setUploadError("Files must be 10 MB or smaller.");
                 return;
               }
               setUploadFile(file);
@@ -2292,14 +2327,14 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
           {(uploadFile || uploadError) && (
             <div className="absolute bottom-full left-4 right-4 mb-2 flex items-center justify-between gap-2 rounded-md border border-zinc-700 bg-zinc-950/90 px-3 py-2 text-xs text-zinc-200">
               <span className="min-w-0 truncate" role={uploadError ? "alert" : undefined}>
-                {uploadError || `CRM file: ${uploadFile?.name}`}
+                {uploadError || `Attached: ${uploadFile?.name}`}
               </span>
               {uploadFile && (
                 <button
                   type="button"
                   onClick={() => { setUploadFile(null); setUploadError(""); }}
                   className="shrink-0 text-zinc-400 hover:text-white"
-                  aria-label="Remove attached CRM file"
+                  aria-label="Remove attached file"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -2312,8 +2347,8 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
               onClick={() => uploadRef.current?.click()}
               disabled={status === "thinking"}
               className="pablo-send-button mobile-tap-target w-10 shrink-0 rounded-lg border border-zinc-700 bg-zinc-950/70 px-2 py-2.5 text-zinc-300 transition-colors hover:border-purple-500/60 disabled:opacity-40"
-              aria-label="Attach a CRM spreadsheet"
-              title="Attach a CSV or Excel CRM file"
+              aria-label="Attach a picture or document"
+              title="Attach a picture or document"
               data-testid="pablo-crm-file-button"
             >
               <Paperclip className="mx-auto h-4 w-4" aria-hidden="true" />
@@ -2326,7 +2361,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
             placeholder={
               interviewPhaseRef.current === 'asking-name' ? "Type your name"
                 : interviewPhaseRef.current === 'asking-email' ? "Type your email"
-                : uploadFile ? "Ask Pablo explicitly to import this CRM file"
+                : uploadFile ? "Ask Pablo about this file"
                 : "Type a message…"
             }
              className="pablo-input min-w-0 flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"

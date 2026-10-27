@@ -289,6 +289,7 @@ body:not(.game-route) .rounded-lg {
     .mobile-scroll-region {
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
       scrollbar-width: none;
     }
     .mobile-scroll-region::-webkit-scrollbar {
@@ -423,7 +424,7 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-text-form {
-      bottom: 2.25rem !important;
+      bottom: calc(3rem + var(--app-safe-bottom, 0px)) !important;
       gap: 0.625rem;
       padding-inline: max(1.25rem, var(--app-safe-left)) max(1.25rem, var(--app-safe-right));
     }
@@ -441,7 +442,7 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-voice-controls {
-      bottom: 2.25rem !important;
+      bottom: calc(3rem + var(--app-safe-bottom, 0px)) !important;
       padding-inline: 1.25rem;
     }
 
@@ -456,7 +457,7 @@ body:not(.game-route) .rounded-lg {
     }
 
     .pablo-conversation {
-      bottom: 6.75rem !important;
+      bottom: calc(8.5rem + var(--app-safe-bottom, 0px)) !important;
       max-height: 38dvh;
       padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
     }
