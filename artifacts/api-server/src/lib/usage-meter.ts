@@ -99,6 +99,14 @@ const KIND_LABELS: Record<UsageKind, string> = {
   voice_minutes: "voice minutes",
   ai_messages: "AI messages",
   sms_count: "SMS",
+  prep_interview: "interview prep sessions",
+  prep_meeting: "meeting prep sessions",
+  prep_pitch: "pitch prep sessions",
+  prep_presentation: "presentation prep sessions",
+  prep_management: "management prep sessions",
+  prep_hiring: "hiring prep sessions",
+  prep_firing: "termination prep sessions",
+  prep_difficult_conversation: "difficult conversation prep sessions",
 };
 
 export function throttleResponse(kind: UsageKind, used: number, limit: number) {

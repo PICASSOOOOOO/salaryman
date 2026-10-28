@@ -28,6 +28,7 @@ export default function Console() {
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan' | 'media'>('solve');
   const [prepScenario, setPrepScenario] = useState<PrepScenario>('interview');
+  const [prepConsent, setPrepConsent] = useState(false);
   const [typeMode, setTypeMode] = useState(false);
   const [showTowerLife, setShowTowerLife] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
@@ -112,6 +113,7 @@ export default function Console() {
 
   const handleListen = () => {
     if (isRecording) { stopListening(); return; }
+    if (!prepConsent) return;
     setActivePanel('listen'); setTypeMode(false);
     reset(); resetScan();
     startListening(prepScenario);
@@ -342,8 +344,8 @@ export default function Console() {
               <div className="flex flex-wrap items-center gap-1.5">
                 {consoleConv.isSupported && (
                   <button
-                    onClick={() => consoleConv.isConvMode ? consoleConv.stopConversation() : consoleConv.startConversation()}
-                    disabled={(isAnyBusy && !consoleConv.isConvMode)}
+                    onClick={() => consoleConv.isConvMode ? consoleConv.stopConversation() : prepConsent && consoleConv.startConversation()}
+                    disabled={(isAnyBusy && !consoleConv.isConvMode) || (!prepConsent && !consoleConv.isConvMode)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                       ${consoleConv.isConvMode
                         ? 'bg-sky-500/25 text-sky-300 border-sky-500/40 animate-pulse'
@@ -355,7 +357,7 @@ export default function Console() {
                 )}
                 <button
                   onClick={handleListen}
-                  disabled={(isAnyBusy && !isRecording) || isListenProcessing || consoleConv.isConvMode}
+                  disabled={(isAnyBusy && !isRecording) || isListenProcessing || consoleConv.isConvMode || (!prepConsent && !isRecording)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                     ${isRecording
                       ? 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'
@@ -391,7 +393,23 @@ export default function Console() {
                 <option value="firing">Termination conversation</option>
                 <option value="difficult_conversation">Difficult conversation</option>
               </select>
-              <span className="text-muted-foreground">Pablo gives three concise, truthful lines to say next.</span>
+              <span className="text-muted-foreground">Pablo gives the situation, a response, and one skill to use.</span>
+            </label>
+            <label className="mb-2 flex items-start gap-2 text-[10px] text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={prepConsent}
+                onChange={e => {
+                  const accepted = e.target.checked;
+                  setPrepConsent(accepted);
+                  if (!accepted) {
+                    if (isRecording) stopListening();
+                    if (consoleConv.isConvMode) consoleConv.stopConversation();
+                  }
+                }}
+                className="mt-0.5 accent-sky-400"
+              />
+              <span>I consent to send captured conversation audio to Pablo for scenario-specific coaching while listening is active.</span>
             </label>
             {consoleConv.isConvMode ? (
               <div className="flex items-center gap-2 mt-1.5">

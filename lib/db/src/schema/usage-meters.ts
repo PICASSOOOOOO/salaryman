@@ -1,6 +1,10 @@
 import { pgTable, varchar, integer, primaryKey, timestamp } from "drizzle-orm/pg-core";
 
-export const USAGE_KINDS = ["voice_minutes", "ai_messages", "sms_count"] as const;
+export const USAGE_KINDS = [
+  "voice_minutes", "ai_messages", "sms_count",
+  "prep_interview", "prep_meeting", "prep_pitch", "prep_presentation",
+  "prep_management", "prep_hiring", "prep_firing", "prep_difficult_conversation",
+] as const;
 export type UsageKind = (typeof USAGE_KINDS)[number];
 
 export const usageMetersTable = pgTable(
@@ -21,4 +25,12 @@ export const USAGE_LIMITS: Record<UsageKind, number> = {
   voice_minutes: 3000,
   ai_messages: 50000,
   sms_count: 250,
+  prep_interview: 50000,
+  prep_meeting: 50000,
+  prep_pitch: 50000,
+  prep_presentation: 50000,
+  prep_management: 50000,
+  prep_hiring: 50000,
+  prep_firing: 50000,
+  prep_difficult_conversation: 50000,
 };

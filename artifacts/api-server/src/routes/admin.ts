@@ -46,6 +46,14 @@ const COST_RATES_USD: Record<UsageKind, number> = {
   voice_minutes: 0.05,
   ai_messages: 0.01,
   sms_count: 0.01,
+  prep_interview: 0.01,
+  prep_meeting: 0.01,
+  prep_pitch: 0.01,
+  prep_presentation: 0.01,
+  prep_management: 0.01,
+  prep_hiring: 0.01,
+  prep_firing: 0.01,
+  prep_difficult_conversation: 0.01,
 };
 
 function usagePeriod(override?: string): string {
