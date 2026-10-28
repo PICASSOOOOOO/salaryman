@@ -9,6 +9,10 @@ const state = vi.hoisted(() => ({
   isRecording: false,
   startListening: vi.fn(),
   stopListening: vi.fn(),
+  isConversationSupported: false,
+  isConversationActive: false,
+  startConversation: vi.fn(),
+  stopConversation: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
@@ -31,8 +35,11 @@ vi.mock("@/hooks/use-interview", () => ({
 }));
 vi.mock("@/hooks/use-voice-conversation", () => ({
   useVoiceConversation: () => ({
-    isSupported: false, isConvMode: false, convState: "idle",
-    startConversation: vi.fn(), stopConversation: vi.fn(),
+    isSupported: state.isConversationSupported,
+    isConvMode: state.isConversationActive,
+    convState: state.isConversationActive ? "listening" : "idle",
+    startConversation: state.startConversation,
+    stopConversation: state.stopConversation,
   }),
 }));
 vi.mock("@/hooks/use-media-analyzer", () => ({
@@ -60,6 +67,10 @@ beforeEach(() => {
   state.isRecording = false;
   state.startListening.mockClear();
   state.stopListening.mockClear();
+  state.isConversationSupported = false;
+  state.isConversationActive = false;
+  state.startConversation.mockClear();
+  state.stopConversation.mockClear();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -83,6 +94,12 @@ function listenButton(): HTMLButtonElement {
   return button;
 }
 
+function conversationButton(): HTMLButtonElement {
+  const button = container.querySelector('[data-testid="live-coach-conversation"]');
+  if (!(button instanceof HTMLButtonElement)) throw new Error("live conversation button not found");
+  return button;
+}
+
 describe("Console live coaching consent", () => {
   it("keeps recording disabled until the user consents", () => {
     expect(listenButton().disabled).toBe(true);
@@ -98,5 +115,21 @@ describe("Console live coaching consent", () => {
     act(() => consentCheckbox().click());
     act(() => consentCheckbox().click());
     expect(state.stopListening).toHaveBeenCalledOnce();
+  });
+
+  it("requires consent to start voice conversation and stops when consent is withdrawn", () => {
+    state.isConversationSupported = true;
+    act(() => root.render(<Console />));
+
+    expect(conversationButton().disabled).toBe(true);
+    act(() => consentCheckbox().click());
+    expect(conversationButton().disabled).toBe(false);
+    act(() => conversationButton().click());
+    expect(state.startConversation).toHaveBeenCalledOnce();
+
+    state.isConversationActive = true;
+    act(() => root.render(<Console />));
+    act(() => consentCheckbox().click());
+    expect(state.stopConversation).toHaveBeenCalledOnce();
   });
 });

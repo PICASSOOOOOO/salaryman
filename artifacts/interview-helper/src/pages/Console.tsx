@@ -346,6 +346,7 @@ export default function Console() {
                   <button
                     onClick={() => consoleConv.isConvMode ? consoleConv.stopConversation() : prepConsent && consoleConv.startConversation()}
                     disabled={(isAnyBusy && !consoleConv.isConvMode) || (!prepConsent && !consoleConv.isConvMode)}
+                    data-testid="live-coach-conversation"
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                       ${consoleConv.isConvMode
                         ? 'bg-sky-500/25 text-sky-300 border-sky-500/40 animate-pulse'
