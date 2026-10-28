@@ -77,7 +77,7 @@ export function DeferredChatPanel() {
           <MessageSquare className="h-3.5 w-3.5" />
           COMMS
           {total > 0 && (
-            <span className="flex h-4 min-w-4 items-center justify-center border border-black bg-black px-1 text-[9px] font-bold text-[#FFFCF5]">
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full border border-[#D9534F] bg-[#D9534F] px-1 text-[9px] font-bold text-white">
               {total > 99 ? "99+" : total}
             </span>
           )}

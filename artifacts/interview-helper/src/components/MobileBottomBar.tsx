@@ -255,7 +255,7 @@ export function MobileModuleNav() {
                 <Icon className="w-5 h-5" />
                  <span className="text-[8px] font-bold uppercase tracking-wider">{getBoomerAppLabel(tab.id, tab.boomerLabel ?? tab.label)}</span>
                 {tab.id === 'comms' && commsCount > 0 && (
-                  <span className="absolute top-1 right-2 min-w-[14px] h-[14px] flex items-center justify-center text-[8px] font-bold bg-[#00FF41] text-black rounded-full shadow-sm">
+                  <span className="absolute top-1 right-2 min-w-[14px] h-[14px] flex items-center justify-center text-[8px] font-bold bg-[#D9534F] text-white rounded-full shadow-sm">
                     {commsCount > 99 ? '99+' : commsCount}
                   </span>
                 )}
