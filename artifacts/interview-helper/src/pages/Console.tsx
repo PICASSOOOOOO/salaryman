@@ -358,6 +358,7 @@ export default function Console() {
                 <button
                   onClick={handleListen}
                   disabled={(isAnyBusy && !isRecording) || isListenProcessing || consoleConv.isConvMode || (!prepConsent && !isRecording)}
+                  data-testid="live-coach-listen"
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                     ${isRecording
                       ? 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'
@@ -398,6 +399,7 @@ export default function Console() {
             <label className="mb-2 flex items-start gap-2 text-[10px] text-muted-foreground">
               <input
                 type="checkbox"
+                data-testid="live-coach-consent"
                 checked={prepConsent}
                 onChange={e => {
                   const accepted = e.target.checked;
