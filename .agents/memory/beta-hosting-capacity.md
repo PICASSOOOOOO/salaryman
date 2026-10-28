@@ -11,6 +11,10 @@ The app must be prepared to support at least 1,000 concurrent signed-in users.
 This is an application capacity target, not a count of organization members or a
 requirement that all users share one city/realm.
 
+Each city is its own server.
+
+**Why:** the user clarified the city-to-server boundary.
+
 **Why:** The user says the alpha has gone well, expects beta by January 2027, and
 clarified that the 1,000-user minimum means people must be able to sign in and
 use the app concurrently, not that they are literal organization members.
@@ -19,6 +23,8 @@ use the app concurrently, not that they are literal organization members.
 1,000 concurrent authenticated app users across sign-in, sessions, API, database,
 and realtime services. Treat GitHub as the code source and deployment origin;
 ask which destination server systems they choose before platform-specific work.
+Account for each city having its own server when reasoning about game-server
+capacity and isolation.
 Require a container startup smoke test in addition to image construction; pass
 the eagerly imported AI provider settings even when the smoke test uses dummy
 values and exercises only health/static routes.

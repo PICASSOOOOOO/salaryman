@@ -21,16 +21,19 @@ export const usageMetersTable = pgTable(
 
 export type UsageMeter = typeof usageMetersTable.$inferSelect;
 
-export const USAGE_LIMITS: Record<UsageKind, number> = {
+// `null` means reporting-only: track the count, but never block the action.
+// Prep scenarios are uncapped; request-size and concurrency controls protect
+// infrastructure independently of per-user usage reporting.
+export const USAGE_LIMITS: Record<UsageKind, number | null> = {
   voice_minutes: 3000,
   ai_messages: 50000,
   sms_count: 250,
-  prep_interview: 50000,
-  prep_meeting: 50000,
-  prep_pitch: 50000,
-  prep_presentation: 50000,
-  prep_management: 50000,
-  prep_hiring: 50000,
-  prep_firing: 50000,
-  prep_difficult_conversation: 50000,
+  prep_interview: null,
+  prep_meeting: null,
+  prep_pitch: null,
+  prep_presentation: null,
+  prep_management: null,
+  prep_hiring: null,
+  prep_firing: null,
+  prep_difficult_conversation: null,
 };
