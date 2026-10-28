@@ -2483,6 +2483,24 @@ class SolarPunkRenderer:
                 self.font_mono,
                 Palette.MATRIX_DIM,
             )
+            alarm_values = snapshot.get("alarms", [])
+            active_alarms = [
+                alarm for alarm in alarm_values
+                if isinstance(alarm, dict) and alarm.get("status") in {"active", "silenced"}
+            ] if isinstance(alarm_values, list) else []
+            alarm_summary = "NO ACTIVE INCIDENTS"
+            if active_alarms:
+                incidents = ", ".join(
+                    f"{alarm.get('floor', '??')} {str(alarm.get('type', 'ALARM')).replace('_', ' ').upper()}"
+                    for alarm in active_alarms[:2]
+                )
+                alarm_summary = f"ACTIVE INCIDENTS / {len(active_alarms)} / {incidents}"
+            self.text(
+                alarm_summary[:96],
+                (page.x + 28, content + 28),
+                self.font_sm,
+                Palette.MATRIX_AMBER if active_alarms else Palette.MATRIX_GREEN,
+            )
             system_rows = (
                 ("GRID POWER", "powerCondition", "powerOperational"),
                 ("PLUMBING", "plumbingCondition", "waterOperational"),

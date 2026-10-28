@@ -372,6 +372,12 @@ class PygameBridgeTests(unittest.TestCase):
         scene = SimpleNamespace(basement_snapshot={
             "building": {"powerCondition": 42, "plumbingCondition": 88, "upkeepCondition": 65},
             "towerOperations": {"storedSupplyCrates": 2, "backupInfrastructureUnitsPowered": 1},
+            "alarms": [{
+                "floor": "B4",
+                "type": "fire",
+                "status": "active",
+                "summary": "Smoke near the supply storage.",
+            }],
         })
         state = SimpleNamespace(
             active_page="disaster_response",
@@ -384,6 +390,10 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(page.contains(action))
         self.assertTrue(any(
             "TOWER ADVISER / The generator is the top approved maintenance priority." in line
+            for line in rendered_text
+        ))
+        self.assertTrue(any(
+            "ACTIVE INCIDENTS / 1 / B4 FIRE" in line
             for line in rendered_text
         ))
 

@@ -393,13 +393,30 @@ export default function AlphaApply() {
 
   const loadCapacity = useCallback(async () => {
     try {
-      const res = await apiFetch("/api/alpha/capacity", { credentials: "include" });
+      const res = await apiFetch("/api/alpha/capacity", {
+        credentials: "include",
+        cache: "no-store",
+      });
       if (!res.ok) return;
       setCapacity(await res.json());
     } catch { /* non-fatal */ }
   }, []);
 
-  useEffect(() => { loadCapacity(); }, [loadCapacity]);
+  useEffect(() => {
+    void loadCapacity();
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") void loadCapacity();
+    };
+    const interval = window.setInterval(refreshIfVisible, 30_000);
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [loadCapacity]);
 
   if (authLoading || alpha.loading) {
     return (
