@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Volume2, RotateCcw, Paperclip, X } from "lucide-react";
+import { Mic, MicOff, Send, Keyboard, GraduationCap, Volume2, RotateCcw, Paperclip, X } from "lucide-react";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
 import { trackEvent } from "@/lib/analytics";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { speakWithTTS, armAudioAutoUnlock, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@/hooks/use-auth";
+import { StartWorkMenu } from "@/components/StartWorkMenu";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT } from "@/components/PabloNebula3D";
 import { useBoomerMode } from "@/hooks/use-mobile";
@@ -1004,14 +1005,6 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   const enterFromHomepage = useCallback(() => {
     navigate("/console");
   }, [navigate]);
-  const startWorkFromHomepage = useCallback(() => {
-    if (isAuthenticated) {
-      enterFromHomepage();
-      return;
-    }
-    navigate(`/sign-in?returnTo=${encodeURIComponent("/console")}`);
-  }, [enterFromHomepage, isAuthenticated, navigate]);
-
   // Keep the global unlock path alive. The welcome is visible immediately;
   // browsers only allow its audio after a user gesture.
   useEffect(() => {
@@ -2040,30 +2033,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
     <div className="pablo-header w-full flex items-center justify-end gap-2 px-3 py-1.5 sm:px-5">
       <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2 shrink-0">
         <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-        {!isLoading && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
-            data-testid={isAuthenticated ? "pablo-enter-tower" : "pablo-sign-in"}
-            className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-            title="Start work in the terminal"
-            aria-label="Start work in the terminal"
-          >
-            <LogIn className="w-3 h-3" />
-            <span className="pablo-start-work-label">START WORK</span>
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); navigate("/comms"); }}
-          data-testid="pablo-ai-choice"
-          aria-label="Open COMMS"
-          className="pablo-action pablo-chat-control app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
-          title="Open COMMS"
-        >
-          <MessageCircle className="w-3 h-3" />
-          <span className="pablo-chat-label">COMMS</span>
-        </button>
+        {!isLoading && isAuthenticated && <StartWorkMenu />}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}

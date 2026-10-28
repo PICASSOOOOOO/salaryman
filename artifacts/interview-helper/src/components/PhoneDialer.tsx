@@ -617,7 +617,7 @@ export function PhoneDialer({
 
       <div style={{ padding: '6px 14px', borderBottom: `1px solid ${slate(0.15)}`, background: slate(0.8), display: 'flex', alignItems: 'center', gap: 10 }}>
         <span className="calll-home-mark-box">
-          <img src="/brand/callhome/calll-home-logo-2.png" alt="CALLL HOME" />
+          <img src="/brand/callhome/calll-home-logo-2.png" alt="CALLL HOME" style={{ filter: "invert(1)" }} />
         </span>
         <span style={{ fontSize: '0.4rem', color: slate(0.55), marginLeft: 'auto', letterSpacing: '0.08em' }}>ALPHA {__BUILD_VERSION__}</span>
       </div>

@@ -230,6 +230,7 @@ function HomeOrCover() {
 }
 
 const FLOATING_BAR_ROUTES = [
+  "/business/crm",
   "/",
   "/console",
   "/business",
@@ -693,11 +694,12 @@ function AppShell() {
             {/* CREATIVE module */}
             <Route path="/creative/darkroom" component={DarkRoom} />
             <Route path="/creative/scene">{() => <SceneComposer />}</Route>
-            <Route path="/creative/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
+            <Route path="/creative/studio">{() => <Redirect to="/creative/design" />}</Route>
             <Route path="/creative/production">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
-            <Route path="/creative/music" component={MusicJukebox} />
-            <Route path="/creative/jukebox">{() => <Redirect to="/creative/music" />}</Route>
+            <Route path="/hummingbird" component={MusicJukebox} />
+            <Route path="/creative/music">{() => <Redirect to="/hummingbird" />}</Route>
+            <Route path="/creative/jukebox">{() => <Redirect to="/hummingbird" />}</Route>
             <Route path="/creative/writer" component={WriterStudio} />
             <Route path="/creative/video" component={VideoStudio} />
             <Route path="/creative/schematic" component={SchematicDecoder} />
@@ -713,7 +715,7 @@ function AppShell() {
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />
             <Route path="/creative/classroom" component={Classroom} />
-            <Route path="/creative">{() => <Redirect to="/creative/music" />}</Route>
+            <Route path="/creative">{() => <Redirect to="/creative/design" />}</Route>
 
             {/* MARKETING module */}
             <Route path="/marketing/ads" component={Marketing} />

@@ -37,10 +37,13 @@ describe("consolidated workspace navigation", () => {
   it("retains every historic work-area route without duplicate menu links", () => {
     const paths = new Set(menuDestinations.map((entry) => entry.path));
     const historicPaths = HISTORIC_MODULES
-      .filter((module) => module.id !== "pablo")
+      .filter((module) => module.id !== "pablo" && module.id !== "creative")
       .flatMap((module) => [module.defaultPath, ...module.subs.map((sub) => sub.path)]);
     for (const path of historicPaths) {
       expect(paths.has(path), path).toBe(true);
+    }
+    for (const module of MODULES.filter((candidate) => ["creative", "marketing"].includes(candidate.id))) {
+      for (const sub of module.subs) expect(paths.has(sub.path), sub.path).toBe(true);
     }
   });
 
@@ -89,9 +92,19 @@ describe("consolidated workspace navigation", () => {
   });
 
   it("keeps the lab name 1999 and merges both automation names onto one route", () => {
-    const creative = WORKSPACE_MENU_SECTIONS.flatMap((section) => section.entries)
+    const entries = WORKSPACE_MENU_SECTIONS.flatMap((section) => section.entries);
+    const creative = entries
       .find((entry) => entry.id === "creative");
     expect(creative?.children?.find((entry) => entry.id === "lab")?.label).toBe("1999");
+    expect(creative?.path).toBe("/creative");
+    expect(creative?.children?.some((entry) => entry.id === "humbird")).toBe(false);
+    expect(entries.find((entry) => entry.id === "hummingbird")?.path).toBe("/hummingbird");
+
+    const marketing = entries.find((entry) => entry.id === "marketing");
+    expect(marketing?.children?.some((entry) => entry.path === "/marketing/campaigns")).toBe(true);
+    const office = entries.find((entry) => entry.id === "office");
+    expect(office?.children?.some((entry) => entry.path === "/pledge")).toBe(true);
+    expect(entries.find((entry) => entry.id === "settings")?.children?.some((entry) => entry.path === "/pledge") ?? false).toBe(false);
 
     const automation = menuDestinations.filter((entry) => entry.path === "/business/autopilot");
     expect(automation).toHaveLength(1);

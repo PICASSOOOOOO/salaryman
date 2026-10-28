@@ -40,7 +40,7 @@ export const MORE_NAV_ITEMS: AppNavItem[] = [
   { id: "business", path: "/business", label: "BUSINESS", boomerLabel: "BUSINESS", icon: Briefcase, authOnly: true },
   { id: "contacts", path: "/contacts", label: "CONTACTS", boomerLabel: "CONTACTS", icon: Contact, authOnly: true },
   { id: "leads", path: "/leads", label: "LEADS", boomerLabel: "LEADS", icon: ListChecks, authOnly: true },
-  { id: "creative", path: "/creative/music", label: "CREATIVE", boomerLabel: "CREATIVE STUDIO", icon: Layers },
+  { id: "creative", path: "/creative", label: "CREATIVE", boomerLabel: "CREATIVE", icon: Layers },
   { id: "marketing", path: "/marketing", label: "MARKETING", boomerLabel: "MARKETING", icon: Megaphone },
   { id: "settings", path: "/settings", label: "SETTINGS", boomerLabel: "SETTINGS", icon: Settings, authOnly: true },
   { id: "platform", path: "/platform", label: "PLATFORM API", boomerLabel: "PLATFORM API", icon: Network, authOnly: true },

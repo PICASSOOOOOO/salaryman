@@ -254,13 +254,12 @@ export default function CrmWorkspace() {
         conferenceName: result.conferenceName,
       };
       addActiveCallsBatch([activeCall]);
-      navigate('/phone?tab=live');
     } catch (error) {
       setCallError(error instanceof Error ? error.message : 'CRM call failed');
     } finally {
       setCallingRecordKey(null);
     }
-  }, [apiUrl, bridgeOutbound, navigate]);
+  }, [apiUrl, bridgeOutbound]);
 
   const callWithPablo = useCallback(async (record: WorkspaceRecord) => {
     if (record.kind === 'deal') return;

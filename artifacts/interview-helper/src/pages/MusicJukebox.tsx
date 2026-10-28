@@ -226,8 +226,8 @@ export default function MusicJukebox() {
       )}
 
       <header className="max-w-5xl mx-auto px-4 sm:px-6 mb-6 flex items-start justify-between">
-        <Link href="/creative/darkroom" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mt-2">
-          <ChevronLeft className="w-4 h-4" /> CREATIVE
+        <Link href="/pablo" className="flex items-center gap-1.5 text-zinc-600 hover:text-black text-xs font-sans tracking-wide mt-2">
+          <ChevronLeft className="w-4 h-4" /> BACK
         </Link>
         <div className="flex flex-col items-center gap-1">
           <HummingbirdIcon size={48} color="#c084fc" />

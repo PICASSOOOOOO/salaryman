@@ -211,19 +211,10 @@ describe("Pablo front-door admittance flow", () => {
     expect(window.localStorage.getItem("salaryman_email")).toBe("alex@example.com");
   });
 
-  it("sends the header START WORK button straight to sign-in", async () => {
+  it("does not expose the work launcher before sign-in", async () => {
     await mount();
     expect(qs("pablo-auth-choice")).toBeNull();
-
-    const signIn = qs("pablo-sign-in") as HTMLButtonElement;
-    expect(signIn, "header start-work button should render for logged-out users").not.toBeNull();
-    await act(async () => {
-      signIn.click();
-    });
-    await flush();
-
-    expect(qs("pablo-auth-choice"), "header entry should not add an intermediate modal").toBeNull();
-    expect(window.location.pathname).toBe("/sign-in");
-    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe("/console");
+    expect(qs("pablo-enter-tower")).toBeNull();
+    expect(qs("pablo-sign-in")).toBeNull();
   });
 });

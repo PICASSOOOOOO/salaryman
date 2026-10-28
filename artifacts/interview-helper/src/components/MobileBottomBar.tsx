@@ -1,5 +1,5 @@
 import { useLocation } from 'wouter';
-import { useCallback, useState, useLayoutEffect } from 'react';
+import { useCallback, useRef, useState, useLayoutEffect } from 'react';
 import { ArrowLeft, X, Menu, MoreHorizontal, LogIn } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ export function MobileModuleNav() {
   const { isOwner } = usePlan();
   const { total: commsCount } = useCommsSummary();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const backPendingRef = useRef(false);
   const closeMenu = useCallback(() => setDropdownOpen(false), []);
   const navigateMenu = useCallback((path: string) => {
     navigate(path);
@@ -43,9 +44,19 @@ export function MobileModuleNav() {
   // duplicate login controls.
   const showAnonymousSignIn = shouldShowGlobalSignIn(pathname, isAuthenticated);
   const goBack = () => {
+    // Keep a second tap from issuing another history.back() before the first
+    // popstate updates the route. On touch screens that can skip multiple pages.
+    if (backPendingRef.current) return;
+    backPendingRef.current = true;
     if (canGoBackInApp()) window.history.back();
     else navigate(consumeAppReturnPath() ?? getAppBackPath(isAuthenticated), { replace: true });
+    window.setTimeout(() => {
+      backPendingRef.current = false;
+    }, 800);
   };
+  useLayoutEffect(() => {
+    backPendingRef.current = false;
+  }, [location]);
 
   // The shared chrome is visible on public pages, but its workspace destinations
   // are not. Before sign-in, showing links that immediately bounce or expose

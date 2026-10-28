@@ -9,7 +9,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { usePlan } from "@/hooks/use-plan";
 
-const CRT = "#38bdf8";
+const CRT = "#111111";
 const FONT = "var(--font-sans)";
 
 type AuthType = "app_password" | "webhook" | "oauth";
@@ -60,9 +60,9 @@ const TOOLS: Array<{ label: string; desc: string; path: string; icon: React.Comp
 ];
 
 const panel: React.CSSProperties = {
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(56,189,248,0.18)",
-  borderRadius: 12,
+  background: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.16)",
+  borderRadius: 8,
 };
 
 export default function MarketingCommandCenter() {
@@ -143,7 +143,7 @@ export default function MarketingCommandCenter() {
   // ── PRIME gate ───────────────────────────────────────────────────────────
   if (planLoading) {
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#07090d" }}>
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#fafaf7" }}>
         <Loader2 className="w-6 h-6 animate-spin" style={{ color: CRT }} />
       </div>
     );
@@ -151,18 +151,18 @@ export default function MarketingCommandCenter() {
 
   if (!hasPrime) {
     return (
-      <div style={{ minHeight: "100vh", background: "#07090d", color: "#e4e4e7", fontFamily: FONT, display: "grid", placeItems: "center", padding: 24 }}>
-        <div style={{ ...panel, maxWidth: 460, padding: 32, textAlign: "center", borderColor: "rgba(245,158,11,0.35)" }}>
-          <div style={{ width: 56, height: 56, margin: "0 auto 16px", borderRadius: 14, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", display: "grid", placeItems: "center" }}>
-            <Lock className="w-7 h-7" style={{ color: "#f59e0b" }} />
+      <div style={{ minHeight: "100vh", background: "#fafaf7", color: "#111111", fontFamily: FONT, display: "grid", placeItems: "center", padding: 24 }}>
+        <div style={{ ...panel, maxWidth: 460, padding: 32, textAlign: "center" }}>
+          <div style={{ width: 56, height: 56, margin: "0 auto 16px", borderRadius: 8, background: "#f3f1eb", border: "1px solid rgba(0,0,0,0.14)", display: "grid", placeItems: "center" }}>
+            <Lock className="w-7 h-7" style={{ color: "#111111" }} />
           </div>
-           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fbbf24", marginBottom: 8, letterSpacing: 1 }}>MARKETING</h1>
-          <p style={{ fontSize: 13, color: "rgba(228,228,231,0.7)", marginBottom: 20, lineHeight: 1.6 }}>
+           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111111", marginBottom: 8, letterSpacing: 1 }}>MARKETING</h1>
+          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.65)", marginBottom: 20, lineHeight: 1.6 }}>
              Connect social accounts and publish across 9 platforms. This is included with Pablo AI.
           </p>
           <button
             onClick={() => navigate("/pricing")}
-            style={{ width: "100%", padding: "12px", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(90deg,#f59e0b,#fbbf24)", color: "#1a1205", fontWeight: 700, fontFamily: FONT, letterSpacing: 1 }}
+            style={{ width: "100%", padding: "12px", borderRadius: 6, border: "1px solid #111111", cursor: "pointer", background: "#111111", color: "#ffffff", fontWeight: 700, fontFamily: FONT, letterSpacing: 1 }}
           >
             VIEW PABLO AI PRICING
           </button>
@@ -174,23 +174,23 @@ export default function MarketingCommandCenter() {
   const connected = connections.filter((c) => c.status === "connected").length;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#07090d", color: "#e4e4e7", fontFamily: FONT, padding: "24px 16px 80px" }}>
+    <div style={{ minHeight: "100vh", background: "#fafaf7", color: "#111111", fontFamily: FONT, padding: "24px 16px 80px" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 6 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", display: "grid", placeItems: "center" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 8, background: "#f3f1eb", border: "1px solid rgba(0,0,0,0.14)", display: "grid", placeItems: "center" }}>
             <Megaphone className="w-6 h-6" style={{ color: CRT }} />
           </div>
           <div>
            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, color: CRT }}>MARKETING</h1>
-            <p style={{ fontSize: 12, color: "rgba(228,228,231,0.55)" }}>
+            <p style={{ fontSize: 12, color: "rgba(0,0,0,0.58)" }}>
               {connected} of {connections.length} channels connected
             </p>
           </div>
         </div>
 
         {/* Connections */}
-         <h2 style={{ fontSize: 13, letterSpacing: 2, color: "rgba(56,189,248,0.7)", margin: "26px 0 12px" }}>SOCIAL ACCOUNTS</h2>
+          <h2 style={{ fontSize: 13, letterSpacing: 1, color: "#111111", margin: "26px 0 12px" }}>SOCIAL ACCOUNTS</h2>
         {loading ? (
           <div style={{ display: "grid", placeItems: "center", padding: 40 }}>
             <Loader2 className="w-6 h-6 animate-spin" style={{ color: CRT }} />
@@ -204,12 +204,12 @@ export default function MarketingCommandCenter() {
               return (
                 <div key={c.provider} style={{ ...panel, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "grid", placeItems: "center" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 6, background: "#f3f1eb", border: "1px solid rgba(0,0,0,0.12)", display: "grid", placeItems: "center" }}>
                       <Icon className="w-5 h-5" style={{ color: isConnected ? "#34d399" : CRT }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{c.label}</div>
-                      <div style={{ fontSize: 11, color: "rgba(228,228,231,0.5)" }}>
+                      <div style={{ fontSize: 11, color: "rgba(0,0,0,0.58)" }}>
                         {isConnected ? c.accountHandle || "Connected" : c.authType === "oauth" ? "OAuth" : c.authType === "webhook" ? "Webhook" : "App password"}
                       </div>
                     </div>
@@ -218,7 +218,7 @@ export default function MarketingCommandCenter() {
                         <Check className="w-3 h-3" /> LIVE
                       </span>
                     ) : needsAppConfig ? (
-                      <span style={{ fontSize: 10, color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)", padding: "2px 6px", borderRadius: 6 }}>SETUP</span>
+                        <span style={{ fontSize: 10, color: "#111111", border: "1px solid rgba(0,0,0,0.25)", padding: "2px 6px", borderRadius: 4 }}>SETUP</span>
                     ) : null}
                   </div>
 
@@ -232,7 +232,7 @@ export default function MarketingCommandCenter() {
                     <button
                       onClick={() => disconnect(c.provider)}
                       disabled={busy}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.06)", color: "#f87171", cursor: "pointer", fontFamily: FONT, fontSize: 12 }}
+                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 6, border: "1px solid rgba(0,0,0,0.2)", background: "#ffffff", color: "#111111", cursor: "pointer", fontFamily: FONT, fontSize: 12 }}
                     >
                       <Unlink className="w-3.5 h-3.5" /> Disconnect
                     </button>
@@ -241,7 +241,7 @@ export default function MarketingCommandCenter() {
                   ) : (
                     <button
                       onClick={() => openConnect(c)}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 8, border: "1px solid rgba(56,189,248,0.3)", background: "rgba(56,189,248,0.08)", color: CRT, cursor: "pointer", fontFamily: FONT, fontSize: 12 }}
+                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 6, border: "1px solid #111111", background: "#ffffff", color: "#111111", cursor: "pointer", fontFamily: FONT, fontSize: 12 }}
                     >
                       <Link2 className="w-3.5 h-3.5" /> Connect
                     </button>
@@ -253,7 +253,7 @@ export default function MarketingCommandCenter() {
         )}
 
         {/* Tools */}
-        <h2 style={{ fontSize: 13, letterSpacing: 2, color: "rgba(56,189,248,0.7)", margin: "32px 0 12px" }}>TOOLS</h2>
+        <h2 style={{ fontSize: 13, letterSpacing: 1, color: "#111111", margin: "32px 0 12px" }}>TOOLS</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
           {TOOLS.map((t) => {
             const Icon = t.icon;
@@ -261,14 +261,14 @@ export default function MarketingCommandCenter() {
               <button
                 key={t.path}
                 onClick={() => navigate(t.path)}
-                style={{ ...panel, padding: 16, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, fontFamily: FONT, color: "#e4e4e7" }}
+                style={{ ...panel, padding: 16, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, fontFamily: FONT, color: "#111111" }}
               >
-                <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 6, background: "#f3f1eb", border: "1px solid rgba(0,0,0,0.14)", display: "grid", placeItems: "center", flexShrink: 0 }}>
                   <Icon className="w-5 h-5" style={{ color: CRT }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>{t.label}</div>
-                  <div style={{ fontSize: 11, color: "rgba(228,228,231,0.5)" }}>{t.desc}</div>
+                  <div style={{ fontSize: 11, color: "rgba(0,0,0,0.58)" }}>{t.desc}</div>
                 </div>
                 <ArrowRight className="w-4 h-4" style={{ color: "rgba(56,189,248,0.5)" }} />
               </button>
@@ -285,39 +285,39 @@ export default function MarketingCommandCenter() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => !busy && setActive(null)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "grid", placeItems: "center", zIndex: 60, padding: 16 }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "grid", placeItems: "center", zIndex: 60, padding: 16 }}
           >
             <motion.div
               initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 10 }}
               onClick={(e) => e.stopPropagation()}
-              style={{ ...panel, width: "100%", maxWidth: 420, padding: 24, background: "#0b0f14" }}
+              style={{ ...panel, width: "100%", maxWidth: 420, padding: 24, background: "#ffffff" }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: CRT }}>Connect {active.label}</h3>
-                <button onClick={() => !busy && setActive(null)} style={{ background: "none", border: "none", color: "rgba(228,228,231,0.5)", cursor: "pointer" }}>
+                <button onClick={() => !busy && setActive(null)} style={{ background: "none", border: "none", color: "rgba(0,0,0,0.58)", cursor: "pointer" }}>
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p style={{ fontSize: 11, color: "rgba(228,228,231,0.55)", marginBottom: 16, lineHeight: 1.5 }}>{active.connectHint}</p>
+              <p style={{ fontSize: 11, color: "rgba(0,0,0,0.65)", marginBottom: 16, lineHeight: 1.5 }}>{active.connectHint}</p>
               {active.authType === "oauth" && active.callbackUrl && (
-                <div style={{ marginBottom: 14, padding: 10, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div style={{ fontSize: 10, color: "rgba(228,228,231,0.5)", marginBottom: 4 }}>ADD THIS REDIRECT URI TO YOUR APP</div>
-                  <code style={{ display: "block", color: "#a5f3fc", fontSize: 10, overflowWrap: "anywhere" }}>{active.callbackUrl}</code>
+                <div style={{ marginBottom: 14, padding: 10, borderRadius: 6, background: "#f3f1eb", border: "1px solid rgba(0,0,0,0.14)" }}>
+                  <div style={{ fontSize: 10, color: "rgba(0,0,0,0.58)", marginBottom: 4 }}>ADD THIS REDIRECT URI TO YOUR APP</div>
+                  <code style={{ display: "block", color: "#111111", fontSize: 10, overflowWrap: "anywhere" }}>{active.callbackUrl}</code>
                 </div>
               )}
 
               {active.credentialFields.map((f) => (
                 <div key={f.key} style={{ marginBottom: 12 }}>
-                  <label style={{ display: "block", fontSize: 11, color: "rgba(228,228,231,0.6)", marginBottom: 4 }}>{f.label}</label>
+                  <label style={{ display: "block", fontSize: 11, color: "rgba(0,0,0,0.72)", marginBottom: 4 }}>{f.label}</label>
                   <input
                     type={f.type}
                     value={form[f.key] ?? ""}
                     placeholder={f.placeholder}
                     autoComplete="off"
                     onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e7", fontFamily: FONT, fontSize: 13, padding: "10px 12px", borderRadius: 8, outline: "none" }}
+                    style={{ width: "100%", background: "#ffffff", border: "1px solid rgba(0,0,0,0.22)", color: "#111111", fontFamily: FONT, fontSize: 13, padding: "10px 12px", borderRadius: 6, outline: "none" }}
                   />
                 </div>
               ))}
@@ -328,14 +328,14 @@ export default function MarketingCommandCenter() {
                 </div>
               )}
 
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "rgba(228,228,231,0.4)", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "rgba(0,0,0,0.58)", marginBottom: 14 }}>
                 <ShieldCheck className="w-3.5 h-3.5" /> Stored securely on your account. Only used to post on your behalf.
               </div>
 
               <button
                 onClick={submitConnect}
                 disabled={busy}
-                style={{ width: "100%", padding: "11px", borderRadius: 8, border: "none", cursor: busy ? "default" : "pointer", background: "linear-gradient(90deg,#0891b2,#38bdf8)", color: "#04121a", fontWeight: 700, fontFamily: FONT, letterSpacing: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                style={{ width: "100%", padding: "11px", borderRadius: 6, border: "1px solid #111111", cursor: busy ? "default" : "pointer", background: "#111111", color: "#ffffff", fontWeight: 700, fontFamily: FONT, letterSpacing: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
                 {busy ? "CONNECTING…" : active.authType === "oauth" ? "SAVE APP & AUTHORIZE" : "CONNECT & VERIFY"}

@@ -1,4 +1,4 @@
-import { Globe, Grid2X2 } from "lucide-react";
+import { Globe, Grid2X2, Music2, ShoppingBag } from "lucide-react";
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
@@ -6,6 +6,7 @@ import {
 } from "./app-navigation";
 import { HISTORIC_MODULES, type HistoricModule, type HistoricSubItem } from "./historic-navigation";
 import { getBoomerAppLabel, getBoomerModuleLabel } from "./vocabulary";
+import { MODULES } from "./modules";
 
 export type WorkspaceMenuEntry = {
   id: string;
@@ -62,12 +63,18 @@ function historicModule(id: string): HistoricModule {
   return module;
 }
 
-function historicSubEntry(sub: HistoricSubItem): WorkspaceMenuEntry {
+function historicSubEntry(sub: {
+  id: string;
+  path: string;
+  boomerLabel?: string;
+  codename?: string;
+  icon: React.ComponentType<{ className?: string }>;
+}): WorkspaceMenuEntry {
   return {
     id: sub.id,
     path: sub.path,
-    label: sub.id === "lab" ? "1999" : sub.boomerLabel || sub.codename,
-    icon: sub.icon,
+    label: sub.id === "lab" ? "1999" : sub.boomerLabel || sub.codename || sub.id,
+    icon: sub.icon as WorkspaceMenuEntry["icon"],
   };
 }
 
@@ -86,10 +93,15 @@ function historicModuleEntry(
 }
 
 const businessModule = historicModule("business");
-const creativeModule = historicModule("creative");
+const creativeModule = MODULES.find((module) => module.id === "creative");
+const marketingModule = MODULES.find((module) => module.id === "marketing");
+const officeModule = MODULES.find((module) => module.id === "office");
 const consoleModule = historicModule("console");
 const intelModule = historicModule("intel");
 const phoneModule = historicModule("phone");
+if (!creativeModule || !marketingModule || !officeModule) {
+  throw new Error("A workspace menu module is missing");
+}
 const businessContacts = businessModule.subs.find((sub) => sub.id === "contacts");
 const phoneContacts = phoneModule.subs.find((sub) => sub.id === "contacts");
 if (!businessContacts || !phoneContacts) {
@@ -119,8 +131,14 @@ export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
           .filter((sub) => sub.id !== "contacts")
           .map(historicSubEntry),
       }),
+      { id: "hummingbird", path: "/hummingbird", label: "HUMMINGBIRD", icon: Music2 },
       appEntry("comms"),
-      appEntry("office"),
+      appEntry("office", {
+        children: [
+          ...officeModule.subs.filter((sub) => sub.id !== "office-business").map(historicSubEntry),
+          { id: "pledge-store", path: "/pledge", label: "PLEDGE STORE", icon: ShoppingBag },
+        ],
+      }),
       { id: "apps", path: "/my-apps", label: "MY APPS", icon: Grid2X2 },
     ],
   },
@@ -137,7 +155,9 @@ export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
       contactsEntry,
       appEntry("leads"),
       appEntry("bots", { hint: "PABLO PRIME AUTOMATION" }),
-      appEntry("marketing"),
+       appEntry("marketing", {
+         children: marketingModule.subs.map(historicSubEntry),
+       }),
     ],
   },
   {

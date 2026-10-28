@@ -151,11 +151,10 @@ export const MODULES: Module[] = [
     label: 'CREATIVE',
     codename: 'FORGE MATRIX',
     icon: Layers,
-    defaultPath: '/creative/music',
+    defaultPath: '/creative/design',
     subs: [
       // AUDIO group (left)
       { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
-      { id: 'humbird', path: '/creative/music', label: 'HUMMING BIRD', boomerLabel: 'HUMMING BIRD', codename: 'HUMMING BIRD', icon: Music2 },
       { id: 'stems', path: '/creative/stems', label: 'STEMS', boomerLabel: 'STEM PLAYER', codename: 'STEM-X', icon: Music2 },
       // WRITING (middle)
       { id: 'writer', path: '/creative/writer', label: 'HEMINGWAY', boomerLabel: 'HEMINGWAY', codename: 'HEMINGWAY', icon: PenTool },
@@ -258,6 +257,7 @@ export const SETTINGS_MODULES: SubItem[] = [
 ];
 
 export function getModuleForPath(pathname: string): Module | null {
+  if (pathname === '/hummingbird') return null;
   if (pathname === '/pablo') return MODULES[0];
   // Pablo module: deck lives under PABLO
   if (pathname === '/pablo/deck') return MODULES[0];

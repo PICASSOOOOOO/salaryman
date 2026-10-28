@@ -13,7 +13,7 @@ export function boomerLabel(plainLabel: string, legacyLabel?: string): string {
 const MODULE_LABELS: Record<string, string> = {
   console: "TOOLS",
   business: "BUSINESS",
-  creative: "CREATIVE STUDIO",
+  creative: "CREATIVE",
   intel: "REPORTS",
   phone: "CALLL HOME",
 };
@@ -32,7 +32,7 @@ const APP_LABELS: Record<string, string> = {
   business: "BUSINESS",
   contacts: "CONTACTS",
   leads: "LEADS",
-  creative: "CREATIVE STUDIO",
+  creative: "CREATIVE",
   marketing: "MARKETING",
   pledge: "PLEDGE STORE",
   settings: "SETTINGS",

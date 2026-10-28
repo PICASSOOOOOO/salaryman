@@ -62,6 +62,7 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
 }
 
 const ONBOARDING_MUTATION_EXEMPTIONS = new Set([
+  "/orgs",
   "/world/register",
   "/world/employment/unemployment",
   "/chat/pablo/message",

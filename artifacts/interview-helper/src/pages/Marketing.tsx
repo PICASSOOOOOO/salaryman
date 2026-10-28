@@ -7,9 +7,9 @@ import {
   Trash2, Copy, Check, Image as ImageIcon, Bot, Users, Hash, Download,
 } from 'lucide-react';
 
-const CRT = '#38bdf8';
-const CRT_DIM = 'rgba(56,189,248,0.5)';
-const CRT_FAINT = 'rgba(56,189,248,0.08)';
+const CRT = '#111111';
+const CRT_DIM = 'rgba(0,0,0,0.58)';
+const CRT_FAINT = 'rgba(0,0,0,0.14)';
 const FONT = "var(--font-sans)";
 
 type Platform = 'linkedin' | 'instagram' | 'facebook' | 'tiktok';
@@ -50,9 +50,9 @@ interface AdCreative {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: 'rgba(228,228,231,0.9)',
+  background: '#ffffff',
+  border: '1px solid rgba(0,0,0,0.2)',
+  color: '#111111',
   fontFamily: 'inherit',
   fontSize: '0.85rem',
   padding: '10px 12px',
@@ -165,14 +165,14 @@ export default function Marketing() {
   const lead = bots.find((b) => (b.role ?? '').toLowerCase() === 'lead');
 
   return (
-    <div style={{ minHeight: '100%', background: '#06080d', color: 'rgba(228,228,231,0.9)', fontFamily: FONT, padding: '24px' }}>
+    <div style={{ minHeight: '100%', background: '#fafaf7', color: '#111111', fontFamily: FONT, padding: '24px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <Megaphone className="w-5 h-5" style={{ color: CRT }} />
           <h1 style={{ fontSize: '1.1rem', letterSpacing: '0.18em', color: CRT, margin: 0 }}>AD BOTS</h1>
         </div>
-        <p style={{ fontSize: '0.72rem', color: 'rgba(161,161,170,0.7)', letterSpacing: '0.06em', margin: '0 0 20px' }}>
+        <p style={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.62)', letterSpacing: '0.02em', margin: '0 0 20px' }}>
           Your marketing team generates ready-to-post, platform-correct ad creative. Copy the text and download the
           visual, then post from your own account.
         </p>
@@ -181,7 +181,7 @@ export default function Marketing() {
           {/* LEFT — generator + result + gallery */}
           <div>
             {/* Generator */}
-            <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 10, padding: 18, background: 'rgba(255,255,255,0.015)' }}>
+            <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 8, padding: 18, background: '#ffffff' }}>
               {/* Platform tabs */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 {PLATFORMS.map((p) => {
@@ -196,9 +196,9 @@ export default function Marketing() {
                         flexShrink: 0, whiteSpace: 'nowrap',
                         fontFamily: 'inherit', fontSize: '0.72rem', letterSpacing: '0.06em',
                         padding: '7px 12px', borderRadius: 6, cursor: 'pointer',
-                        color: active ? '#06080d' : CRT_DIM,
-                        background: active ? CRT : 'rgba(56,189,248,0.06)',
-                        border: `1px solid ${active ? CRT : 'rgba(56,189,248,0.2)'}`,
+                        color: active ? '#ffffff' : CRT_DIM,
+                        background: active ? CRT : '#ffffff',
+                        border: `1px solid ${active ? CRT : 'rgba(0,0,0,0.2)'}`,
                         transition: 'all 0.15s',
                       }}
                     >
@@ -310,17 +310,17 @@ export default function Marketing() {
           </div>
 
           {/* RIGHT — marketing team */}
-          <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 10, padding: 16, background: 'rgba(255,255,255,0.015)' }}>
+            <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 8, padding: 16, background: '#ffffff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <Users className="w-4 h-4" style={{ color: CRT }} />
               <span style={{ fontSize: '0.7rem', letterSpacing: '0.12em', color: CRT }}>MARKETING TEAM</span>
             </div>
-            <p style={{ fontSize: '0.64rem', color: 'rgba(161,161,170,0.6)', margin: '0 0 14px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '0.64rem', color: 'rgba(0,0,0,0.58)', margin: '0 0 14px', lineHeight: 1.5 }}>
               {lead ? `Led by ${lead.name}.` : ''} Grouped by job. Assign one to a brief and it works the ad live.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {bots.length === 0 ? (
-                <div style={{ fontSize: '0.7rem', color: 'rgba(161,161,170,0.5)' }}>Loading team…</div>
+                <div style={{ fontSize: '0.7rem', color: 'rgba(0,0,0,0.5)' }}>Loading team…</div>
               ) : (
                 bots.map((b) => {
                   const active = (b.status ?? '').toLowerCase() === 'active';
@@ -330,14 +330,14 @@ export default function Marketing() {
                       onClick={() => setBotId(b.id)}
                       style={{
                         textAlign: 'left', cursor: 'pointer',
-                        border: `1px solid ${botId === b.id ? 'rgba(56,189,248,0.5)' : 'rgba(255,255,255,0.06)'}`,
-                        background: botId === b.id ? 'rgba(56,189,248,0.08)' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${botId === b.id ? '#111111' : 'rgba(0,0,0,0.14)'}`,
+                        background: botId === b.id ? '#f3f1eb' : '#ffffff',
                         borderRadius: 8, padding: '10px 12px', fontFamily: 'inherit', transition: 'all 0.15s',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Bot className="w-3.5 h-3.5" style={{ color: CRT }} />
-                        <span style={{ fontSize: '0.78rem', color: 'rgba(228,228,231,0.95)' }}>{b.name}</span>
+                        <span style={{ fontSize: '0.78rem', color: '#111111' }}>{b.name}</span>
                         <span
                           style={{
                             marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%',
@@ -376,14 +376,14 @@ function AdCard({
   const Icon = platformIcon(ad.platform);
   const imgSrc = resolveAvatarUrl(ad.imageUrl);
   return (
-    <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, overflow: 'hidden', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ position: 'relative', background: '#0a0e16', aspectRatio: large ? '1.91 / 1' : '16 / 10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ border: '1px solid rgba(0,0,0,0.14)', borderRadius: 8, overflow: 'hidden', background: '#ffffff', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', background: '#f3f1eb', aspectRatio: large ? '1.91 / 1' : '16 / 10', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {imgSrc ? (
           <img src={imgSrc} alt={ad.headline ?? 'Ad creative'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <ImageIcon className="w-8 h-8" style={{ color: 'rgba(56,189,248,0.25)' }} />
+          <ImageIcon className="w-8 h-8" style={{ color: 'rgba(0,0,0,0.3)' }} />
         )}
-        <div style={{ position: 'absolute', top: 8, left: 8, display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(6,8,13,0.8)', border: `1px solid ${CRT_FAINT}`, borderRadius: 5, padding: '3px 8px', fontSize: '0.62rem', letterSpacing: '0.08em', color: CRT }}>
+        <div style={{ position: 'absolute', top: 8, left: 8, display: 'inline-flex', alignItems: 'center', gap: 5, background: '#ffffff', border: `1px solid ${CRT_FAINT}`, borderRadius: 4, padding: '3px 8px', fontSize: '0.62rem', letterSpacing: '0.04em', color: CRT }}>
           <Icon className="w-3 h-3" />
           {platformLabel(ad.platform)}{ad.dimensions ? ` · ${ad.dimensions}` : ''}
         </div>
@@ -391,13 +391,13 @@ function AdCard({
 
       <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
         {ad.headline && (
-          <div style={{ fontSize: large ? '0.95rem' : '0.82rem', color: 'rgba(228,228,231,0.95)', lineHeight: 1.35 }}>{ad.headline}</div>
+          <div style={{ fontSize: large ? '0.95rem' : '0.82rem', color: '#111111', lineHeight: 1.35 }}>{ad.headline}</div>
         )}
         {ad.primaryText && (
-          <div style={{ fontSize: '0.72rem', color: 'rgba(161,161,170,0.85)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ad.primaryText}</div>
+          <div style={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.7)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ad.primaryText}</div>
         )}
         {ad.cta && (
-          <div style={{ alignSelf: 'flex-start', fontSize: '0.66rem', letterSpacing: '0.06em', color: '#06080d', background: CRT, borderRadius: 5, padding: '4px 12px' }}>{ad.cta}</div>
+          <div style={{ alignSelf: 'flex-start', fontSize: '0.66rem', letterSpacing: '0.04em', color: '#ffffff', background: CRT, borderRadius: 4, padding: '4px 12px' }}>{ad.cta}</div>
         )}
         {ad.hashtags && ad.hashtags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
