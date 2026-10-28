@@ -2663,6 +2663,18 @@ static func tower_floor_style_key(floor_number: int, room_id: String) -> String:
 	return "upper_offices"
 
 
+static func tower_basement_department_label(level: int) -> String:
+	var labels := {
+		1: "OPERATIONS · LOADING YARD",
+		2: "COLLECTIONS · SECURITY · CELLS",
+		3: "DISASTER RESPONSE",
+		4: "VITAL-SUPPLIES STORAGE",
+		5: "POWER · BACKUP GENERATORS",
+		6: "WATER · PUMPING · PLUMBING",
+	}
+	return str(labels.get(level, "SERVICE LEVEL"))
+
+
 static func tower_floor_style_palette(floor_number: int, room_id: String) -> Dictionary:
 	var key := tower_floor_style_key(floor_number, room_id)
 	var palettes := {
@@ -4191,7 +4203,11 @@ func _update_hud() -> void:
 	if room_id == str(floor_stop.get("room", "")):
 		room_name = str(floor_stop.get("label", room_name))
 	if room_id.begins_with("basement_b"):
-		room_name = "BASEMENT B%s" % room_id.trim_prefix("basement_b")
+		var basement_level := room_id.trim_prefix("basement_b").to_int()
+		room_name = "B%d · %s" % [
+			basement_level,
+			tower_basement_department_label(basement_level),
+		]
 		room_label.text = room_name
 	else:
 		room_label.text = "FLOOR %02d  ·  %s" % [floor_number, room_name]
