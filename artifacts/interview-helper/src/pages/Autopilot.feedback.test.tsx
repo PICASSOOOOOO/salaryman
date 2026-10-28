@@ -78,6 +78,7 @@ function freshPayload() {
     defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
     marketing: { tones: TONES, platforms: PLATFORMS },
     crm: { leadStatuses: LEAD_STATUSES },
+    accounting: { canManage: true },
     domains: [
       {
         orgId: 1,

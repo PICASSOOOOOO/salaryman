@@ -168,8 +168,8 @@ describe("Pablo front-door admittance flow", () => {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
     }
-    expect(spokenTts).toContain("Cleared, Returning Rita. Heading in.");
-    expect(spokenTts).not.toContain("Cleared, RETURNING RITA. Heading in.");
+    expect(spokenTts).toContain("Thanks, Returning Rita. Let's continue to sign-in.");
+    expect(spokenTts).not.toContain("Thanks, RETURNING RITA. Let's continue to sign-in.");
   });
 
   it("admits a returning visitor saying 'I'm ready' without re-asking name/email", async () => {

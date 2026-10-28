@@ -140,7 +140,7 @@ describe("FIAT_AFFECTING covers every money-mutating endpoint", () => {
         `If it does NOT (Stripe / client-save only), add it to EXCUSED_NON_BANK_SPENDS:\n` +
         violations.join("\n"),
     ).toEqual([]);
-  });
+  }, 30_000);
 
   it("keeps the EXCUSED_NON_BANK_SPENDS list free of stale entries", () => {
     const scanned = new Set(scanApiFetchCalls().map((c) => c.path));

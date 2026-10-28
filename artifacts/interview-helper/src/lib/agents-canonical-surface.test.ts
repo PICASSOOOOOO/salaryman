@@ -31,7 +31,7 @@ describe("canonical Pixel Agents marketplace surface", () => {
     expect(pledge).not.toContain("MEMBERSHIP_IMAGES");
     expect(pledge).not.toContain("$500–$2,000");
     expect(pledge).toContain("A direct, personal quote");
-    expect(pledge).toContain('item.subscriptionFeature === "claw_bot" ? "PABLO AI"');
+    expect(pledge).toContain('item.subscriptionFeature === "claw_bot" ? "PABLO PRIME"');
   });
 
   it("keeps /pricing public and returns buyers to the storefront after sign-in", () => {

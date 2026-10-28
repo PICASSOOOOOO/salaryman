@@ -71,7 +71,7 @@ function chatTabBadge(): string | null {
 
 function smsTabBadge(): string | null {
   const buttons = Array.from(container.querySelectorAll("button"));
-  const smsBtn = buttons.find(b => /^SMS/.test((b.textContent ?? "").trim()));
+  const smsBtn = buttons.find(b => /CALLL SMS/.test((b.textContent ?? "").trim()));
   const badge = smsBtn?.querySelector("span.bg-emerald-600");
   return badge ? (badge.textContent ?? "") : null;
 }
