@@ -2541,9 +2541,32 @@ class SolarPunkRenderer:
                 self.font_mono,
                 Palette.MATRIX_BRIGHT,
             )
+            advice_button = pygame.Rect(page.x + 28, page.bottom - 62, page.width - 56, 30)
+            self.game_page_actions["tower:ask_work_advice"] = advice_button
+            self.panel(
+                advice_button,
+                Palette.MATRIX_PANEL_2,
+                Palette.MATRIX_GREEN,
+                radius=3,
+                width=1,
+            )
+            self.text(
+                "REQUEST PRIORITIZED DEPARTMENT WORK",
+                (advice_button.x + 12, advice_button.y + 8),
+                self.font_mono,
+                Palette.MATRIX_BRIGHT,
+            )
+            advice = state.tower_work_advice.strip()
+            if advice:
+                self.text(
+                    f"TOWER ADVISER / {advice[:84]}",
+                    (page.x + 28, page.bottom - 26),
+                    self.font_sm,
+                    Palette.MATRIX_BRIGHT,
+                )
             self.text(
                 "REPAIR WORK IS COMPLETED AT ITS ASSIGNED BASEMENT STATION.",
-                (page.x + 28, content + 366),
+                (page.x + 28, content + 340),
                 self.font_sm,
                 Palette.MATRIX_DIM,
             )

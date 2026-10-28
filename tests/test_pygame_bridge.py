@@ -356,6 +356,37 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "disaster_response")
         self.assertEqual(self.state.active_object_id, board.id)
 
+    def test_b3_response_page_exposes_the_server_prioritized_work_action(self):
+        import pygame
+        from pygame_sim.ui import SolarPunkRenderer
+
+        renderer = object.__new__(SolarPunkRenderer)
+        renderer.font_mono = None
+        renderer.font_sm = None
+        renderer.screen = pygame.Surface((900, 700))
+        renderer.game_page_actions = {}
+        rendered_text = []
+        renderer.text = lambda text, *_args, **_kwargs: rendered_text.append(text)
+        renderer.panel = lambda *_args, **_kwargs: None
+        page = pygame.Rect(42, 76, 816, 514)
+        scene = SimpleNamespace(basement_snapshot={
+            "building": {"powerCondition": 42, "plumbingCondition": 88, "upkeepCondition": 65},
+            "towerOperations": {"storedSupplyCrates": 2, "backupInfrastructureUnitsPowered": 1},
+        })
+        state = SimpleNamespace(
+            active_page="disaster_response",
+            tower_work_advice="The generator is the top approved maintenance priority.",
+        )
+
+        renderer._draw_basement_page(state, scene, page)
+
+        action = renderer.game_page_actions["tower:ask_work_advice"]
+        self.assertTrue(page.contains(action))
+        self.assertTrue(any(
+            "TOWER ADVISER / The generator is the top approved maintenance priority." in line
+            for line in rendered_text
+        ))
+
     def test_tower_food_water_and_triage_items_appear_as_usable_stamina_supplies(self):
         self.state.game_inventory = [{
             "itemId": "tower_clinic_triage_kit",

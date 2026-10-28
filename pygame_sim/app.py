@@ -295,6 +295,8 @@ def run(argv: list[str] | None = None) -> int:
             alarm_id = action.split(":", 1)[1]
             if basement_sync is None or not basement_sync.queue_alarm_shutdown(alarm_id):
                 state.notice = "ALARM SHUTDOWN REQUIRES SECURITY CONSOLE ACCESS"
+        elif action == "tower:ask_work_advice":
+            dispatch_game_command("ask_tower_work_advice", {})
         elif action.startswith("alarm_mode:"):
             parts = action.split(":", 2)
             if len(parts) != 3 or basement_sync is None or not basement_sync.queue_alarm_mode(parts[1], parts[2]):
