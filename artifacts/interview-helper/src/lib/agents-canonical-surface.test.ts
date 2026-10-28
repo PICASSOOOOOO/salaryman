@@ -30,7 +30,7 @@ describe("canonical Pixel Agents marketplace surface", () => {
     expect(pledge).not.toContain('/api/pledge/checkout');
     expect(pledge).not.toContain("MEMBERSHIP_IMAGES");
     expect(pledge).not.toContain("$500–$2,000");
-    expect(pledge).toContain("Client-specific");
+    expect(pledge).toContain("A direct, personal quote");
     expect(pledge).toContain('item.subscriptionFeature === "claw_bot" ? "PABLO AI"');
   });
 

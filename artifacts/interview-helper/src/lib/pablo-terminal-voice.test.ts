@@ -17,9 +17,8 @@ describe("Pablo terminal voice routing", () => {
     expect(terminal).toContain(
       'const PABLO_TTS_OPTIONS = { character: "PABLO" } as const;',
     );
-    expect(terminal).toContain(
-      'personaRef.current === "mila" ? "MILA" : "PABLO"',
-    );
+    expect(terminal).not.toContain('personaRef.current === "mila"');
+    expect(terminal).toContain("PABLO_TTS_OPTIONS,");
 
     const directPabloCalls = terminal.match(/PABLO_TTS_OPTIONS/g) ?? [];
     expect(directPabloCalls.length).toBeGreaterThan(10);
