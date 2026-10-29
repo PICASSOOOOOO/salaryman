@@ -528,7 +528,7 @@ describe("desktop office work settlement", () => {
     await db.update(desktopOfficePresenceTable)
       .set({ lastSeenAt: new Date(Date.now() - 10_000) })
       .where(eq(desktopOfficePresenceTable.userId, userId));
-    expect((await reportPresence("lobby", 1, { x: 49_978_700, y: 49_999_600 })).status).toBe(200);
+    expect((await reportPresence("lobby", 1, { x: 49_978_700, y: 50_000_000 })).status).toBe(200);
 
     const rotated = await desktopPost("/api/desktop-building/objects/physics-action").send({
       objectId: "lobby-reception-desk",
@@ -561,12 +561,12 @@ describe("desktop office work settlement", () => {
       action: "move",
     });
     expect(moved.status, JSON.stringify(moved.body)).toBe(200);
-    expect(moved.body.state).toMatchObject({ physicsX: 49_978_850, physicsY: 49_999_600 });
+    expect(moved.body.state).toMatchObject({ physicsX: 49_977_802, physicsY: 49_999_201 });
 
     const snapshot = await desktopGet("/api/desktop-building/objects");
     expect(snapshot.body.objects).toContainEqual(expect.objectContaining({
       objectId: "lobby-reception-desk",
-      physicsX: 49_978_850,
+      physicsX: 49_977_802,
       damage: 20,
       burning: true,
     }));
