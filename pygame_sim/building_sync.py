@@ -259,6 +259,18 @@ class DesktopBuildingSync:
         self._actions.put((snapshot[0], snapshot[1], object_id, action))
         return True
 
+    def queue_physics_action(self, object_id: str, action: str) -> bool:
+        if self.link is None or action not in {"move", "rotate", "damage", "ignite", "extinguish"} or not object_id:
+            return False
+        if self._active_action is not None or not self._actions.empty():
+            return False
+        with self._lock:
+            snapshot = self._scene_snapshot
+        if snapshot is None or snapshot[0] not in PLAYABLE_FLOORS or snapshot[1] not in BUILDING_ROOMS:
+            return False
+        self._actions.put((snapshot[0], snapshot[1], object_id, f"physics:{action}"))
+        return True
+
     def queue_elevator(self, destination_floor: int, scene: TowerScene) -> bool:
         if self.link is None or not scene.is_playable_floor(destination_floor):
             return False
@@ -588,9 +600,13 @@ class DesktopBuildingSync:
             body: dict[str, Any] = {"objectId": object_id, "action": maintenance_action}
             if session_id is not None:
                 body["sessionId"] = session_id
+            is_physics_action = maintenance_action.startswith("physics:")
+            if is_physics_action:
+                body["action"] = maintenance_action.removeprefix("physics:")
             result = self._request_json(
                 "POST",
-                "/desktop-building/objects/action",
+                "/desktop-building/objects/physics-action" if is_physics_action
+                else "/desktop-building/objects/action",
                 body,
             )
             state = result.get("state")
@@ -601,7 +617,7 @@ class DesktopBuildingSync:
                 raise RuntimeError("INVALID_SERVER_RESPONSE")
             with self._lock:
                 self._object_states[f"{floor_number}:{state['objectId']}"] = state
-            if result.get("working") is True:
+            if not is_physics_action and result.get("working") is True:
                 next_session = result.get("sessionId")
                 if not isinstance(next_session, str):
                     raise RuntimeError("INVALID_SERVER_RESPONSE")

@@ -324,6 +324,18 @@ function serializeBuildingObject(
     room: object.room,
     label: object.label,
     floorNumber,
+    material: object.material,
+    interactionProfile: {
+      movable: object.movable,
+      rotatable: object.rotatable,
+      destructible: object.destructible,
+      burnable: object.burnable,
+    },
+    physicsX: saved?.physicsX ?? null,
+    physicsY: saved?.physicsY ?? null,
+    rotationDegrees: saved?.rotationDegrees ?? 0,
+    damage: saved?.damage ?? 0,
+    burning: saved?.burning ?? false,
     cleanliness,
     condition,
     updatedAt: saved?.updatedAt.toISOString() ?? null,
@@ -1068,6 +1080,123 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
   } catch (error) {
     req.log.error({ err: error }, "Desktop building objects read failed");
     res.status(500).json({ error: "Could not load building object state" });
+  }
+});
+
+router.post("/desktop-building/objects/physics-action", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const objectId = req.body?.objectId;
+  const action = req.body?.action;
+  if (typeof objectId !== "string" || objectId.length < 1 || objectId.length > 80
+    || !["move", "rotate", "damage", "ignite", "extinguish"].includes(action)) {
+    res.status(400).json({ error: "Provide an objectId and supported physics action" });
+    return;
+  }
+  try {
+    const scope = await resolveBuildingScope(link, req.header("x-shadow-tower-password"));
+    if (!scope.ok) {
+      res.status(scope.status).json({ error: scope.error });
+      return;
+    }
+    const object = buildingObject(scope.value.room, objectId);
+    if (!object) {
+      res.status(404).json({ error: "Object is not registered in the current room" });
+      return;
+    }
+    const actionResult = await db.transaction(async (tx) => {
+      const now = new Date();
+      await tx.insert(desktopBuildingObjectStatesTable).values({
+        scopeKey: scope.value.scopeKey,
+        city: scope.value.presence.city,
+        floorNumber: scope.value.presence.floorNumber,
+        room: object.room,
+        objectId: object.id,
+        orgId: scope.value.orgId,
+        ownerUserId: scope.value.ownerUserId,
+        updatedByUserId: link.userId,
+        lastCleanedAt: now,
+        lastMaintainedAt: now,
+      }).onConflictDoNothing({
+        target: [desktopBuildingObjectStatesTable.scopeKey, desktopBuildingObjectStatesTable.objectId],
+      });
+      const [saved] = await tx.select().from(desktopBuildingObjectStatesTable)
+        .where(and(
+          eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
+          eq(desktopBuildingObjectStatesTable.objectId, object.id),
+        ))
+        .for("update").limit(1);
+      if (!saved) return { error: "Object state could not be initialized", status: 500 as const };
+      const current = { x: saved.physicsX ?? object.x, y: saved.physicsY ?? object.y };
+      if (Math.hypot(scope.value.presence.x - current.x, scope.value.presence.y - current.y)
+        > MAINTENANCE_REACH_PX) {
+        return { error: "Move closer to the object before using it", status: 409 as const };
+      }
+      if ((action === "move" && !object.movable)
+        || (action === "rotate" && !object.rotatable)
+        || (action === "damage" && !object.destructible)
+        || ((action === "ignite" || action === "extinguish") && !object.burnable)) {
+        return { error: `The ${object.material} object does not support that action`, status: 409 as const };
+      }
+
+      let physicsX = saved.physicsX;
+      let physicsY = saved.physicsY;
+      let rotationDegrees = saved.rotationDegrees;
+      let damage = saved.damage;
+      let burning = saved.burning;
+      if (action === "move") {
+        const dx = current.x - scope.value.presence.x;
+        const dy = current.y - scope.value.presence.y;
+        const distance = Math.hypot(dx, dy) || 1;
+        const target = { x: Math.round(current.x + dx / distance * 600), y: Math.round(current.y + dy / distance * 600) };
+        if (!isWalkableBuildingPosition(scope.value.room, target)) {
+          return { error: "That object placement is blocked", status: 409 as const };
+        }
+        const others = await tx.select().from(desktopBuildingObjectStatesTable).where(and(
+          eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
+          eq(desktopBuildingObjectStatesTable.room, object.room),
+        ));
+        const occupied = buildingObjectsForRoom(object.room).some((candidate) => {
+          if (candidate.id === object.id) return false;
+          const state = others.find((entry) => entry.objectId === candidate.id);
+          const x = state?.physicsX ?? candidate.x;
+          const y = state?.physicsY ?? candidate.y;
+          return Math.hypot(target.x - x, target.y - y) < 550;
+        });
+        if (occupied) return { error: "That object placement collides with another object", status: 409 as const };
+        physicsX = target.x;
+        physicsY = target.y;
+      } else if (action === "rotate") {
+        rotationDegrees = (rotationDegrees + 90) % 360;
+      } else if (action === "damage") {
+        damage = Math.min(100, damage + 20);
+      } else if (action === "ignite") {
+        burning = true;
+      } else {
+        burning = false;
+      }
+
+      const [updated] = await tx.update(desktopBuildingObjectStatesTable).set({
+        physicsX,
+        physicsY,
+        rotationDegrees,
+        damage,
+        burning,
+        updatedByUserId: link.userId,
+        updatedAt: now,
+      }).where(eq(desktopBuildingObjectStatesTable.id, saved.id)).returning();
+      return {
+        state: serializeBuildingObject(object, scope.value.presence.floorNumber, updated),
+      };
+    });
+    if ("error" in actionResult) {
+      res.status(actionResult.status ?? 500).json({ error: actionResult.error });
+      return;
+    }
+    res.json(actionResult);
+  } catch (error) {
+    req.log.error({ err: error }, "Desktop building object physics action failed");
+    res.status(500).json({ error: "Could not update building object physics state" });
   }
 });
 

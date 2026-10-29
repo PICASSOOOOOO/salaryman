@@ -2812,10 +2812,38 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 			collision_extents,
 		)
 		marker.name = object_id
+		marker.rotation.y = deg_to_rad(float(object.get("rotationDegrees", 0)))
 		marker.set_meta("material_kind", str(object.get("material", "unknown")))
+		marker.set_meta("damage", int(object.get("damage", 0)))
+		marker.set_meta("burning", bool(object.get("burning", false)))
 		var interaction_profile: Variant = object.get("interactionProfile", {})
 		if interaction_profile is Dictionary:
 			marker.set_meta("interaction_profile", interaction_profile.duplicate(true))
+		var damage := int(object.get("damage", 0))
+		if damage > 0 or bool(object.get("burning", false)):
+			var status := Label3D.new()
+			status.name = "PhysicsStatus"
+			status.position = Vector3(0, 1.8, 0)
+			status.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			status.font_size = 22
+			status.outline_size = 8
+			status.text = "BURNING" if bool(object.get("burning", false)) else "DAMAGE %d%%" % damage
+			status.modulate = Color(1.0, 0.35, 0.12) if bool(object.get("burning", false)) else Color(0.95, 0.25, 0.18)
+			marker.add_child(status)
+		if bool(object.get("burning", false)):
+			var fire := MeshInstance3D.new()
+			fire.name = "FireFeedback"
+			fire.position = Vector3(0, 0.75, 0)
+			var flame := SphereMesh.new()
+			flame.radius = 0.24
+			flame.height = 0.48
+			fire.mesh = flame
+			var flame_material := StandardMaterial3D.new()
+			flame_material.albedo_color = Color(1.0, 0.28, 0.04, 0.9)
+			flame_material.emission_enabled = true
+			flame_material.emission = Color(1.0, 0.16, 0.02)
+			fire.material_override = flame_material
+			marker.add_child(fire)
 		if bool(object.get("nearby", false)):
 			_add_interaction_ring(position)
 
@@ -5265,6 +5293,16 @@ func _input(event: InputEvent) -> void:
 				_send_command("maintain", {"action": "clean"})
 			KEY_V:
 				_send_command("maintain", {"action": "repair"})
+			KEY_G:
+				_send_command("object_physics", {"action": "move"})
+			KEY_U:
+				_send_command("object_physics", {"action": "rotate"})
+			KEY_Y:
+				_send_command("object_physics", {"action": "damage"})
+			KEY_I:
+				_send_command("object_physics", {"action": "ignite"})
+			KEY_H:
+				_send_command("object_physics", {"action": "extinguish"})
 			KEY_F:
 				if str(snapshot.get("scene", {}).get("room", "")).begins_with("basement_b"):
 					_send_command("open_melee_menu")

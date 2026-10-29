@@ -521,4 +521,54 @@ describe("desktop office work settlement", () => {
 
     expect((await reportPresence("hallway", 6)).status).toBe(200);
   });
+
+  it("validates and persists shared object physics actions", async () => {
+    await db.delete(desktopOfficePresenceTable).where(eq(desktopOfficePresenceTable.userId, userId));
+    expect((await reportPresence("lobby", 1)).status).toBe(200);
+    await db.update(desktopOfficePresenceTable)
+      .set({ lastSeenAt: new Date(Date.now() - 10_000) })
+      .where(eq(desktopOfficePresenceTable.userId, userId));
+    expect((await reportPresence("lobby", 1, { x: 49_978_700, y: 49_999_600 })).status).toBe(200);
+
+    const rotated = await desktopPost("/api/desktop-building/objects/physics-action").send({
+      objectId: "lobby-reception-desk",
+      action: "rotate",
+    });
+    expect(rotated.status, JSON.stringify(rotated.body)).toBe(200);
+    expect(rotated.body.state).toMatchObject({
+      objectId: "lobby-reception-desk",
+      material: "wood",
+      rotationDegrees: 90,
+      interactionProfile: { movable: true, rotatable: true, burnable: true },
+    });
+
+    const damaged = await desktopPost("/api/desktop-building/objects/physics-action").send({
+      objectId: "lobby-reception-desk",
+      action: "damage",
+    });
+    expect(damaged.status).toBe(200);
+    expect(damaged.body.state.damage).toBe(20);
+
+    const ignited = await desktopPost("/api/desktop-building/objects/physics-action").send({
+      objectId: "lobby-reception-desk",
+      action: "ignite",
+    });
+    expect(ignited.status).toBe(200);
+    expect(ignited.body.state.burning).toBe(true);
+
+    const moved = await desktopPost("/api/desktop-building/objects/physics-action").send({
+      objectId: "lobby-reception-desk",
+      action: "move",
+    });
+    expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+    expect(moved.body.state).toMatchObject({ physicsX: 49_978_850, physicsY: 49_999_600 });
+
+    const snapshot = await desktopGet("/api/desktop-building/objects");
+    expect(snapshot.body.objects).toContainEqual(expect.objectContaining({
+      objectId: "lobby-reception-desk",
+      physicsX: 49_978_850,
+      damage: 20,
+      burning: true,
+    }));
+  });
 });

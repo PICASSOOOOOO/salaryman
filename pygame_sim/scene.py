@@ -108,7 +108,7 @@ class TowerScene:
     player_action_remaining: float = 0.0
     idle_seconds: float = 0.0
     seated_chair_id: str | None = None
-    building_object_states: dict[str, dict[str, int]] = field(default_factory=dict)
+    building_object_states: dict[str, dict[str, object]] = field(default_factory=dict)
     opened_door_ids: set[str] = field(default_factory=set)
     _construction_signature: str = field(default="", init=False, repr=False)
     autopilot_snapshot: AutopilotSnapshot = field(
@@ -447,7 +447,7 @@ class TowerScene:
         return max(0.0, min(1.0, (1_800.0 - distance) / 1_800.0))
 
     def set_building_object_states(self, states: dict[str, dict[str, object]]) -> None:
-        normalized: dict[str, dict[str, int]] = {}
+        normalized: dict[str, dict[str, object]] = {}
         for object_id, state in states.items():
             if not isinstance(object_id, str) or not isinstance(state, dict):
                 continue
@@ -461,11 +461,30 @@ class TowerScene:
                 and 0 <= cleanliness <= 100
                 and 0 <= condition <= 100
             ):
-                normalized[object_id] = {
+                saved: dict[str, object] = {
                     "cleanliness": cleanliness,
                     "condition": condition,
                 }
+                for key in ("physicsX", "physicsY", "rotationDegrees", "damage"):
+                    value = state.get(key)
+                    if isinstance(value, int) and not isinstance(value, bool):
+                        saved[key] = value
+                burning = state.get("burning")
+                if isinstance(burning, bool):
+                    saved["burning"] = burning
+                normalized[object_id] = saved
         self.building_object_states = normalized
+        for index, item in enumerate(self.objects.objects):
+            saved = normalized.get(f"{self.current_floor}:{item.id}")
+            if not saved:
+                continue
+            physics_x, physics_y = saved.get("physicsX"), saved.get("physicsY")
+            if isinstance(physics_x, int) and isinstance(physics_y, int):
+                self.objects.objects[index] = replace(
+                    item,
+                    position=(physics_x, physics_y),
+                    display_position=(physics_x, physics_y),
+                )
 
     def set_construction_plans(self, plans: object) -> None:
         """Replace only server-provided Tower construction markers."""

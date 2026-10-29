@@ -1,12 +1,14 @@
 import unittest
 from typing import get_args
 
+from pygame_sim.bridge import PROTOCOL_VERSION, validate_command
 from pygame_sim.object_physics import (
     MATERIAL_PROFILES,
     OBJECT_MATERIALS,
     interaction_profile_for,
 )
-from pygame_sim.objects import ObjectKind
+from pygame_sim.objects import ObjectKind, OfficeObject
+from pygame_sim.scene import TowerScene
 
 
 class ObjectPhysicsProfileTests(unittest.TestCase):
@@ -50,6 +52,57 @@ class ObjectPhysicsProfileTests(unittest.TestCase):
         self.assertTrue(interaction_profile_for("chair").sittable)
         self.assertTrue(interaction_profile_for("desk").standable)
         self.assertFalse(interaction_profile_for("receptionist").destructible)
+
+
+class SharedObjectPhysicsTests(unittest.TestCase):
+    def test_bridge_accepts_supported_physics_actions_only(self):
+        for action in ("move", "rotate", "damage", "ignite", "extinguish"):
+            valid, _ = validate_command({
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "name": "object_physics",
+                "payload": {"action": action},
+            })
+            self.assertTrue(valid, action)
+
+        valid, reason = validate_command({
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "object_physics",
+            "payload": {"action": "teleport"},
+        })
+        self.assertFalse(valid)
+        self.assertEqual(reason, "OBJECT PHYSICS ACTION NOT ALLOWED")
+
+    def test_server_object_state_restores_scene_position_and_fire_state(self):
+        scene = TowerScene()
+        item = OfficeObject(
+            id="test-desk",
+            kind="desk",
+            label="Test desk",
+            room=scene.current_room,
+            position=(1_000, 1_000),
+            prompt="",
+        )
+        scene.objects.objects.append(item)
+        state_key = f"{scene.current_floor}:test-desk"
+        scene.set_building_object_states({
+            state_key: {
+                "cleanliness": 80,
+                "condition": 85,
+                "physicsX": 1_250,
+                "physicsY": 1_500,
+                "rotationDegrees": 90,
+                "damage": 40,
+                "burning": True,
+            },
+        })
+
+        restored = scene.objects.objects[-1]
+        self.assertEqual(restored.position, (1_250, 1_500))
+        self.assertEqual(restored.visual_position, (1_250, 1_500))
+        self.assertEqual(scene.building_object_states[state_key]["damage"], 40)
+        self.assertTrue(scene.building_object_states[state_key]["burning"])
 
 
 if __name__ == "__main__":

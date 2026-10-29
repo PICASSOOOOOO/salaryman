@@ -49,6 +49,7 @@ COMMANDS = {
     "set_action",
     "interact",
     "maintain",
+    "object_physics",
     "select_room",
     "select_floor",
     "climb_stairs",
@@ -131,6 +132,12 @@ def validate_command(command: object) -> tuple[bool, str]:
     elif name == "maintain":
         if payload.get("action") not in {"clean", "repair"}:
             return False, "MAINTENANCE ACTION NOT ALLOWED"
+        object_id = payload.get("object_id")
+        if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
+            return False, "OBJECT ID NOT VALID"
+    elif name == "object_physics":
+        if payload.get("action") not in {"move", "rotate", "damage", "ignite", "extinguish"}:
+            return False, "OBJECT PHYSICS ACTION NOT ALLOWED"
         object_id = payload.get("object_id")
         if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
             return False, "OBJECT ID NOT VALID"
@@ -672,6 +679,28 @@ def apply_command(
         scene.set_player_action("maintenance", duration=12.0)
         state.notice = f"{payload['action'].upper()} REQUESTED / {nearby.label}"
         return CommandResult(True, state.notice)
+    if name == "object_physics":
+        if not scene.is_playable_floor(scene.current_floor):
+            return CommandResult(False, "OBJECT PHYSICS IS UNAVAILABLE ON THIS FLOOR")
+        nearby = scene.nearby_object
+        requested_id = payload.get("object_id")
+        if nearby is None or (requested_id is not None and requested_id != nearby.id):
+            return CommandResult(False, "MOVE CLOSER TO THE OBJECT")
+        profile = interaction_profile_for(nearby.kind)
+        action = payload["action"]
+        capability = {
+            "move": profile.movable,
+            "rotate": profile.rotatable,
+            "damage": profile.destructible,
+            "ignite": profile.burnable,
+            "extinguish": profile.burnable,
+        }[action]
+        if not capability:
+            return CommandResult(False, f"{nearby.label.upper()} DOES NOT SUPPORT {action.upper()}")
+        if building_sync is None or not building_sync.queue_physics_action(nearby.id, action):
+            return CommandResult(False, "OBJECT PHYSICS SYNC UNAVAILABLE")
+        state.notice = f"{action.upper()} REQUESTED / {nearby.label}"
+        return CommandResult(True, state.notice)
     if name == "select_room":
         state.close_page()
         if not scene.select_room(payload["room"]):
@@ -1124,6 +1153,9 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "nearby": item == scene.nearby_object,
                     "cleanliness": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("cleanliness"),
                     "condition": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("condition"),
+                    "rotationDegrees": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("rotationDegrees", 0),
+                    "damage": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("damage", 0),
+                    "burning": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("burning", False),
                     "publicWork": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("publicWork"),
                     "activeWork": scene.building_object_states.get(f"{scene.current_floor}:{item.id}", {}).get("activeWork"),
                 }

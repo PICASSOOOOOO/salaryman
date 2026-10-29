@@ -1,6 +1,7 @@
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   index,
   integer,
@@ -26,6 +27,11 @@ export const desktopBuildingObjectStatesTable = pgTable(
     ownerUserId: varchar("owner_user_id").references(() => usersTable.id, { onDelete: "cascade" }),
     cleanliness: integer("cleanliness").notNull().default(80),
     condition: integer("condition").notNull().default(85),
+    physicsX: integer("physics_x"),
+    physicsY: integer("physics_y"),
+    rotationDegrees: integer("rotation_degrees").notNull().default(0),
+    damage: integer("damage").notNull().default(0),
+    burning: boolean("burning").notNull().default(false),
     lastCleanedAt: timestamp("last_cleaned_at", { withTimezone: true }).notNull().defaultNow(),
     lastMaintainedAt: timestamp("last_maintained_at", { withTimezone: true }).notNull().defaultNow(),
     workSessionId: varchar("work_session_id", { length: 64 }),
@@ -48,6 +54,8 @@ export const desktopBuildingObjectStatesTable = pgTable(
     check("desktop_building_object_floor_check", sql`${table.floorNumber} between 1 and 67`),
     check("desktop_building_object_cleanliness_check", sql`${table.cleanliness} between 0 and 100`),
     check("desktop_building_object_condition_check", sql`${table.condition} between 0 and 100`),
+    check("desktop_building_object_rotation_check", sql`${table.rotationDegrees} between 0 and 359`),
+    check("desktop_building_object_damage_check", sql`${table.damage} between 0 and 100`),
   ],
 );
 

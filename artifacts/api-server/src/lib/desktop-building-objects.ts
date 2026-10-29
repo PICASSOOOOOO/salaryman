@@ -6,26 +6,31 @@ export type BuildingObjectDefinition = {
   id: string;
   room: string;
   label: string;
+  material: "wood" | "steel" | "electronics";
+  movable: boolean;
+  rotatable: boolean;
+  destructible: boolean;
+  burnable: boolean;
   x: number;
   y: number;
 };
 
 export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] = [
-  { id: "lobby-reception-desk", room: "lobby", label: "Reception desk", x: 49_978_250, y: 49_999_600 },
-  { id: "lobby-atm", room: "lobby", label: "Lobby ATM", x: 49_976_750, y: 50_000_800 },
-  { id: "lobby-vending", room: "lobby", label: "Lobby vending machine", x: 49_978_750, y: 50_000_800 },
-  { id: "lobby-pay-phone", room: "lobby", label: "Lobby pay phone", x: 49_976_200, y: 49_999_300 },
-  { id: "lobby-elevator", room: "lobby", label: "Lobby elevator", x: 49_977_000, y: 50_000_000 },
-  { id: "lobby-stairs", room: "lobby", label: "Lobby staircase", x: 49_978_650, y: 50_000_800 },
-  { id: "recreation-elevator", room: "recreation", label: "Office floor elevator", x: 11_000, y: 1_500 },
-  { id: "recreation-stairs", room: "recreation", label: "Office floor staircase", x: 11_000, y: 23_500 },
-  { id: "recreation-atm", room: "recreation", label: "Shared floor ATM", x: 12_800, y: 5_000 },
-  { id: "recreation-vending", room: "recreation", label: "Shared floor vending machine", x: 12_800, y: 8_000 },
-  { id: "hall-office-1-door", room: "recreation", label: "Office 01 door", x: 4_500, y: 11_000 },
-  { id: "hall-office-2-door", room: "recreation", label: "Office 02 door", x: 17_500, y: 11_000 },
-  { id: "hall-office-3-door", room: "recreation", label: "Office 03 door", x: 4_500, y: 14_000 },
-  { id: "hall-office-4-door", room: "recreation", label: "Office 04 door", x: 17_500, y: 14_000 },
-  { id: "executive-suite-door", room: "executive", label: "Lockable executive suite door", x: 2_500, y: 4_600 },
+  { id: "lobby-reception-desk", room: "lobby", label: "Reception desk", material: "wood", movable: true, rotatable: true, destructible: true, burnable: true, x: 49_978_250, y: 49_999_600 },
+  { id: "lobby-atm", room: "lobby", label: "Lobby ATM", material: "steel", movable: true, rotatable: true, destructible: true, burnable: false, x: 49_976_750, y: 50_000_800 },
+  { id: "lobby-vending", room: "lobby", label: "Lobby vending machine", material: "steel", movable: true, rotatable: true, destructible: true, burnable: false, x: 49_978_750, y: 50_000_800 },
+  { id: "lobby-pay-phone", room: "lobby", label: "Lobby pay phone", material: "steel", movable: true, rotatable: true, destructible: true, burnable: false, x: 49_976_200, y: 49_999_300 },
+  { id: "lobby-elevator", room: "lobby", label: "Lobby elevator", material: "steel", movable: false, rotatable: false, destructible: true, burnable: false, x: 49_977_000, y: 50_000_000 },
+  { id: "lobby-stairs", room: "lobby", label: "Lobby staircase", material: "steel", movable: false, rotatable: false, destructible: true, burnable: false, x: 49_978_650, y: 50_000_800 },
+  { id: "recreation-elevator", room: "recreation", label: "Office floor elevator", material: "steel", movable: false, rotatable: false, destructible: true, burnable: false, x: 11_000, y: 1_500 },
+  { id: "recreation-stairs", room: "recreation", label: "Office floor staircase", material: "steel", movable: false, rotatable: false, destructible: true, burnable: false, x: 11_000, y: 23_500 },
+  { id: "recreation-atm", room: "recreation", label: "Shared floor ATM", material: "steel", movable: true, rotatable: true, destructible: true, burnable: false, x: 12_800, y: 5_000 },
+  { id: "recreation-vending", room: "recreation", label: "Shared floor vending machine", material: "steel", movable: true, rotatable: true, destructible: true, burnable: false, x: 12_800, y: 8_000 },
+  { id: "hall-office-1-door", room: "recreation", label: "Office 01 door", material: "wood", movable: false, rotatable: true, destructible: true, burnable: true, x: 4_500, y: 11_000 },
+  { id: "hall-office-2-door", room: "recreation", label: "Office 02 door", material: "wood", movable: false, rotatable: true, destructible: true, burnable: true, x: 17_500, y: 11_000 },
+  { id: "hall-office-3-door", room: "recreation", label: "Office 03 door", material: "wood", movable: false, rotatable: true, destructible: true, burnable: true, x: 4_500, y: 14_000 },
+  { id: "hall-office-4-door", room: "recreation", label: "Office 04 door", material: "wood", movable: false, rotatable: true, destructible: true, burnable: true, x: 17_500, y: 14_000 },
+  { id: "executive-suite-door", room: "executive", label: "Lockable executive suite door", material: "wood", movable: false, rotatable: true, destructible: true, burnable: true, x: 2_500, y: 4_600 },
 ];
 
 export const BUILDING_OBJECT_DEFAULTS = { cleanliness: 80, condition: 85 } as const;
