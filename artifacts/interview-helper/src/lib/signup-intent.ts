@@ -1,10 +1,10 @@
 // Pure intent detectors for the LOGGED-OUT pre-onboarding chat funnel in
-// PabloTerminal. Extracted as helpers so the regex-heavy buying-signal logic
-// can be unit-tested without mounting the whole terminal component.
+// PabloTerminal. Extracted as helpers so the regex-heavy intent logic can be
+// unit-tested without mounting the whole terminal component.
 //
-// These only ever run while interviewPhaseRef.current === 'chatting' (the
-// visitor has not authed yet). When one fires, Pablo pivots the visitor into
-// intake (ask name -> OAuth) instead of letting the free-chat LLM answer.
+// These run while interviewPhaseRef.current === 'chatting' (the visitor has
+// not authed yet). Readiness starts account intake; cost curiosity is answered
+// publicly and must not itself collect identity or provision an account.
 
 // Visitor signaling they're ready to step inside / sign up. Conservative on
 // purpose — a casual "ok" mid-question must NOT drop them out of the chat.
@@ -23,9 +23,9 @@ export function isReadyToEnter(text: string): boolean {
   return READY_TO_ENTER_RE.test(t);
 }
 
-// Cost / "is it free" curiosity — for a logged-out visitor these are BUYING
-// SIGNALS, not idle questions. We reassure ("walking in is free") and pivot to
-// intake rather than risk losing them to a free-chat tangent.
+// Cost / "is it free" curiosity. The client answers these in public chat
+// without starting account intake; only an explicit non-Pablo feature request
+// or signup intent should lead to identity collection.
 // Tightened so "how much"/"pay" only match WITH a product/cost object, to
 // avoid hijacking ordinary chat like "how much time…" / "I have to pay rent".
 export const COST_CURIOUS_RE =

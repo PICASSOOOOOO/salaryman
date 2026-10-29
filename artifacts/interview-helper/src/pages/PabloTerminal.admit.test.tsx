@@ -217,4 +217,32 @@ describe("Pablo front-door admittance flow", () => {
     expect(qs("pablo-enter-tower")).toBeNull();
     expect(qs("pablo-sign-in")).toBeNull();
   });
+
+  it("answers Pablo pricing questions without starting signup", async () => {
+    await mount();
+    await typeAndSend("Is it free to talk with Pablo?");
+
+    expect(qs("pablo-auth-choice")).toBeNull();
+    expect(spokenTts).toContain(
+      "Pablo chat is free without an account. To use other SALARYMAN features, you'll need to sign up; some optional features have a cost.",
+    );
+    expect(window.localStorage.getItem("salaryman_name")).toBeNull();
+    expect(window.localStorage.getItem("salaryman_email")).toBeNull();
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
+    if (input) {
+      expect(input.placeholder).not.toBe("Type your name");
+      expect(input.placeholder).not.toBe("Type your email");
+    }
+  });
+
+  it("starts account intake when a visitor requests a non-Pablo feature", async () => {
+    await mount();
+    await typeAndSend("Open my dashboard");
+
+    expect(spokenTts).toContain(
+      "For that I'll need to set you up with an account — what should I call you?",
+    );
+    expect(qs("pablo-auth-choice")).toBeNull();
+    expect((qs("pablo-text-input") as HTMLInputElement).placeholder).toBe("Type your name");
+  });
 });

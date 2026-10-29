@@ -43,7 +43,7 @@
 - [In-building pest danger audio](in-building-pest-danger-audio.md) — Basement pests are nonlethal; danger music fades by proximity and only overrides placed radios.
 - [Object ACL disabled posture](object-acl-disabled-posture.md) — Object reads are path-protected; new routes must allow objects without policies.
 - [Character identity single source](character-identity-source.md) — Keep appearance allow-listed; distinguish swatch-derived from painted portraits and remove source selfies.
-- [Signup-funnel intent detectors](signup-funnel-intent.md) — Price/free questions are buying signals; reassure and route to intake instead of the model.
+- [Signup-funnel intent detectors](signup-funnel-intent.md) — Pablo chat and price questions stay signup-free; account intake starts only for explicit signup or another feature.
 - [Org deletion / disband](org-deletion.md) — Cascade related rows, null non-FK org references, and require owner plus confirmName.
 - [Pablo model + grounding](pablo-live.ts) — Web facts use Responses web_search with injection fencing; see [GPT-5 limits](gpt5-migration-constraints.md) and [Astra rollout](astra-model-rollout.md).
 - [Office interactables + camera](office-interactables.md) — Stations link to existing routes; camera uses near/mid/far zoom and footsteps use sfxStep.

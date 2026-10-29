@@ -1369,13 +1369,12 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       // name "ready" / "in" — which would slip past the asking-name
       // handler's prefix-garbage guard and get stored as the user's
       // identity. Readiness wins.
-      // Cost/"is it free" question — a buying signal. Reassure that the
-      // door's free (advantage is what costs) and pivot straight to intake,
-      // rather than letting the free-chat LLM answer and risk losing them.
+      // Cost/"is it free" question. Reassure that the chat itself is free,
+      // but do not treat curiosity as consent to create
+      // an account. A separate feature request or explicit signup intent can
+      // start intake later.
       if (isCostCurious(text)) {
-        interviewPhaseRef.current = 'asking-name';
-        bumpInterview();
-        const line = "SALARYMAN is free to use; some optional features cost extra. What should I call you?";
+        const line = "Pablo chat is free without an account. To use other SALARYMAN features, you'll need to sign up; some optional features have a cost.";
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
         await speak(line);
         return;

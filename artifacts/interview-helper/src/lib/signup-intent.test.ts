@@ -49,7 +49,7 @@ describe("isReadyToEnter — readiness / sign-up buying signals", () => {
   }
 });
 
-describe("isCostCurious — cost / 'is it free' buying signals", () => {
+describe("isCostCurious — cost / 'is it free' questions", () => {
   const positives = [
     "is it free?",
     "is this free",
