@@ -61,6 +61,15 @@ upload.
 
 ## Supported-platform priorities
 
+Mac installation must work without changing privacy or security settings. Never
+recommend bypassing Gatekeeper; a blocked build needs Developer ID signing and
+Apple notarization before it is ready for the user's installation.
+
+**Why:** The user explicitly requires opening the app without changing privacy settings.
+
+**How to apply:** Keep install instructions free of security-bypass steps and
+distinguish source/launcher checks from verification of a signed Mac release.
+
 macOS is the first user test target, while Windows remains required. Preserve
 Linux compatibility for now; discontinuing Linux is conditional on it adding
 substantial separate workload, not an approved removal.

@@ -416,8 +416,8 @@ and double-click `START-SALARYMAN`. If your Linux file manager asks, choose
 **Run** or **Allow Launching**.""",
         "Darwin": """No Docker, Python, or separate Godot installation is
 required. Extract the archive and double-click `pygame/SALARYMAN Office.app`.
-If macOS blocks the
-first launch, Control-click the app, choose **Open**, then confirm **Open**.""",
+If macOS blocks this build, stop and wait for a Developer ID-signed and
+Apple-notarized release. Do not change your privacy or security settings.""",
         "Windows": """No Docker, Python, or separate Godot installation is
 required. Extract the
 archive and double-click `START-SALARYMAN.cmd`. If Windows Defender SmartScreen

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { HISTORIC_MODULES } from "./historic-navigation";
+import { MODULES } from "./modules";
 import { MORE_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "./app-navigation";
 import {
   WORKSPACE_MENU_BROWSE,

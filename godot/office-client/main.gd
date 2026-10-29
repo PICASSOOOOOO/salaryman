@@ -4299,7 +4299,11 @@ func _update_hud() -> void:
 	controls_label.visible = not controls_label.text.is_empty()
 	var notice := transient_notice_text if transient_notice_remaining > 0.0 \
 		else str(office.get("notice", "WAITING FOR GAME SIMULATION"))
-	notice_label.text = "ƒ%.2f  ·  %s" % [float(office.get("funds", 0.0)), notice]
+	notice_label.text = "ƒ%.2f  ·  STAMINA %d%%  ·  %s" % [
+		float(office.get("funds", 0.0)),
+		clampi(int(office.get("pestStamina", 0)), 0, 100),
+		notice,
+	]
 	if not room_id.begins_with("basement_b"):
 		tower_advice_panel.visible = false
 	if tower_advice_panel.visible:
