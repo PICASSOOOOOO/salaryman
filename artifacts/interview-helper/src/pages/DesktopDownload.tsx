@@ -105,16 +105,9 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const trailerAssetVersion = "office-four-workstations-fast-3";
-  const gameplayVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.webm?v=${trailerAssetVersion}`;
-  const gameplayVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer.mp4?v=${trailerAssetVersion}`;
-  const gameplayDetailVideoWebmHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.webm`;
-  const gameplayDetailVideoMp4Href = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay-web.mp4`;
-  const supportsVp9Webm = typeof document !== "undefined"
-    && document.createElement("video").canPlayType('video/webm; codecs="vp9"') !== "";
-  const gameplayVideoHref = supportsVp9Webm ? gameplayVideoWebmHref : gameplayVideoMp4Href;
-  const gameplayDetailVideoHref = supportsVp9Webm ? gameplayDetailVideoWebmHref : gameplayDetailVideoMp4Href;
-  const gameplayPosterHref = `${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-trailer-poster.jpg?v=${trailerAssetVersion}`;
+  const gameplayVideoHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261029.mp4");
+  const gameplayDetailVideoHref = gameplayVideoHref;
+  const gameplayPosterHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261029.jpg");
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
   const platformMessage = clientPlatform === "other"
     ? "Computer only · macOS, Windows, or Linux · no phone app"
@@ -171,11 +164,11 @@ export default function DesktopDownload() {
             preload="metadata"
             src={gameplayVideoHref}
             poster={gameplayPosterHref}
-            aria-label="Archived Pygame prototype footage, not the current Godot client"
+            aria-label="Current Godot development gameplay, reduced-speed capture"
           />
-          <span className="desktop-download-promo-tag">ARCHIVED PYGAME PROTOTYPE</span>
+          <span className="desktop-download-promo-tag">GODOT DEVELOPMENT GAMEPLAY</span>
           <figcaption>
-             Earlier Pygame prototype — not the current Godot client.
+             Live Godot client with Python simulation · short excerpt at one-third speed.
           </figcaption>
         </figure>
       </section>
@@ -200,9 +193,9 @@ export default function DesktopDownload() {
               src={gameplayDetailVideoHref}
               poster={gameplayPosterHref}
               controls
-              aria-label="Archived Pygame office prototype"
+              aria-label="Godot Tower lobby movement, reduced-speed development capture"
             />
-            <figcaption><span>01</span><strong>ARCHIVED PROTOTYPE</strong><small>Earlier Pygame footage. Current Godot footage is not yet available here.</small></figcaption>
+            <figcaption><span>01</span><strong>GODOT TOWER LOBBY</strong><small>Current development capture, repeated here for detail. This is not a verified release build.</small></figcaption>
           </figure>
           <article className="desktop-download-signal-card">
             <span>FREE GAME FEATURE</span>

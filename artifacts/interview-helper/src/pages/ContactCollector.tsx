@@ -168,7 +168,7 @@ export default function ContactCollector() {
     }
   }, [composeTo, composeSubject, composeBody]);
   const [form, setForm] = useState({ ...EMPTY_FORM });
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(() => new URLSearchParams(window.location.search).get("new") === "1");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [contactsError, setContactsError] = useState('');
   const [saveError, setSaveError] = useState('');

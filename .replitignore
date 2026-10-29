@@ -24,3 +24,4 @@ generated-artifacts/
 # production builds. Keep dist/releases: the API serves those downloads.
 exports/
 build/
+generated-artifacts/

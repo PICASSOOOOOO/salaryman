@@ -412,6 +412,12 @@ export default function CrmWorkspace() {
           <h1 className="font-bold uppercase text-xs tracking-widest">SALARYMAN / CRM Workspace</h1>
         </div>
         <div className="flex items-center gap-4 text-[10px] font-bold">
+          <Link href="/business/contacts?new=1" className="flex items-center gap-1 border border-black px-2 py-1">
+            <UserRound size={12} /> Add client
+          </Link>
+          <Link href="/business/contacts" className="flex items-center gap-1 px-2 py-1">
+            Contacts
+          </Link>
           <Link href="/marketing/leads" className="flex items-center gap-1 uppercase hover:text-[#00ff41] hover:bg-black px-2 py-1 transition-colors">
             <Users size={12} /> Leads <ArrowUpRight size={10} />
           </Link>
