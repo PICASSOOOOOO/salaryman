@@ -61,6 +61,17 @@ upload.
 
 ## Supported-platform priorities
 
+Do not select desktop downloads by filename existence or by the newest timestamp.
+Release approval must be tied to the exact archive bytes and native smoke-test
+evidence; Mac approval additionally requires actual signing and notarization evidence.
+
+**Why:** Older archives at the canonical download filenames were served while
+newer paired-client archives existed under different filenames.
+
+**How to apply:** Preserve fail-closed download checks. Do not manufacture
+verification receipts for old archives or mark signing successful based on a
+build completing.
+
 Mac installation must work without changing privacy or security settings. Never
 recommend bypassing Gatekeeper; a blocked build needs Developer ID signing and
 Apple notarization before it is ready for the user's installation.

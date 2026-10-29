@@ -471,9 +471,45 @@ Godot is distributed under the MIT license; see `godot-runtime/LICENSE.txt`.
         encoding="utf-8",
     )
     RELEASES.mkdir(parents=True, exist_ok=True)
+    native_launcher = (
+        pygame_target / "Contents" / "MacOS" / name
+        if system_name == "Darwin"
+        else pygame_target / (f"{name}.exe" if system_name == "Windows" else name)
+    )
+    # Test the frozen launcher, not only main.py, before issuing its receipt.
+    # An isolated working directory prevents source-tree assets hiding omissions.
+    with tempfile.TemporaryDirectory(prefix="salaryman-native-smoke-") as smoke_dir:
+        subprocess.run(
+            [
+                str(native_launcher.resolve()),
+                "--headless", "--paired-smoke", "--frames", "1800",
+                "--save-file", str(Path(smoke_dir) / "office.json"),
+            ],
+            cwd=smoke_dir,
+            check=True,
+            timeout=300,
+        )
     archive_base = RELEASES / bundle_name
     archive_format = "zip" if system_name in {"Darwin", "Windows"} else "gztar"
     archive = Path(shutil.make_archive(str(archive_base), archive_format, staging_root, bundle_name))
+    import hashlib
+    with archive.open("rb") as archive_file:
+        archive_hash = hashlib.file_digest(archive_file, "sha256").hexdigest()
+    # Signing/notarization is deliberately not inferred from a successful build.
+    # The macOS release pipeline must verify these before approving distribution.
+    Path(str(archive) + ".verified.json").write_text(
+        json.dumps({
+            "schema": 1,
+            "client": "godot",
+            "platform": {"Darwin": "macos", "Windows": "windows", "Linux": "linux"}[system_name],
+            "pairedSmokePassed": True,
+            "sha256": archive_hash,
+            "bytes": archive.stat().st_size,
+            "developerIdSigned": False,
+            "notarized": False,
+        }, indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(f"Build complete: {bundle_source}")
     print(f"Download archive: {archive}")
     return 0

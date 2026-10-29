@@ -1,9 +1,9 @@
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, alphaApplicationsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { isOwnerEmail, isPicassoOrgOwner } from "../lib/plan";
+import { verifyDesktopRelease } from "../lib/desktop-release-verification";
 
 const router: IRouter = Router();
 const DESKTOP_RELEASES = {
@@ -22,10 +22,18 @@ function archivePaths(archiveName: string): string[] {
   ];
 }
 
-function availableDesktopPlatforms(): DesktopPlatform[] {
-  return DESKTOP_PLATFORMS.filter((platform) =>
-    archivePaths(DESKTOP_RELEASES[platform].archiveName).some((candidate) => existsSync(candidate)),
-  );
+async function verifiedArchive(platform: DesktopPlatform): Promise<string | undefined> {
+  for (const candidate of archivePaths(DESKTOP_RELEASES[platform].archiveName)) {
+    if (await verifyDesktopRelease(candidate, platform)) return candidate;
+  }
+  return undefined;
+}
+
+async function availableDesktopPlatforms(): Promise<DesktopPlatform[]> {
+  const available = await Promise.all(DESKTOP_PLATFORMS.map(async (platform) => (
+    await verifiedArchive(platform) ? platform : null
+  )));
+  return available.filter((platform): platform is DesktopPlatform => platform !== null);
 }
 
 async function hasDesktopReleaseAccess(req: Request, res: Response): Promise<boolean> {
@@ -55,7 +63,7 @@ async function hasDesktopReleaseAccess(req: Request, res: Response): Promise<boo
 router.get("/desktop/access", async (req, res) => {
   try {
     if (!(await hasDesktopReleaseAccess(req, res))) return;
-    const availablePlatforms = availableDesktopPlatforms();
+    const availablePlatforms = await availableDesktopPlatforms();
     res.json({
       allowed: true,
       availablePlatforms,
@@ -85,10 +93,10 @@ router.get("/desktop/download", async (req, res) => {
   }
 
   const release = DESKTOP_RELEASES[platform as DesktopPlatform];
-  const archivePath = archivePaths(release.archiveName).find((candidate) => existsSync(candidate));
+  const archivePath = await verifiedArchive(platform as DesktopPlatform);
   if (!archivePath) {
     res.status(503).json({
-      error: `The ${release.label} desktop release is not available on this server.`,
+      error: `The ${release.label} desktop release is awaiting build verification${platform === "macos" ? ", signing, and notarization" : ""}.`,
     });
     return;
   }

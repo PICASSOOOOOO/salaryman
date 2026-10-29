@@ -171,11 +171,11 @@ export default function DesktopDownload() {
             preload="metadata"
             src={gameplayVideoHref}
             poster={gameplayPosterHref}
-            aria-label="Current SALARYMAN desktop client preview"
+            aria-label="Archived Pygame prototype footage, not the current Godot client"
           />
-          <span className="desktop-download-promo-tag">FREE OFFICE SIM</span>
+          <span className="desktop-download-promo-tag">ARCHIVED PYGAME PROTOTYPE</span>
           <figcaption>
-             36-SECOND FAST CUT / ACTIVE GAMEPLAY / CALL HOME SOUNDTRACK
+             Earlier Pygame prototype — not the current Godot client.
           </figcaption>
         </figure>
       </section>
@@ -200,9 +200,9 @@ export default function DesktopDownload() {
               src={gameplayDetailVideoHref}
               poster={gameplayPosterHref}
               controls
-              aria-label="SALARYMAN shared office desktop preview"
+              aria-label="Archived Pygame office prototype"
             />
-            <figcaption><span>01</span><strong>EXPLORE THE TOWER</strong><small>Move through a playable office built as part of SALARYMAN OS.</small></figcaption>
+            <figcaption><span>01</span><strong>ARCHIVED PROTOTYPE</strong><small>Earlier Pygame footage. Current Godot footage is not yet available here.</small></figcaption>
           </figure>
           <article className="desktop-download-signal-card">
             <span>FREE GAME FEATURE</span>
@@ -261,8 +261,12 @@ export default function DesktopDownload() {
                     <a href={apiUrl(`/api/desktop/download?platform=${platform.id}`)} download={platform.archiveName} data-testid={`link-download-${platform.id}-desktop-client`} onClick={() => trackEvent("desktop_download_started", { platform: platform.id })}>
                       Download <ArrowRight size={14} aria-hidden />
                     </a>
-                  ) : (
-                    <Link className="desktop-download-platform-locked" href="/sign-in?returnTo=/desktop">
+                   ) : downloadAllowed ? (
+                     <span className="desktop-download-platform-locked">
+                       {platform.id === "macos" ? "Awaiting verified, signed release" : "Awaiting verified release"}
+                     </span>
+                   ) : (
+                     <Link className="desktop-download-platform-locked" href="/sign-in?returnTo=/desktop">
                       Sign in <ArrowRight size={14} aria-hidden />
                     </Link>
                   )}
