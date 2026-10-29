@@ -71,6 +71,7 @@ var interface_root: Control
 var warm_lamp_light: OmniLight3D
 var lobby_render_origin_px := Vector2i.ZERO
 var status_label: Label
+var controls_hint_label: Label
 var room_label: Label
 var mission_label: Label
 var notice_label: Label
@@ -2155,6 +2156,14 @@ func _build_interface() -> void:
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	status_label.size = Vector2(350, 24)
 	top_bar.add_child(status_label)
+
+	controls_hint_label = Label.new()
+	controls_hint_label.position = Vector2(340, 48)
+	controls_hint_label.size = Vector2(405, 22)
+	controls_hint_label.text = controls_hint_text()
+	controls_hint_label.add_theme_font_size_override("font_size", 11)
+	controls_hint_label.add_theme_color_override("font_color", Color("#c4ddcb"))
+	top_bar.add_child(controls_hint_label)
 
 	mission_label = Label.new()
 	mission_label.position = Vector2(30, 650)
@@ -5069,6 +5078,9 @@ static func settings_menu_text(location: String, music_enabled: bool) -> String:
 		location,
 		"ON" if music_enabled else "OFF",
 	]
+
+static func controls_hint_text() -> String:
+	return "WASD / arrows move  ·  E interact  ·  Esc menu"
 
 
 func _send_command(name: String, payload: Dictionary = {}) -> String:

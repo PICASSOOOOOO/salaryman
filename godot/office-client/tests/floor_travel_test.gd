@@ -11,6 +11,7 @@ func _initialize() -> void:
 
 
 func _run_tests() -> void:
+	assert(OfficeClient.controls_hint_text() == "WASD / arrows move  ·  E interact  ·  Esc menu")
 	var hud_min_width := int(ProjectSettings.get_setting("display/window/size/min_width"))
 	var hud_min_height := int(ProjectSettings.get_setting("display/window/size/min_height"))
 	assert(hud_min_width == 1180 and hud_min_height == 720)
