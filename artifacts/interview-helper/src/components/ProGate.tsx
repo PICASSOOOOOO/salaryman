@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Lock, Zap, Clock } from "lucide-react";
 import { invalidatePlanCache, usePlan, type FeatureKey } from "@/hooks/use-plan";
+import { apiFetch } from "@/lib/api-client";
 
 interface ProGateProps {
   children?: React.ReactNode;
@@ -12,18 +13,10 @@ interface ProGateProps {
 
 export function ProGate({ children, feature, featureKey, inline }: ProGateProps) {
   const { isPro, features, isOwner, trials, loading, loadError } = usePlan();
-  const [, navigate] = useLocation();
 
   const trial = featureKey ? trials.find((t) => t.featureKey === featureKey) : undefined;
   const hasPaidAccess = isOwner || (featureKey ? features.has(featureKey) : isPro);
   const hasAccess = hasPaidAccess || !!trial;
-  const shouldRedirect = !loading && !loadError && featureKey && !hasAccess && !inline;
-
-  useEffect(() => {
-    if (shouldRedirect) {
-      navigate("/pricing");
-    }
-  }, [shouldRedirect, navigate]);
 
   if (loading) {
     return inline ? (
@@ -57,47 +50,60 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
     return <>{children}</>;
   }
 
-  if (shouldRedirect) {
-    return null;
-  }
-
   const displayName = feature ?? "Premium";
+  return <CatalogGate feature={displayName} featureKey={featureKey} inline={inline} />;
+}
+
+function CatalogGate({ feature, featureKey, inline }: { feature: string; featureKey?: FeatureKey; inline?: boolean }) {
+  const [price, setPrice] = useState<number | undefined>();
+  useEffect(() => {
+    let cancelled = false;
+    setPrice(undefined);
+    apiFetch("/api/pledge/catalog")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Pricing unavailable");
+        const data = await response.json();
+        const planKey = featureKey === "phone_advanced" ? "phone_system" : featureKey;
+        const item = data.items?.find((entry: { subscriptionFeature?: string }) => entry.subscriptionFeature === planKey);
+        if (!cancelled && typeof item?.priceUsd === "number" && Number.isFinite(item.priceUsd) && item.priceUsd > 0) setPrice(item.priceUsd);
+      })
+      .catch(() => { /* Never invent a price when the catalog is unavailable. */ });
+    return () => { cancelled = true; };
+  }, [featureKey]);
+  return <PaidAccessNotice feature={feature} priceUsd={price} inline={inline} />;
+}
+
+/** Presentation only: never renders protected children or starts checkout. */
+export function PaidAccessNotice({ feature, priceUsd, inline, preview = false }: {
+  feature: string; priceUsd?: number; inline?: boolean; preview?: boolean;
+}) {
+  const [, navigate] = useLocation();
+  const price = priceUsd !== undefined ? `USD $${priceUsd.toFixed(2)} / month` : "View current pricing";
   if (inline) {
     return (
-      <span
+      <button
+        type="button"
         onClick={() => navigate("/pricing")}
-        title={`${displayName} — view pricing`}
-        className="inline-flex items-center gap-1 cursor-pointer text-amber-400/70 hover:text-amber-400 transition-colors"
+        title={`${feature} — ${price}`}
+        className="inline-flex items-center gap-1 text-black underline underline-offset-2"
       >
         <Lock className="w-3 h-3" />
-        <span className="text-[10px] font-mono uppercase tracking-wider">PAID</span>
-      </span>
+        <span className="text-xs">{price}</span>
+      </button>
     );
   }
-
   return (
-    <div
-      onClick={() => navigate("/pricing")}
-      className="relative rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 cursor-pointer hover:bg-amber-500/8 hover:border-amber-500/30 transition-colors group"
-    >
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
-          <Lock className="w-4 h-4 text-amber-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-amber-300 mb-0.5">
-            {displayName} — Paid Access Required
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Choose the service plan that fits your needs. Stripe shows the authoritative price before payment.{" "}
-            <span className="text-amber-400/80 group-hover:text-amber-400 underline underline-offset-2 transition-colors">
-              View pricing →
-            </span>
-          </p>
-        </div>
-        <Zap className="w-4 h-4 text-amber-500/40 shrink-0 group-hover:text-amber-500/70 transition-colors" />
+    <section className="border border-black/20 bg-white p-4 text-black" aria-label={`${feature} paid access`}>
+      <p className="flex items-center gap-2 text-sm font-bold"><Lock className="h-4 w-4" />{feature} — Paid access required</p>
+      <p className="mt-2 text-sm">{price}</p>
+      <p className="mt-2 text-xs text-black/60">
+        {preview ? "Preview only. No payment or access changes." : "Review the plan before subscribing. Opening pricing does not charge you."}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-4 text-sm">
+        {!preview && <button type="button" onClick={() => navigate("/pricing")} className="underline underline-offset-2">View pricing</button>}
+        <button type="button" onClick={() => navigate("/")} className="underline underline-offset-2">Not now — home</button>
       </div>
-    </div>
+    </section>
   );
 }
 

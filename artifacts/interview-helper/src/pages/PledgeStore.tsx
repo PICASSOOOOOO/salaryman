@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Check, Crown, Loader2, Phone, ShoppingBag, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlan, type FeatureKey } from "@/hooks/use-plan";
+import { PaidAccessNotice } from "@/components/ProGate";
 import { apiFetch } from "@/lib/api-client";
 import { getCurrentLanguage, setLanguage, SUPPORTED_LANGUAGES, type LanguageCode } from "@/i18n";
 
@@ -318,6 +319,17 @@ export default function PledgeStore() {
           </section>
         )}
 
+        {!loading && !loadError && (
+          <details className="mt-6 border border-black/20 p-4">
+            <summary className="cursor-pointer text-sm font-bold">Preview paid-feature gates</summary>
+            <p className="my-3 text-xs text-black/60">Review the locked view, even if you already have access. These previews cannot start checkout.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[calllHome, prime].filter((item): item is MembershipItem => !!item).map((item) => (
+                <PaidAccessNotice key={item.id} feature={item.name} priceUsd={item.priceUsd} preview />
+              ))}
+            </div>
+          </details>
+        )}
         <p className="mt-6 text-xs leading-relaxed text-black/55">
           {actions.existingNote}
         </p>
