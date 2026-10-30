@@ -14,3 +14,19 @@ Internal COMMS is free and in-app. Meshtastic is a free, user-operated bridge fo
 **Why:** The user wants internal COMMS to remain free and Meshtastic to bridge outside messages without provider SMS costs, while reserving richer phone features for paid CALLL HOME.
 
 **How to apply:** Keep Meshtastic in COMMS and accessible from both the browser and downloadable game. Do not route radio messages through SALARYMAN servers or enable automatic broadcasts.
+
+## WebSocket service ownership
+
+The browser artifact must not claim the API's `/ws/chat` path. Route that exact
+path to the API artifact, and verify realtime behavior with an authenticated
+WebSocket connection; a normal HTTP request to the same path only proves HTTP
+service routing.
+
+**Why:** Path-based service selection and WebSocket upgrades are separate. An
+unauthenticated local upgrade probe can fail even when an HTTP request reaches
+the API service, so it cannot establish that an authenticated chat connection
+works.
+
+**How to apply:** When changing artifact paths, keep the realtime path on the
+backend artifact and test the actual same-origin authenticated browser flow
+before claiming the socket is fixed.

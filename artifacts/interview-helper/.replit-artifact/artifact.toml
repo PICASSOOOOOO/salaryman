@@ -12,7 +12,7 @@ version = "1.0.0"
 [[services]]
 localPort = 21129
 name = "web"
-paths = ["/", "/ws/chat"]
+paths = ["/"]
 
 [services.development]
 run = "pnpm --filter @workspace/interview-helper run dev"

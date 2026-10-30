@@ -642,7 +642,7 @@ Rules for action tags:
 }
 
 router.post("/interview/advisor", async (req, res) => {
-  let { messages, businessMemory = "" } = req.body as {
+  let { messages, businessMemory = "" } = (req.body ?? {}) as {
     messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
     businessMemory?: string;
   };

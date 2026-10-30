@@ -53,6 +53,12 @@ describe("API structure: browser-facing routes", () => {
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ error: "Missing messages" });
   });
+
+  it("POST /api/interview/advisor returns 400 for a bodyless request", async () => {
+    const res = await request(app).post("/api/interview/advisor");
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: "Missing messages" });
+  });
 });
 
 describe("API structure: auth-enforced routes return 401 (not 404/500)", () => {
