@@ -66,6 +66,7 @@ describe("API structure: auth-enforced routes return 401 (not 404/500)", () => {
     { method: "get", path: "/api/account/settings" },
     { method: "post", path: "/api/salaryman/saves/ensure" },
     { method: "get", path: "/api/economy/bank/accounts" },
+    { method: "get", path: "/api/orgs/1/time-off" },
     { method: "get", path: "/api/autopilot" },
     { method: "post", path: "/api/twilio/call" },
     { method: "get", path: "/api/admin/connections/status" },

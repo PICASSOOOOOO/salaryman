@@ -726,6 +726,122 @@ export const DeleteOrganizationCustomAppRecordParams = zod.object({
 export const DeleteOrganizationCustomAppRecordResponse = zod.void()
 
 
+/**
+ * @summary List time-off requests for an organization member or manager
+ */
+
+
+
+export const ListOrganizationTimeOffRequestsParams = zod.object({
+  "orgId": zod.coerce.number().int().min(1)
+})
+
+export const listOrganizationTimeOffRequestsResponseRequestsItemStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listOrganizationTimeOffRequestsResponseRequestsItemEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListOrganizationTimeOffRequestsResponse = zod.object({
+  "requests": zod.array(zod.object({
+  "id": zod.number().int(),
+  "orgId": zod.number().int(),
+  "requesterUserId": zod.string(),
+  "requesterName": zod.string(),
+  "startDate": zod.string().regex(listOrganizationTimeOffRequestsResponseRequestsItemStartDateRegExp),
+  "endDate": zod.string().regex(listOrganizationTimeOffRequestsResponseRequestsItemEndDateRegExp),
+  "leaveType": zod.enum(['vacation', 'personal', 'other']),
+  "note": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'declined', 'cancelled']),
+  "reviewedAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "canReview": zod.boolean()
+})
+
+
+/**
+ * @summary Submit a time-off request for the authenticated organization member
+ */
+
+
+
+export const CreateOrganizationTimeOffRequestParams = zod.object({
+  "orgId": zod.coerce.number().int().min(1)
+})
+
+export const createOrganizationTimeOffRequestBodyStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createOrganizationTimeOffRequestBodyEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createOrganizationTimeOffRequestBodyNoteMax = 500;
+
+
+
+export const CreateOrganizationTimeOffRequestBody = zod.object({
+  "startDate": zod.string().regex(createOrganizationTimeOffRequestBodyStartDateRegExp),
+  "endDate": zod.string().regex(createOrganizationTimeOffRequestBodyEndDateRegExp),
+  "leaveType": zod.enum(['vacation', 'personal', 'other']),
+  "note": zod.string().max(createOrganizationTimeOffRequestBodyNoteMax).optional()
+})
+
+export const createOrganizationTimeOffRequestResponseRequestStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createOrganizationTimeOffRequestResponseRequestEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const CreateOrganizationTimeOffRequestResponse = zod.object({
+  "request": zod.object({
+  "id": zod.number().int(),
+  "orgId": zod.number().int(),
+  "requesterUserId": zod.string(),
+  "requesterName": zod.string(),
+  "startDate": zod.string().regex(createOrganizationTimeOffRequestResponseRequestStartDateRegExp),
+  "endDate": zod.string().regex(createOrganizationTimeOffRequestResponseRequestEndDateRegExp),
+  "leaveType": zod.enum(['vacation', 'personal', 'other']),
+  "note": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'declined', 'cancelled']),
+  "reviewedAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Review a request or withdraw the caller's pending request
+ */
+
+
+
+
+export const UpdateOrganizationTimeOffRequestParams = zod.object({
+  "orgId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateOrganizationTimeOffRequestBody = zod.object({
+  "status": zod.enum(['approved', 'declined', 'cancelled'])
+})
+
+export const updateOrganizationTimeOffRequestResponseRequestStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateOrganizationTimeOffRequestResponseRequestEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpdateOrganizationTimeOffRequestResponse = zod.object({
+  "request": zod.object({
+  "id": zod.number().int(),
+  "orgId": zod.number().int(),
+  "requesterUserId": zod.string(),
+  "requesterName": zod.string(),
+  "startDate": zod.string().regex(updateOrganizationTimeOffRequestResponseRequestStartDateRegExp),
+  "endDate": zod.string().regex(updateOrganizationTimeOffRequestResponseRequestEndDateRegExp),
+  "leaveType": zod.enum(['vacation', 'personal', 'other']),
+  "note": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'declined', 'cancelled']),
+  "reviewedAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
 export const ListCrmCustomFieldsResponseItem = zod.object({
   "id": zod.number().int(),
   "orgId": zod.number().int(),

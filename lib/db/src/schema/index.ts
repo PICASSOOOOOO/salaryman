@@ -56,6 +56,7 @@ export * from "./meetings";
 export * from "./investor-leads";
 export * from "./feature-trials";
 export * from "./organizations";
+export * from "./org-time-off";
 export * from "./org-payments";
 export * from "./org-custom-apps";
 export * from "./org-websites";

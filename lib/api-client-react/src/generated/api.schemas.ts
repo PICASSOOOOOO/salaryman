@@ -194,6 +194,84 @@ export interface RecordingExcerptSaveResponse {
   excerpts: RecordingExcerpt[];
 }
 
+export type OrganizationTimeOffRequestInputLeaveType = typeof OrganizationTimeOffRequestInputLeaveType[keyof typeof OrganizationTimeOffRequestInputLeaveType];
+
+
+export const OrganizationTimeOffRequestInputLeaveType = {
+  vacation: 'vacation',
+  personal: 'personal',
+  other: 'other',
+} as const;
+
+export interface OrganizationTimeOffRequestInput {
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  endDate: string;
+  leaveType: OrganizationTimeOffRequestInputLeaveType;
+  /** @maxLength 500 */
+  note?: string;
+}
+
+export type OrganizationTimeOffRequestStatusUpdateStatus = typeof OrganizationTimeOffRequestStatusUpdateStatus[keyof typeof OrganizationTimeOffRequestStatusUpdateStatus];
+
+
+export const OrganizationTimeOffRequestStatusUpdateStatus = {
+  approved: 'approved',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export interface OrganizationTimeOffRequestStatusUpdate {
+  status: OrganizationTimeOffRequestStatusUpdateStatus;
+}
+
+export type OrganizationTimeOffRequestLeaveType = typeof OrganizationTimeOffRequestLeaveType[keyof typeof OrganizationTimeOffRequestLeaveType];
+
+
+export const OrganizationTimeOffRequestLeaveType = {
+  vacation: 'vacation',
+  personal: 'personal',
+  other: 'other',
+} as const;
+
+export type OrganizationTimeOffRequestStatus = typeof OrganizationTimeOffRequestStatus[keyof typeof OrganizationTimeOffRequestStatus];
+
+
+export const OrganizationTimeOffRequestStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  declined: 'declined',
+  cancelled: 'cancelled',
+} as const;
+
+export interface OrganizationTimeOffRequest {
+  id: number;
+  orgId: number;
+  requesterUserId: string;
+  requesterName: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startDate: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  endDate: string;
+  leaveType: OrganizationTimeOffRequestLeaveType;
+  note: string;
+  status: OrganizationTimeOffRequestStatus;
+  /** @nullable */
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrganizationTimeOffListResponse {
+  requests: OrganizationTimeOffRequest[];
+  canReview: boolean;
+}
+
+export interface OrganizationTimeOffResponse {
+  request: OrganizationTimeOffRequest;
+}
+
 export interface PhoneInternalDirectoryMember {
   userId: string;
   displayName: string;

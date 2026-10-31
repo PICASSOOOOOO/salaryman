@@ -72,6 +72,10 @@ import type {
   OrganizationPaymentCheckoutResponse,
   OrganizationPaymentsResponse,
   OrganizationStripeOnboardingResponse,
+  OrganizationTimeOffListResponse,
+  OrganizationTimeOffRequestInput,
+  OrganizationTimeOffRequestStatusUpdate,
+  OrganizationTimeOffResponse,
   PabloInternalDelivery,
   PabloInternalDeliveryResult,
   PhoneInternalDirectory,
@@ -2145,6 +2149,247 @@ export const useDeleteOrganizationCustomAppRecord = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteOrganizationCustomAppRecordMutationOptions(options));
+    }
+
+export const getListOrganizationTimeOffRequestsUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/orgs/${orgId}/time-off`
+}
+
+/**
+ * @summary List time-off requests for an organization member or manager
+ */
+export const listOrganizationTimeOffRequests = async (orgId: number, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationTimeOffListResponse> => {
+
+  return customFetch<OrganizationTimeOffListResponse>(getListOrganizationTimeOffRequestsUrl(orgId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrganizationTimeOffRequestsQueryKey = (orgId: number,) => {
+    return [
+    `/api/orgs/${orgId}/time-off`
+    ] as const;
+    }
+
+
+export const getListOrganizationTimeOffRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listOrganizationTimeOffRequests>>, TError = ErrorType<void>>(orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationTimeOffRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrganizationTimeOffRequestsQueryKey(orgId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrganizationTimeOffRequests>>> = ({ signal }) => listOrganizationTimeOffRequests(orgId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrganizationTimeOffRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrganizationTimeOffRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listOrganizationTimeOffRequests>>>
+export type ListOrganizationTimeOffRequestsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List time-off requests for an organization member or manager
+ */
+
+export function useListOrganizationTimeOffRequests<TData = Awaited<ReturnType<typeof listOrganizationTimeOffRequests>>, TError = ErrorType<void>>(
+ orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationTimeOffRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrganizationTimeOffRequestsQueryOptions(orgId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateOrganizationTimeOffRequestUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/orgs/${orgId}/time-off`
+}
+
+/**
+ * @summary Submit a time-off request for the authenticated organization member
+ */
+export const createOrganizationTimeOffRequest = async (orgId: number,
+    organizationTimeOffRequestInput: OrganizationTimeOffRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationTimeOffResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationTimeOffResponse>(getCreateOrganizationTimeOffRequestUrl(orgId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationTimeOffRequestInput)
+  }
+);}
+
+
+
+
+
+export const getCreateOrganizationTimeOffRequestMutationKey = () => ['createOrganizationTimeOffRequest'] as const;
+
+export const getCreateOrganizationTimeOffRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationTimeOffRequest>>, TError,CreateOrganizationTimeOffRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOrganizationTimeOffRequest>>, TError,CreateOrganizationTimeOffRequestMutationVariables, TContext> => {
+
+const mutationKey = getCreateOrganizationTimeOffRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOrganizationTimeOffRequest>>, CreateOrganizationTimeOffRequestMutationVariables> = (props) => {
+          const {orgId,data} = props ?? {};
+
+          return  createOrganizationTimeOffRequest(orgId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOrganizationTimeOffRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createOrganizationTimeOffRequest>>>
+    export type CreateOrganizationTimeOffRequestMutationBody = BodyType<OrganizationTimeOffRequestInput>
+    export type CreateOrganizationTimeOffRequestMutationError = ErrorType<void>
+    export type CreateOrganizationTimeOffRequestMutationVariables = {orgId: number;data: BodyType<OrganizationTimeOffRequestInput>}
+
+    /**
+ * @summary Submit a time-off request for the authenticated organization member
+ */
+export const useCreateOrganizationTimeOffRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrganizationTimeOffRequest>>, TError,CreateOrganizationTimeOffRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOrganizationTimeOffRequest>>,
+        TError,
+        CreateOrganizationTimeOffRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateOrganizationTimeOffRequestMutationOptions(options));
+    }
+
+export const getUpdateOrganizationTimeOffRequestUrl = (orgId: number,
+    requestId: number,) => {
+
+
+
+
+  return `/api/orgs/${orgId}/time-off/${requestId}`
+}
+
+/**
+ * @summary Review a request or withdraw the caller's pending request
+ */
+export const updateOrganizationTimeOffRequest = async (orgId: number,
+    requestId: number,
+    organizationTimeOffRequestStatusUpdate: OrganizationTimeOffRequestStatusUpdate, options?: Parameters<typeof customFetch>[1]): Promise<OrganizationTimeOffResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<OrganizationTimeOffResponse>(getUpdateOrganizationTimeOffRequestUrl(orgId,requestId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(organizationTimeOffRequestStatusUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateOrganizationTimeOffRequestMutationKey = () => ['updateOrganizationTimeOffRequest'] as const;
+
+export const getUpdateOrganizationTimeOffRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationTimeOffRequest>>, TError,UpdateOrganizationTimeOffRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationTimeOffRequest>>, TError,UpdateOrganizationTimeOffRequestMutationVariables, TContext> => {
+
+const mutationKey = getUpdateOrganizationTimeOffRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrganizationTimeOffRequest>>, UpdateOrganizationTimeOffRequestMutationVariables> = (props) => {
+          const {orgId,requestId,data} = props ?? {};
+
+          return  updateOrganizationTimeOffRequest(orgId,requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrganizationTimeOffRequestMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrganizationTimeOffRequest>>>
+    export type UpdateOrganizationTimeOffRequestMutationBody = BodyType<OrganizationTimeOffRequestStatusUpdate>
+    export type UpdateOrganizationTimeOffRequestMutationError = ErrorType<void>
+    export type UpdateOrganizationTimeOffRequestMutationVariables = {orgId: number;requestId: number;data: BodyType<OrganizationTimeOffRequestStatusUpdate>}
+
+    /**
+ * @summary Review a request or withdraw the caller's pending request
+ */
+export const useUpdateOrganizationTimeOffRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationTimeOffRequest>>, TError,UpdateOrganizationTimeOffRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrganizationTimeOffRequest>>,
+        TError,
+        UpdateOrganizationTimeOffRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateOrganizationTimeOffRequestMutationOptions(options));
     }
 
 export const getListCrmCustomFieldsUrl = () => {

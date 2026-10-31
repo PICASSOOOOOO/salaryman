@@ -3,11 +3,17 @@ import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import {
   Users, Loader2, Search, Building2, Briefcase, UserCheck, UserPlus,
-  RefreshCw, AlertTriangle, Mail, ShieldCheck,
+  RefreshCw, AlertTriangle, Mail, ShieldCheck, CalendarDays, Check, X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
+import {
+  getListOrganizationTimeOffRequestsQueryKey,
+  useCreateOrganizationTimeOffRequest,
+  useListOrganizationTimeOffRequests,
+  useUpdateOrganizationTimeOffRequest,
+} from '@workspace/api-client-react';
 
 interface Organization {
   id: number;
@@ -84,9 +90,22 @@ function formatSalary(value: string | null) {
     : '—';
 }
 
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatCalendarDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString();
+}
+
 export default function TeamDirectory() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [boomerMode] = useState(() => getDefaultBoomerMode());
+  const [activePanel, setActivePanel] = useState<'team' | 'time-off'>('team');
   const [organizationData, setOrganizationData] = useState<OrganizationResponse | null>(null);
   const [membersData, setMembersData] = useState<MembersResponse | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(() => {
@@ -106,6 +125,13 @@ export default function TeamDirectory() {
   const [addError, setAddError] = useState('');
   const [inviteNotice, setInviteNotice] = useState('');
   const [inviteUrl, setInviteUrl] = useState('');
+  const [timeOffForm, setTimeOffForm] = useState(() => {
+    const today = localDateInputValue();
+    return { startDate: today, endDate: today, leaveType: 'vacation', note: '' };
+  });
+  const [timeOffNotice, setTimeOffNotice] = useState('');
+  const [timeOffError, setTimeOffError] = useState('');
+  const [actingRequestId, setActingRequestId] = useState<number | null>(null);
   const [addForm, setAddForm] = useState({
     email: '',
     role: 'specialist',
@@ -118,6 +144,14 @@ export default function TeamDirectory() {
     item => item.organization?.id === selectedOrgId,
   )?.organization ?? organizationData?.org;
   const activeOrgId = activeOrg?.id ?? null;
+  const timeOffQuery = useListOrganizationTimeOffRequests(activeOrgId ?? 0, {
+    query: {
+      enabled: Boolean(activeOrgId && isAuthenticated),
+      queryKey: getListOrganizationTimeOffRequestsQueryKey(activeOrgId ?? 0),
+    },
+  });
+  const createTimeOffRequest = useCreateOrganizationTimeOffRequest();
+  const updateTimeOffRequest = useUpdateOrganizationTimeOffRequest();
 
   const loadMembers = useCallback(async (orgId: number) => {
     const response = await apiFetch(`/api/orgs/${orgId}/members`);
@@ -206,6 +240,53 @@ export default function TeamDirectory() {
     }
   };
 
+  const submitTimeOffRequest = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!activeOrgId) return;
+    setTimeOffError('');
+    setTimeOffNotice('');
+    if (timeOffForm.endDate < timeOffForm.startDate) {
+      setTimeOffError('End date must be on or after the start date.');
+      return;
+    }
+    try {
+      await createTimeOffRequest.mutateAsync({
+        orgId: activeOrgId,
+        data: {
+          startDate: timeOffForm.startDate,
+          endDate: timeOffForm.endDate,
+          leaveType: timeOffForm.leaveType as 'vacation' | 'personal' | 'other',
+          note: timeOffForm.note.trim(),
+        },
+      });
+      setTimeOffNotice('Request submitted for review.');
+      setTimeOffForm(form => ({ ...form, note: '' }));
+      await timeOffQuery.refetch();
+    } catch (cause) {
+      setTimeOffError(cause instanceof Error ? cause.message : 'Could not submit the request.');
+    }
+  };
+
+  const updateTimeOffStatus = async (requestId: number, status: 'approved' | 'declined' | 'cancelled') => {
+    if (!activeOrgId) return;
+    setActingRequestId(requestId);
+    setTimeOffError('');
+    setTimeOffNotice('');
+    try {
+      await updateTimeOffRequest.mutateAsync({
+        orgId: activeOrgId,
+        requestId,
+        data: { status },
+      });
+      setTimeOffNotice(status === 'cancelled' ? 'Request withdrawn.' : `Request ${status}.`);
+      await timeOffQuery.refetch();
+    } catch (cause) {
+      setTimeOffError(cause instanceof Error ? cause.message : 'Could not update the request.');
+    } finally {
+      setActingRequestId(null);
+    }
+  };
+
   if (!isAuthenticated && !loading) return <SignInPage context="Sign in to view your organization team." />;
 
   const members = membersData?.members ?? [];
@@ -270,7 +351,7 @@ export default function TeamDirectory() {
               <span><strong className="text-foreground">{activeCount}</strong> ACTIVE</span>
               <span><strong className="text-foreground">{pendingCount}</strong> PENDING</span>
               {membersData?.hiddenCount ? <span>{membersData.hiddenCount} HIDDEN BY ROLE POLICY</span> : null}
-              {canManageMembers && (
+              {canManageMembers && activePanel === 'team' && (
                 <button
                   type="button"
                   onClick={() => { setShowAddMember(value => !value); setAddError(''); }}
@@ -284,7 +365,28 @@ export default function TeamDirectory() {
           )}
         </header>
 
-        {showAddMember && canManageMembers && (
+        {activeOrg && (
+          <nav className="flex gap-2 mb-5" aria-label="Organization people tools">
+            <button
+              type="button"
+              onClick={() => setActivePanel('team')}
+              aria-pressed={activePanel === 'team'}
+              className={`px-3 py-2 border rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors ${activePanel === 'team' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:text-foreground'}`}
+            >
+              Team roster
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePanel('time-off')}
+              aria-pressed={activePanel === 'time-off'}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 border rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors ${activePanel === 'time-off' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:text-foreground'}`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" /> Time off
+            </button>
+          </nav>
+        )}
+
+        {activePanel === 'team' && showAddMember && canManageMembers && (
           <form onSubmit={handleAddMember} className="mb-5 p-4 border border-primary/30 bg-primary/5 rounded-md space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
               <UserPlus className="w-4 h-4 text-primary" />
@@ -365,6 +467,152 @@ export default function TeamDirectory() {
             <p className="text-sm font-bold uppercase tracking-widest">No organization yet</p>
             <p className="text-xs text-muted-foreground mt-2">Create an organization in the Business hub before adding team members.</p>
           </div>
+        ) : activePanel === 'time-off' ? (
+          <section className="space-y-4">
+            <header className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <CalendarDays className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-widest">Time off</h2>
+                <p className="text-[10px] text-muted-foreground">Submit a request or review your organization’s requests.</p>
+              </div>
+            </header>
+
+            <form onSubmit={submitTimeOffRequest} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 border border-border rounded-md bg-card">
+              <label className="space-y-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Start date</span>
+                <input
+                  required
+                  type="date"
+                  value={timeOffForm.startDate}
+                  onChange={event => setTimeOffForm(form => ({ ...form, startDate: event.target.value }))}
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">End date</span>
+                <input
+                  required
+                  type="date"
+                  min={timeOffForm.startDate}
+                  value={timeOffForm.endDate}
+                  onChange={event => setTimeOffForm(form => ({ ...form, endDate: event.target.value }))}
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Request type</span>
+                <select
+                  value={timeOffForm.leaveType}
+                  onChange={event => setTimeOffForm(form => ({ ...form, leaveType: event.target.value }))}
+                  className="w-full bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary"
+                >
+                  <option value="vacation">Vacation</option>
+                  <option value="personal">Personal</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={createTimeOffRequest.isPending || !activeOrgId}
+                className="self-end inline-flex items-center justify-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-sm text-[10px] font-bold uppercase tracking-widest disabled:opacity-50"
+              >
+                {createTimeOffRequest.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarDays className="w-3.5 h-3.5" />}
+                Submit request
+              </button>
+              <label className="space-y-1 sm:col-span-2 lg:col-span-4">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Note for your manager (optional)</span>
+                <textarea
+                  maxLength={500}
+                  rows={2}
+                  value={timeOffForm.note}
+                  onChange={event => setTimeOffForm(form => ({ ...form, note: event.target.value }))}
+                  placeholder="Add a brief note"
+                  className="w-full resize-y bg-background border border-border rounded-sm px-2 py-2 text-xs outline-none focus:border-primary"
+                />
+              </label>
+            </form>
+
+            {timeOffNotice && <p role="status" className="text-xs text-emerald-600">{timeOffNotice}</p>}
+            {timeOffError && (
+              <div role="alert" className="flex items-center justify-between gap-3 border border-destructive/30 bg-destructive/5 rounded-md px-3 py-2 text-xs text-destructive">
+                <span>{timeOffError}</span>
+                <button type="button" onClick={() => setTimeOffError('')} className="font-bold underline">Dismiss</button>
+              </div>
+            )}
+
+            {timeOffQuery.isLoading ? (
+              <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground/40" /></div>
+            ) : timeOffQuery.isError ? (
+              <div className="border border-destructive/30 bg-destructive/5 rounded-md p-6 text-center">
+                <p className="text-xs text-destructive">Time-off requests could not be loaded.</p>
+                <button type="button" onClick={() => void timeOffQuery.refetch()} className="mt-2 text-xs font-bold underline">Retry</button>
+              </div>
+            ) : (timeOffQuery.data?.requests ?? []).length === 0 ? (
+              <div className="border border-border rounded-md p-8 text-center">
+                <p className="text-xs font-bold uppercase tracking-widest">No requests yet</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Your organization’s time-off requests will appear here.</p>
+              </div>
+            ) : (
+              <div className="border border-border rounded-md bg-card divide-y divide-border">
+                {(timeOffQuery.data?.requests ?? []).map(request => {
+                  const isMine = request.requesterUserId === user?.id;
+                  const isActing = actingRequestId === request.id;
+                  return (
+                    <article key={request.id} className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-xs font-bold">{isMine ? 'Your request' : request.requesterName}</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase ${request.status === 'approved' ? 'bg-emerald-500/10 text-emerald-700' : request.status === 'declined' ? 'bg-destructive/10 text-destructive' : request.status === 'pending' ? 'bg-amber-500/10 text-amber-700' : 'bg-muted text-muted-foreground'}`}>
+                            {request.status}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {formatCalendarDate(request.startDate)} – {formatCalendarDate(request.endDate)} · {request.leaveType}
+                        </p>
+                        {request.note && <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{request.note}</p>}
+                      </div>
+                      {request.status === 'pending' && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          {timeOffQuery.data?.canReview && !isMine && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => void updateTimeOffStatus(request.id, 'approved')}
+                                disabled={isActing || updateTimeOffRequest.isPending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-emerald-600/30 rounded-sm text-[9px] font-bold uppercase text-emerald-700 hover:bg-emerald-600/10 disabled:opacity-50"
+                              >
+                                <Check className="w-3 h-3" /> Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void updateTimeOffStatus(request.id, 'declined')}
+                                disabled={isActing || updateTimeOffRequest.isPending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-border rounded-sm text-[9px] font-bold uppercase text-muted-foreground hover:text-destructive disabled:opacity-50"
+                              >
+                                <X className="w-3 h-3" /> Decline
+                              </button>
+                            </>
+                          )}
+                          {isMine && (
+                            <button
+                              type="button"
+                              onClick={() => void updateTimeOffStatus(request.id, 'cancelled')}
+                              disabled={isActing || updateTimeOffRequest.isPending}
+                              className="px-2.5 py-1.5 border border-border rounded-sm text-[9px] font-bold uppercase text-muted-foreground hover:text-destructive disabled:opacity-50"
+                            >
+                              Withdraw
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         ) : (
           <>
             <div className="flex flex-col sm:flex-row gap-2 mb-4">

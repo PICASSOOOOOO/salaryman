@@ -19,6 +19,8 @@ tags:
     description: Interview helper operations
   - name: crm
     description: Organization CRM operations
+  - name: organizations
+    description: Organization team and HR operations
   - name: customApps
     description: Published organization-only custom pages and their records
   - name: desktopBuilding
@@ -492,6 +494,66 @@ paths:
         "401": { description: Login required }
         "403": { description: Published page edit access required }
         "404": { description: Record not found in the active organization }
+  /orgs/{orgId}/time-off:
+    get:
+      operationId: listOrganizationTimeOffRequests
+      tags: [organizations]
+      summary: List time-off requests for an organization member or manager
+      parameters:
+        - { name: orgId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Time-off requests visible to the caller
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationTimeOffListResponse" }
+        "401": { description: Login required }
+        "403": { description: Organization member access required }
+    post:
+      operationId: createOrganizationTimeOffRequest
+      tags: [organizations]
+      summary: Submit a time-off request for the authenticated organization member
+      parameters:
+        - { name: orgId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationTimeOffRequestInput" }
+      responses:
+        "201":
+          description: Time-off request created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationTimeOffResponse" }
+        "400": { description: Invalid dates or request fields }
+        "401": { description: Login required }
+        "403": { description: Organization member access required }
+        "409": { description: Request overlaps an existing pending or approved request }
+  /orgs/{orgId}/time-off/{requestId}:
+    patch:
+      operationId: updateOrganizationTimeOffRequest
+      tags: [organizations]
+      summary: Review a request or withdraw the caller's pending request
+      parameters:
+        - { name: orgId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: requestId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationTimeOffRequestStatusUpdate" }
+      responses:
+        "200":
+          description: Updated time-off request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationTimeOffResponse" }
+        "400": { description: Invalid status transition }
+        "401": { description: Login required }
+        "403": { description: Organization permission required }
+        "404": { description: Request not found }
+        "409": { description: Request is no longer pending }
   /crm/custom-fields:
     get:
       operationId: listCrmCustomFields
@@ -1083,6 +1145,48 @@ components:
         excerpts:
           type: array
           items: { $ref: "#/components/schemas/RecordingExcerpt" }
+    OrganizationTimeOffRequestInput:
+      type: object
+      required: [startDate, endDate, leaveType]
+      properties:
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        leaveType: { type: string, enum: [vacation, personal, other] }
+        note: { type: string, maxLength: 500 }
+    OrganizationTimeOffRequestStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [approved, declined, cancelled] }
+    OrganizationTimeOffRequest:
+      type: object
+      required: [id, orgId, requesterUserId, requesterName, startDate, endDate, leaveType, note, status, reviewedAt, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        orgId: { type: integer }
+        requesterUserId: { type: string }
+        requesterName: { type: string }
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        leaveType: { type: string, enum: [vacation, personal, other] }
+        note: { type: string }
+        status: { type: string, enum: [pending, approved, declined, cancelled] }
+        reviewedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    OrganizationTimeOffListResponse:
+      type: object
+      required: [requests, canReview]
+      properties:
+        requests:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationTimeOffRequest" }
+        canReview: { type: boolean }
+    OrganizationTimeOffResponse:
+      type: object
+      required: [request]
+      properties:
+        request: { $ref: "#/components/schemas/OrganizationTimeOffRequest" }
     PhoneInternalDirectory:
       type: object
       required: [organizationId, canManageLines, members, lines]
