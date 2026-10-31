@@ -9,6 +9,7 @@ modules = ["nodejs-24", "javascript", "python-3.11", "postgresql-16"]
           [deployment]
           router = "application"
           deploymentTarget = "vm"
+ignorePorts = false
 
           [deployment.build]
           args = ["pnpm", "run", "build:prepublish"]
