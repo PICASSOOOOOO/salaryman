@@ -57,6 +57,7 @@ COMMANDS = {
     "buy_coffee",
     "buy_vending",
     "buy_business_item",
+    "restock_business_item",
     "toggle_running",
     "toggle_auto_breaks",
     "start_break",
@@ -766,6 +767,41 @@ def apply_command(
             return CommandResult(False, "PURCHASE UNAVAILABLE / CHECK GAME LINK")
         state.game_service_loading.add("buy_business")
         state.notice = "PURCHASE SENT / WAITING FOR SERVER"
+        return CommandResult(True, state.notice)
+    if name == "restock_business_item":
+        shop = scene.objects.get(state.active_object_id or "")
+        nearby = scene.nearby_object
+        item_id = payload.get("item_id")
+        business_key = payload.get("business_key")
+        if (
+            state.active_page != "business_shop"
+            or shop is None
+            or shop.kind not in {"business_suite", "business_kiosk"}
+            or not isinstance(business_key, str)
+            or shop.business_key != business_key
+            or shop.room != scene.current_room
+            or nearby is None
+            or nearby.id != shop.id
+        ):
+            return CommandResult(False, "STAND AT THE SHOP TO RESTOCK ITS SHELVES")
+        if not isinstance(item_id, str) or not any(
+            isinstance(line, dict)
+            and line.get("sellerBusinessKey") == business_key
+            and any(
+                isinstance(product, dict) and product.get("id") == item_id
+                for product in (line.get("items") or [])
+            )
+            for line in (state.business_stock_lines or [])
+        ):
+            return CommandResult(False, "ITEM IS NOT LISTED BY THIS SHOP")
+        if "shop_restock_item" in state.game_service_loading:
+            return CommandResult(False, "SHOP RESTOCK IS ALREADY IN PROGRESS")
+        if building_sync is None or not building_sync.queue_game_request(
+            "shop_restock_item", item_id, business_key
+        ):
+            return CommandResult(False, "SHOP RESTOCK UNAVAILABLE / CHECK GAME LINK")
+        state.game_service_loading.add("shop_restock_item")
+        state.notice = "MOVING ONE ITEM FROM STORAGE TO THE SHELF"
         return CommandResult(True, state.notice)
     if name == "climb_stairs":
         basement_result = _handle_basement_interact(

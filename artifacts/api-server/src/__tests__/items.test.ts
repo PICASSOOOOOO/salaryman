@@ -609,6 +609,78 @@ describe("Tower shop logistics routes", () => {
   });
 });
 
+describe("POST /items/tower-business/restock", () => {
+  it("moves one stored unit to a shop shelf from a linked on-site game session", async () => {
+    authState.authed = false;
+    const businessKey = "fish-store";
+    const itemId = "fish_goldfish";
+    const [priorStock] = await db.select().from(towerShopInventoryTable).where(and(
+      eq(towerShopInventoryTable.businessKey, businessKey),
+      eq(towerShopInventoryTable.itemId, itemId),
+    )).limit(1);
+    const [priorAccount] = await db.select().from(towerShopAccountsTable)
+      .where(eq(towerShopAccountsTable.businessKey, businessKey)).limit(1);
+    const desktop = await seedLinkedDesktopAtOffice({ floorNumber: 2, x: 22_884, y: 47_470 });
+    const now = new Date();
+    await db.insert(towerShopAccountsTable).values({ businessKey }).onConflictDoNothing();
+    await db.insert(towerShopInventoryTable).values({
+      businessKey,
+      itemId,
+      storedQuantity: 4,
+      shelfQuantity: 2,
+      storageCapacity: 100,
+      shelfCapacity: 20,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: [towerShopInventoryTable.businessKey, towerShopInventoryTable.itemId],
+      set: {
+        storedQuantity: 4,
+        shelfQuantity: 2,
+        storageCapacity: 100,
+        shelfCapacity: 20,
+        updatedAt: now,
+      },
+    });
+
+    try {
+      const res = await request(app).post("/api/items/tower-business/restock")
+        .set("Authorization", `Bearer ${desktop.token}`)
+        .set("x-salaryman-device-id", desktop.deviceId)
+        .send({ businessKey, itemId, quantity: 1 });
+
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      expect(res.body.stock).toMatchObject({
+        businessKey,
+        itemId,
+        storedQuantity: 3,
+        shelfQuantity: 3,
+      });
+    } finally {
+      if (priorStock) {
+        await db.update(towerShopInventoryTable).set({
+          storedQuantity: priorStock.storedQuantity,
+          shelfQuantity: priorStock.shelfQuantity,
+          storageCapacity: priorStock.storageCapacity,
+          shelfCapacity: priorStock.shelfCapacity,
+          updatedAt: priorStock.updatedAt,
+        }).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+        ));
+      } else {
+        await db.delete(towerShopInventoryTable).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+        ));
+      }
+      if (!priorAccount) {
+        await db.delete(towerShopAccountsTable)
+          .where(eq(towerShopAccountsTable.businessKey, businessKey));
+      }
+    }
+  });
+});
+
 describe("POST /items/checkout", () => {
   it("blocks one-time USD item purchases while leaving FIAT purchases available", async () => {
     const res = await request(app).post("/api/items/checkout").send({ itemId: BAT.id });

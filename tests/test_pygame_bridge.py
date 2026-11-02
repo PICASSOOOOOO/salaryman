@@ -87,6 +87,39 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "business_shop")
         self.assertEqual(self.state.active_object_id, dealership.id)
 
+    def test_business_shop_screen_offers_a_server_backed_shelf_restock_action(self):
+        import pygame
+        from pygame_sim.ui import SolarPunkRenderer
+
+        shop = self.scene.objects.get("lobby-kiosk-vehicle_dealership")
+        self.assertIsNotNone(shop)
+        self.scene.player_position = shop.position
+        self.state.open_page(
+            "business_shop",
+            from_object=True,
+            source="VEHICLE DEALERSHIP",
+            source_object_id=shop.id,
+        )
+        self.state.business_stock_lines = [{
+            "sellerBusinessKey": "vehicle_dealership",
+            "items": [{"id": "veh_car", "name": "City Sedan", "priceFiat": 120_000}],
+        }]
+        self.state.business_shelf_stock = {"vehicle_dealership": [{
+            "itemId": "veh_car",
+            "name": "City Sedan",
+            "shelfQuantity": 2,
+        }]}
+
+        renderer = object.__new__(SolarPunkRenderer)
+        renderer.font_lg = renderer.font_mono = renderer.font_md = renderer.font_sm = None
+        renderer.game_page_actions = {}
+        renderer.text = lambda *_args, **_kwargs: None
+        renderer.panel = lambda *_args, **_kwargs: None
+        renderer._draw_business_page(self.state, self.scene, pygame.Rect(42, 76, 816, 514))
+
+        self.assertIn("shopbuy:vehicle_dealership:veh_car", renderer.game_page_actions)
+        self.assertIn("shoprestock:vehicle_dealership:veh_car", renderer.game_page_actions)
+
     def test_gold_exchange_is_a_dedicated_lobby_kiosk_and_banco_ombra_stays_bank_only(self):
         exchange = self.scene.objects.get("lobby-kiosk-tower_gold_exchange")
         self.assertIsNotNone(exchange)
@@ -917,6 +950,48 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(
             requests,
             [("buy_business", "veh_car", "vehicle_dealership")],
+        )
+
+    def test_restock_command_requires_the_active_shop_and_queues_one_item(self):
+        shop = self.scene.objects.get("lobby-kiosk-vehicle_dealership")
+        self.assertIsNotNone(shop)
+        self.scene.player_position = shop.position
+        self.state.open_page(
+            "business_shop",
+            from_object=True,
+            source="VEHICLE DEALERSHIP",
+            source_object_id=shop.id,
+        )
+        self.state.business_stock_lines = [{
+            "sellerBusinessKey": "vehicle_dealership",
+            "items": [{"id": "veh_car"}],
+        }]
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id, business_key: (
+                requests.append((action, item_id, business_key)) or True
+            ),
+        )
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "godot-vehicle-restock",
+                "name": "restock_business_item",
+                "payload": {
+                    "business_key": "vehicle_dealership",
+                    "item_id": "veh_car",
+                },
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+
+        self.assertTrue(result.ok, result.message)
+        self.assertEqual(
+            requests,
+            [("shop_restock_item", "veh_car", "vehicle_dealership")],
         )
 
     def test_mila_menu_opens_only_the_selected_existing_service(self):

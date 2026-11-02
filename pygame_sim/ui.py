@@ -2328,14 +2328,49 @@ class SolarPunkRenderer:
             for product_index, product in enumerate(visible_products):
                     item_id = str(product.get("id", ""))
                     y = page.y + 180 + product_index * 38
-                    buy_button = pygame.Rect(page.x + 26, y, min(page.width - 52, 590), 40)
+                    row = pygame.Rect(page.x + 26, y, min(page.width - 52, 690), 36)
+                    shelf_rows = state.business_shelf_stock.get(str(business_key), [])
+                    shelf_quantity = next(
+                        (
+                            int(stock.get("shelfQuantity", 0))
+                            for stock in shelf_rows
+                            if isinstance(stock, dict) and stock.get("itemId") == item_id
+                        ),
+                        0,
+                    )
+                    self.panel(row, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
+                    self.text(
+                        f"{product.get('name', 'ITEM')}  /  SHELF {shelf_quantity}",
+                        (row.x + 10, row.y + 12),
+                        self.font_sm,
+                        Palette.MATRIX_BRIGHT,
+                    )
+                    buy_button = pygame.Rect(row.right - 214, row.y + 3, 102, 30)
                     self.game_page_actions[f"shopbuy:{business_key}:{item_id}"] = buy_button
                     self.panel(buy_button, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
                     self.text(
-                        f"{page_start + product_index + 1}  {product.get('name', 'ITEM')}  /  ƒ{int(product.get('priceFiat', 0)):,}",
-                        (buy_button.x + 14, buy_button.y + 12),
-                        self.font_md,
+                        f"BUY ƒ{int(product.get('priceFiat', 0)):,}",
+                        (buy_button.x + 7, buy_button.y + 9),
+                        self.font_sm,
                         Palette.MATRIX_BRIGHT,
+                    )
+                    restock_action = f"shoprestock:{business_key}:{item_id}"
+                    restock_button = pygame.Rect(row.right - 106, row.y + 3, 102, 30)
+                    restock_pending = "shop_restock_item" in state.game_service_loading
+                    if not restock_pending and business_key:
+                        self.game_page_actions[restock_action] = restock_button
+                    self.panel(
+                        restock_button,
+                        Palette.MATRIX_PANEL_2,
+                        Palette.MATRIX_AMBER if not restock_pending else Palette.MATRIX_DIM,
+                        radius=3,
+                        width=1,
+                    )
+                    self.text(
+                        "WAIT…" if restock_pending else "RESTOCK +1",
+                        (restock_button.x + 7, restock_button.y + 9),
+                        self.font_sm,
+                        Palette.MATRIX_AMBER if not restock_pending else Palette.MATRIX_DIM,
                     )
             if not products and quote_categories:
                 for index, category in enumerate(quote_categories[:4]):

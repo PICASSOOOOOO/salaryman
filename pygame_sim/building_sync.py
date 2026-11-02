@@ -107,7 +107,24 @@ class DesktopBuildingSync:
             "supply_issue": ("POST", "/desktop-building/supplies/issue", {}),
             "shop_freight_snapshot": ("GET", "/items/tower-business/shipments/dock", None),
         }
-        if action in {"shop_freight_pickup", "shop_freight_receive"}:
+        if action == "shop_restock_item":
+            if (
+                not isinstance(item_id, str)
+                or not item_id
+                or len(item_id) > 80
+                or not all(char.isalnum() or char in "_-" for char in item_id)
+                or not isinstance(business_key, str)
+                or not business_key
+                or len(business_key) > 80
+                or not all(char.isalnum() or char in "_-" for char in business_key)
+            ):
+                return False
+            request = (
+                "POST",
+                "/items/tower-business/restock",
+                {"businessKey": business_key, "itemId": item_id, "quantity": 1},
+            )
+        elif action in {"shop_freight_pickup", "shop_freight_receive"}:
             if not isinstance(item_id, str) or not item_id or len(item_id) > 64:
                 return False
             stage = "pickup" if action == "shop_freight_pickup" else "receive"

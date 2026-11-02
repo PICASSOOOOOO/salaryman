@@ -157,7 +157,6 @@ class BuildingSyncTests(unittest.TestCase):
             requests,
             [("GET", "/items/tower-business/floor/2/shelf-stock")],
         )
-
         sync.update_scene(scene)
         self.assertTrue(sync._game_requests.empty())
         sync._last_shop_shelf_poll = time.monotonic() - 16.0
@@ -165,6 +164,35 @@ class BuildingSyncTests(unittest.TestCase):
         sync._sync_once()
         self.assertEqual(len(requests), 2)
         self.assertFalse(sync.queue_game_request("shop_floor_shelf_stock:7"))
+
+    def test_shop_restock_uses_the_server_checked_restocks_endpoint(self):
+        requests = []
+
+        def opener(request, timeout):
+            del timeout
+            requests.append((
+                request.get_method(),
+                request.full_url.rsplit("/api", 1)[-1],
+                request.data,
+            ))
+            return FakeResponse({"ok": True, "stock": {"storedQuantity": 2, "shelfQuantity": 3}})
+
+        sync = DesktopBuildingSync(
+            DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+            opener=opener,
+        )
+        self.assertFalse(sync.queue_game_request("shop_restock_item", "../fish", "fish-store"))
+        self.assertTrue(sync.queue_game_request("shop_restock_item", "fish_goldfish", "fish-store"))
+        sync._sync_once()
+        event = sync.drain_events()[0]
+
+        self.assertEqual(requests, [(
+            "POST",
+            "/items/tower-business/restock",
+            b'{"businessKey": "fish-store", "itemId": "fish_goldfish", "quantity": 1}',
+        )])
+        self.assertTrue(event.ok)
+        self.assertEqual(event.data["action"], "shop_restock_item")
 
     def test_restroom_trash_and_supply_interactions_use_only_the_expected_server_routes(self):
         requests = []

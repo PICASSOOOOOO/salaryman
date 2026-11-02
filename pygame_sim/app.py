@@ -396,6 +396,12 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "PURCHASE SENT / WAITING FOR SERVER"
             else:
                 state.notice = "PURCHASE UNAVAILABLE / CHECK GAME LINK"
+        elif action.startswith("shoprestock:"):
+            _, business_key, item_id = action.split(":", 2)
+            dispatch_game_command(
+                "restock_business_item",
+                {"business_key": business_key, "item_id": item_id},
+            )
         elif action == "phone:call-home" or action == "phone:comms":
             link = building_sync.link
             if link is None:
@@ -899,6 +905,9 @@ def run(argv: list[str] | None = None) -> int:
                         request_page_data("inventory")
                         request_page_data("bank")
                         request_current_business_shelf_stock()
+                    elif action == "shop_restock_item":
+                        state.notice = "ONE ITEM MOVED FROM STORAGE TO THE SHELF"
+                        request_current_business_shelf_stock()
                     elif action == "consume_supply":
                         energy = payload.get("energy")
                         if isinstance(energy, int):
@@ -924,6 +933,13 @@ def run(argv: list[str] | None = None) -> int:
                             state.notice = f"NOT ENOUGH FIAT / ƒ{int(spendable):,} AVAILABLE / ƒ{int(required):,} REQUIRED"
                         else:
                             state.notice = "NOT ENOUGH FIAT"
+                    elif action == "shop_restock_item" and isinstance(error_payload, dict):
+                        message = error_payload.get("error")
+                        state.notice = (
+                            str(message).upper()[:120]
+                            if isinstance(message, str)
+                            else "SHOP RESTOCK FAILED"
+                        )
                     else:
                         state.notice = sync_event.message.upper()
                 continue
