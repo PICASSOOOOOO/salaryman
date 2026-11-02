@@ -624,6 +624,13 @@
       "when": 1793404800000,
       "tag": "0088_org_time_off_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1793629518187,
+      "tag": "0089_tower_shop_staff_assignments",
+      "breakpoints": true
     }
   ]
 }
