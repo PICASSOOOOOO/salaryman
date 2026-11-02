@@ -18,6 +18,7 @@ import { usePlan } from '@/hooks/use-plan';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useLocation } from 'wouter';
 import { AdminConstructionOverview } from '@/components/ConstructionOverview';
+import { TowerShopStaffPanel } from '@/components/TowerShopStaffPanel';
 
 interface UserRecord {
   id: string;
@@ -137,7 +138,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'construction' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship' | 'credit';
+type AdminTab = 'analytics' | 'pulse' | 'construction' | 'shopstaff' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship' | 'credit';
 
 interface SalaryQualRow {
   id: number;
@@ -416,7 +417,7 @@ export default function AdminPanel() {
   // a launcher in the tab strip — accepting it here would render a blank
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
-    'analytics', 'pulse', 'construction', 'users', 'orgs', 'config', 'toggles', 'broadcast',
+    'analytics', 'pulse', 'construction', 'shopstaff', 'users', 'orgs', 'config', 'toggles', 'broadcast',
     'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual', 'citizenship', 'credit',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
@@ -1157,6 +1158,7 @@ export default function AdminPanel() {
     { key: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
     { key: 'pulse', label: 'WORLD PULSE', icon: Activity },
     { key: 'construction', label: 'CONSTRUCTION', icon: HardHat },
+    { key: 'shopstaff', label: 'SHOP STAFF', icon: UserCog },
     { key: 'alpha', label: 'ALPHA APPS', icon: UserPlus, badge: alphaPending },
     { key: 'users', label: 'USERS', icon: Users },
     { key: 'orgs', label: 'BUSINESSES', icon: Building2 },
@@ -1484,6 +1486,7 @@ export default function AdminPanel() {
               <AdminConstructionOverview />
             </motion.div>
           )}
+          {activeTab === 'shopstaff' && <TowerShopStaffPanel />}
 
           {activeTab === 'users' && !selectedUser && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">

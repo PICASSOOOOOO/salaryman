@@ -886,6 +886,83 @@ export interface WorkspaceProjectGenerationResponse {
   prototype: WorkspaceGeneratedNote;
 }
 
+export interface TowerShopStaffShop {
+  businessKey: string;
+  name: string;
+  locationLabel: string;
+}
+
+export interface TowerShopStaffAssignment {
+  businessKey: string;
+  userId: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  assignedByUserId: string | null;
+  assignedAt: string;
+}
+
+export interface TowerShopStaffRoster {
+  shops: TowerShopStaffShop[];
+  assignments: TowerShopStaffAssignment[];
+}
+
+export interface TowerShopStaffAssignmentInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  businessKey: string;
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface TowerShopStaffAssignmentResponse {
+  ok: boolean;
+  assignment: TowerShopStaffAssignment;
+}
+
+export interface TowerShopStaffRevokeResponse {
+  ok: boolean;
+}
+
+export interface TowerBusinessRestockInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  businessKey: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  itemId: string;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  quantity: number;
+}
+
+export interface TowerBusinessInventoryStock {
+  businessKey: string;
+  itemId: string;
+  storedQuantity: number;
+  shelfQuantity: number;
+  storageCapacity: number;
+  shelfCapacity: number;
+  updatedAt: string;
+}
+
+export interface TowerBusinessRestockResponse {
+  ok: boolean;
+  stock: TowerBusinessInventoryStock;
+}
+
 export type AuthorizationSessionHeaderParameter = string;
 
 export type BeginDiscordLoginParams = {

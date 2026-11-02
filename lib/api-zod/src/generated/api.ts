@@ -1358,3 +1358,107 @@ export const DecideAutopilotApprovalResponse = zod.object({
 })
 
 
+/**
+ * @summary List restockable Tower shops and staff assignments
+ */
+export const ListTowerShopStaffResponse = zod.object({
+  "shops": zod.array(zod.object({
+  "businessKey": zod.string(),
+  "name": zod.string(),
+  "locationLabel": zod.string()
+})),
+  "assignments": zod.array(zod.object({
+  "businessKey": zod.string(),
+  "userId": zod.string(),
+  "email": zod.string().email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "assignedByUserId": zod.string().nullable(),
+  "assignedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Assign a SALARYMAN user to a Tower shop
+ */
+export const assignTowerShopStaffBodyBusinessKeyMax = 80;
+
+export const assignTowerShopStaffBodyEmailMax = 254;
+
+
+
+export const AssignTowerShopStaffBody = zod.object({
+  "businessKey": zod.string().min(1).max(assignTowerShopStaffBodyBusinessKeyMax),
+  "email": zod.string().email().max(assignTowerShopStaffBodyEmailMax)
+})
+
+export const AssignTowerShopStaffResponse = zod.object({
+  "ok": zod.boolean(),
+  "assignment": zod.object({
+  "businessKey": zod.string(),
+  "userId": zod.string(),
+  "email": zod.string().email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "assignedByUserId": zod.string().nullable(),
+  "assignedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Revoke a user's Tower shop restock access
+ */
+export const revokeTowerShopStaffPathBusinessKeyMax = 80;
+
+export const revokeTowerShopStaffPathUserIdMax = 256;
+
+
+
+export const RevokeTowerShopStaffParams = zod.object({
+  "businessKey": zod.coerce.string().min(1).max(revokeTowerShopStaffPathBusinessKeyMax),
+  "userId": zod.coerce.string().min(1).max(revokeTowerShopStaffPathUserIdMax)
+})
+
+export const RevokeTowerShopStaffResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Move stored stock onto an assigned shop's shelf
+ */
+export const RestockTowerBusinessItemHeader = zod.object({
+  "Authorization": zod.string().optional(),
+  "x-salaryman-device-id": zod.string()
+})
+
+export const restockTowerBusinessItemBodyBusinessKeyMax = 80;
+
+export const restockTowerBusinessItemBodyItemIdMax = 80;
+
+export const restockTowerBusinessItemBodyQuantityMax = 100;
+
+
+
+export const RestockTowerBusinessItemBody = zod.object({
+  "businessKey": zod.string().min(1).max(restockTowerBusinessItemBodyBusinessKeyMax),
+  "itemId": zod.string().min(1).max(restockTowerBusinessItemBodyItemIdMax),
+  "quantity": zod.number().int().min(1).max(restockTowerBusinessItemBodyQuantityMax)
+})
+
+export const RestockTowerBusinessItemResponse = zod.object({
+  "ok": zod.boolean(),
+  "stock": zod.object({
+  "businessKey": zod.string(),
+  "itemId": zod.string(),
+  "storedQuantity": zod.number().int(),
+  "shelfQuantity": zod.number().int(),
+  "storageCapacity": zod.number().int(),
+  "shelfCapacity": zod.number().int(),
+  "updatedAt": zod.string()
+})
+})
+
+

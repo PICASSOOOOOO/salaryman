@@ -29,6 +29,10 @@ tags:
     description: Pablo automation review and read-only business insights
   - name: Auth
     description: Browser and mobile authentication endpoints.
+  - name: admin
+    description: Picasso admin-only Tower shop staff management
+  - name: towerShop
+    description: Server-authoritative Tower shop inventory
 paths:
   /workspace/projects/{projectId}/generate:
     post:
@@ -996,6 +1000,115 @@ paths:
           description: Review item not found
         "409":
           description: Review item was already decided
+  /admin/tower-shop-staff:
+    get:
+      operationId: listTowerShopStaff
+      tags: [admin]
+      summary: List restockable Tower shops and staff assignments
+      responses:
+        "200":
+          description: Restockable shops and their current assigned staff
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerShopStaffRoster"
+        "401":
+          description: Login required
+        "403":
+          description: Picasso admin access required
+    post:
+      operationId: assignTowerShopStaff
+      tags: [admin]
+      summary: Assign a SALARYMAN user to a Tower shop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TowerShopStaffAssignmentInput"
+      responses:
+        "200":
+          description: Assignment created or already existed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerShopStaffAssignmentResponse"
+        "400":
+          description: Invalid shop or email
+        "401":
+          description: Login required
+        "403":
+          description: Picasso admin access required
+        "404":
+          description: No account uses that email
+  /admin/tower-shop-staff/{businessKey}/{userId}:
+    delete:
+      operationId: revokeTowerShopStaff
+      tags: [admin]
+      summary: Revoke a user's Tower shop restock access
+      parameters:
+        - name: businessKey
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 80
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        "200":
+          description: Assignment removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerShopStaffRevokeResponse"
+        "400":
+          description: Invalid shop or user
+        "401":
+          description: Login required
+        "403":
+          description: Picasso admin access required
+        "404":
+          description: Assignment not found
+  /items/tower-business/restock:
+    post:
+      operationId: restockTowerBusinessItem
+      tags: [towerShop]
+      summary: Move stored stock onto an assigned shop's shelf
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - name: x-salaryman-device-id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TowerBusinessRestockInput"
+      responses:
+        "200":
+          description: Stock moved to the shelf
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerBusinessRestockResponse"
+        "400":
+          description: Invalid shop, item, or quantity
+        "401":
+          description: Linked desktop credentials required
+        "403":
+          description: Assigned shop staff and on-site presence required
+        "409":
+          description: Insufficient storage stock or shelf capacity
 components:
   schemas:
     DesktopBuildingObjectActionInput:
@@ -1687,6 +1800,115 @@ components:
           $ref: "#/components/schemas/WorkspaceGeneratedNote"
         prototype:
           $ref: "#/components/schemas/WorkspaceGeneratedNote"
+    TowerShopStaffShop:
+      type: object
+      required: [businessKey, name, locationLabel]
+      properties:
+        businessKey:
+          type: string
+        name:
+          type: string
+        locationLabel:
+          type: string
+    TowerShopStaffAssignment:
+      type: object
+      required: [businessKey, userId, email, firstName, lastName, assignedByUserId, assignedAt]
+      properties:
+        businessKey:
+          type: string
+        userId:
+          type: string
+        email:
+          type: ["string", "null"]
+          format: email
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        assignedByUserId:
+          type: ["string", "null"]
+        assignedAt:
+          type: string
+    TowerShopStaffRoster:
+      type: object
+      required: [shops, assignments]
+      properties:
+        shops:
+          type: array
+          items:
+            $ref: "#/components/schemas/TowerShopStaffShop"
+        assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TowerShopStaffAssignment"
+    TowerShopStaffAssignmentInput:
+      type: object
+      required: [businessKey, email]
+      properties:
+        businessKey:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    TowerShopStaffAssignmentResponse:
+      type: object
+      required: [ok, assignment]
+      properties:
+        ok:
+          type: boolean
+        assignment:
+          $ref: "#/components/schemas/TowerShopStaffAssignment"
+    TowerShopStaffRevokeResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+    TowerBusinessRestockInput:
+      type: object
+      required: [businessKey, itemId, quantity]
+      properties:
+        businessKey:
+          type: string
+          minLength: 1
+          maxLength: 80
+        itemId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+    TowerBusinessInventoryStock:
+      type: object
+      required: [businessKey, itemId, storedQuantity, shelfQuantity, storageCapacity, shelfCapacity, updatedAt]
+      properties:
+        businessKey:
+          type: string
+        itemId:
+          type: string
+        storedQuantity:
+          type: integer
+        shelfQuantity:
+          type: integer
+        storageCapacity:
+          type: integer
+        shelfCapacity:
+          type: integer
+        updatedAt:
+          type: string
+    TowerBusinessRestockResponse:
+      type: object
+      required: [ok, stock]
+      properties:
+        ok:
+          type: boolean
+        stock:
+          $ref: "#/components/schemas/TowerBusinessInventoryStock"
   parameters:
     AuthorizationSessionHeader:
       name: Authorization

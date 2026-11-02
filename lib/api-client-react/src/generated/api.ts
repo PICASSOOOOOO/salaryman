@@ -86,6 +86,12 @@ import type {
   SwitchOrganizationInput,
   SwitchOrganizationResult,
   SyncCrmSource200,
+  TowerBusinessRestockInput,
+  TowerBusinessRestockResponse,
+  TowerShopStaffAssignmentInput,
+  TowerShopStaffAssignmentResponse,
+  TowerShopStaffRevokeResponse,
+  TowerShopStaffRoster,
   WorkspaceProjectGenerationInput,
   WorkspaceProjectGenerationResponse
 } from './api.schemas';
@@ -4371,5 +4377,318 @@ export const useDecideAutopilotApproval = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDecideAutopilotApprovalMutationOptions(options));
+    }
+
+export const getListTowerShopStaffUrl = () => {
+
+
+
+
+  return `/api/admin/tower-shop-staff`
+}
+
+/**
+ * @summary List restockable Tower shops and staff assignments
+ */
+export const listTowerShopStaff = async ( options?: Parameters<typeof customFetch>[1]): Promise<TowerShopStaffRoster> => {
+
+  return customFetch<TowerShopStaffRoster>(getListTowerShopStaffUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTowerShopStaffQueryKey = () => {
+    return [
+    `/api/admin/tower-shop-staff`
+    ] as const;
+    }
+
+
+export const getListTowerShopStaffQueryOptions = <TData = Awaited<ReturnType<typeof listTowerShopStaff>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTowerShopStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTowerShopStaffQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTowerShopStaff>>> = ({ signal }) => listTowerShopStaff({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTowerShopStaff>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTowerShopStaffQueryResult = NonNullable<Awaited<ReturnType<typeof listTowerShopStaff>>>
+export type ListTowerShopStaffQueryError = ErrorType<void>
+
+
+/**
+ * @summary List restockable Tower shops and staff assignments
+ */
+
+export function useListTowerShopStaff<TData = Awaited<ReturnType<typeof listTowerShopStaff>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTowerShopStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTowerShopStaffQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssignTowerShopStaffUrl = () => {
+
+
+
+
+  return `/api/admin/tower-shop-staff`
+}
+
+/**
+ * @summary Assign a SALARYMAN user to a Tower shop
+ */
+export const assignTowerShopStaff = async (towerShopStaffAssignmentInput: TowerShopStaffAssignmentInput, options?: Parameters<typeof customFetch>[1]): Promise<TowerShopStaffAssignmentResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<TowerShopStaffAssignmentResponse>(getAssignTowerShopStaffUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(towerShopStaffAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getAssignTowerShopStaffMutationKey = () => ['assignTowerShopStaff'] as const;
+
+export const getAssignTowerShopStaffMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignTowerShopStaff>>, TError,AssignTowerShopStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignTowerShopStaff>>, TError,AssignTowerShopStaffMutationVariables, TContext> => {
+
+const mutationKey = getAssignTowerShopStaffMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignTowerShopStaff>>, AssignTowerShopStaffMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  assignTowerShopStaff(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignTowerShopStaffMutationResult = NonNullable<Awaited<ReturnType<typeof assignTowerShopStaff>>>
+    export type AssignTowerShopStaffMutationBody = BodyType<TowerShopStaffAssignmentInput>
+    export type AssignTowerShopStaffMutationError = ErrorType<void>
+    export type AssignTowerShopStaffMutationVariables = {data: BodyType<TowerShopStaffAssignmentInput>}
+
+    /**
+ * @summary Assign a SALARYMAN user to a Tower shop
+ */
+export const useAssignTowerShopStaff = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignTowerShopStaff>>, TError,AssignTowerShopStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignTowerShopStaff>>,
+        TError,
+        AssignTowerShopStaffMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignTowerShopStaffMutationOptions(options));
+    }
+
+export const getRevokeTowerShopStaffUrl = (businessKey: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/admin/tower-shop-staff/${businessKey}/${userId}`
+}
+
+/**
+ * @summary Revoke a user's Tower shop restock access
+ */
+export const revokeTowerShopStaff = async (businessKey: string,
+    userId: string, options?: Parameters<typeof customFetch>[1]): Promise<TowerShopStaffRevokeResponse> => {
+
+  return customFetch<TowerShopStaffRevokeResponse>(getRevokeTowerShopStaffUrl(businessKey,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeTowerShopStaffMutationKey = () => ['revokeTowerShopStaff'] as const;
+
+export const getRevokeTowerShopStaffMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeTowerShopStaff>>, TError,RevokeTowerShopStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeTowerShopStaff>>, TError,RevokeTowerShopStaffMutationVariables, TContext> => {
+
+const mutationKey = getRevokeTowerShopStaffMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeTowerShopStaff>>, RevokeTowerShopStaffMutationVariables> = (props) => {
+          const {businessKey,userId} = props ?? {};
+
+          return  revokeTowerShopStaff(businessKey,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeTowerShopStaffMutationResult = NonNullable<Awaited<ReturnType<typeof revokeTowerShopStaff>>>
+
+    export type RevokeTowerShopStaffMutationError = ErrorType<void>
+    export type RevokeTowerShopStaffMutationVariables = {businessKey: string;userId: string}
+
+    /**
+ * @summary Revoke a user's Tower shop restock access
+ */
+export const useRevokeTowerShopStaff = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeTowerShopStaff>>, TError,RevokeTowerShopStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeTowerShopStaff>>,
+        TError,
+        RevokeTowerShopStaffMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokeTowerShopStaffMutationOptions(options));
+    }
+
+export const getRestockTowerBusinessItemUrl = () => {
+
+
+
+
+  return `/api/items/tower-business/restock`
+}
+
+/**
+ * @summary Move stored stock onto an assigned shop's shelf
+ */
+export const restockTowerBusinessItem = async (towerBusinessRestockInput: TowerBusinessRestockInput, options?: Parameters<typeof customFetch>[1]): Promise<TowerBusinessRestockResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<TowerBusinessRestockResponse>(getRestockTowerBusinessItemUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(towerBusinessRestockInput)
+  }
+);}
+
+
+
+
+
+export const getRestockTowerBusinessItemMutationKey = () => ['restockTowerBusinessItem'] as const;
+
+export const getRestockTowerBusinessItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restockTowerBusinessItem>>, TError,RestockTowerBusinessItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restockTowerBusinessItem>>, TError,RestockTowerBusinessItemMutationVariables, TContext> => {
+
+const mutationKey = getRestockTowerBusinessItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restockTowerBusinessItem>>, RestockTowerBusinessItemMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  restockTowerBusinessItem(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestockTowerBusinessItemMutationResult = NonNullable<Awaited<ReturnType<typeof restockTowerBusinessItem>>>
+    export type RestockTowerBusinessItemMutationBody = BodyType<TowerBusinessRestockInput>
+    export type RestockTowerBusinessItemMutationError = ErrorType<void>
+    export type RestockTowerBusinessItemMutationVariables = {data: BodyType<TowerBusinessRestockInput>}
+
+    /**
+ * @summary Move stored stock onto an assigned shop's shelf
+ */
+export const useRestockTowerBusinessItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restockTowerBusinessItem>>, TError,RestockTowerBusinessItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restockTowerBusinessItem>>,
+        TError,
+        RestockTowerBusinessItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestockTowerBusinessItemMutationOptions(options));
     }
 

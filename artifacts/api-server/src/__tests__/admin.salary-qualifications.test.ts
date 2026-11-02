@@ -2,8 +2,15 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import express, { type Express } from "express";
 import { randomUUID } from "crypto";
-import { db, usersTable, worldBusinessesTable } from "@workspace/db";
+import {
+  adminAuditLogTable,
+  db,
+  towerShopStaffAssignmentsTable,
+  usersTable,
+  worldBusinessesTable,
+} from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
+import { TOWER_BUSINESS_STOCK_LINES } from "@workspace/api-zod";
 
 // Authorize the test caller as a platform admin via the OWNER_EMAILS allow-list
 // (isOwnerEmail reads it at call time). MUST be set before importing the admin
@@ -71,6 +78,13 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (createdBizIds.length) await db.delete(worldBusinessesTable).where(inArray(worldBusinessesTable.id, createdBizIds));
+  if (createdUserIds.length) {
+    await db.delete(towerShopStaffAssignmentsTable)
+      .where(inArray(towerShopStaffAssignmentsTable.userId, createdUserIds));
+  }
+  if (adminId) {
+    await db.delete(adminAuditLogTable).where(eq(adminAuditLogTable.adminId, adminId));
+  }
   if (createdUserIds.length) await db.delete(usersTable).where(inArray(usersTable.id, createdUserIds));
 });
 
@@ -140,5 +154,56 @@ describe("admin salary qualifications portal", () => {
     const res = await request(app).get("/api/admin/salary-qualifications");
     expect(res.status).toBe(401);
     authState.authed = true;
+  });
+
+  it("lets only Picasso admins assign and revoke per-shop restock access", async () => {
+    const staffEmail = `tower-shop-staff-${randomUUID().slice(0, 8)}@example.test`;
+    const staffId = await createUser(staffEmail);
+    const shopLine = TOWER_BUSINESS_STOCK_LINES.find(
+      (line) => line.sellerBusinessKey && line.itemIds.length > 0,
+    );
+    if (!shopLine?.sellerBusinessKey) throw new Error("No restockable Tower shop is configured for tests.");
+    const businessKey = shopLine.sellerBusinessKey;
+
+    actAs({ id: staffId, email: staffEmail });
+    const deniedList = await request(app).get("/api/admin/tower-shop-staff");
+    expect(deniedList.status).toBe(403);
+    const deniedAssign = await request(app)
+      .post("/api/admin/tower-shop-staff")
+      .send({ businessKey, email: staffEmail });
+    expect(deniedAssign.status).toBe(403);
+
+    actAs({ id: adminId, email: ADMIN_EMAIL });
+    const roster = await request(app).get("/api/admin/tower-shop-staff");
+    expect(roster.status).toBe(200);
+    expect(roster.body.shops.some((shop: { businessKey: string }) => shop.businessKey === businessKey)).toBe(true);
+
+    const assigned = await request(app)
+      .post("/api/admin/tower-shop-staff")
+      .send({ businessKey, email: staffEmail });
+    expect(assigned.status).toBe(200);
+    expect(assigned.body.assignment).toMatchObject({ businessKey, userId: staffId, email: staffEmail });
+    expect(typeof assigned.body.assignment.assignedAt).toBe("string");
+
+    const duplicate = await request(app)
+      .post("/api/admin/tower-shop-staff")
+      .send({ businessKey, email: staffEmail });
+    expect(duplicate.status).toBe(200);
+    const listed = await request(app).get("/api/admin/tower-shop-staff");
+    expect(listed.body.assignments.filter((row: { userId: string; businessKey: string }) =>
+      row.userId === staffId && row.businessKey === businessKey)).toHaveLength(1);
+
+    actAs({ id: staffId, email: staffEmail });
+    const deniedRevoke = await request(app)
+      .delete(`/api/admin/tower-shop-staff/${businessKey}/${staffId}`);
+    expect(deniedRevoke.status).toBe(403);
+
+    actAs({ id: adminId, email: ADMIN_EMAIL });
+    const revoked = await request(app)
+      .delete(`/api/admin/tower-shop-staff/${businessKey}/${staffId}`);
+    expect(revoked.status).toBe(200);
+    const missing = await request(app)
+      .delete(`/api/admin/tower-shop-staff/${businessKey}/${staffId}`);
+    expect(missing.status).toBe(404);
   });
 });

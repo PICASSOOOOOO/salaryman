@@ -24,6 +24,7 @@ import {
   businessTransactionsTable,
   salarymanSeasonsTable,
   usageMetersTable,
+  towerShopStaffAssignmentsTable,
   USAGE_KINDS,
   USAGE_LIMITS,
   type UsageKind,
@@ -32,6 +33,14 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql, ilike, or, count, gte, gt, inArray } from "drizzle-orm";
 import twilio from "twilio";
+import {
+  AssignTowerShopStaffBody,
+  AssignTowerShopStaffResponse,
+  ListTowerShopStaffResponse,
+  RevokeTowerShopStaffParams,
+  RevokeTowerShopStaffResponse,
+  TOWER_BUSINESS_STOCK_LINES,
+} from "@workspace/api-zod";
 import { isOwnerEmail, isPicassoOrgMemberEmail, isPicassoOrgOwner } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
 import { captureLegacyRecoverySnapshots } from "../lib/legacy-recovery";
@@ -93,6 +102,21 @@ function toE164Loose(input: string | null | undefined): string | null {
 
 const router = Router();
 
+const TOWER_SHOP_STAFF_SHOPS = Array.from(
+  TOWER_BUSINESS_STOCK_LINES.reduce((shops, line) => {
+    if (!line.sellerBusinessKey || line.itemIds.length === 0 || shops.has(line.sellerBusinessKey)) {
+      return shops;
+    }
+    shops.set(line.sellerBusinessKey, {
+      businessKey: line.sellerBusinessKey,
+      name: line.sellerName ?? line.sellerBusinessKey,
+      locationLabel: line.sellerLocationLabel ?? "Tower",
+    });
+    return shops;
+  }, new Map<string, { businessKey: string; name: string; locationLabel: string }>())
+    .values(),
+);
+
 function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -131,6 +155,126 @@ async function logAudit(adminId: string, action: string, targetType: string, tar
     await db.insert(adminAuditLogTable).values({ adminId, action, targetType, targetId, details });
   } catch {}
 }
+
+router.get("/admin/tower-shop-staff", async (req: Request, res: Response): Promise<void> => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  try {
+    const rows = await db.select({
+      businessKey: towerShopStaffAssignmentsTable.businessKey,
+      userId: towerShopStaffAssignmentsTable.userId,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      assignedByUserId: towerShopStaffAssignmentsTable.assignedByUserId,
+      assignedAt: towerShopStaffAssignmentsTable.assignedAt,
+    }).from(towerShopStaffAssignmentsTable)
+      .innerJoin(usersTable, eq(usersTable.id, towerShopStaffAssignmentsTable.userId))
+      .orderBy(towerShopStaffAssignmentsTable.businessKey, usersTable.email);
+    const response = {
+      shops: TOWER_SHOP_STAFF_SHOPS,
+      assignments: rows.map((row) => ({
+        ...row,
+        assignedAt: row.assignedAt.toISOString(),
+      })),
+    };
+    res.json(ListTowerShopStaffResponse.parse(response));
+  } catch (error) {
+    req.log.error({ error }, "Could not list Tower shop staff assignments");
+    res.status(500).json({ error: "Could not load Tower shop staff." });
+  }
+});
+
+router.post("/admin/tower-shop-staff", async (req: Request, res: Response): Promise<void> => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const parsed = AssignTowerShopStaffBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Choose a valid shop and account email." });
+    return;
+  }
+  const businessKey = parsed.data.businessKey.trim();
+  const email = parsed.data.email.trim();
+  if (!TOWER_SHOP_STAFF_SHOPS.some((shop) => shop.businessKey === businessKey)) {
+    res.status(400).json({ error: "Choose a shop that sells restockable items." });
+    return;
+  }
+
+  try {
+    const [user] = await db.select({
+      id: usersTable.id,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+    }).from(usersTable).where(ilike(usersTable.email, email)).limit(1);
+    if (!user) {
+      res.status(404).json({ error: "No SALARYMAN account uses that email." });
+      return;
+    }
+
+    const [created] = await db.insert(towerShopStaffAssignmentsTable).values({
+      businessKey,
+      userId: user.id,
+      assignedByUserId: req.user!.id,
+    }).onConflictDoNothing().returning();
+    const [assignment] = created
+      ? [created]
+      : await db.select().from(towerShopStaffAssignmentsTable).where(and(
+        eq(towerShopStaffAssignmentsTable.businessKey, businessKey),
+        eq(towerShopStaffAssignmentsTable.userId, user.id),
+      )).limit(1);
+    if (!assignment) {
+      res.status(500).json({ error: "Could not save the shop staff assignment." });
+      return;
+    }
+    if (created) {
+      await logAudit(req.user!.id, "tower_shop_staff_assign", "tower_shop", businessKey, `userId=${user.id}`);
+    }
+    res.json(AssignTowerShopStaffResponse.parse({
+      ok: true,
+      assignment: {
+        businessKey,
+        userId: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        assignedByUserId: assignment.assignedByUserId,
+        assignedAt: assignment.assignedAt.toISOString(),
+      },
+    }));
+  } catch (error) {
+    req.log.error({ error, businessKey }, "Could not assign Tower shop staff");
+    res.status(500).json({ error: "Could not assign shop staff." });
+  }
+});
+
+router.delete("/admin/tower-shop-staff/:businessKey/:userId", async (req: Request, res: Response): Promise<void> => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const parsed = RevokeTowerShopStaffParams.safeParse(req.params);
+  if (!parsed.success || !TOWER_SHOP_STAFF_SHOPS.some((shop) => shop.businessKey === parsed.data.businessKey)) {
+    res.status(400).json({ error: "Choose a valid shop and user." });
+    return;
+  }
+  try {
+    const [removed] = await db.delete(towerShopStaffAssignmentsTable).where(and(
+      eq(towerShopStaffAssignmentsTable.businessKey, parsed.data.businessKey),
+      eq(towerShopStaffAssignmentsTable.userId, parsed.data.userId),
+    )).returning({ userId: towerShopStaffAssignmentsTable.userId });
+    if (!removed) {
+      res.status(404).json({ error: "Shop staff assignment not found." });
+      return;
+    }
+    await logAudit(
+      req.user!.id,
+      "tower_shop_staff_revoke",
+      "tower_shop",
+      parsed.data.businessKey,
+      `userId=${removed.userId}`,
+    );
+    res.json(RevokeTowerShopStaffResponse.parse({ ok: true }));
+  } catch (error) {
+    req.log.error({ error, businessKey: parsed.data.businessKey }, "Could not revoke Tower shop staff");
+    res.status(500).json({ error: "Could not remove shop staff." });
+  }
+});
 
 // ── Executive cost & realm monitoring (Picasso executives only) ───────────────
 

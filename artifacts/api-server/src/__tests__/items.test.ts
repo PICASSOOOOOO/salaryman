@@ -24,7 +24,13 @@ vi.mock("../lib/tower-finance", async (importActual) => {
 
 import request from "supertest";
 import type { Express } from "express";
-import { db, playerInventoryTable, towerShopAccountsTable, towerShopInventoryTable } from "@workspace/db";
+import {
+  db,
+  playerInventoryTable,
+  towerShopAccountsTable,
+  towerShopInventoryTable,
+  towerShopStaffAssignmentsTable,
+} from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
@@ -610,7 +616,7 @@ describe("Tower shop logistics routes", () => {
 });
 
 describe("POST /items/tower-business/restock", () => {
-  it("moves one stored unit to a shop shelf from a linked on-site game session", async () => {
+  it("requires per-shop staff assignment before moving stored stock onto a shelf", async () => {
     authState.authed = false;
     const businessKey = "fish-store";
     const itemId = "fish_goldfish";
@@ -643,6 +649,32 @@ describe("POST /items/tower-business/restock", () => {
     });
 
     try {
+      const restockRequest = () => request(app).post("/api/items/tower-business/restock")
+        .set("Authorization", `Bearer ${desktop.token}`)
+        .set("x-salaryman-device-id", desktop.deviceId)
+        .send({ businessKey, itemId, quantity: 1 });
+
+      const unassigned = await restockRequest();
+      expect(unassigned.status).toBe(403);
+      expect(unassigned.body.error).toBe("Only assigned staff can restock this shop.");
+
+      await db.insert(towerShopStaffAssignmentsTable).values({
+        businessKey: "another-tower-shop",
+        userId: ITEMS_USER.id,
+        assignedByUserId: ITEMS_USER.id,
+      });
+      const assignedElsewhere = await restockRequest();
+      expect(assignedElsewhere.status).toBe(403);
+
+      await db.delete(towerShopStaffAssignmentsTable).where(and(
+        eq(towerShopStaffAssignmentsTable.businessKey, "another-tower-shop"),
+        eq(towerShopStaffAssignmentsTable.userId, ITEMS_USER.id),
+      ));
+      await db.insert(towerShopStaffAssignmentsTable).values({
+        businessKey,
+        userId: ITEMS_USER.id,
+        assignedByUserId: ITEMS_USER.id,
+      });
       const res = await request(app).post("/api/items/tower-business/restock")
         .set("Authorization", `Bearer ${desktop.token}`)
         .set("x-salaryman-device-id", desktop.deviceId)

@@ -17,6 +17,7 @@ import {
   towerShopInventoryTable,
   towerShopShipmentsTable,
   towerShopAccountsTable,
+  towerShopStaffAssignmentsTable,
   shadowTowerOfficeUnitsTable,
   INSTALL_TARGET_TYPES,
   INSTALL_CAPACITY,
@@ -50,6 +51,8 @@ import { recordTowerCompanyRevenueTx } from "../lib/tower-finance";
 import {
   TOWER_BUSINESS_STOCK_LINES,
   TOWER_GHOST_LISTING,
+  RestockTowerBusinessItemBody,
+  RestockTowerBusinessItemResponse,
 } from "@workspace/api-zod";
 import {
   quoteTowerShopOrder,
@@ -1102,14 +1105,27 @@ router.post("/items/tower-business/shipments/:shipmentId/receive", async (req, r
 router.post("/items/tower-business/restock", async (req, res) => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
-  const businessKey = String(req.body?.businessKey ?? "");
-  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
-  const itemId = String(req.body?.itemId ?? "");
-  const quantity = Number(req.body?.quantity);
-  if (!shop || !TOWER_BUSINESS_STOCK_LINES.some((line) =>
-    line.sellerBusinessKey === businessKey && line.itemIds.includes(itemId))
-    || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) {
+  const parsedBody = RestockTowerBusinessItemBody.safeParse(req.body);
+  if (!parsedBody.success) {
     res.status(400).json({ error: "Choose a stocked item and a quantity from 1 to 100." });
+    return;
+  }
+  const { businessKey, itemId, quantity } = parsedBody.data;
+  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+  if (!shop || !TOWER_BUSINESS_STOCK_LINES.some((line) =>
+    line.sellerBusinessKey === businessKey && line.itemIds.includes(itemId))) {
+    res.status(400).json({ error: "Choose a stocked item and a quantity from 1 to 100." });
+    return;
+  }
+  const [staffAssignment] = await db.select({ userId: towerShopStaffAssignmentsTable.userId })
+    .from(towerShopStaffAssignmentsTable)
+    .where(and(
+      eq(towerShopStaffAssignmentsTable.businessKey, businessKey),
+      eq(towerShopStaffAssignmentsTable.userId, link.userId),
+    ))
+    .limit(1);
+  if (!staffAssignment) {
+    res.status(403).json({ error: "Only assigned staff can restock this shop." });
     return;
   }
   const [presence] = await db.select().from(desktopOfficePresenceTable)
@@ -1155,7 +1171,10 @@ router.post("/items/tower-business/restock", async (req, res) => {
       res.status(409).json(result);
       return;
     }
-    res.json({ ok: true, stock: result.stock });
+    res.json(RestockTowerBusinessItemResponse.parse({
+      ok: true,
+      stock: { ...result.stock, updatedAt: result.stock.updatedAt.toISOString() },
+    }));
   } catch (error: any) {
     console.error("[TowerShop] manual restock failed:", error?.message);
     res.status(500).json({ error: "Could not restock the Tower shop shelf." });
