@@ -17,7 +17,7 @@ import { deviceLinksTable } from "./device-links";
 export const towerOperationsStateTable = pgTable(
   "tower_operations_state",
   {
-    buildingKey: varchar("building_key", { length: 64 }).notNull().default("shadow_tower"),
+    buildingKey: varchar("building_key", { length: 64 }).primaryKey().notNull().default("shadow_tower"),
     accumulatedTrash: integer("accumulated_trash").notNull().default(0),
     incomingSupplyCrates: integer("incoming_supply_crates").notNull().default(0),
     storedSupplyCrates: integer("stored_supply_crates").notNull().default(0),
@@ -35,7 +35,6 @@ export const towerOperationsStateTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (table) => [
-    primaryKey({ name: "tower_operations_state_building_pk", columns: [table.buildingKey] }),
     check("tower_operations_state_trash_check", sql`${table.accumulatedTrash} between 0 and 1000000`),
     check("tower_operations_state_supplies_check", sql`${table.incomingSupplyCrates} between 0 and 1000000`),
     check("tower_operations_state_stored_supplies_check", sql`${table.storedSupplyCrates} between 0 and 1000000`),
@@ -96,7 +95,7 @@ export const towerWasteHaulsTable = pgTable(
 export const towerRestroomSessionsTable = pgTable(
   "tower_restroom_sessions",
   {
-    userId: varchar("user_id", { length: 256 }).notNull()
+    userId: varchar("user_id", { length: 256 }).primaryKey().notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     linkId: uuid("link_id").notNull()
       .references(() => deviceLinksTable.id, { onDelete: "cascade" }),
@@ -106,7 +105,6 @@ export const towerRestroomSessionsTable = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    primaryKey({ name: "tower_restroom_sessions_user_pk", columns: [table.userId] }),
     uniqueIndex("tower_restroom_sessions_stall_unique").on(table.floorNumber, table.stallKey),
     check("tower_restroom_sessions_floor_check", sql`${table.floorNumber} in (1, 6)`),
   ],
@@ -115,7 +113,7 @@ export const towerRestroomSessionsTable = pgTable(
 export const careerPositionsTable = pgTable(
   "career_positions",
   {
-    positionKey: varchar("position_key", { length: 220 }).notNull(),
+    positionKey: varchar("position_key", { length: 220 }).primaryKey().notNull(),
     employerKey: varchar("employer_key", { length: 120 }).notNull(),
     title: varchar("title", { length: 160 }).notNull(),
     department: varchar("department", { length: 80 }).notNull().default(""),
@@ -129,7 +127,6 @@ export const careerPositionsTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (table) => [
-    primaryKey({ name: "career_positions_position_pk", columns: [table.positionKey] }),
     index("career_positions_employer_idx").on(table.employerKey),
     check("career_positions_output_check", sql`${table.baselineOutputUnits} between 1 and 1000000`),
     check("career_positions_attendance_check", sql`${table.baselineAttendanceDays} between 1 and 31`),

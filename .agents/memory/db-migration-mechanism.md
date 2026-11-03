@@ -53,6 +53,12 @@ For singleton state tables, `ON CONFLICT DO NOTHING` is not idempotent unless th
 
 The development schema push has also flagged a primary-key change on `tower_operations_state` alongside `career_positions`. Do not accept a truncate prompt to force through unrelated Tower schema changes; inspect and resolve the drift without deleting those rows.
 
+Drizzle Kit's PostgreSQL introspection represents existing single-column primary keys as column-level `.primaryKey()` declarations. Matching them with table-level `primaryKey({ columns: [...] })` can produce a false destructive drop/re-add even when the live constraint has the same columns. Use column-level declarations for single-column keys and table-level declarations for composite keys.
+
+**Why:** A strict preview proposed dropping several catalog-verified primary keys and warned it would truncate their tables. Changing the schema representation removed those false drops without changing the database.
+
+**How to apply:** When a push proposes replacing a single-column primary key, compare `pg_constraint` to the TypeScript schema. If columns match, align the declaration to column-level `.primaryKey()` and rerun a strict preview; never accept a truncate prompt to bypass this mismatch.
+
 ## Composite foreign-key targets in Publish diffs
 
 When a composite foreign key references `(id, org_id)` even though `id` is already a primary key, model the target key as an explicit table-level `UNIQUE` constraint rather than only a standalone unique index. Publish validation may omit a redundant composite index when creating a new table, leaving the foreign key without a matching referenced key.

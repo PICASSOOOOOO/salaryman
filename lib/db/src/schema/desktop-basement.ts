@@ -6,7 +6,6 @@ import {
   index,
   integer,
   pgTable,
-  primaryKey,
   timestamp,
   uniqueIndex,
   uuid,
@@ -18,7 +17,7 @@ import { deviceLinksTable } from "./device-links";
 export const desktopBasementPresenceTable = pgTable(
   "desktop_basement_presence",
   {
-    userId: varchar("user_id", { length: 256 }).notNull(),
+    userId: varchar("user_id", { length: 256 }).primaryKey().notNull(),
     linkId: uuid("link_id").notNull().references(() => deviceLinksTable.id, { onDelete: "cascade" }),
     level: integer("level").notNull(),
     x: integer("x").notNull(),
@@ -31,7 +30,6 @@ export const desktopBasementPresenceTable = pgTable(
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    primaryKey({ name: "desktop_basement_presence_user_pk", columns: [table.userId] }),
     index("desktop_basement_presence_level_seen_idx").on(table.level, table.lastSeenAt),
     check("desktop_basement_presence_level_check", sql`${table.level} between 1 and 6`),
     check(
@@ -50,7 +48,7 @@ export const desktopBasementPresenceTable = pgTable(
 export const desktopBasementPestsTable = pgTable(
   "desktop_basement_pests",
   {
-    id: uuid("id").notNull().defaultRandom(),
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
     buildingKey: varchar("building_key", { length: 64 }).notNull().default("shadow_tower"),
     level: integer("level").notNull(),
     spawnNumber: integer("spawn_number").notNull(),
@@ -72,7 +70,6 @@ export const desktopBasementPestsTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (table) => [
-    primaryKey({ name: "desktop_basement_pests_id_pk", columns: [table.id] }),
     uniqueIndex("desktop_basement_pests_spawn_unique").on(table.buildingKey, table.level, table.spawnNumber),
     index("desktop_basement_pests_level_status_idx").on(table.buildingKey, table.level, table.status),
     check("desktop_basement_pests_level_check", sql`${table.level} between 1 and 6`),
@@ -88,7 +85,7 @@ export const desktopBasementPestsTable = pgTable(
 export const desktopBasementAttackEventsTable = pgTable(
   "desktop_basement_attack_events",
   {
-    id: uuid("id").notNull().defaultRandom(),
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: varchar("user_id", { length: 256 }).notNull().references(() => usersTable.id, { onDelete: "cascade" }),
     requestId: uuid("request_id").notNull(),
     pestId: uuid("pest_id").notNull().references(() => desktopBasementPestsTable.id, { onDelete: "cascade" }),
@@ -98,7 +95,6 @@ export const desktopBasementAttackEventsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    primaryKey({ name: "desktop_basement_attack_events_id_pk", columns: [table.id] }),
     uniqueIndex("desktop_basement_attack_user_request_unique").on(table.userId, table.requestId),
     index("desktop_basement_attack_pest_created_idx").on(table.pestId, table.createdAt),
     check("desktop_basement_attack_damage_check", sql`${table.damage} between 0 and 100`),
@@ -109,12 +105,11 @@ export const desktopBasementAttackEventsTable = pgTable(
 export const desktopBasementCollectionsCasesTable = pgTable(
   "desktop_basement_collections_cases",
   {
-    userId: varchar("user_id", { length: 256 }).notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 256 }).primaryKey().notNull(),
     stage: integer("stage").notNull().default(0),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (table) => [
-    primaryKey({ name: "desktop_basement_collections_cases_user_pk", columns: [table.userId] }),
     foreignKey({
       name: "desktop_basement_collections_cases_user_id_fk",
       columns: [table.userId],
@@ -127,7 +122,7 @@ export const desktopBasementCollectionsCasesTable = pgTable(
 export const towerBuildingVitalsTable = pgTable(
   "tower_building_vitals",
   {
-    buildingKey: varchar("building_key", { length: 64 }).notNull().default("shadow_tower"),
+    buildingKey: varchar("building_key", { length: 64 }).primaryKey().notNull().default("shadow_tower"),
     powerCondition: integer("power_condition").notNull().default(100),
     plumbingCondition: integer("plumbing_condition").notNull().default(100),
     upkeepCondition: integer("upkeep_condition").notNull().default(100),
@@ -136,7 +131,6 @@ export const towerBuildingVitalsTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   (table) => [
-    primaryKey({ name: "tower_building_vitals_building_pk", columns: [table.buildingKey] }),
     check("tower_building_vitals_power_check", sql`${table.powerCondition} between 0 and 100`),
     check("tower_building_vitals_plumbing_check", sql`${table.plumbingCondition} between 0 and 100`),
     check("tower_building_vitals_upkeep_check", sql`${table.upkeepCondition} between 0 and 100`),

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, integer, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { check, date, foreignKey, index, integer, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -9,7 +9,7 @@ export const ORG_TIME_OFF_STATUSES = ["pending", "approved", "declined", "cancel
 
 export const orgTimeOffRequestsTable = pgTable("org_time_off_requests", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  orgId: integer("org_id").notNull(),
   requesterUserId: varchar("requester_user_id", { length: 255 }).notNull(),
   startDate: date("start_date", { mode: "string" }).notNull(),
   endDate: date("end_date", { mode: "string" }).notNull(),
@@ -21,6 +21,11 @@ export const orgTimeOffRequestsTable = pgTable("org_time_off_requests", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
+  foreignKey({
+    name: "org_time_off_requests_org_id_fkey",
+    columns: [table.orgId],
+    foreignColumns: [organizationsTable.id],
+  }).onDelete("cascade"),
   check("org_time_off_date_range_check", sql`${table.endDate} >= ${table.startDate}`),
   check("org_time_off_type_check", sql`${table.leaveType} IN ('vacation', 'personal', 'other')`),
   check("org_time_off_status_check", sql`${table.status} IN ('pending', 'approved', 'declined', 'cancelled')`),
