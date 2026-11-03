@@ -137,6 +137,19 @@ export const towerBuildingVitalsTable = pgTable(
   ],
 );
 
+export const towerBuildingVitalsArchiveTable = pgTable("tower_building_vitals_archive", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  buildingKey: varchar("building_key", { length: 64 }).notNull(),
+  powerCondition: integer("power_condition").notNull(),
+  plumbingCondition: integer("plumbing_condition").notNull(),
+  upkeepCondition: integer("upkeep_condition").notNull(),
+  lastTickAt: timestamp("last_tick_at", { withTimezone: true }).notNull(),
+  updatedByUserId: varchar("updated_by_user_id", { length: 256 }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }).notNull().defaultNow(),
+  archiveReason: varchar("archive_reason", { length: 64 }).notNull().default("duplicate_building_key"),
+});
+
 export const towerAlarmEventsTable = pgTable(
   "tower_alarm_events",
   {

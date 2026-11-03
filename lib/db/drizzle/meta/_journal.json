@@ -631,6 +631,13 @@
       "when": 1793629518187,
       "tag": "0089_tower_shop_staff_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1793706897805,
+      "tag": "0090_tower_building_vitals_duplicate_archive",
+      "breakpoints": true
     }
   ]
 }
