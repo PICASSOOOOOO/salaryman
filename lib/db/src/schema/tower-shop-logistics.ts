@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -36,8 +37,7 @@ export const towerShopAccountsTable = pgTable(
 export const towerShopInventoryTable = pgTable(
   "tower_shop_inventory",
   {
-    businessKey: varchar("business_key", { length: 80 }).notNull()
-      .references(() => towerShopAccountsTable.businessKey, { onDelete: "cascade" }),
+    businessKey: varchar("business_key", { length: 80 }).notNull(),
     itemId: varchar("item_id", { length: 80 }).notNull(),
     storedQuantity: integer("stored_quantity").notNull().default(0),
     shelfQuantity: integer("shelf_quantity").notNull().default(0),
@@ -52,6 +52,11 @@ export const towerShopInventoryTable = pgTable(
       columns: [table.businessKey, table.itemId],
     }),
     index("tower_shop_inventory_item_idx").on(table.itemId),
+    foreignKey({
+      name: "tower_shop_inventory_account_fk",
+      columns: [table.businessKey],
+      foreignColumns: [towerShopAccountsTable.businessKey],
+    }).onDelete("cascade"),
     check("tower_shop_inventory_stored_check", sql`${table.storedQuantity} between 0 and 1000000`),
     check("tower_shop_inventory_shelf_check", sql`${table.shelfQuantity} between 0 and 1000000`),
     check("tower_shop_inventory_storage_capacity_check", sql`${table.storageCapacity} between 0 and 1000000`),
@@ -66,8 +71,7 @@ export const towerShopShipmentsTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     requestKey: varchar("request_key", { length: 160 }).notNull(),
-    businessKey: varchar("business_key", { length: 80 }).notNull()
-      .references(() => towerShopAccountsTable.businessKey, { onDelete: "restrict" }),
+    businessKey: varchar("business_key", { length: 80 }).notNull(),
     shippingCompanyKey: varchar("shipping_company_key", { length: 80 }).notNull(),
     status: varchar("status", { length: 24 }).notNull().default("ordered"),
     lines: jsonb("lines").$type<Array<{ itemId: string; quantity: number }>>().notNull(),
@@ -87,6 +91,11 @@ export const towerShopShipmentsTable = pgTable(
   },
   (table) => [
     uniqueIndex("tower_shop_shipments_request_unique").on(table.requestKey),
+    foreignKey({
+      name: "tower_shop_shipment_account_fk",
+      columns: [table.businessKey],
+      foreignColumns: [towerShopAccountsTable.businessKey],
+    }).onDelete("restrict"),
     index("tower_shop_shipments_business_status_idx").on(table.businessKey, table.status, table.requestedAt),
     check("tower_shop_shipments_status_check", sql`${table.status} in ('ordered', 'supplier_processing', 'at_dock', 'in_delivery', 'delivered', 'cancelled')`),
     check("tower_shop_shipments_goods_cost_check", sql`${table.goodsCostFiat} >= 0`),

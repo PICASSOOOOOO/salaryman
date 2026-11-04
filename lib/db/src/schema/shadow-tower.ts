@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, date, jsonb, index, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, date, jsonb, foreignKey, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { organizationsTable } from "./organizations";
 
@@ -51,7 +51,7 @@ export const shadowTowerOfficeUnitsTable = pgTable("shadow_tower_office_units", 
 
 export const shadowTowerWorkstationAssignmentsTable = pgTable("shadow_tower_workstation_assignments", {
   id: serial("id").primaryKey(),
-  floorId: integer("floor_id").notNull().references(() => shadowTowerFloorsTable.id, { onDelete: "cascade" }),
+  floorId: integer("floor_id").notNull(),
   workstationKey: varchar("workstation_key", { length: 64 }).notNull(),
   assigneeType: varchar("assignee_type", { length: 12 }).notNull(), // human | bot
   assigneeUserId: varchar("assignee_user_id"),
@@ -63,6 +63,11 @@ export const shadowTowerWorkstationAssignmentsTable = pgTable("shadow_tower_work
   uniqueIndex("shadow_tower_assignment_human_unique").on(t.floorId, t.assigneeUserId),
   uniqueIndex("shadow_tower_assignment_bot_unique").on(t.floorId, t.botId),
   index("shadow_tower_assignment_floor_idx").on(t.floorId),
+  foreignKey({
+    name: "shadow_tower_workstation_floor_fk",
+    columns: [t.floorId],
+    foreignColumns: [shadowTowerFloorsTable.id],
+  }).onDelete("cascade"),
 ]);
 
 /** Explicit per-player selection avoids ambiguous "first floor" office hydration. */

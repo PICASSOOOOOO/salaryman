@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -139,8 +140,7 @@ export const careerWorkEventsTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     eventKey: varchar("event_key", { length: 180 }).notNull(),
-    positionKey: varchar("position_key", { length: 220 }).notNull()
-      .references(() => careerPositionsTable.positionKey, { onDelete: "cascade" }),
+    positionKey: varchar("position_key", { length: 220 }).notNull(),
     userId: varchar("user_id", { length: 256 }).notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     status: varchar("status", { length: 16 }).notNull().default("started"),
@@ -150,6 +150,11 @@ export const careerWorkEventsTable = pgTable(
   },
   (table) => [
     uniqueIndex("career_work_events_event_key_idx").on(table.eventKey),
+    foreignKey({
+      name: "career_work_event_position_fk",
+      columns: [table.positionKey],
+      foreignColumns: [careerPositionsTable.positionKey],
+    }).onDelete("cascade"),
     index("career_work_events_position_user_completed_idx")
       .on(table.positionKey, table.userId, table.completedAt),
     index("career_work_events_started_idx").on(table.status, table.startedAt),

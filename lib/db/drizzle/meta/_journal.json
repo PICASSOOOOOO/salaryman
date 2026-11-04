@@ -645,6 +645,20 @@
       "when": 1793773071904,
       "tag": "0091_development_schema_additive_drift",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1793773841797,
+      "tag": "0092_stable_foreign_key_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1793774354992,
+      "tag": "0093_org_documents_fk_introspection_order",
+      "breakpoints": true
     }
   ]
 }

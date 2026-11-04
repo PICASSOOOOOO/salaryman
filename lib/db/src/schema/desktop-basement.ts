@@ -88,7 +88,7 @@ export const desktopBasementAttackEventsTable = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: varchar("user_id", { length: 256 }).notNull().references(() => usersTable.id, { onDelete: "cascade" }),
     requestId: uuid("request_id").notNull(),
-    pestId: uuid("pest_id").notNull().references(() => desktopBasementPestsTable.id, { onDelete: "cascade" }),
+    pestId: uuid("pest_id").notNull(),
     moveId: varchar("move_id", { length: 32 }).notNull(),
     damage: integer("damage").notNull(),
     staminaAfter: integer("stamina_after").notNull(),
@@ -97,6 +97,11 @@ export const desktopBasementAttackEventsTable = pgTable(
   (table) => [
     uniqueIndex("desktop_basement_attack_user_request_unique").on(table.userId, table.requestId),
     index("desktop_basement_attack_pest_created_idx").on(table.pestId, table.createdAt),
+    foreignKey({
+      name: "desktop_basement_attack_pest_fk",
+      columns: [table.pestId],
+      foreignColumns: [desktopBasementPestsTable.id],
+    }).onDelete("cascade"),
     check("desktop_basement_attack_damage_check", sql`${table.damage} between 0 and 100`),
     check("desktop_basement_attack_stamina_check", sql`${table.staminaAfter} between 0 and 100`),
   ],
@@ -178,14 +183,15 @@ export const towerAlarmEventsTable = pgTable(
   (table) => [
     uniqueIndex("tower_alarm_events_event_key_unique").on(table.eventKey),
     uniqueIndex("tower_alarm_events_one_active_type_idx")
-      .on(
-        table.buildingKey,
-        table.alarmType,
-        table.floorKey,
-        table.zoneKey,
-        sql`coalesce(${table.organizationKey}, '')`,
+      .using(
+        "btree",
+        sql`building_key`,
+        sql`alarm_type`,
+        sql`floor_key`,
+        sql`zone_key`,
+        sql`COALESCE(organization_key, ''::character varying)`,
       )
-      .where(sql`${table.status} in ('active', 'silenced')`),
+      .where(sql`((status)::text = ANY ((ARRAY['active'::character varying, 'silenced'::character varying])::text[]))`),
     index("tower_alarm_events_status_created_idx").on(table.buildingKey, table.status, table.createdAt),
     check("tower_alarm_events_type_check", sql`${table.alarmType} in ('power_failure', 'water_failure', 'fire', 'smoke', 'flood', 'poison', 'crime_scene', 'sprinkler_failure')`),
     check("tower_alarm_events_floor_check", sql`${table.floorKey} ~ '^(B[1-6]|F(0[1-9]|[1-5][0-9]|6[0-7]))$'`),

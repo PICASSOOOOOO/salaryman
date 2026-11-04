@@ -74,3 +74,15 @@ Do not assume Publish reconciles changed PostgreSQL `CHECK` definitions. A succe
 **Why:** Production rejected a newly supported ledger value, while `explainSchemaDiff()` reported no changes; the next successful Publish still showed the same rejection.
 
 **How to apply:** Compare live `pg_constraint` definitions before and after Publish. Keep runtime writes compatible with the older production constraint until a supported schema diff actually applies the change; never repair production with direct DDL.
+
+PostgreSQL truncates identifiers beyond 63 bytes. Drizzle-generated foreign-key names can exceed that limit, leaving a truncated catalog name that makes later strict previews propose repeated drop/re-add operations. Use explicit short FK names and rename verified existing constraints instead of rebuilding them.
+
+**Why:** Several valid development FKs were stored under truncated names, while Drizzle kept proposing replacements under the untruncated names.
+
+**How to apply:** Check the live `pg_constraint.conname`; if it is only truncated, assign a stable short name in the schema and use `ALTER TABLE ... RENAME CONSTRAINT` in the development repair.
+
+Do not accept repeated constraint/default diffs solely because Drizzle introspection emits replacement SQL. It can reorder a composite self-FK's child columns or represent an empty `text[]` default as a one-empty-string array; compare catalog definitions and preserve verified semantics.
+
+**Why:** The inspected composite document FK and empty contact-tag default matched their intended database definitions, but strict previews still proposed drop/re-add or reset statements.
+
+**How to apply:** Compare `pg_constraint` column ordinals and `pg_get_constraintdef`, plus `pg_get_expr` and `information_schema.columns.column_default`, before changing source or applying a proposed replacement.

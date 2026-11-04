@@ -100,8 +100,8 @@ export const orgDocumentsTable = pgTable("org_documents", {
   uniqueIndex("org_documents_object_path_uidx").on(table.objectPath),
   index("org_documents_org_parent_created_idx").on(table.orgId, table.parentId, table.createdAt),
   foreignKey({
-    columns: [table.parentId, table.orgId],
-    foreignColumns: [table.id, table.orgId],
+    columns: [table.orgId, table.parentId],
+    foreignColumns: [table.orgId, table.id],
     name: "org_documents_parent_same_org_fk",
   }).onDelete("cascade"),
 ]);
@@ -117,7 +117,7 @@ export type OrgDocument = typeof orgDocumentsTable.$inferSelect;
 export const orgDocumentUploadIntentsTable = pgTable("org_document_upload_intents", {
   id: varchar("id", { length: 36 }).primaryKey(),
   orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
-  connectionId: integer("connection_id").references(() => orgConnectorConnectionsTable.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id"),
   uploadedByUserId: varchar("uploaded_by_user_id", { length: 255 }),
   idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
   name: varchar("name", { length: 300 }).notNull(),
@@ -132,6 +132,11 @@ export const orgDocumentUploadIntentsTable = pgTable("org_document_upload_intent
 }, (table) => [
   uniqueIndex("org_document_upload_connection_idempotency_uidx").on(table.connectionId, table.idempotencyKey),
   index("org_document_upload_expiry_idx").on(table.expiresAt),
+  foreignKey({
+    name: "org_document_upload_connection_fk",
+    columns: [table.connectionId],
+    foreignColumns: [orgConnectorConnectionsTable.id],
+  }).onDelete("cascade"),
 ]);
 
 export type OrgDocumentUploadIntent = typeof orgDocumentUploadIntentsTable.$inferSelect;

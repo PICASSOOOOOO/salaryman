@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { organizationsTable } from "./organizations";
 
 export const ORG_CONNECTOR_SCOPES = [
@@ -30,7 +30,7 @@ export const orgConnectorAppsTable = pgTable("organization_connector_apps", {
 export const orgConnectorConnectionsTable = pgTable("organization_connector_connections", {
   id: serial("id").primaryKey(),
   orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
-  appId: integer("app_id").notNull().references(() => orgConnectorAppsTable.id, { onDelete: "restrict" }),
+  appId: integer("app_id").notNull(),
   grantedScopes: jsonb("granted_scopes").$type<OrgConnectorScope[]>().notNull().default([]),
   status: varchar("status", { length: 24 }).notNull().default("connected"),
   tokenHash: varchar("token_hash", { length: 64 }),
@@ -43,13 +43,18 @@ export const orgConnectorConnectionsTable = pgTable("organization_connector_conn
   uniqueIndex("organization_connector_connections_org_app_uidx").on(t.orgId, t.appId),
   uniqueIndex("organization_connector_connections_token_hash_uidx").on(t.tokenHash),
   index("organization_connector_connections_org_status_idx").on(t.orgId, t.status),
+  foreignKey({
+    name: "org_connector_connection_app_fk",
+    columns: [t.appId],
+    foreignColumns: [orgConnectorAppsTable.id],
+  }).onDelete("restrict"),
 ]);
 
 export const orgConnectorActivityTable = pgTable("organization_connector_activity", {
   id: serial("id").primaryKey(),
   orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
-  connectionId: integer("connection_id").notNull().references(() => orgConnectorConnectionsTable.id, { onDelete: "cascade" }),
-  appId: integer("app_id").notNull().references(() => orgConnectorAppsTable.id, { onDelete: "cascade" }),
+  connectionId: integer("connection_id").notNull(),
+  appId: integer("app_id").notNull(),
   actorUserId: varchar("actor_user_id", { length: 255 }),
   eventType: varchar("event_type", { length: 40 }).notNull(),
   resourceType: varchar("resource_type", { length: 40 }),
@@ -58,6 +63,16 @@ export const orgConnectorActivityTable = pgTable("organization_connector_activit
 }, (t) => [
   index("organization_connector_activity_org_created_idx").on(t.orgId, t.createdAt),
   index("organization_connector_activity_connection_created_idx").on(t.connectionId, t.createdAt),
+  foreignKey({
+    name: "org_connector_activity_connection_fk",
+    columns: [t.connectionId],
+    foreignColumns: [orgConnectorConnectionsTable.id],
+  }).onDelete("cascade"),
+  foreignKey({
+    name: "org_connector_activity_app_fk",
+    columns: [t.appId],
+    foreignColumns: [orgConnectorAppsTable.id],
+  }).onDelete("cascade"),
 ]);
 
 export type OrgConnectorApp = typeof orgConnectorAppsTable.$inferSelect;
