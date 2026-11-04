@@ -638,6 +638,13 @@
       "when": 1793706897805,
       "tag": "0090_tower_building_vitals_duplicate_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1793773071904,
+      "tag": "0091_development_schema_additive_drift",
+      "breakpoints": true
     }
   ]
 }
