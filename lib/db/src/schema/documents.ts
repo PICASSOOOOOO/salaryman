@@ -100,8 +100,8 @@ export const orgDocumentsTable = pgTable("org_documents", {
   uniqueIndex("org_documents_object_path_uidx").on(table.objectPath),
   index("org_documents_org_parent_created_idx").on(table.orgId, table.parentId, table.createdAt),
   foreignKey({
-    columns: [table.orgId, table.parentId],
-    foreignColumns: [table.orgId, table.id],
+    columns: [table.parentId, table.orgId],
+    foreignColumns: [table.id, table.orgId],
     name: "org_documents_parent_same_org_fk",
   }).onDelete("cascade"),
 ]);
