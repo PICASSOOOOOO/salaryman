@@ -6,7 +6,11 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
-from pygame_sim.app import _initialize_hidden_python_renderer, parse_args
+from pygame_sim.app import (
+    _initialize_hidden_python_renderer,
+    _should_use_pygame_movement_input,
+    parse_args,
+)
 from pygame_sim.godot_runtime import (
     GodotRuntime,
     godot_process_exited,
@@ -54,6 +58,26 @@ class GodotRuntimeTests(unittest.TestCase):
             pygame.event.get()
         finally:
             pygame.quit()
+
+    def test_connected_godot_client_keeps_authority_over_movement_input(self) -> None:
+        self.assertFalse(
+            _should_use_pygame_movement_input(
+                bridge_connected=True,
+                spatial_mode=True,
+                window_focused=True,
+                page_open=False,
+                tool_menu_open=False,
+            )
+        )
+        self.assertTrue(
+            _should_use_pygame_movement_input(
+                bridge_connected=False,
+                spatial_mode=True,
+                window_focused=True,
+                page_open=False,
+                tool_menu_open=False,
+            )
+        )
 
     def test_resolves_relocatable_paired_runtime_before_host_godot(self) -> None:
         root = self.tmp_path / "release"

@@ -41,6 +41,24 @@ def _initialize_hidden_python_renderer() -> SolarPunkRenderer:
     return SolarPunkRenderer(pygame.Surface(WINDOW_SIZE))
 
 
+def _should_use_pygame_movement_input(
+    *,
+    bridge_connected: bool,
+    spatial_mode: bool,
+    window_focused: bool,
+    page_open: bool,
+    tool_menu_open: bool,
+) -> bool:
+    """Only read Pygame movement when no connected Godot client owns input."""
+    return (
+        not bridge_connected
+        and spatial_mode
+        and window_focused
+        and not page_open
+        and not tool_menu_open
+    )
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="SALARYMAN solar-punk office simulation")
     parser.add_argument(
@@ -726,7 +744,13 @@ def run(argv: list[str] | None = None) -> int:
         # Pygame uses the same continuous movement path as the Godot client.
         # Only the focused Pygame window writes keyboard input, so a connected
         # Godot renderer remains free to drive the authoritative scene.
-        if spatial_mode and pygame.key.get_focused() and state.active_page is None and not state.tool_menu_open:
+        if _should_use_pygame_movement_input(
+            bridge_connected=bridge.connected,
+            spatial_mode=spatial_mode,
+            window_focused=pygame.key.get_focused(),
+            page_open=state.active_page is not None,
+            tool_menu_open=state.tool_menu_open,
+        ):
             pressed = pygame.key.get_pressed()
             move_x = int(pressed[pygame.K_d] or pressed[pygame.K_RIGHT]) - int(
                 pressed[pygame.K_a] or pressed[pygame.K_LEFT]

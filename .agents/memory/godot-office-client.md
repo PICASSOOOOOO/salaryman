@@ -114,3 +114,15 @@ in a hidden menu.
 and package them with the game. Put any control/display guidance inside the
 closed menu, never in the gameplay HUD. Do not claim physical-controller
 compatibility was verified unless an actual device is tested.
+
+The SDL dummy display may report keyboard focus while the Python simulation is
+hidden. Never let Pygame movement polling overwrite a connected Godot client's
+continuous input; the Godot bridge owns movement whenever it is connected.
+
+**Why:** A live desktop check showed the hidden SDL display reporting focus and
+replacing Godot's nonzero motion input with zero every frame, despite the
+bridge accepting each command.
+
+**How to apply:** Gate fallback Pygame keyboard movement on the absence of a
+connected Godot client, and verify movement by observing authoritative Python
+positions during a paired live run.

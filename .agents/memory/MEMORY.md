@@ -41,7 +41,7 @@
 - [Org deletion / disband](org-deletion.md) — Cascade related rows, null non-FK org references, and require owner plus confirmName.
 - [Pablo model + grounding](pablo-live.ts) — Web facts use Responses web_search with injection fencing; see [GPT-5 limits](gpt5-migration-constraints.md) and [Astra rollout](astra-model-rollout.md).
 - [Office interactables + camera](office-interactables.md) — Stations link to existing routes; camera uses near/mid/far zoom and footsteps use sfxStep.
-- [Native game clients](pygame-client-rules.md) — preserve framing, authority, and controls; see the [Godot runtime](godot-office-client.md).
+- [Native game clients](pygame-client-rules.md) — preserve framing, authority, and controls; see the [Godot runtime](godot-office-client.md), including dummy-focus input precedence.
 - [Pablo Radio global station](pablo-radio-global.md) — exactly one app-wide Call Home player serves all non-phone routes; HUDs and settings only change shared radio state.
 - [Marketplace bot roster](marketplace-bot-roster.md) — Curate nine bots; deactivate removed entries without deleting rows, and gate by owner/dev membership.
 - [Business Marketplace](business-marketplace.md) — Settle sales atomically; actual-business auctions need org legal roles, succession, and Tower sale flows.
