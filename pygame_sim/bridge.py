@@ -31,6 +31,7 @@ from .object_physics import interaction_profile_for
 from .npc_engine import COMPETITION_ACTIONS
 from .scene import FLOOR_COUNT, TowerScene
 from .state import OfficeState
+from .tower_story import advance_open_mic_story, open_mic_story_objective
 
 
 PROTOCOL_VERSION = 1
@@ -516,7 +517,7 @@ def _resolve_coworker_fatality(state: OfficeState, coworker: Any) -> bool:
     return True
 
 
-def apply_command(
+def _apply_command(
     command: object,
     state: OfficeState,
     scene: TowerScene,
@@ -1095,6 +1096,22 @@ def apply_command(
     return CommandResult(False, "COMMAND NOT IMPLEMENTED")
 
 
+def apply_command(
+    command: object,
+    state: OfficeState,
+    scene: TowerScene,
+    building_sync: Any | None = None,
+    basement_sync: Any | None = None,
+) -> CommandResult:
+    """Apply a renderer command, then advance eligible native story progress."""
+    result = _apply_command(command, state, scene, building_sync, basement_sync)
+    if result.ok:
+        story_line = advance_open_mic_story(state, scene, command)
+        if story_line is not None:
+            state.notice = story_line
+    return result
+
+
 def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict[str, Any]:
     """Build a versioned, JSON-safe snapshot for Godot rendering."""
     current_room = scene.room
@@ -1223,7 +1240,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     max(0, (player_y - grid_origin_y) // grid_cell_size),
                 ],
                 "room": scene.current_room,
-                "mission": f"Reach an interactive object in {current_room.label}",
+                "mission": open_mic_story_objective(state.open_mic_story_stage),
                 "exits": exits,
             },
         },

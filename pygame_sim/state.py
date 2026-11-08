@@ -19,6 +19,7 @@ from .customization import (
 from .models import ActionKind, LedgerEntry, OfficeRoster, RecruitCandidate, Worker
 from .npc_engine import RivalryEngine
 from .pest_work import PEST_JOB_BY_ID, PEST_JOBS, normalize_work_orders
+from .tower_story import normalize_open_mic_story_stage
 
 
 SECONDS_PER_WORKSPACE_HOUR = 2.0
@@ -142,6 +143,7 @@ class OfficeState:
     active_pest_job: str | None = None
     collections_case_stage: int = 0
     collections_case_server_stage: int | None = None
+    open_mic_story_stage: int = 0
     tower_work_advice: str = ""
     utility_work_target: str | None = None
     utility_work_started_at: float = 0.0
@@ -543,6 +545,9 @@ class OfficeState:
             "collections_case": {
                 "stage": max(0, min(5, self.collections_case_stage)),
             },
+            "open_mic_story": {
+                "stage": normalize_open_mic_story_stage(self.open_mic_story_stage),
+            },
             "workers": [
                 {
                     "name": worker.name,
@@ -650,6 +655,11 @@ class OfficeState:
                     )
                 except (TypeError, ValueError):
                     state.collections_case_stage = 0
+            open_mic_story = payload.get("open_mic_story", {})
+            if isinstance(open_mic_story, dict):
+                state.open_mic_story_stage = normalize_open_mic_story_stage(
+                    open_mic_story.get("stage", 0)
+                )
             entries = payload.get("ledger", [])
             if entries:
                 state.ledger = [
@@ -742,6 +752,7 @@ class OfficeState:
         self.drawer_open = False
         self.selected_worker = None
         self.notice = "SHIFT READY"
+        self.open_mic_story_stage = 0
         self.work_minutes_today = 0
         self.work_minutes_since_break = 0
         self.break_kind = None
