@@ -59,6 +59,34 @@ func _run_tests() -> void:
 	var floor_plan = JSON.parse_string(FileAccess.get_file_as_string("res://floor_plan.json"))
 	assert(floor_plan is Dictionary)
 	client.floor_plan_data = floor_plan
+	var freight_client = OfficeClient.new()
+	root.add_child(freight_client)
+	freight_client.floor_plan_data = floor_plan
+	var first_shipment := {
+		"id": "shipment-first",
+		"status": "in_delivery",
+		"from": {"x": 18_500, "y": 7_000},
+		"to": {"x": 20_000, "y": 8_000},
+	}
+	freight_client._sync_shop_cargo_visual(first_shipment)
+	assert(freight_client.shop_cargo_shipment_id == "shipment-first")
+	assert(is_instance_valid(freight_client.shop_cargo_visual))
+	var first_route: Tween = freight_client.shop_courier_route_tween
+	var second_shipment := {
+		"id": "shipment-second",
+		"status": "in_delivery",
+		"from": {"x": 18_500, "y": 7_000},
+		"to": {"x": 21_000, "y": 9_000},
+	}
+	freight_client._sync_shop_cargo_visual(second_shipment)
+	assert(freight_client.shop_cargo_shipment_id == "shipment-second")
+	assert(is_instance_valid(freight_client.shop_cargo_visual))
+	assert(freight_client.shop_courier_route_tween != first_route)
+	assert(not first_route.is_running())
+	freight_client._sync_shop_cargo_visual({})
+	assert(freight_client.shop_cargo_shipment_id.is_empty())
+	assert(freight_client.shop_courier_route_tween == null)
+	freight_client.queue_free()
 	client.world_root = Node3D.new()
 	root.add_child(client.world_root)
 	client._build_materials()

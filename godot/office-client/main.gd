@@ -48,6 +48,7 @@ var target_player_world := Vector3.ZERO
 var visual_player_velocity := Vector3.ZERO
 var animation_clock := 0.0
 var shop_cargo_visual: Node3D = null
+var shop_cargo_shipment_id := ""
 var shop_courier_route_tween: Tween
 var camera_distance := CAMERA_DISTANCE_LEVELS[CAMERA_DEFAULT_ZOOM_INDEX]
 var camera_zoom_index := CAMERA_DEFAULT_ZOOM_INDEX
@@ -1844,7 +1845,9 @@ func _load_player() -> void:
 
 func _sync_shop_cargo_visual(value: Variant) -> void:
 	var shipment: Dictionary = value if value is Dictionary else {}
-	if shipment.get("status") != "in_delivery":
+	var shipment_id := str(shipment.get("shipmentId", shipment.get("id", ""))).strip_edges()
+	if shipment.get("status") != "in_delivery" or shipment_id.is_empty():
+		_stop_shop_courier_route()
 		if is_instance_valid(shop_cargo_visual):
 			if not bool(shop_cargo_visual.get_meta("delivery_exit_started", false)):
 				shop_cargo_visual.set_meta("delivery_exit_started", true)
@@ -1864,9 +1867,15 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 				)
 				exit_tween.tween_callback(departing_cart.queue_free)
 			shop_cargo_visual = null
+		shop_cargo_shipment_id = ""
 		return
+	if is_instance_valid(shop_cargo_visual) and shop_cargo_shipment_id == shipment_id:
+		return
+	_stop_shop_courier_route()
 	if is_instance_valid(shop_cargo_visual):
-		return
+		shop_cargo_visual.queue_free()
+	shop_cargo_visual = null
+	shop_cargo_shipment_id = shipment_id
 	shop_cargo_visual = Node3D.new()
 	shop_cargo_visual.name = "ShippingCompanyCourierCart"
 	var shipment_from: Dictionary = shipment.get("from", {})
@@ -1986,6 +1995,12 @@ func _sync_shop_cargo_visual(value: Variant) -> void:
 	route_tween.tween_property(crate, "position", Vector3(0.0, 0.78, -0.18), 1.0) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	route_tween.parallel().tween_property(crate, "scale", Vector3.ZERO, 0.35)
+
+
+func _stop_shop_courier_route() -> void:
+	if shop_courier_route_tween != null and shop_courier_route_tween.is_running():
+		shop_courier_route_tween.kill()
+	shop_courier_route_tween = null
 
 
 func _restore_shop_courier_at_service_lift() -> void:
