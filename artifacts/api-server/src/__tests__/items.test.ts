@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+import { randomUUID } from "node:crypto";
 
 // Default: act as a normal (non-owner) player so the FIAT spend path runs.
 // Individual tests flip this to exercise the free-grant branch.
@@ -29,6 +30,7 @@ import {
   playerInventoryTable,
   towerShopAccountsTable,
   towerShopInventoryTable,
+  towerShopShipmentsTable,
   towerShopStaffAssignmentsTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
@@ -612,6 +614,130 @@ describe("Tower shop logistics routes", () => {
       .set("Authorization", `Bearer ${desktop.token}`)
       .set("x-salaryman-device-id", desktop.deviceId);
     expect(outOfScope.status).toBe(400);
+  });
+});
+
+describe("POST /items/tower-business/shipments/:shipmentId/receive", () => {
+  async function seedShipment(args: { floorNumber: number; x: number; y: number }) {
+    const shipmentId = randomUUID();
+    const businessKey = "fish-store";
+    const itemId = "fish_goldfish";
+    const [priorAccount] = await db.select().from(towerShopAccountsTable)
+      .where(eq(towerShopAccountsTable.businessKey, businessKey)).limit(1);
+    const [priorStock] = await db.select().from(towerShopInventoryTable).where(and(
+      eq(towerShopInventoryTable.businessKey, businessKey),
+      eq(towerShopInventoryTable.itemId, itemId),
+    )).limit(1);
+
+    await db.insert(towerShopAccountsTable).values({ businessKey }).onConflictDoNothing();
+    await db.insert(towerShopShipmentsTable).values({
+      id: shipmentId,
+      requestKey: `receive-test:${shipmentId}`,
+      businessKey,
+      shippingCompanyKey: "tower_shipping",
+      status: "in_delivery",
+      lines: [{ itemId, quantity: 3 }],
+      goodsCostFiat: 0,
+      deliveryFeeFiat: 0,
+      supplierCostFiat: 0,
+      btcMultiplierBps: 10_000,
+      demandIndex: 0,
+      supplyIndex: 0,
+    });
+    const desktop = await seedLinkedDesktopAtOffice(args);
+    const receive = () => request(app)
+      .post(`/api/items/tower-business/shipments/${shipmentId}/receive`)
+      .set("Authorization", `Bearer ${desktop.token}`)
+      .set("x-salaryman-device-id", desktop.deviceId)
+      .send({});
+
+    return {
+      shipmentId,
+      itemId,
+      receive,
+      cleanup: async () => {
+        await db.delete(towerShopShipmentsTable)
+          .where(eq(towerShopShipmentsTable.id, shipmentId));
+        if (priorStock) {
+          await db.update(towerShopInventoryTable).set({
+            storedQuantity: priorStock.storedQuantity,
+            shelfQuantity: priorStock.shelfQuantity,
+            storageCapacity: priorStock.storageCapacity,
+            shelfCapacity: priorStock.shelfCapacity,
+            updatedAt: priorStock.updatedAt,
+          }).where(and(
+            eq(towerShopInventoryTable.businessKey, businessKey),
+            eq(towerShopInventoryTable.itemId, itemId),
+          ));
+        } else {
+          await db.delete(towerShopInventoryTable).where(and(
+            eq(towerShopInventoryTable.businessKey, businessKey),
+            eq(towerShopInventoryTable.itemId, itemId),
+          ));
+        }
+        if (!priorAccount) {
+          await db.delete(towerShopAccountsTable)
+            .where(eq(towerShopAccountsTable.businessKey, businessKey));
+        }
+      },
+    };
+  }
+
+  it("does not deliver stock when the linked desktop is at a different shop", async () => {
+    const freight = await seedShipment({
+      floorNumber: 2,
+      x: 39_341,
+      y: 47_470,
+    });
+    const [priorStock] = await db.select().from(towerShopInventoryTable).where(and(
+      eq(towerShopInventoryTable.businessKey, "fish-store"),
+      eq(towerShopInventoryTable.itemId, freight.itemId),
+    )).limit(1);
+
+    try {
+      const res = await freight.receive();
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toMatch(/destination shop/i);
+      const [shipment] = await db.select().from(towerShopShipmentsTable)
+        .where(eq(towerShopShipmentsTable.id, freight.shipmentId)).limit(1);
+      expect(shipment.status).toBe("in_delivery");
+      const [stock] = await db.select().from(towerShopInventoryTable).where(and(
+        eq(towerShopInventoryTable.businessKey, "fish-store"),
+        eq(towerShopInventoryTable.itemId, freight.itemId),
+      )).limit(1);
+      expect(stock?.storedQuantity ?? 0).toBe(priorStock?.storedQuantity ?? 0);
+    } finally {
+      await freight.cleanup();
+    }
+  });
+
+  it("settles concurrent duplicate receives only once", async () => {
+    const freight = await seedShipment({
+      floorNumber: 2,
+      x: 22_884,
+      y: 47_470,
+    });
+    const [priorStock] = await db.select().from(towerShopInventoryTable).where(and(
+      eq(towerShopInventoryTable.businessKey, "fish-store"),
+      eq(towerShopInventoryTable.itemId, freight.itemId),
+    )).limit(1);
+
+    try {
+      const [first, second] = await Promise.all([freight.receive(), freight.receive()]);
+
+      expect([first.status, second.status].sort()).toEqual([200, 409]);
+      const [shipment] = await db.select().from(towerShopShipmentsTable)
+        .where(eq(towerShopShipmentsTable.id, freight.shipmentId)).limit(1);
+      expect(shipment.status).toBe("delivered");
+      const [stock] = await db.select().from(towerShopInventoryTable).where(and(
+        eq(towerShopInventoryTable.businessKey, "fish-store"),
+        eq(towerShopInventoryTable.itemId, freight.itemId),
+      )).limit(1);
+      expect(stock.storedQuantity).toBe((priorStock?.storedQuantity ?? 0) + 3);
+    } finally {
+      await freight.cleanup();
+    }
   });
 });
 

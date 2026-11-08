@@ -1019,29 +1019,29 @@ router.post("/items/tower-business/shipments/:shipmentId/receive", async (req, r
     res.status(400).json({ error: "Invalid shipment." });
     return;
   }
-  const [candidate] = await db.select().from(towerShopShipmentsTable)
-    .where(eq(towerShopShipmentsTable.id, shipmentId)).limit(1);
-  const shop = candidate ? TOWER_BUSINESS_SHOP_LOCATIONS[candidate.businessKey] : undefined;
-  if (!candidate || !shop) {
-    res.status(404).json({ error: "Unknown Tower shop shipment." });
-    return;
-  }
-  const [presence] = await db.select().from(desktopOfficePresenceTable)
-    .where(eq(desktopOfficePresenceTable.userId, link.userId)).limit(1);
-  const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
-  const distance = presence ? Math.hypot(presence.x - shop.x, presence.y - shop.y) : Infinity;
-  if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
-    || presence.room !== (shop.room ?? "hallway")
-    || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
-    res.status(403).json({ error: "Move to the destination shop in the linked desktop game to receive its shipment." });
-    return;
-  }
   const now = new Date();
   try {
     const result = await db.transaction(async (tx) => {
       const [shipment] = await tx.select().from(towerShopShipmentsTable)
         .where(eq(towerShopShipmentsTable.id, shipmentId)).for("update").limit(1);
-      if (!shipment || shipment.status !== "in_delivery") return { error: "Shipment is not in delivery." } as const;
+      if (!shipment) return { error: "unknown_shipment" } as const;
+      if (shipment.status !== "in_delivery") return { error: "not_in_delivery" } as const;
+      const shop = TOWER_BUSINESS_SHOP_LOCATIONS[shipment.businessKey];
+      if (!shop) return { error: "unknown_shop" } as const;
+
+      // Lock and validate the live location alongside the shipment so a parallel
+      // presence update cannot move the player to another shop between the check
+      // and the stock/status transaction.
+      const [presence] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId)).for("update").limit(1);
+      const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+      const distance = presence ? Math.hypot(presence.x - shop.x, presence.y - shop.y) : Infinity;
+      if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
+        || presence.room !== (shop.room ?? "hallway")
+        || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
+        return { error: "wrong_location" } as const;
+      }
+
       const lines = shipment.lines;
       for (const line of lines) {
         await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-inventory:${shipment.businessKey}:${line.itemId}`}))`);
@@ -1092,6 +1092,18 @@ router.post("/items/tower-business/shipments/:shipmentId/receive", async (req, r
       return { shipment: delivered };
     });
     if ("error" in result) {
+      if (result.error === "unknown_shipment" || result.error === "unknown_shop") {
+        res.status(404).json({ error: "Unknown Tower shop shipment." });
+        return;
+      }
+      if (result.error === "wrong_location") {
+        res.status(403).json({ error: "Move to the destination shop in the linked desktop game to receive its shipment." });
+        return;
+      }
+      if (result.error === "not_in_delivery") {
+        res.status(409).json({ error: "Shipment is not in delivery." });
+        return;
+      }
       res.status(409).json(result);
       return;
     }
