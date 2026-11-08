@@ -6,6 +6,12 @@ from typing import Any
 
 
 OPEN_MIC_STORY_COMPLETE_STAGE = 5
+OPEN_MIC_EVENT_COMPLETE_STAGE = 3
+OPEN_MIC_EVENT_OBJECT_IDS = (
+    "floor-06-open-mic-sound-desk",
+    "floor-06-open-mic-sign-up",
+    "floor-06-open-mic-microphone",
+)
 
 _OBJECTIVES = (
     "SPEAK WITH MILA AT RECEPTION",
@@ -13,7 +19,12 @@ _OBJECTIVES = (
     "VISIT THE OPEN-MIC CONCOURSE ON FLOOR 06",
     "RETURN TO THE LOBBY TO REPORT BACK",
     "TELL MILA WHAT YOU FOUND",
-    "OPEN MIC / FIRST SET READY ON FLOOR 06",
+)
+_EVENT_OBJECTIVES = (
+    "CHECK THE SOUND LEVELS ON FLOOR 06",
+    "CONFIRM THE FIRST PERFORMER SIGN-UP",
+    "TAKE THE MICROPHONE AND START THE FIRST SET",
+    "OPEN MIC / FIRST SET COMPLETE ON FLOOR 06",
 )
 
 _STORY_LINES = {
@@ -23,6 +34,12 @@ _STORY_LINES = {
     4: "MILA / THE CONCOURSE IS SHARED SPACE. BRING THE PLAN BACK TO ME.",
     5: "MILA / FIRST SET READY. FLOOR 06 STAYS OPEN TO EVERYONE.",
 }
+_EVENT_LINES = (
+    "OPEN MIC / CHECK THE SOUND LEVELS FIRST.",
+    "SOUND CHECK COMPLETE / CONFIRM THE FIRST PERFORMER.",
+    "FIRST SET CONFIRMED / TAKE THE MICROPHONE.",
+    "FIRST SET COMPLETE / THE FLOOR IS OPEN TO EVERYONE.",
+)
 
 
 def normalize_open_mic_story_stage(value: object) -> int:
@@ -32,9 +49,22 @@ def normalize_open_mic_story_stage(value: object) -> int:
     return max(0, min(OPEN_MIC_STORY_COMPLETE_STAGE, value))
 
 
-def open_mic_story_objective(stage: object) -> str:
-    """Return the short HUD objective for the current local story stage."""
-    return _OBJECTIVES[normalize_open_mic_story_stage(stage)]
+def normalize_open_mic_event_stage(value: object) -> int:
+    """Bound the saved open-mic event stage and reject bools/strings."""
+    if not isinstance(value, int) or isinstance(value, bool):
+        return 0
+    return max(0, min(OPEN_MIC_EVENT_COMPLETE_STAGE, value))
+
+
+def open_mic_story_objective(
+    stage: object,
+    event_stage: object = 0,
+) -> str:
+    """Return the story or live-event objective for the existing HUD."""
+    story_stage = normalize_open_mic_story_stage(stage)
+    if story_stage < OPEN_MIC_STORY_COMPLETE_STAGE:
+        return _OBJECTIVES[story_stage]
+    return _EVENT_OBJECTIVES[normalize_open_mic_event_stage(event_stage)]
 
 
 def advance_open_mic_story(
@@ -76,3 +106,37 @@ def advance_open_mic_story(
         return None
     state.open_mic_story_stage = next_stage
     return _STORY_LINES[next_stage]
+
+
+def advance_open_mic_event(
+    state: Any,
+    scene: Any,
+    command: object | None = None,
+) -> str | None:
+    """Advance the public Floor 06 event through nearby stations in order."""
+    if normalize_open_mic_story_stage(state.open_mic_story_stage) < OPEN_MIC_STORY_COMPLETE_STAGE:
+        return None
+    if not isinstance(command, dict) or command.get("name") != "interact":
+        return None
+    payload = command.get("payload", {})
+    if not isinstance(payload, dict):
+        return None
+    nearby = scene.nearby_object
+    if nearby is None or scene.current_floor != 6 or scene.current_room != "recreation":
+        return None
+    requested_id = payload.get("object_id")
+    if requested_id is not None and requested_id != nearby.id:
+        return None
+    if nearby.id not in OPEN_MIC_EVENT_OBJECT_IDS:
+        return None
+
+    stage = normalize_open_mic_event_stage(state.open_mic_event_stage)
+    if stage >= OPEN_MIC_EVENT_COMPLETE_STAGE:
+        return _EVENT_LINES[OPEN_MIC_EVENT_COMPLETE_STAGE]
+    expected_id = OPEN_MIC_EVENT_OBJECT_IDS[stage]
+    if nearby.id != expected_id:
+        return _EVENT_LINES[stage]
+
+    next_stage = stage + 1
+    state.open_mic_event_stage = next_stage
+    return _EVENT_LINES[next_stage]

@@ -1098,6 +1098,16 @@ class SolarPunkRenderer:
             if nearby:
                 pygame.draw.circle(self.screen, Palette.SUN, (x, y - 8), 17, 2)
             return
+        if kind == "microphone_stand":
+            pygame.draw.ellipse(self.screen, (62, 72, 65), (x - 8, y + 8, 16, 5))
+            pygame.draw.line(self.screen, (166, 145, 97), (x, y + 9), (x, y - 18), 2)
+            pygame.draw.line(self.screen, (166, 145, 97), (x, y - 17), (x + 7, y - 21), 2)
+            pygame.draw.ellipse(self.screen, (49, 59, 56), (x + 5, y - 24, 7, 5))
+        elif kind == "crt_terminal":
+            pygame.draw.rect(self.screen, (62, 72, 65), (x - 12, y - 12, 24, 18), border_radius=3)
+            pygame.draw.rect(self.screen, (112, 195, 184), (x - 8, y - 9, 16, 10), border_radius=2)
+            pygame.draw.line(self.screen, (62, 72, 65), (x, y + 6), (x, y + 10), 2)
+            pygame.draw.line(self.screen, (62, 72, 65), (x - 6, y + 10), (x + 6, y + 10), 2)
         if kind in sprite_names and self._asset(sprite_names[kind]):
             self._draw_sprite_shadow((x, y), depth_scale)
             self._blit_furniture(sprite_names[kind], (x, y), scale, depth_scale=depth_scale)

@@ -7,6 +7,7 @@ const SUPPORTED_KINDS := [
 	"temple_tree", "reflection_screen", "meditation_cushion", "temple_audio_control",
 	"chapel_pew", "chapel_altar", "library_shelf", "reading_table", "museum_case",
 	"furniture_lounge_chair", "furniture_couch", "furniture_sideboard", "furniture_display_shelf",
+	"microphone_stand",
 ]
 var finish: StandardMaterial3D
 var surface_base := Color("#35574a")
@@ -41,6 +42,8 @@ func _build(kind: String, reception: bool, variant: int) -> void:
 				_reception(wood, edge, brass, cream)
 			else:
 				_desk(wood, edge, brass, charcoal)
+		"microphone_stand":
+			_microphone_stand(brass, charcoal)
 		"telephone", "pay_phone":
 			_phone(kind == "pay_phone", brass, charcoal, cream)
 		"desk_lamp":
@@ -102,6 +105,14 @@ func _mesh(part: String, at: Vector3, mesh: Mesh, parent: Node3D) -> MeshInstanc
 	instance.position = at
 	parent.add_child(instance)
 	return instance
+
+
+func _microphone_stand(brass: Material, dark: Material) -> void:
+	_cylinder("MicrophoneBase", Vector3(0, 0.05, 0), 0.16, 0.1, dark)
+	_cylinder("MicrophoneStem", Vector3(0, 0.64, 0), 0.025, 1.15, brass)
+	_box("MicrophoneBoom", Vector3(0.16, 1.16, 0), Vector3(0.38, 0.035, 0.035), brass)
+	var head := _cylinder("MicrophoneHead", Vector3(0.34, 1.16, 0), 0.05, 0.16, dark)
+	head.rotation.z = PI / 2
 
 
 func _pivot(part: String, at: Vector3) -> Node3D:

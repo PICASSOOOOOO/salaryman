@@ -84,6 +84,7 @@ OBJECT_MATERIALS: dict[ObjectKind, MaterialKind] = {
     "loading_gate": "steel",
     "shop_freight_dock": "steel",
     "arcade": "electronics",
+    "microphone_stand": "steel",
     "desk": "wood",
     "chair": "cloth",
     "partition_h": "concrete",
@@ -122,6 +123,7 @@ _FIXED_KINDS = frozenset({
     "loading_gate", "shop_freight_dock", "partition_h", "partition_h_short", "partition_v",
     "tunnel_wall_h", "tunnel_wall_v", "window", "door", "business_suite",
     "business_kiosk", "yard_gate", "temple_audio_control",
+    "microphone_stand",
 })
 _SITTABLE_KINDS = frozenset({"chair", "chapel_pew", "meditation_cushion"})
 _STANDABLE_KINDS = frozenset({
@@ -129,7 +131,7 @@ _STANDABLE_KINDS = frozenset({
     "chapel_altar", "reading_table",
 })
 _FUEL_CAPACITY_LITERS = {"delivery_truck": 120, "forklift": 25}
-_NON_DAMAGEABLE_KINDS = frozenset({"receptionist"})
+_NON_DAMAGEABLE_KINDS = frozenset({"receptionist", "microphone_stand"})
 
 
 def interaction_profile_for(kind: ObjectKind) -> InteractionProfile:

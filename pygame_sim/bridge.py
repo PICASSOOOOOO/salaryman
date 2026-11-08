@@ -31,7 +31,13 @@ from .object_physics import interaction_profile_for
 from .npc_engine import COMPETITION_ACTIONS
 from .scene import FLOOR_COUNT, TowerScene
 from .state import OfficeState
-from .tower_story import advance_open_mic_story, open_mic_story_objective
+from .tower_story import (
+    OPEN_MIC_EVENT_OBJECT_IDS,
+    OPEN_MIC_STORY_COMPLETE_STAGE,
+    advance_open_mic_event,
+    advance_open_mic_story,
+    open_mic_story_objective,
+)
 
 
 PROTOCOL_VERSION = 1
@@ -573,6 +579,21 @@ def _apply_command(
     if name == "interact":
         nearby = scene.nearby_object
         requested_object_id = payload.get("object_id")
+        if requested_object_id in OPEN_MIC_EVENT_OBJECT_IDS or (
+            nearby is not None and nearby.id in OPEN_MIC_EVENT_OBJECT_IDS
+        ):
+            if (
+                nearby is None
+                or nearby.id not in OPEN_MIC_EVENT_OBJECT_IDS
+                or requested_object_id not in (None, nearby.id)
+            ):
+                return CommandResult(False, "MOVE CLOSER TO AN OPEN-MIC STATION")
+            if scene.current_floor != 6 or scene.current_room != "recreation":
+                return CommandResult(False, "THE OPEN MIC IS ON FLOOR 06")
+            if state.open_mic_story_stage < OPEN_MIC_STORY_COMPLETE_STAGE:
+                return CommandResult(False, "FINISH MILA'S OPEN-MIC PLAN FIRST")
+            state.notice = f"OPEN MIC / {nearby.label}"
+            return CommandResult(True, state.notice)
         basement_result = _handle_basement_interact(
             state,
             scene,
@@ -1109,6 +1130,10 @@ def apply_command(
         story_line = advance_open_mic_story(state, scene, command)
         if story_line is not None:
             state.notice = story_line
+        else:
+            event_line = advance_open_mic_event(state, scene, command)
+            if event_line is not None:
+                state.notice = event_line
     return result
 
 
@@ -1240,7 +1265,10 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     max(0, (player_y - grid_origin_y) // grid_cell_size),
                 ],
                 "room": scene.current_room,
-                "mission": open_mic_story_objective(state.open_mic_story_stage),
+                "mission": open_mic_story_objective(
+                    state.open_mic_story_stage,
+                    state.open_mic_event_stage,
+                ),
                 "exits": exits,
             },
         },

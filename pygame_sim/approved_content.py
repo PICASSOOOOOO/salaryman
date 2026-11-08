@@ -76,6 +76,7 @@ APPROVED_INTERACTIVE_OBJECT_KINDS = frozenset(
         "trash_can",
         "receptionist",
         "arcade",
+        "microphone_stand",
         "desk",
         "chair",
         "window",

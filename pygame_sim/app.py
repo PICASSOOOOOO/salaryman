@@ -732,9 +732,15 @@ def run(argv: list[str] | None = None) -> int:
 
         if not args.no_bridge:
             for command in bridge.poll_commands():
-                previous_story_stage = state.open_mic_story_stage
+                previous_open_mic_progress = (
+                    state.open_mic_story_stage,
+                    state.open_mic_event_stage,
+                )
                 result = apply_command(command, state, scene, building_sync, basement_sync)
-                if state.open_mic_story_stage != previous_story_stage:
+                if (
+                    state.open_mic_story_stage,
+                    state.open_mic_event_stage,
+                ) != previous_open_mic_progress:
                     state.save_to_file(args.save_file)
                 if isinstance(command, dict) and command.get("name") == "toggle_music":
                     state.save_to_file(args.save_file)

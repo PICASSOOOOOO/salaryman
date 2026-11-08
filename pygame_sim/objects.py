@@ -49,6 +49,7 @@ ObjectKind = Literal[
     "loading_gate",
     "shop_freight_dock",
     "arcade",
+    "microphone_stand",
     "desk",
     "chair",
     "partition_h",
@@ -143,6 +144,7 @@ class OfficeObject:
             return self.solid_half_extents
         return {
             "desk": (300, 150),
+            "microphone_stand": (45, 45),
             "chair": (180, 130),
             "partition_h": (750, 60),
             "partition_h_short": (250, 60),
@@ -823,6 +825,35 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
 
     add_floor_transport("recreation", 6, "recreation")
     add_floor_transport("floor07_business", 7, "floor07")
+    # A small pop-up stage sits along Floor 06's south concourse without
+    # narrowing the walking route.
+    registry.add(OfficeObject(
+        "floor-06-open-mic-sound-desk",
+        "crt_terminal",
+        "OPEN MIC SOUND DESK",
+        "recreation",
+        (30_700, 40_000),
+        "CHECK THE SOUND LEVELS",
+        solid_half_extents=(90, 70),
+    ), scale_legacy_coordinates=False)
+    registry.add(OfficeObject(
+        "floor-06-open-mic-sign-up",
+        "desk",
+        "FIRST SET SIGN-UP",
+        "recreation",
+        (31_400, 49_000),
+        "CONFIRM THE FIRST PERFORMER",
+        solid_half_extents=(180, 80),
+    ), scale_legacy_coordinates=False)
+    registry.add(OfficeObject(
+        "floor-06-open-mic-microphone",
+        "microphone_stand",
+        "OPEN MIC MICROPHONE",
+        "recreation",
+        (30_700, 58_000),
+        "START THE FIRST SET",
+        solid_half_extents=(45, 45),
+    ), scale_legacy_coordinates=False)
 
     for office in base_layout["offices"]:
         room = str(office["id"])
