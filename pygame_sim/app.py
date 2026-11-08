@@ -734,11 +734,13 @@ def run(argv: list[str] | None = None) -> int:
             for command in bridge.poll_commands():
                 previous_open_mic_progress = (
                     state.open_mic_story_stage,
+                    state.open_mic_plan_stage,
                     state.open_mic_event_stage,
                 )
                 result = apply_command(command, state, scene, building_sync, basement_sync)
                 if (
                     state.open_mic_story_stage,
+                    state.open_mic_plan_stage,
                     state.open_mic_event_stage,
                 ) != previous_open_mic_progress:
                     state.save_to_file(args.save_file)

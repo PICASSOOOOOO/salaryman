@@ -11,8 +11,10 @@ from pygame_sim.scene import build_tower_scene
 from pygame_sim.state import OfficeState
 from pygame_sim.tower_story import (
     OPEN_MIC_EVENT_COMPLETE_STAGE,
+    OPEN_MIC_PLAN_COMPLETE_STAGE,
     OPEN_MIC_STORY_COMPLETE_STAGE,
     normalize_open_mic_event_stage,
+    normalize_open_mic_plan_stage,
     normalize_open_mic_story_stage,
     open_mic_story_objective,
 )
@@ -82,13 +84,54 @@ class OpenMicStoryTests(unittest.TestCase):
             self.state.open_mic_story_stage,
             OPEN_MIC_STORY_COMPLETE_STAGE,
         )
-        self.assertIn("FIRST SET READY", self.state.notice)
+        self.assertIn("RADIO HOST AND SCHOOL COORDINATOR", self.state.notice)
         self.assertEqual(
             self.state.open_mic_event_stage,
             0,
         )
         self.assertEqual(
             build_snapshot(self.state, self.scene, sequence=2)["scene"]["navigation"]["mission"],
+            "SPEAK WITH THE RADIO HOST ON FLOOR 06",
+        )
+
+    def test_radio_and_school_interactions_set_the_event_plan_in_order(self) -> None:
+        self.scene.select_floor(6)
+        self.state.open_mic_story_stage = OPEN_MIC_STORY_COMPLETE_STAGE
+        radio_host = self.scene.objects.get("floor-06-radio-host")
+        school_coordinator = self.scene.objects.get("floor-06-school-coordinator")
+        self.assertIsNone(radio_host.business_key)
+        self.assertIsNone(school_coordinator.business_key)
+
+        school_first = self.interact_at(school_coordinator.id)
+        self.assertTrue(school_first.ok)
+        self.assertEqual(self.state.open_mic_plan_stage, 0)
+        self.assertIn("NIA BEFORE TESS", self.state.notice)
+
+        radio = self.interact_at(radio_host.id)
+        self.assertTrue(radio.ok)
+        self.assertEqual(self.state.open_mic_plan_stage, 1)
+        self.assertIn("LIVE MIX STAYS LOCAL", self.state.notice)
+        self.assertEqual(
+            build_snapshot(self.state, self.scene, sequence=3)["scene"]["navigation"]["mission"],
+            "CHECK THE FIRST SLOT WITH THE SCHOOL",
+        )
+
+        sound_desk = self.scene.objects.get("floor-06-open-mic-sound-desk")
+        self.scene.player_position = sound_desk.position
+        setup_before_plan = apply_command(
+            command("interact", {"object_id": sound_desk.id}),
+            self.state,
+            self.scene,
+        )
+        self.assertFalse(setup_before_plan.ok)
+        self.assertEqual(self.state.open_mic_event_stage, 0)
+
+        school = self.interact_at(school_coordinator.id)
+        self.assertTrue(school.ok)
+        self.assertEqual(self.state.open_mic_plan_stage, OPEN_MIC_PLAN_COMPLETE_STAGE)
+        self.assertIn("STUDENT TAKES THE FIRST SLOT", self.state.notice)
+        self.assertEqual(
+            build_snapshot(self.state, self.scene, sequence=4)["scene"]["navigation"]["mission"],
             "CHECK THE SOUND LEVELS ON FLOOR 06",
         )
 
@@ -105,6 +148,14 @@ class OpenMicStoryTests(unittest.TestCase):
         self.assertEqual(self.state.open_mic_event_stage, 0)
 
         self.state.open_mic_story_stage = OPEN_MIC_STORY_COMPLETE_STAGE
+        self.assertFalse(
+            apply_command(
+                command("interact", {"object_id": sound_desk.id}),
+                self.state,
+                self.scene,
+            ).ok
+        )
+        self.state.open_mic_plan_stage = OPEN_MIC_PLAN_COMPLETE_STAGE
 
         sign_up = self.scene.objects.get("floor-06-open-mic-sign-up")
         self.scene.player_position = sign_up.position
@@ -119,7 +170,7 @@ class OpenMicStoryTests(unittest.TestCase):
 
         expected = (
             ("floor-06-open-mic-sound-desk", 1, "FIRST PERFORMER"),
-            ("floor-06-open-mic-sign-up", 2, "MICROPHONE"),
+            ("floor-06-open-mic-sign-up", 2, "STUDENT HAS THE FIRST SLOT"),
             ("floor-06-open-mic-microphone", OPEN_MIC_EVENT_COMPLETE_STAGE, "FIRST SET COMPLETE"),
         )
         for object_id, stage, expected_notice in expected:
@@ -136,6 +187,7 @@ class OpenMicStoryTests(unittest.TestCase):
 
     def test_open_mic_event_rejects_remote_stations(self) -> None:
         self.state.open_mic_story_stage = OPEN_MIC_STORY_COMPLETE_STAGE
+        self.state.open_mic_plan_stage = OPEN_MIC_PLAN_COMPLETE_STAGE
         wrong_floor = apply_command(
             command("interact", {"object_id": "floor-06-open-mic-sound-desk"}),
             self.state,
@@ -156,6 +208,8 @@ class OpenMicStoryTests(unittest.TestCase):
     def test_event_stations_are_reachable_from_the_floor_six_spawn(self) -> None:
         self.scene.select_floor(6)
         for object_id in (
+            "floor-06-radio-host",
+            "floor-06-school-coordinator",
             "floor-06-open-mic-sound-desk",
             "floor-06-open-mic-sign-up",
             "floor-06-open-mic-microphone",
@@ -185,15 +239,18 @@ class OpenMicStoryTests(unittest.TestCase):
 
     def test_story_progress_round_trips_and_invalid_stages_are_bounded(self) -> None:
         self.state.open_mic_story_stage = 3
+        self.state.open_mic_plan_stage = 1
         self.state.open_mic_event_stage = 2
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "office.json"
             self.state.save_to_file(path)
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(payload["open_mic_story"], {"stage": 3})
+            self.assertEqual(payload["open_mic_plan"], {"stage": 1})
             self.assertEqual(payload["open_mic_event"], {"stage": 2})
             restored = OfficeState.load_from_file(path)
         self.assertEqual(restored.open_mic_story_stage, 3)
+        self.assertEqual(restored.open_mic_plan_stage, 1)
         self.assertEqual(restored.open_mic_event_stage, 2)
 
         self.assertEqual(normalize_open_mic_story_stage(-2), 0)
@@ -204,12 +261,30 @@ class OpenMicStoryTests(unittest.TestCase):
         self.assertEqual(normalize_open_mic_event_stage(999), OPEN_MIC_EVENT_COMPLETE_STAGE)
         self.assertEqual(normalize_open_mic_event_stage(True), 0)
         self.assertEqual(normalize_open_mic_event_stage("2"), 0)
+        self.assertEqual(normalize_open_mic_plan_stage(-2), 0)
+        self.assertEqual(normalize_open_mic_plan_stage(999), OPEN_MIC_PLAN_COMPLETE_STAGE)
+        self.assertEqual(normalize_open_mic_plan_stage(True), 0)
+        self.assertEqual(normalize_open_mic_plan_stage("2"), 0)
         self.assertEqual(
             open_mic_story_objective(restored.open_mic_story_stage),
             "RETURN TO THE LOBBY TO REPORT BACK",
         )
         restored.reset()
+        self.assertEqual(restored.open_mic_plan_stage, 0)
         self.assertEqual(restored.open_mic_event_stage, 0)
+
+    def test_legacy_event_progress_skips_new_planning_steps(self) -> None:
+        self.state.open_mic_story_stage = OPEN_MIC_STORY_COMPLETE_STAGE
+        self.state.open_mic_event_stage = 1
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "office.json"
+            self.state.save_to_file(path)
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload.pop("open_mic_plan")
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            restored = OfficeState.load_from_file(path)
+        self.assertEqual(restored.open_mic_plan_stage, OPEN_MIC_PLAN_COMPLETE_STAGE)
+        self.assertEqual(restored.open_mic_event_stage, 1)
 
 
 if __name__ == "__main__":

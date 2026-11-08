@@ -34,6 +34,9 @@ from .state import OfficeState
 from .tower_story import (
     OPEN_MIC_EVENT_OBJECT_IDS,
     OPEN_MIC_STORY_COMPLETE_STAGE,
+    OPEN_MIC_PLAN_COMPLETE_STAGE,
+    OPEN_MIC_PLAN_OBJECT_IDS,
+    advance_open_mic_plan,
     advance_open_mic_event,
     advance_open_mic_story,
     open_mic_story_objective,
@@ -579,19 +582,24 @@ def _apply_command(
     if name == "interact":
         nearby = scene.nearby_object
         requested_object_id = payload.get("object_id")
-        if requested_object_id in OPEN_MIC_EVENT_OBJECT_IDS or (
-            nearby is not None and nearby.id in OPEN_MIC_EVENT_OBJECT_IDS
+        open_mic_object_ids = OPEN_MIC_PLAN_OBJECT_IDS + OPEN_MIC_EVENT_OBJECT_IDS
+        if requested_object_id in open_mic_object_ids or (
+            nearby is not None and nearby.id in open_mic_object_ids
         ):
             if (
                 nearby is None
-                or nearby.id not in OPEN_MIC_EVENT_OBJECT_IDS
+                or nearby.id not in open_mic_object_ids
                 or requested_object_id not in (None, nearby.id)
             ):
-                return CommandResult(False, "MOVE CLOSER TO AN OPEN-MIC STATION")
+                return CommandResult(False, "MOVE CLOSER TO THE OPEN-MIC AREA")
             if scene.current_floor != 6 or scene.current_room != "recreation":
                 return CommandResult(False, "THE OPEN MIC IS ON FLOOR 06")
             if state.open_mic_story_stage < OPEN_MIC_STORY_COMPLETE_STAGE:
                 return CommandResult(False, "FINISH MILA'S OPEN-MIC PLAN FIRST")
+            if nearby.id in OPEN_MIC_EVENT_OBJECT_IDS and (
+                state.open_mic_plan_stage < OPEN_MIC_PLAN_COMPLETE_STAGE
+            ):
+                return CommandResult(False, "SPEAK WITH NIA AND TESS BEFORE SETUP")
             state.notice = f"OPEN MIC / {nearby.label}"
             return CommandResult(True, state.notice)
         basement_result = _handle_basement_interact(
@@ -1131,9 +1139,13 @@ def apply_command(
         if story_line is not None:
             state.notice = story_line
         else:
-            event_line = advance_open_mic_event(state, scene, command)
-            if event_line is not None:
-                state.notice = event_line
+            plan_line = advance_open_mic_plan(state, scene, command)
+            if plan_line is not None:
+                state.notice = plan_line
+            else:
+                event_line = advance_open_mic_event(state, scene, command)
+                if event_line is not None:
+                    state.notice = event_line
     return result
 
 
@@ -1268,6 +1280,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                 "mission": open_mic_story_objective(
                     state.open_mic_story_stage,
                     state.open_mic_event_stage,
+                    state.open_mic_plan_stage,
                 ),
                 "exits": exits,
             },

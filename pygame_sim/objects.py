@@ -825,6 +825,22 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
 
     add_floor_transport("recreation", 6, "recreation")
     add_floor_transport("floor07_business", 7, "floor07")
+    registry.add(OfficeObject(
+        "floor-06-radio-host",
+        "receptionist",
+        "NIA / RADIO HOST",
+        "recreation",
+        (30_700, 34_500),
+        "DISCUSS THE LIVE MIX",
+    ), scale_legacy_coordinates=False)
+    registry.add(OfficeObject(
+        "floor-06-school-coordinator",
+        "receptionist",
+        "TESS / SCHOOL COORDINATOR",
+        "recreation",
+        (31_400, 44_500),
+        "DISCUSS THE FIRST PERFORMER",
+    ), scale_legacy_coordinates=False)
     # A small pop-up stage sits along Floor 06's south concourse without
     # narrowing the walking route.
     registry.add(OfficeObject(

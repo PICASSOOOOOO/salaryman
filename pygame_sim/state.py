@@ -20,7 +20,9 @@ from .models import ActionKind, LedgerEntry, OfficeRoster, RecruitCandidate, Wor
 from .npc_engine import RivalryEngine
 from .pest_work import PEST_JOB_BY_ID, PEST_JOBS, normalize_work_orders
 from .tower_story import (
+    OPEN_MIC_PLAN_COMPLETE_STAGE,
     normalize_open_mic_event_stage,
+    normalize_open_mic_plan_stage,
     normalize_open_mic_story_stage,
 )
 
@@ -147,6 +149,7 @@ class OfficeState:
     collections_case_stage: int = 0
     collections_case_server_stage: int | None = None
     open_mic_story_stage: int = 0
+    open_mic_plan_stage: int = 0
     open_mic_event_stage: int = 0
     tower_work_advice: str = ""
     utility_work_target: str | None = None
@@ -552,6 +555,9 @@ class OfficeState:
             "open_mic_story": {
                 "stage": normalize_open_mic_story_stage(self.open_mic_story_stage),
             },
+            "open_mic_plan": {
+                "stage": normalize_open_mic_plan_stage(self.open_mic_plan_stage),
+            },
             "open_mic_event": {
                 "stage": normalize_open_mic_event_stage(self.open_mic_event_stage),
             },
@@ -672,6 +678,20 @@ class OfficeState:
                 state.open_mic_event_stage = normalize_open_mic_event_stage(
                     open_mic_event.get("stage", 0)
                 )
+            if "open_mic_plan" in payload:
+                open_mic_plan = payload.get("open_mic_plan")
+                state.open_mic_plan_stage = normalize_open_mic_plan_stage(
+                    open_mic_plan.get("stage", 0)
+                    if isinstance(open_mic_plan, dict)
+                    else 0
+                )
+            elif (
+                state.open_mic_story_stage >= 5
+                and state.open_mic_event_stage > 0
+            ):
+                # Preserve progress from saves created before the planning
+                # conversations were added to the completed story chapter.
+                state.open_mic_plan_stage = OPEN_MIC_PLAN_COMPLETE_STAGE
             entries = payload.get("ledger", [])
             if entries:
                 state.ledger = [
@@ -765,6 +785,7 @@ class OfficeState:
         self.selected_worker = None
         self.notice = "SHIFT READY"
         self.open_mic_story_stage = 0
+        self.open_mic_plan_stage = 0
         self.open_mic_event_stage = 0
         self.work_minutes_today = 0
         self.work_minutes_since_break = 0
