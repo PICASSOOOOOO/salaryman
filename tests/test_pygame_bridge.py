@@ -643,7 +643,7 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertNotIn("alarm_response:b4-fire", renderer.game_page_actions)
         self.assertNotIn("alarm_response:b3-crime", renderer.game_page_actions)
 
-    def test_b1_freight_page_lists_and_actions_only_shipments_waiting_at_the_dock(self):
+    def test_b1_freight_page_can_reach_shipments_beyond_the_first_five(self):
         import pygame
         from pygame_sim.ui import SolarPunkRenderer
 
@@ -660,23 +660,32 @@ class PygameBridgeTests(unittest.TestCase):
             active_page="shop_freight_dock",
             shop_freight_shipments_at_dock=[
                 {
-                    "id": "shipment-1",
-                    "businessKey": "fish-store",
+                    "id": f"shipment-{index}",
+                    "businessKey": "fish-store" if index % 2 else "tower-clinic",
                     "lines": [{"itemId": "fish_goldfish", "quantity": 4}],
-                },
-                {
-                    "id": "shipment-2",
-                    "businessKey": "tower-clinic",
-                    "lines": [{"itemId": "clinic_kit", "quantity": 2}],
-                },
+                }
+                for index in range(12)
             ],
             shop_freight_shipments_in_delivery=[],
+            shop_freight_page_index=1,
         )
 
         renderer._draw_basement_page(state, SimpleNamespace(), page)
 
-        self.assertIn("shop_freight_pickup:shipment-1", renderer.game_page_actions)
-        self.assertIn("shop_freight_pickup:shipment-2", renderer.game_page_actions)
+        for index in range(5, 10):
+            self.assertIn(f"shop_freight_pickup:shipment-{index}", renderer.game_page_actions)
+        self.assertNotIn("shop_freight_pickup:shipment-0", renderer.game_page_actions)
+        self.assertIn("shop_freight_page:prev", renderer.game_page_actions)
+        self.assertIn("shop_freight_page:next", renderer.game_page_actions)
+
+        state.shop_freight_page_index = 2
+        renderer.game_page_actions.clear()
+        renderer._draw_basement_page(state, SimpleNamespace(), page)
+        self.assertIn("shop_freight_pickup:shipment-10", renderer.game_page_actions)
+        self.assertIn("shop_freight_pickup:shipment-11", renderer.game_page_actions)
+        self.assertNotIn("shop_freight_pickup:shipment-9", renderer.game_page_actions)
+        self.assertIn("shop_freight_page:prev", renderer.game_page_actions)
+        self.assertNotIn("shop_freight_page:next", renderer.game_page_actions)
 
     def test_b4_quarantine_page_exposes_only_active_poison_alarms(self):
         import pygame

@@ -334,6 +334,19 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "SHOP FREIGHT PICKUP SENT / WAITING FOR SERVER"
             else:
                 state.notice = "SHOP FREIGHT PICKUP UNAVAILABLE / CHECK GAME LINK"
+        elif action.startswith("shop_freight_page:"):
+            direction = action.split(":", 1)[1]
+            page_count = max(1, (len(state.shop_freight_shipments_at_dock) + 4) // 5)
+            if direction == "prev":
+                state.shop_freight_page_index = max(0, state.shop_freight_page_index - 1)
+            elif direction == "next":
+                state.shop_freight_page_index = min(
+                    page_count - 1,
+                    state.shop_freight_page_index + 1,
+                )
+            state.notice = (
+                f"B1 SHOP FREIGHT / PAGE {state.shop_freight_page_index + 1} OF {page_count}"
+            )
         elif action == "tower:ask_work_advice":
             dispatch_game_command("ask_tower_work_advice", {})
         elif action.startswith("alarm_mode:"):
@@ -512,8 +525,16 @@ def run(argv: list[str] | None = None) -> int:
         elif page == "business_stock" and key == pygame.K_b:
             activate_game_page_action("vending:business-stock")
             return True
-        elif page == "shop_freight_dock" and pygame.K_1 <= key <= pygame.K_5:
-            index = key - pygame.K_1
+        elif page == "shop_freight_dock":
+            if key == pygame.K_PAGEUP:
+                activate_game_page_action("shop_freight_page:prev")
+                return True
+            if key == pygame.K_PAGEDOWN:
+                activate_game_page_action("shop_freight_page:next")
+                return True
+            if not pygame.K_1 <= key <= pygame.K_5:
+                return False
+            index = state.shop_freight_page_index * 5 + key - pygame.K_1
             shipments = state.shop_freight_shipments_at_dock
             if index < len(shipments):
                 shipment_id = shipments[index].get("id")
@@ -850,6 +871,10 @@ def run(argv: list[str] | None = None) -> int:
                             and isinstance(row.get("id"), str)
                             and row.get("status") == "at_dock"
                         ] if isinstance(rows, list) else []
+                        state.shop_freight_page_index = min(
+                            state.shop_freight_page_index,
+                            max(0, (len(state.shop_freight_shipments_at_dock) - 1) // 5),
+                        )
                         state.shop_freight_shipments_in_delivery = [
                             row for row in rows
                             if isinstance(row, dict)

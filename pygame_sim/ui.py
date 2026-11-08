@@ -2455,8 +2455,17 @@ class SolarPunkRenderer:
     ) -> None:
         content = page.y + 92
         if state.active_page == "shop_freight_dock":
+            shipments = state.shop_freight_shipments_at_dock
+            page_count = max(1, (len(shipments) + 4) // 5)
+            state.shop_freight_page_index = max(
+                0,
+                min(state.shop_freight_page_index, page_count - 1),
+            )
+            page_start = state.shop_freight_page_index * 5
+            visible_shipments = shipments[page_start:page_start + 5]
             self.text(
                 f"WAITING AT B1 / {len(state.shop_freight_shipments_at_dock)} SHIPMENTS"
+                f"  ·  PAGE {state.shop_freight_page_index + 1}/{page_count}"
                 f"  ·  IN DELIVERY / {len(state.shop_freight_shipments_in_delivery)}",
                 (page.x + 28, content + 8),
                 self.font_mono,
@@ -2469,7 +2478,7 @@ class SolarPunkRenderer:
                     self.font_md,
                     Palette.MATRIX_GREEN,
                 )
-            for index, shipment in enumerate(state.shop_freight_shipments_at_dock[:5]):
+            for index, shipment in enumerate(visible_shipments):
                 shipment_id = shipment.get("id")
                 if not isinstance(shipment_id, str):
                     continue
@@ -2494,9 +2503,45 @@ class SolarPunkRenderer:
                 cargo = state.shop_freight_shipments_in_delivery[0]
                 self.text(
                     f"COURIER EN ROUTE / {str(cargo.get('businessKey', 'SHOP')).replace('_', ' ').upper()}",
-                    (page.x + 28, page.bottom - 38),
+                    (page.x + 28, page.bottom - 78),
                     self.font_sm,
                     Palette.MATRIX_AMBER,
+                )
+            if page_count > 1:
+                controls_y = page.bottom - 40
+                previous_rect = pygame.Rect(page.x + 28, controls_y, 148, 26)
+                next_rect = pygame.Rect(page.right - 176, controls_y, 148, 26)
+                previous_available = state.shop_freight_page_index > 0
+                next_available = state.shop_freight_page_index < page_count - 1
+                if previous_available:
+                    self.game_page_actions["shop_freight_page:prev"] = previous_rect
+                if next_available:
+                    self.game_page_actions["shop_freight_page:next"] = next_rect
+                self.panel(
+                    previous_rect,
+                    Palette.MATRIX_PANEL_2,
+                    Palette.MATRIX_AMBER if previous_available else Palette.MATRIX_DIM,
+                    radius=3,
+                    width=1,
+                )
+                self.panel(
+                    next_rect,
+                    Palette.MATRIX_PANEL_2,
+                    Palette.MATRIX_AMBER if next_available else Palette.MATRIX_DIM,
+                    radius=3,
+                    width=1,
+                )
+                self.text(
+                    "PREV / PAGEUP",
+                    (previous_rect.x + 10, previous_rect.y + 7),
+                    self.font_sm,
+                    Palette.MATRIX_AMBER if previous_available else Palette.MATRIX_DIM,
+                )
+                self.text(
+                    "NEXT / PAGEDOWN",
+                    (next_rect.x + 10, next_rect.y + 7),
+                    self.font_sm,
+                    Palette.MATRIX_AMBER if next_available else Palette.MATRIX_DIM,
                 )
         elif state.active_page == "alarm_console":
             snapshot = scene.basement_snapshot or {}

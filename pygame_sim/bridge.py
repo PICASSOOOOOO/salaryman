@@ -705,6 +705,7 @@ def _apply_command(
             if building_sync is None or not building_sync.queue_game_request("shop_freight_snapshot"):
                 return CommandResult(False, "SHOP FREIGHT STATUS UNAVAILABLE / CHECK GAME LINK")
             state.game_service_loading.add("shop_freight_snapshot")
+            state.shop_freight_page_index = 0
             state.open_page(
                 "shop_freight_dock",
                 from_object=True,

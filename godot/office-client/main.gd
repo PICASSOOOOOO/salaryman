@@ -101,6 +101,7 @@ var native_app_action_grid: GridContainer
 var feature_command_font: Font
 var last_native_app_page := ""
 var last_native_action_signature := ""
+var shop_freight_page_index := 0
 var native_app_animation_progress := 0.0
 var native_typewriter_page := ""
 var native_typewriter_text := ""
@@ -4430,6 +4431,8 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	if page != last_native_app_page:
 		native_app_animation_progress = 0.0
 		native_typewriter_page = ""
+		if page == "shop_freight_dock":
+			shop_freight_page_index = 0
 	if page == "merchant" and last_native_app_page != "merchant":
 		ghost_dialogue_line = "You didn't see me. People rarely notice what they expect to find."
 	last_native_app_page = page
@@ -4457,9 +4460,13 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_title.text = "B1 SHOP FREIGHT DOCK"
 			var waiting_value: Variant = office.get("shopFreightShipmentsAtDock", [])
 			var delivery_value: Variant = office.get("shopFreightShipmentsInDelivery", [])
+			var page_count := _shop_freight_page_count(waiting_value)
+			shop_freight_page_index = clampi(shop_freight_page_index, 0, page_count - 1)
+			var first_index := shop_freight_page_index * 5
 			var freight_lines: Array[String] = []
 			if waiting_value is Array:
-				for index in mini(waiting_value.size(), 5):
+				for slot in mini(5, maxi(0, waiting_value.size() - first_index)):
+					var index := first_index + slot
 					var shipment_value: Variant = waiting_value[index]
 					if not shipment_value is Dictionary:
 						continue
@@ -4474,19 +4481,21 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 									int(line_value.get("quantity", 0)),
 								])
 					freight_lines.append("%d  %s  /  %s" % [
-						index + 1,
+						slot + 1,
 						str(shipment.get("businessKey", "SHOP")).replace("_", " ").to_upper(),
 						", ".join(manifest_lines) if not manifest_lines.is_empty() else "MANIFEST UNAVAILABLE",
 					])
 			if freight_lines.is_empty():
 				freight_lines.append("NO SHOP SHIPMENTS ARE WAITING AT THE B1 DOCK")
 			var courier_count: int = delivery_value.size() if delivery_value is Array else 0
-			native_app_body.text = "WAITING AT B1 / %d SHIPMENTS\nIN DELIVERY / %d\n\n%s\n\nCarry a picked-up shipment to its listed shop and press E to deliver it to storage." % [
+			native_app_body.text = "WAITING AT B1 / %d SHIPMENTS  ·  PAGE %d/%d\nIN DELIVERY / %d\n\n%s\n\nCarry a picked-up shipment to its listed shop and press E to deliver it to storage." % [
 				waiting_value.size() if waiting_value is Array else 0,
+				shop_freight_page_index + 1,
+				page_count,
 				courier_count,
 				"\n".join(freight_lines),
 			]
-			native_app_footer.text = "1–5 PICK UP A SHIPMENT  ·  E DELIVER AT ITS SHOP  ·  ESC CLOSE"
+			native_app_footer.text = "1–5 PICK UP  ·  PAGEUP/PAGEDOWN OR BUTTONS CHANGE PAGE  ·  E DELIVER  ·  ESC CLOSE"
 		"vending":
 			native_app_title.text = "TOWER VENDING / SERVER-PRICED STOCK"
 			var vending_lines: Array[String] = []
@@ -5064,18 +5073,30 @@ func _advance_feature_panel_animations(delta: float) -> void:
 
 func _sync_native_app_actions(page: String, page_source: String) -> void:
 	var labels: Array[String] = []
+	var action_choices: Array = []
 	match page:
 		"shop_freight_dock":
 			var office: Dictionary = snapshot.get("office", {})
 			var waiting_value: Variant = office.get("shopFreightShipmentsAtDock", [])
+			var page_count := _shop_freight_page_count(waiting_value)
+			shop_freight_page_index = clampi(shop_freight_page_index, 0, page_count - 1)
+			var first_index := shop_freight_page_index * 5
 			if waiting_value is Array:
-				for index in mini(waiting_value.size(), 5):
+				for slot in mini(5, maxi(0, waiting_value.size() - first_index)):
+					var index := first_index + slot
 					var shipment_value: Variant = waiting_value[index]
 					if shipment_value is Dictionary:
 						labels.append("%d > PICK UP %s" % [
-							index + 1,
+							slot + 1,
 							str(shipment_value.get("businessKey", "SHOP")).replace("_", " ").to_upper(),
 						])
+						action_choices.append(slot + 1)
+			if shop_freight_page_index > 0:
+				labels.append("PREVIOUS PAGE")
+				action_choices.append("previous")
+			if shop_freight_page_index < page_count - 1:
+				labels.append("NEXT PAGE")
+				action_choices.append("next")
 		"disaster_response":
 			var alarms := _basement_response_alarms(page)
 			if not alarms.is_empty():
@@ -5097,7 +5118,10 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 				"1 > JOBS", "2 > BOOKS", "3 > CONTACTS", "4 > MARKETING",
 				"5 > DARKROOM", "6 > INTEL", "7 > BANK", "8 > PHONE",
 			]
-	var signature := page + ":" + "|".join(labels)
+	if action_choices.is_empty():
+		for index in labels.size():
+			action_choices.append(index + 1)
+	var signature := page + ":" + str(shop_freight_page_index if page == "shop_freight_dock" else 0) + ":" + "|".join(labels)
 	if signature == last_native_action_signature:
 		return
 	last_native_action_signature = signature
@@ -5119,7 +5143,7 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_ALL
 		_style_feature_command_button(button)
-		button.pressed.connect(_on_native_app_action_pressed.bind(page, index + 1))
+		button.pressed.connect(_on_native_app_action_pressed.bind(page, action_choices[index]))
 		native_app_action_grid.add_child(button)
 		if index == 0:
 			button.grab_focus()
@@ -5165,10 +5189,31 @@ func _basement_response_alarms(page: String) -> Array[Dictionary]:
 	return matches
 
 
+func _shop_freight_page_count(shipments: Variant) -> int:
+	if not shipments is Array:
+		return 1
+	return maxi(1, ceili(float(shipments.size()) / 5.0))
+
+
+func _change_shop_freight_page(direction: int) -> void:
+	var office: Dictionary = snapshot.get("office", {})
+	var waiting_value: Variant = office.get("shopFreightShipmentsAtDock", [])
+	var page_count := _shop_freight_page_count(waiting_value)
+	shop_freight_page_index = clampi(
+		shop_freight_page_index + direction,
+		0,
+		page_count - 1,
+	)
+
+
 func _shop_freight_shipment_at(choice: int) -> Dictionary:
 	var office: Dictionary = snapshot.get("office", {})
 	var waiting_value: Variant = office.get("shopFreightShipmentsAtDock", [])
-	var index := choice - 1
+	if choice < 1 or choice > 5:
+		return {}
+	var page_count := _shop_freight_page_count(waiting_value)
+	shop_freight_page_index = clampi(shop_freight_page_index, 0, page_count - 1)
+	var index := shop_freight_page_index * 5 + choice - 1
 	if waiting_value is not Array or index < 0 or index >= waiting_value.size():
 		return {}
 	var shipment_value: Variant = waiting_value[index]
@@ -5201,9 +5246,17 @@ func _style_feature_command_button(button: Button) -> void:
 	button.add_theme_stylebox_override("focus", focus)
 
 
-func _on_native_app_action_pressed(page: String, choice: int) -> void:
+func _on_native_app_action_pressed(page: String, choice: Variant) -> void:
 	match page:
 		"shop_freight_dock":
+			if choice == "previous":
+				_change_shop_freight_page(-1)
+				return
+			if choice == "next":
+				_change_shop_freight_page(1)
+				return
+			if not choice is int:
+				return
 			var shipment := _shop_freight_shipment_at(choice)
 			var shipment_id := str(shipment.get("id", ""))
 			if not shipment_id.is_empty():
@@ -5345,6 +5398,10 @@ func _input(event: InputEvent) -> void:
 					_send_command("terminal_choice", {"choice": choice})
 			elif active_page in ["disaster_response", "b4_supply_response"] and event.keycode == KEY_1:
 				_on_native_app_action_pressed(active_page, 1)
+			elif active_page == "shop_freight_dock" and event.keycode == KEY_PAGEUP:
+				_change_shop_freight_page(-1)
+			elif active_page == "shop_freight_dock" and event.keycode == KEY_PAGEDOWN:
+				_change_shop_freight_page(1)
 			elif active_page == "shop_freight_dock" and event.keycode in [
 				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5
 			]:

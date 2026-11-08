@@ -140,6 +140,7 @@ class OfficeState:
     game_service_loading: set[str] = field(default_factory=set)
     shop_freight_shipments_at_dock: list[dict[str, object]] = field(default_factory=list)
     shop_freight_shipments_in_delivery: list[dict[str, object]] = field(default_factory=list)
+    shop_freight_page_index: int = 0
     active_shop_shipment: dict[str, object] | None = None
     pest_uniform_worn: bool = False
     pest_stamina: int = 100
