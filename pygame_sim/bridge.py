@@ -91,6 +91,8 @@ COMMANDS = {
     "toggle_pest_uniform",
     "use_pest_supply",
     "sell_game_item",
+    "respond_b3_alarm",
+    "quarantine_b4_supplies",
 }
 
 RECEPTION_SERVICE_ROUTES = {
@@ -106,6 +108,18 @@ PHONE_SERVICE_ROUTES = {
 
 def _is_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_uuid(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 36
+        and value[8] == "-"
+        and value[13] == "-"
+        and value[18] == "-"
+        and value[23] == "-"
+        and all(char in "0123456789abcdefABCDEF-" for char in value)
+    )
 
 
 def validate_command(command: object) -> tuple[bool, str]:
@@ -208,6 +222,9 @@ def validate_command(command: object) -> tuple[bool, str]:
         item_id = payload.get("item_id")
         if not isinstance(item_id, str) or not item_id or len(item_id) > 80:
             return False, "ITEM NOT ALLOWED"
+    elif name in {"respond_b3_alarm", "quarantine_b4_supplies"}:
+        if not _is_uuid(payload.get("alarm_id")):
+            return False, "ALARM ID NOT VALID"
     elif name == "interact":
         object_id = payload.get("object_id")
         if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
@@ -439,6 +456,24 @@ def _handle_basement_interact(
         return None
 
     if nearby.id == "basement-b4-supply-store":
+        snapshot = scene.basement_snapshot or {}
+        alarms = snapshot.get("alarms", [])
+        contamination = next((
+            alarm for alarm in alarms
+            if isinstance(alarm, dict)
+            and alarm.get("floor") == "B4"
+            and alarm.get("type") == "poison"
+            and alarm.get("status") in {"active", "silenced"}
+        ), None) if isinstance(alarms, list) else None
+        if contamination is not None:
+            state.open_page(
+                "b4_supply_response",
+                from_object=True,
+                source=nearby.label,
+                source_object_id=nearby.id,
+            )
+            state.notice = "B4 CONTAMINATION / TRIAGE SUPPLIES HELD"
+            return CommandResult(True, state.notice)
         if building_sync is None or not building_sync.queue_game_request("supply_issue"):
             return CommandResult(False, "B4 SUPPLY ISSUE UNAVAILABLE / TOWER STAFF ONLY")
         state.notice = "REQUESTING ONE B4 TRIAGE KIT"
@@ -550,6 +585,26 @@ def _apply_command(
             return CommandResult(False, "TOWER ADVISER REQUIRES A LIVE GAME LINK")
         state.tower_work_advice = "Checking the current approved Tower work priority…"
         return CommandResult(True, "ASKING THE TOWER ADVISER")
+    if name in {"respond_b3_alarm", "quarantine_b4_supplies"}:
+        is_b4_quarantine = name == "quarantine_b4_supplies"
+        expected_page = "b4_supply_response" if is_b4_quarantine else "disaster_response"
+        expected_level = 4 if is_b4_quarantine else 3
+        if (
+            not scene.is_basement
+            or scene.basement_level != expected_level
+            or state.active_page != expected_page
+        ):
+            return CommandResult(False, "OPEN THE LOCAL TOWER RESPONSE STATION FIRST")
+        action = "supply_quarantine" if is_b4_quarantine else "alarm_response"
+        if building_sync is None or not building_sync.queue_game_request(action, payload["alarm_id"]):
+            return CommandResult(False, "TOWER RESPONSE REQUIRES A LIVE GAME LINK")
+        state.game_service_loading.add(action)
+        return CommandResult(
+            True,
+            "B4 QUARANTINE SENT / WAITING FOR SERVER"
+            if is_b4_quarantine
+            else "B3 RESPONSE SENT / WAITING FOR SERVER",
+        )
     if state.utility_work_active:
         return CommandResult(False, "FINISH THE CURRENT UTILITY TASK FIRST")
 

@@ -837,7 +837,7 @@ describe("desktop basement survival authority", () => {
       eventKey: `test-b3-response:${randomUUID()}`,
       alarmType: "fire",
       floorKey: "B3",
-      zoneKey: "b3-fire-bay",
+      zoneKey: `test-b3-fire-bay-${randomUUID()}`,
       x: 2_000,
       y: 4_000,
       radius: 900,
@@ -849,7 +849,7 @@ describe("desktop basement survival authority", () => {
       eventKey: `test-b3-response-other-location:${randomUUID()}`,
       alarmType: "smoke",
       floorKey: "B3",
-      zoneKey: "b3-maintenance-bay",
+      zoneKey: `test-b3-maintenance-bay-${randomUUID()}`,
       x: 2_000,
       y: 6_000,
       radius: 900,
@@ -913,6 +913,93 @@ describe("desktop basement survival authority", () => {
       status: "resolved",
     });
     const duplicate = await desktopPost("/api/desktop-building/alarms/respond")
+      .send({ alarmId: alarm.id });
+    expect(duplicate.status).toBe(409);
+  });
+
+  it("blocks B4 triage issue until assigned staff quarantine the local poison alarm", async () => {
+    await db.delete(towerStaffAssignmentsTable)
+      .where(eq(towerStaffAssignmentsTable.userId, userId));
+    const [alarm] = await db.insert(towerAlarmEventsTable).values({
+      eventKey: `test-b4-quarantine:${randomUUID()}`,
+      alarmType: "poison",
+      floorKey: "B4",
+      zoneKey: `test-b4-supply-room-${randomUUID()}`,
+      x: 5_000,
+      y: 6_500,
+      radius: 650,
+      mode: "quiet",
+      summary: "Test supply contamination",
+    }).returning();
+    alarmIds.push(alarm.id);
+    const [otherLocationAlarm] = await db.insert(towerAlarmEventsTable).values({
+      eventKey: `test-b4-quarantine-other-location:${randomUUID()}`,
+      alarmType: "poison",
+      floorKey: "B4",
+      zoneKey: `test-b4-other-room-${randomUUID()}`,
+      x: 5_000,
+      y: 5_000,
+      radius: 650,
+      mode: "quiet",
+      summary: "Test contamination at another location",
+    }).returning();
+    alarmIds.push(otherLocationAlarm.id);
+    await db.insert(desktopBasementPresenceTable).values({
+      userId,
+      linkId,
+      level: 4,
+      x: 5_000,
+      y: 6_500,
+      action: "stand",
+      lastSeenAt: new Date(),
+    }).onConflictDoUpdate({
+      target: desktopBasementPresenceTable.userId,
+      set: {
+        linkId,
+        level: 4,
+        x: 5_000,
+        y: 6_500,
+        action: "stand",
+        lastSeenAt: new Date(),
+      },
+    });
+
+    const noAssignment = await desktopPost("/api/desktop-building/alarms/quarantine")
+      .send({ alarmId: alarm.id });
+    expect(noAssignment.status).toBe(403);
+
+    await db.insert(towerStaffAssignmentsTable).values({
+      userId,
+      role: "maintenance",
+      assignedByUserId: userId,
+    });
+    const issueWhileContaminated = await desktopPost("/api/desktop-building/supplies/issue").send({});
+    expect(issueWhileContaminated.status).toBe(409);
+    expect(issueWhileContaminated.body.error).toMatch(/quarantine is active/i);
+
+    const wrongLocation = await desktopPost("/api/desktop-building/alarms/quarantine")
+      .send({ alarmId: otherLocationAlarm.id });
+    expect(wrongLocation.status).toBe(409);
+
+    await db.update(desktopBasementPresenceTable)
+      .set({ x: 7_000, y: 6_500, lastSeenAt: new Date() })
+      .where(eq(desktopBasementPresenceTable.userId, userId));
+    const tooFar = await desktopPost("/api/desktop-building/alarms/quarantine")
+      .send({ alarmId: alarm.id });
+    expect(tooFar.status).toBe(409);
+
+    await db.update(desktopBasementPresenceTable)
+      .set({ x: 5_000, y: 6_500, lastSeenAt: new Date() })
+      .where(eq(desktopBasementPresenceTable.userId, userId));
+    const quarantined = await desktopPost("/api/desktop-building/alarms/quarantine")
+      .send({ alarmId: alarm.id });
+    expect(quarantined.status).toBe(200);
+    expect(quarantined.body).toMatchObject({
+      ok: true,
+      alarmId: alarm.id,
+      status: "resolved",
+    });
+    const duplicate = await desktopPost("/api/desktop-building/alarms/quarantine")
       .send({ alarmId: alarm.id });
     expect(duplicate.status).toBe(409);
   });

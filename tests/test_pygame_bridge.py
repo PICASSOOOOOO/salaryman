@@ -317,6 +317,86 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(requests, [("supply_issue", None)])
 
+    def test_b4_supply_counter_opens_quarantine_instead_of_issuing_during_contamination(self):
+        self.assertTrue(self.scene.select_basement_level(4))
+        supply_store = self.scene.objects.get("basement-b4-supply-store")
+        self.assertIsNotNone(supply_store)
+        assert supply_store is not None
+        self.scene.player_position = supply_store.position
+        self.scene.set_basement_snapshot({
+            "level": 4,
+            "alarms": [{
+                "id": "b4-poison",
+                "type": "poison",
+                "floor": "B4",
+                "mode": "quiet",
+                "status": "active",
+                "summary": "Supply contamination sensor activated",
+            }],
+        })
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
+        )
+
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "b4-quarantine",
+                "name": "interact",
+                "payload": {"object_id": supply_store.id},
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "b4_supply_response")
+        self.assertEqual(requests, [])
+
+    def test_native_disaster_response_commands_queue_only_allowlisted_server_actions(self):
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
+        )
+        cases = (
+            (3, "disaster_response", "respond_b3_alarm", "alarm_response"),
+            (4, "b4_supply_response", "quarantine_b4_supplies", "supply_quarantine"),
+        )
+        for level, page, command_name, expected_action in cases:
+            self.assertTrue(self.scene.select_basement_level(level))
+            self.state.open_page(page, from_object=True, source="TEST RESPONSE STATION")
+            alarm_id = "12345678-1234-1234-1234-123456789abc"
+            result = apply_command(
+                {
+                    "type": "command",
+                    "version": PROTOCOL_VERSION,
+                    "id": f"native-response-b{level}",
+                    "name": command_name,
+                    "payload": {"alarm_id": alarm_id},
+                },
+                self.state,
+                self.scene,
+                building_sync,
+            )
+            self.assertTrue(result.ok)
+            self.assertEqual(requests[-1], (expected_action, alarm_id))
+
+        invalid = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "name": "quarantine_b4_supplies",
+                "payload": {"alarm_id": "not-a-uuid"},
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+        self.assertFalse(invalid.ok)
+
     def test_b2_collections_case_requires_each_physical_station_in_order(self):
         self.assertTrue(self.scene.select_basement_level(2))
         stations = (
@@ -486,6 +566,33 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertIn("alarm_response:b3-smoke", renderer.game_page_actions)
         self.assertNotIn("alarm_response:b4-fire", renderer.game_page_actions)
         self.assertNotIn("alarm_response:b3-crime", renderer.game_page_actions)
+
+    def test_b4_quarantine_page_exposes_only_active_poison_alarms(self):
+        import pygame
+        from pygame_sim.ui import SolarPunkRenderer
+
+        renderer = object.__new__(SolarPunkRenderer)
+        renderer.font_mono = None
+        renderer.font_sm = None
+        renderer.screen = pygame.Surface((900, 700))
+        renderer.game_page_actions = {}
+        renderer.text = lambda *_args, **_kwargs: None
+        renderer.panel = lambda *_args, **_kwargs: None
+        page = pygame.Rect(42, 76, 816, 514)
+        scene = SimpleNamespace(basement_snapshot={
+            "alarms": [
+                {"id": "b4-poison", "floor": "B4", "type": "poison", "status": "active"},
+                {"id": "b4-flood", "floor": "B4", "type": "flood", "status": "active"},
+                {"id": "b3-poison", "floor": "B3", "type": "poison", "status": "active"},
+            ],
+        })
+        state = SimpleNamespace(active_page="b4_supply_response")
+
+        renderer._draw_basement_page(state, scene, page)
+
+        self.assertIn("supply_quarantine:b4-poison", renderer.game_page_actions)
+        self.assertNotIn("supply_quarantine:b4-flood", renderer.game_page_actions)
+        self.assertNotIn("supply_quarantine:b3-poison", renderer.game_page_actions)
 
     def test_tower_food_water_and_triage_items_appear_as_usable_stamina_supplies(self):
         self.state.game_inventory = [{

@@ -2259,6 +2259,7 @@ class SolarPunkRenderer:
             "company_relocation": "COMPANY GROWTH",
             "collections_case": "COLLECTIONS CASE REVIEW",
             "disaster_response": "B3 DISASTER RESPONSE",
+            "b4_supply_response": "B4 SUPPLY QUARANTINE",
             "alarm_console": "B2 TOWER ALARM CONSOLE",
             "business": "TOWER BUSINESS OFFICE",
         }
@@ -2663,6 +2664,59 @@ class SolarPunkRenderer:
                 self.font_sm,
                 Palette.MATRIX_DIM,
             )
+        elif state.active_page == "b4_supply_response":
+            snapshot = scene.basement_snapshot or {}
+            alarm_values = snapshot.get("alarms", [])
+            contamination_alarms = [
+                alarm for alarm in alarm_values
+                if isinstance(alarm, dict)
+                and alarm.get("floor") == "B4"
+                and alarm.get("type") == "poison"
+                and alarm.get("status") in {"active", "silenced"}
+                and isinstance(alarm.get("id"), str)
+            ] if isinstance(alarm_values, list) else []
+            self.text(
+                "B4 TRIAGE SUPPLIES / ISSUE PAUSED UNTIL SENSOR CLEAR",
+                (page.x + 28, content + 8),
+                self.font_mono,
+                Palette.MATRIX_AMBER if contamination_alarms else Palette.MATRIX_GREEN,
+            )
+            if contamination_alarms:
+                alarm = contamination_alarms[0]
+                self.text(
+                    str(alarm.get("summary", "B4 contamination sensor active"))[:88],
+                    (page.x + 28, content + 34),
+                    self.font_sm,
+                    Palette.MATRIX_BRIGHT,
+                )
+                quarantine_button = pygame.Rect(page.x + 28, content + 64, page.width - 56, 32)
+                self.game_page_actions[f"supply_quarantine:{alarm['id']}"] = quarantine_button
+                self.panel(
+                    quarantine_button,
+                    Palette.MATRIX_PANEL_2,
+                    Palette.MATRIX_AMBER,
+                    radius=3,
+                    width=1,
+                )
+                self.text(
+                    "QUARANTINE B4 SUPPLIES",
+                    (quarantine_button.x + 12, quarantine_button.y + 9),
+                    self.font_mono,
+                    Palette.MATRIX_BRIGHT,
+                )
+                self.text(
+                    "ASSIGNED OPERATIONS OR MAINTENANCE STAFF ONLY",
+                    (page.x + 28, content + 112),
+                    self.font_sm,
+                    Palette.MATRIX_DIM,
+                )
+            else:
+                self.text(
+                    "NO ACTIVE B4 CONTAMINATION ALARM",
+                    (page.x + 28, content + 42),
+                    self.font_sm,
+                    Palette.MATRIX_GREEN,
+                )
         elif state.active_page == "collections_case":
             stage = state.displayed_collections_case_stage
             steps = (

@@ -4635,6 +4635,24 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 				findings[stage],
 			]
 			native_app_footer.text = "MOVE BETWEEN B2 STATIONS  ·  E INTERACT  ·  ESC CLOSE"
+		"disaster_response", "b4_supply_response":
+			var response_alarms := _basement_response_alarms(page)
+			if page == "b4_supply_response":
+				native_app_title.text = "B4 SUPPLY QUARANTINE"
+				if response_alarms.is_empty():
+					native_app_body.text = "NO ACTIVE B4 CONTAMINATION ALARM.\n\nTriage kits can be issued when the supply room is clear."
+					native_app_footer.text = "ESC CLOSE"
+				else:
+					native_app_body.text = "SUPPLY ISSUE PAUSED UNTIL SENSOR CLEAR\n\n%s\n\nAssigned operations or maintenance staff must quarantine the affected supplies at this counter." % str(response_alarms[0].get("summary", "Supply contamination sensor activated"))
+					native_app_footer.text = "1 / SELECT QUARANTINE  ·  ESC CLOSE"
+			else:
+				native_app_title.text = "B3 DISASTER RESPONSE"
+				if response_alarms.is_empty():
+					native_app_body.text = "NO ACTIVE B3 FIRE OR SMOKE INCIDENT."
+					native_app_footer.text = "ESC CLOSE"
+				else:
+					native_app_body.text = "LOCAL FIRE / SMOKE INCIDENT\n\n%s\n\nAssigned operations or maintenance staff must respond at the B3 fire station." % str(response_alarms[0].get("summary", "Fire response required"))
+					native_app_footer.text = "1 / SELECT RESPONSE  ·  ESC CLOSE"
 		"pest_jobs":
 			native_app_title.text = "BASEMENT PEST WORK"
 			var jobs: Variant = office.get("pestJobs", [])
@@ -4998,6 +5016,13 @@ func _advance_feature_panel_animations(delta: float) -> void:
 func _sync_native_app_actions(page: String, page_source: String) -> void:
 	var labels: Array[String] = []
 	match page:
+		"disaster_response":
+			var alarms := _basement_response_alarms(page)
+			if not alarms.is_empty():
+				labels = ["1 > RESPOND TO " + str(alarms[0].get("type", "FIRE")).to_upper()]
+		"b4_supply_response":
+			if not _basement_response_alarms(page).is_empty():
+				labels = ["1 > QUARANTINE B4 SUPPLIES"]
 		"phone":
 			if page_source.to_upper().contains("PAY PHONE"):
 				labels = ["1 > CALLL HOME", "2 > COMMS"]
@@ -5040,6 +5065,46 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 			button.grab_focus()
 
 
+func _basement_response_alarms(page: String) -> Array[Dictionary]:
+	var expected_floor := ""
+	var expected_types: Array[String] = []
+	var expected_position := Vector2i.ZERO
+	match page:
+		"disaster_response":
+			expected_floor = "B3"
+			expected_types = ["fire", "smoke"]
+			expected_position = Vector2i(2000, 4000)
+		"b4_supply_response":
+			expected_floor = "B4"
+			expected_types = ["poison"]
+			expected_position = Vector2i(5000, 6500)
+		_:
+			return []
+
+	var scene_data: Dictionary = snapshot.get("scene", {})
+	var basement_value: Variant = scene_data.get("basement", {})
+	if not basement_value is Dictionary:
+		return []
+	var alarm_values: Variant = basement_value.get("alarms", [])
+	if not alarm_values is Array:
+		return []
+	var matches: Array[Dictionary] = []
+	for alarm_value in alarm_values:
+		if not alarm_value is Dictionary:
+			continue
+		var alarm: Dictionary = alarm_value
+		if (
+			str(alarm.get("floor", "")) == expected_floor
+			and str(alarm.get("type", "")) in expected_types
+			and str(alarm.get("status", "")) in ["active", "silenced"]
+			and int(alarm.get("x", -1)) == expected_position.x
+			and int(alarm.get("y", -1)) == expected_position.y
+			and not str(alarm.get("id", "")).is_empty()
+		):
+			matches.append(alarm)
+	return matches
+
+
 func _style_feature_command_button(button: Button) -> void:
 	button.add_theme_font_override("font", feature_command_font)
 	button.add_theme_color_override("font_color", Color("#75ffa0"))
@@ -5068,6 +5133,17 @@ func _style_feature_command_button(button: Button) -> void:
 
 func _on_native_app_action_pressed(page: String, choice: int) -> void:
 	match page:
+		"disaster_response", "b4_supply_response":
+			if choice != 1:
+				return
+			var alarms := _basement_response_alarms(page)
+			if alarms.is_empty():
+				return
+			var alarm_id := str(alarms[0].get("id", ""))
+			if page == "b4_supply_response":
+				_send_command("quarantine_b4_supplies", {"alarm_id": alarm_id})
+			else:
+				_send_command("respond_b3_alarm", {"alarm_id": alarm_id})
 		"phone":
 			_send_command("phone_choice", {"choice": choice})
 		"reception":
@@ -5192,6 +5268,8 @@ func _input(event: InputEvent) -> void:
 				var choice := terminal_choice_for_key(event.keycode)
 				if choice > 0:
 					_send_command("terminal_choice", {"choice": choice})
+			elif active_page in ["disaster_response", "b4_supply_response"] and event.keycode == KEY_1:
+				_on_native_app_action_pressed(active_page, 1)
 			elif active_page == "phone" and event.keycode in [KEY_1, KEY_2]:
 				_send_command("phone_choice", {"choice": event.keycode - KEY_0})
 			elif active_page in ["vending", "business_stock"] and event.keycode == KEY_B:

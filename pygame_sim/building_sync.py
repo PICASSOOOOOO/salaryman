@@ -133,6 +133,15 @@ class DesktopBuildingSync:
                 "/desktop-building/alarms/respond",
                 {"alarmId": item_id},
             )
+        elif action == "supply_quarantine":
+            if not isinstance(item_id, str) or len(item_id) != 36 \
+                or any(char not in "0123456789abcdefABCDEF-" for char in item_id):
+                return False
+            request = (
+                "POST",
+                "/desktop-building/alarms/quarantine",
+                {"alarmId": item_id},
+            )
         elif action in {"shop_freight_pickup", "shop_freight_receive"}:
             if not isinstance(item_id, str) or not item_id or len(item_id) > 64:
                 return False
@@ -407,6 +416,7 @@ class DesktopBuildingSync:
                     "waste_deliver": "TRASH DELIVERED TO B1",
                     "supply_receive": "SUPPLIES RECEIVED AT B1",
                     "supply_issue": "B4 TRIAGE KIT ISSUED",
+                    "supply_quarantine": "B4 SUPPLY CONTAMINATION QUARANTINED",
                     "alarm_response": "B3 FIRE RESPONSE COMPLETED",
                     "shop_freight_snapshot": "B1 SHOP FREIGHT STATUS LOADED",
                     "shop_freight_pickup": "SHOP SHIPMENT LOADED / TAKE IT TO THE DESTINATION",

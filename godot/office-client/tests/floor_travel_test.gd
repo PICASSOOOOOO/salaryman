@@ -25,6 +25,19 @@ func _run_tests() -> void:
 	assert(is_equal_approx(float(invalid_hud["scale"]), 0.0))
 
 	var client = OfficeClient.new()
+	client.snapshot = {
+		"scene": {
+			"basement": {
+				"alarms": [
+					{"id": "b4-poison", "floor": "B4", "type": "poison", "status": "active", "x": 5000, "y": 6500},
+					{"id": "b4-flood", "floor": "B4", "type": "flood", "status": "active", "x": 5000, "y": 6500},
+					{"id": "b4-far-poison", "floor": "B4", "type": "poison", "status": "active", "x": 8000, "y": 6500},
+				],
+			},
+		},
+	}
+	assert(client._basement_response_alarms("b4_supply_response").size() == 1)
+	assert(client._basement_response_alarms("disaster_response").is_empty())
 	var floor_plan = JSON.parse_string(FileAccess.get_file_as_string("res://floor_plan.json"))
 	assert(floor_plan is Dictionary)
 	client.floor_plan_data = floor_plan

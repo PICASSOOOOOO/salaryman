@@ -320,6 +320,13 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "B3 RESPONSE SENT / WAITING FOR SERVER"
             else:
                 state.notice = "B3 RESPONSE UNAVAILABLE / CHECK GAME LINK"
+        elif action.startswith("supply_quarantine:"):
+            alarm_id = action.split(":", 1)[1]
+            if building_sync.queue_game_request("supply_quarantine", alarm_id):
+                state.game_service_loading.add("supply_quarantine")
+                state.notice = "B4 QUARANTINE SENT / WAITING FOR SERVER"
+            else:
+                state.notice = "B4 QUARANTINE UNAVAILABLE / CHECK GAME LINK"
         elif action == "tower:ask_work_advice":
             dispatch_game_command("ask_tower_work_advice", {})
         elif action.startswith("alarm_mode:"):

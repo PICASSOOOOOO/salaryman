@@ -1362,6 +1362,22 @@ router.post("/desktop-building/supplies/issue", async (req, res): Promise<void> 
         return { error: "B4 supplies are restricted to assigned operations or maintenance staff" } as const;
       }
 
+      const [contamination] = await tx.select({ id: towerAlarmEventsTable.id })
+        .from(towerAlarmEventsTable)
+        .where(and(
+          eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+          eq(towerAlarmEventsTable.floorKey, "B4"),
+          eq(towerAlarmEventsTable.x, B4_SUPPLY_STORE.x),
+          eq(towerAlarmEventsTable.y, B4_SUPPLY_STORE.y),
+          eq(towerAlarmEventsTable.alarmType, "poison"),
+          inArray(towerAlarmEventsTable.status, ["active", "silenced"]),
+        ))
+        .for("update")
+        .limit(1);
+      if (contamination) {
+        return { error: "B4 supply quarantine is active; resolve the contamination alarm before issuing kits" } as const;
+      }
+
       const operations = await advanceTowerOperations(tx, now);
       if (operations.state.storedSupplyCrates < 1) {
         return { error: "B4 vital-supplies storage is empty" } as const;
@@ -1410,6 +1426,52 @@ router.post("/desktop-building/supplies/issue", async (req, res): Promise<void> 
   } catch (error) {
     req.log.error({ err: error }, "B4 vital-supplies issue failed");
     res.status(500).json({ error: "Could not issue B4 supplies" });
+  }
+});
+
+router.post("/desktop-building/alarms/quarantine", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const presence = await activePresence(link.userId, link.id, B4_SUPPLY_STORE.level);
+  if (!presence || distance(presence, B4_SUPPLY_STORE) > B4_SUPPLY_STORE_RADIUS) {
+    res.status(409).json({ error: "Use the B4 vital-supplies counter to quarantine contamination" });
+    return;
+  }
+  const [assignment] = await db.select({ role: towerStaffAssignmentsTable.role })
+    .from(towerStaffAssignmentsTable)
+    .where(eq(towerStaffAssignmentsTable.userId, link.userId))
+    .limit(1);
+  if (!assignment || !["operations", "maintenance"].includes(assignment.role)) {
+    res.status(403).json({ error: "B4 quarantine is restricted to assigned operations or maintenance staff" });
+    return;
+  }
+  const alarmId = req.body?.alarmId;
+  if (!isUuid(alarmId)) {
+    res.status(400).json({ error: "Choose an active B4 contamination alarm" });
+    return;
+  }
+  const now = new Date();
+  try {
+    const [alarm] = await db.update(towerAlarmEventsTable).set({
+      status: "resolved",
+      resolvedAt: now,
+    }).where(and(
+      eq(towerAlarmEventsTable.id, alarmId),
+      eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+      eq(towerAlarmEventsTable.floorKey, "B4"),
+      eq(towerAlarmEventsTable.x, B4_SUPPLY_STORE.x),
+      eq(towerAlarmEventsTable.y, B4_SUPPLY_STORE.y),
+      eq(towerAlarmEventsTable.alarmType, "poison"),
+      inArray(towerAlarmEventsTable.status, ["active", "silenced"]),
+    )).returning({ id: towerAlarmEventsTable.id });
+    if (!alarm) {
+      res.status(409).json({ error: "That B4 contamination alarm is no longer awaiting quarantine" });
+      return;
+    }
+    res.json({ ok: true, alarmId: alarm.id, status: "resolved" });
+  } catch (error) {
+    req.log.error({ err: error }, "B4 supply quarantine failed");
+    res.status(500).json({ error: "Could not quarantine B4 supplies" });
   }
 });
 
