@@ -434,7 +434,7 @@ class DesktopBuildingSync:
                     details["errorPayload"] = exc.payload
                 self._events.put(BuildingSyncEvent(
                     False,
-                    _friendly_sync_error(str(exc)),
+                    _game_action_error_message(game_action, exc),
                     code=str(exc),
                     source="game_service",
                     data=details,
@@ -842,6 +842,39 @@ def _sync_error_message(error: RuntimeError) -> str:
         if isinstance(message, str) and message.strip():
             return message.strip().upper()
     return _friendly_sync_error(str(error))
+
+
+def _game_action_error_message(action: str, error: RuntimeError) -> str:
+    if action not in {"shop_freight_pickup", "shop_freight_receive"}:
+        return _friendly_sync_error(str(error))
+
+    if not isinstance(error, _HttpJsonError):
+        return _friendly_sync_error(str(error))
+
+    error_code = str(error)
+    if error_code == "HTTP_403":
+        if action == "shop_freight_receive":
+            return "WRONG SHOP / TAKE THE SHIPMENT TO ITS DESTINATION"
+        return "RETURN TO THE B1 FREIGHT DOCK"
+    if error_code == "HTTP_404":
+        return "SHIPMENT NOT FOUND / REFRESH FREIGHT STATUS"
+    if error_code == "HTTP_409":
+        message = error.payload.get("error") if error.payload else None
+        if action == "shop_freight_receive" and message == "Shop storage is full.":
+            item_id = error.payload.get("itemId") if error.payload else None
+            available = error.payload.get("available") if error.payload else None
+            requested = error.payload.get("requested") if error.payload else None
+            if isinstance(item_id, str) and isinstance(available, int) and isinstance(requested, int):
+                return (
+                    f"SHOP STORAGE FULL / {item_id.upper()[:32]} / "
+                    f"{available} SPACE / {requested} NEEDED"
+                )
+            return "SHOP STORAGE FULL / CLEAR SPACE BEFORE DELIVERY"
+        if action == "shop_freight_pickup":
+            return "SHIPMENT NO LONGER WAITING AT B1 / REFRESH FREIGHT STATUS"
+        return "SHIPMENT NO LONGER IN DELIVERY / REFRESH FREIGHT STATUS"
+
+    return _sync_error_message(error)
 
 
 def _friendly_sync_error(code: str) -> str:

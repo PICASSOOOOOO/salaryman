@@ -1,6 +1,8 @@
 import json
 import time
 import unittest
+from io import BytesIO
+from urllib.error import HTTPError
 
 from pygame_sim.automation import DesktopLink
 from pygame_sim.building_sync import DesktopBuildingSync
@@ -349,6 +351,58 @@ class BuildingSyncTests(unittest.TestCase):
                 ("POST", "/items/tower-business/shipments/12345678-1234-1234-1234-123456789abc/receive"),
             ],
         )
+
+    def test_freight_failures_explain_where_to_go_or_what_storage_needs(self):
+        shipment_id = "12345678-1234-1234-1234-123456789abc"
+        cases = (
+            (
+                "shop_freight_receive",
+                403,
+                {"error": "Move to the destination shop."},
+                "WRONG SHOP / TAKE THE SHIPMENT TO ITS DESTINATION",
+            ),
+            (
+                "shop_freight_receive",
+                409,
+                {
+                    "error": "Shop storage is full.",
+                    "itemId": "fish_goldfish",
+                    "available": 2,
+                    "requested": 3,
+                },
+                "SHOP STORAGE FULL / FISH_GOLDFISH / 2 SPACE / 3 NEEDED",
+            ),
+            (
+                "shop_freight_pickup",
+                409,
+                {"error": "Shipment is not waiting at the B1 dock."},
+                "SHIPMENT NO LONGER WAITING AT B1 / REFRESH FREIGHT STATUS",
+            ),
+        )
+
+        for action, status, payload, expected_message in cases:
+            with self.subTest(action=action, status=status):
+                def opener(request, timeout):
+                    del timeout
+                    raise HTTPError(
+                        request.full_url,
+                        status,
+                        "Request failed",
+                        None,
+                        BytesIO(json.dumps(payload).encode("utf-8")),
+                    )
+
+                sync = DesktopBuildingSync(
+                    DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+                    opener=opener,
+                )
+                self.assertTrue(sync.queue_game_request(action, shipment_id))
+                sync._sync_once()
+
+                event = sync.drain_events()[0]
+                self.assertFalse(event.ok)
+                self.assertEqual(event.message, expected_message)
+                self.assertEqual(event.data["errorPayload"], payload)
 
     def test_floor_state_is_scoped_and_queued_maintenance_cannot_follow_player(self):
         requests = []
