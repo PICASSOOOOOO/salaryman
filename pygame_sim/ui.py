@@ -1608,9 +1608,10 @@ class SolarPunkRenderer:
                     prompt_text = "LOAD SHOP FREIGHT / PRESS E"
                 else:
                     prompt_text = "CHECK B1 SHOP FREIGHT / PRESS E"
-            elif nearby.kind == "business_suite" \
-                and isinstance(state.active_shop_shipment, dict) \
-                and state.active_shop_shipment.get("businessKey") == nearby.business_key:
+            elif nearby.kind == "business_suite" and any(
+                shipment.get("businessKey") == nearby.business_key
+                for shipment in state.shop_freight_shipments_in_delivery
+            ):
                 prompt_text = "DELIVER SHIPMENT TO SHOP STORAGE / PRESS E"
             if nearby.kind == "crt_terminal" and scene.is_seated_at_workstation(nearby.parent_id):
                 prompt_text = "USE COMPUTER"
@@ -2260,6 +2261,7 @@ class SolarPunkRenderer:
             "collections_case": "COLLECTIONS CASE REVIEW",
             "disaster_response": "B3 DISASTER RESPONSE",
             "b4_supply_response": "B4 SUPPLY QUARANTINE",
+            "shop_freight_dock": "B1 SHOP FREIGHT DOCK",
             "alarm_console": "B2 TOWER ALARM CONSOLE",
             "business": "TOWER BUSINESS OFFICE",
         }
@@ -2452,7 +2454,51 @@ class SolarPunkRenderer:
         page: pygame.Rect,
     ) -> None:
         content = page.y + 92
-        if state.active_page == "alarm_console":
+        if state.active_page == "shop_freight_dock":
+            self.text(
+                f"WAITING AT B1 / {len(state.shop_freight_shipments_at_dock)} SHIPMENTS"
+                f"  ·  IN DELIVERY / {len(state.shop_freight_shipments_in_delivery)}",
+                (page.x + 28, content + 8),
+                self.font_mono,
+                Palette.MATRIX_DIM,
+            )
+            if not state.shop_freight_shipments_at_dock:
+                self.text(
+                    "NO SHOP SHIPMENTS ARE WAITING AT THE B1 DOCK",
+                    (page.x + 28, content + 45),
+                    self.font_md,
+                    Palette.MATRIX_GREEN,
+                )
+            for index, shipment in enumerate(state.shop_freight_shipments_at_dock[:5]):
+                shipment_id = shipment.get("id")
+                if not isinstance(shipment_id, str):
+                    continue
+                shop = str(shipment.get("businessKey", "SHOP")).replace("_", " ").upper()
+                lines = shipment.get("lines", [])
+                manifest = ", ".join(
+                    f"{str(line.get('itemId', 'ITEM')).replace('_', ' ').upper()} ×{line.get('quantity', 0)}"
+                    for line in lines[:2]
+                    if isinstance(line, dict)
+                ) if isinstance(lines, list) else "MANIFEST UNAVAILABLE"
+                y = content + 42 + index * 54
+                row = pygame.Rect(page.x + 28, y, page.width - 56, 44)
+                self.game_page_actions[f"shop_freight_pickup:{shipment_id}"] = row
+                self.panel(row, Palette.MATRIX_PANEL_2, Palette.MATRIX_GREEN, radius=3, width=1)
+                self.text(
+                    f"{index + 1} / PICK UP FOR {shop}  ·  {manifest}"[:118],
+                    (row.x + 12, row.y + 14),
+                    self.font_sm,
+                    Palette.MATRIX_BRIGHT,
+                )
+            if state.shop_freight_shipments_in_delivery:
+                cargo = state.shop_freight_shipments_in_delivery[0]
+                self.text(
+                    f"COURIER EN ROUTE / {str(cargo.get('businessKey', 'SHOP')).replace('_', ' ').upper()}",
+                    (page.x + 28, page.bottom - 38),
+                    self.font_sm,
+                    Palette.MATRIX_AMBER,
+                )
+        elif state.active_page == "alarm_console":
             snapshot = scene.basement_snapshot or {}
             alarms = snapshot.get("alarms", [])
             allowed = snapshot.get("securityConsoleAccess") is True

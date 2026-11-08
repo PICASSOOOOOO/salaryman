@@ -4353,6 +4353,7 @@ func _update_context_interaction(scene_data: Dictionary) -> void:
 		return
 	var objects: Variant = scene_data.get("objects", [])
 	var nearby_label := ""
+	var nearby_object: Dictionary = {}
 	if objects is Array:
 		for object_value in objects:
 			if not object_value is Dictionary:
@@ -4360,13 +4361,27 @@ func _update_context_interaction(scene_data: Dictionary) -> void:
 			var object: Dictionary = object_value
 			if not bool(object.get("nearby", false)) or not bool(object.get("interactive", false)):
 				continue
+			nearby_object = object
 			nearby_label = str(object.get("label", object.get("kind", "OBJECT"))).strip_edges().to_upper()
 			break
 	interaction_button.visible = not nearby_label.is_empty() and _active_page_name().is_empty()
 	if interaction_button.visible:
+		var interaction_text := "USE"
+		if str(nearby_object.get("kind", "")) == "business_suite":
+			var office: Dictionary = snapshot.get("office", {})
+			var delivery_value: Variant = office.get("shopFreightShipmentsInDelivery", [])
+			if delivery_value is Array:
+				for shipment_value in delivery_value:
+					if (
+						shipment_value is Dictionary
+						and str(shipment_value.get("businessKey", ""))
+							== str(nearby_object.get("businessKey", ""))
+					):
+						interaction_text = "DELIVER"
+						break
 		if nearby_label.length() > 24:
 			nearby_label = nearby_label.substr(0, 23) + "…"
-		interaction_button.text = "E  ·  USE  " + nearby_label
+		interaction_button.text = "E  ·  %s  %s" % [interaction_text, nearby_label]
 		interaction_button.disabled = connection.get_status() != StreamPeerTCP.STATUS_CONNECTED
 
 
@@ -4438,6 +4453,40 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 		str(scene_data.get("room", "UNKNOWN")).replace("_", " ").to_upper(),
 	]
 	match page:
+		"shop_freight_dock":
+			native_app_title.text = "B1 SHOP FREIGHT DOCK"
+			var waiting_value: Variant = office.get("shopFreightShipmentsAtDock", [])
+			var delivery_value: Variant = office.get("shopFreightShipmentsInDelivery", [])
+			var freight_lines: Array[String] = []
+			if waiting_value is Array:
+				for index in mini(waiting_value.size(), 5):
+					var shipment_value: Variant = waiting_value[index]
+					if not shipment_value is Dictionary:
+						continue
+					var shipment: Dictionary = shipment_value
+					var manifest_lines: Array[String] = []
+					var shipment_lines: Variant = shipment.get("lines", [])
+					if shipment_lines is Array:
+						for line_value in shipment_lines:
+							if line_value is Dictionary:
+								manifest_lines.append("%s ×%d" % [
+									str(line_value.get("itemId", "ITEM")).replace("_", " ").to_upper(),
+									int(line_value.get("quantity", 0)),
+								])
+					freight_lines.append("%d  %s  /  %s" % [
+						index + 1,
+						str(shipment.get("businessKey", "SHOP")).replace("_", " ").to_upper(),
+						", ".join(manifest_lines) if not manifest_lines.is_empty() else "MANIFEST UNAVAILABLE",
+					])
+			if freight_lines.is_empty():
+				freight_lines.append("NO SHOP SHIPMENTS ARE WAITING AT THE B1 DOCK")
+			var courier_count: int = delivery_value.size() if delivery_value is Array else 0
+			native_app_body.text = "WAITING AT B1 / %d SHIPMENTS\nIN DELIVERY / %d\n\n%s\n\nCarry a picked-up shipment to its listed shop and press E to deliver it to storage." % [
+				waiting_value.size() if waiting_value is Array else 0,
+				courier_count,
+				"\n".join(freight_lines),
+			]
+			native_app_footer.text = "1–5 PICK UP A SHIPMENT  ·  E DELIVER AT ITS SHOP  ·  ESC CLOSE"
 		"vending":
 			native_app_title.text = "TOWER VENDING / SERVER-PRICED STOCK"
 			var vending_lines: Array[String] = []
@@ -5016,6 +5065,17 @@ func _advance_feature_panel_animations(delta: float) -> void:
 func _sync_native_app_actions(page: String, page_source: String) -> void:
 	var labels: Array[String] = []
 	match page:
+		"shop_freight_dock":
+			var office: Dictionary = snapshot.get("office", {})
+			var waiting_value: Variant = office.get("shopFreightShipmentsAtDock", [])
+			if waiting_value is Array:
+				for index in mini(waiting_value.size(), 5):
+					var shipment_value: Variant = waiting_value[index]
+					if shipment_value is Dictionary:
+						labels.append("%d > PICK UP %s" % [
+							index + 1,
+							str(shipment_value.get("businessKey", "SHOP")).replace("_", " ").to_upper(),
+						])
 		"disaster_response":
 			var alarms := _basement_response_alarms(page)
 			if not alarms.is_empty():
@@ -5105,6 +5165,16 @@ func _basement_response_alarms(page: String) -> Array[Dictionary]:
 	return matches
 
 
+func _shop_freight_shipment_at(choice: int) -> Dictionary:
+	var office: Dictionary = snapshot.get("office", {})
+	var waiting_value: Variant = office.get("shopFreightShipmentsAtDock", [])
+	var index := choice - 1
+	if waiting_value is not Array or index < 0 or index >= waiting_value.size():
+		return {}
+	var shipment_value: Variant = waiting_value[index]
+	return shipment_value if shipment_value is Dictionary else {}
+
+
 func _style_feature_command_button(button: Button) -> void:
 	button.add_theme_font_override("font", feature_command_font)
 	button.add_theme_color_override("font_color", Color("#75ffa0"))
@@ -5133,6 +5203,11 @@ func _style_feature_command_button(button: Button) -> void:
 
 func _on_native_app_action_pressed(page: String, choice: int) -> void:
 	match page:
+		"shop_freight_dock":
+			var shipment := _shop_freight_shipment_at(choice)
+			var shipment_id := str(shipment.get("id", ""))
+			if not shipment_id.is_empty():
+				_send_command("shop_freight_pickup", {"shipment_id": shipment_id})
 		"disaster_response", "b4_supply_response":
 			if choice != 1:
 				return
@@ -5270,6 +5345,10 @@ func _input(event: InputEvent) -> void:
 					_send_command("terminal_choice", {"choice": choice})
 			elif active_page in ["disaster_response", "b4_supply_response"] and event.keycode == KEY_1:
 				_on_native_app_action_pressed(active_page, 1)
+			elif active_page == "shop_freight_dock" and event.keycode in [
+				KEY_1, KEY_2, KEY_3, KEY_4, KEY_5
+			]:
+				_on_native_app_action_pressed(active_page, int(event.keycode) - KEY_0)
 			elif active_page == "phone" and event.keycode in [KEY_1, KEY_2]:
 				_send_command("phone_choice", {"choice": event.keycode - KEY_0})
 			elif active_page in ["vending", "business_stock"] and event.keycode == KEY_B:

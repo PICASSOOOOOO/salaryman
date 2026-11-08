@@ -93,6 +93,7 @@ COMMANDS = {
     "sell_game_item",
     "respond_b3_alarm",
     "quarantine_b4_supplies",
+    "shop_freight_pickup",
 }
 
 RECEPTION_SERVICE_ROUTES = {
@@ -225,6 +226,9 @@ def validate_command(command: object) -> tuple[bool, str]:
     elif name in {"respond_b3_alarm", "quarantine_b4_supplies"}:
         if not _is_uuid(payload.get("alarm_id")):
             return False, "ALARM ID NOT VALID"
+    elif name == "shop_freight_pickup":
+        if not _is_uuid(payload.get("shipment_id")):
+            return False, "SHIPMENT ID NOT VALID"
     elif name == "interact":
         object_id = payload.get("object_id")
         if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
@@ -605,6 +609,16 @@ def _apply_command(
             if is_b4_quarantine
             else "B3 RESPONSE SENT / WAITING FOR SERVER",
         )
+    if name == "shop_freight_pickup":
+        if not scene.is_basement or scene.basement_level != 1 or state.active_page != "shop_freight_dock":
+            return CommandResult(False, "USE THE B1 SHOP FREIGHT DOCK")
+        if building_sync is None or not building_sync.queue_game_request(
+            "shop_freight_pickup",
+            payload["shipment_id"],
+        ):
+            return CommandResult(False, "SHOP SHIPMENT PICKUP REQUIRES A LIVE GAME LINK")
+        state.game_service_loading.add("shop_freight_pickup")
+        return CommandResult(True, "SHOP SHIPMENT PICKUP SENT / WAITING FOR SERVER")
     if state.utility_work_active:
         return CommandResult(False, "FINISH THE CURRENT UTILITY TASK FIRST")
 
@@ -691,8 +705,32 @@ def _apply_command(
             if building_sync is None or not building_sync.queue_game_request("shop_freight_snapshot"):
                 return CommandResult(False, "SHOP FREIGHT STATUS UNAVAILABLE / CHECK GAME LINK")
             state.game_service_loading.add("shop_freight_snapshot")
+            state.open_page(
+                "shop_freight_dock",
+                from_object=True,
+                source=nearby.label,
+                source_object_id=nearby.id,
+            )
             state.notice = "SHIPPING COMPANY / CHECKING AUTONOMOUS COURIER"
             return CommandResult(True, state.notice)
+        if nearby is not None and nearby.kind == "business_suite" \
+            and requested_object_id in (None, nearby.id):
+            shipment = next((
+                row for row in state.shop_freight_shipments_in_delivery
+                if row.get("businessKey") == nearby.business_key
+                and isinstance(row.get("id", row.get("shipmentId")), str)
+            ), None)
+            if shipment is not None:
+                shipment_id = shipment.get("id", shipment.get("shipmentId"))
+                if building_sync is None or not building_sync.queue_game_request(
+                    "shop_freight_receive",
+                    str(shipment_id),
+                ):
+                    return CommandResult(False, "SHOP SHIPMENT DELIVERY REQUIRES A LIVE GAME LINK")
+                state.game_service_loading.add("shop_freight_receive")
+                scene.set_player_action("maintenance", duration=1.0)
+                state.notice = f"DELIVERING SHOP FREIGHT / {str(nearby.business_key).upper()}"
+                return CommandResult(True, state.notice)
         if nearby is not None and nearby.kind == "loading_gate" \
             and requested_object_id in (None, nearby.id):
             if building_sync is None or not building_sync.queue_game_request("supply_receive"):
@@ -1368,6 +1406,8 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "businessStockLines": state.business_stock_lines,
             "businessShelfStock": state.business_shelf_stock,
             "shopShipment": state.active_shop_shipment,
+            "shopFreightShipmentsAtDock": state.shop_freight_shipments_at_dock,
+            "shopFreightShipmentsInDelivery": state.shop_freight_shipments_in_delivery,
             "ghostListing": state.ghost_listing,
             "pestUniformWorn": state.pest_uniform_worn,
             "pestStamina": state.pest_stamina,

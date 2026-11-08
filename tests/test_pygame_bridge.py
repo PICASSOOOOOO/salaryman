@@ -317,6 +317,82 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(requests, [("supply_issue", None)])
 
+    def test_b1_shop_freight_dock_opens_the_manifest_page_and_refreshes(self):
+        self.assertTrue(self.scene.select_basement_level(1))
+        dock = self.scene.objects.get("basement-b1-shop-freight-dock")
+        self.assertIsNotNone(dock)
+        assert dock is not None
+        self.scene.player_position = dock.position
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
+        )
+
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "b1-freight-dock",
+                "name": "interact",
+                "payload": {"object_id": dock.id},
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(self.state.active_page, "shop_freight_dock")
+        self.assertEqual(requests, [("shop_freight_snapshot", None)])
+
+    def test_b1_freight_pickup_and_shop_delivery_use_physical_interactions(self):
+        shipment_id = "12345678-1234-1234-1234-123456789abc"
+        self.assertTrue(self.scene.select_basement_level(1))
+        self.state.open_page("shop_freight_dock", from_object=True, source="B1 DOCK")
+        requests = []
+        building_sync = SimpleNamespace(
+            queue_game_request=lambda action, item_id=None: requests.append((action, item_id)) or True,
+        )
+        pickup = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "name": "shop_freight_pickup",
+                "payload": {"shipment_id": shipment_id},
+            },
+            self.state,
+            self.scene,
+            building_sync,
+        )
+        self.assertTrue(pickup.ok)
+        self.assertEqual(requests, [("shop_freight_pickup", shipment_id)])
+
+        delivery_scene = build_tower_scene()
+        self.assertTrue(delivery_scene.select_floor(2))
+        shop = next(
+            item for item in delivery_scene.objects.objects
+            if item.kind == "business_suite" and item.room == delivery_scene.current_room
+        )
+        delivery_scene.player_position = shop.position
+        self.state.shop_freight_shipments_in_delivery = [{
+            "id": shipment_id,
+            "businessKey": shop.business_key,
+            "status": "in_delivery",
+        }]
+        delivery = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "name": "interact",
+                "payload": {"object_id": shop.id},
+            },
+            self.state,
+            delivery_scene,
+            building_sync,
+        )
+        self.assertTrue(delivery.ok)
+        self.assertEqual(requests[-1], ("shop_freight_receive", shipment_id))
+
     def test_b4_supply_counter_opens_quarantine_instead_of_issuing_during_contamination(self):
         self.assertTrue(self.scene.select_basement_level(4))
         supply_store = self.scene.objects.get("basement-b4-supply-store")
@@ -566,6 +642,41 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertIn("alarm_response:b3-smoke", renderer.game_page_actions)
         self.assertNotIn("alarm_response:b4-fire", renderer.game_page_actions)
         self.assertNotIn("alarm_response:b3-crime", renderer.game_page_actions)
+
+    def test_b1_freight_page_lists_and_actions_only_shipments_waiting_at_the_dock(self):
+        import pygame
+        from pygame_sim.ui import SolarPunkRenderer
+
+        renderer = object.__new__(SolarPunkRenderer)
+        renderer.font_mono = None
+        renderer.font_sm = None
+        renderer.font_md = None
+        renderer.screen = pygame.Surface((900, 700))
+        renderer.game_page_actions = {}
+        renderer.text = lambda *_args, **_kwargs: None
+        renderer.panel = lambda *_args, **_kwargs: None
+        page = pygame.Rect(42, 76, 816, 514)
+        state = SimpleNamespace(
+            active_page="shop_freight_dock",
+            shop_freight_shipments_at_dock=[
+                {
+                    "id": "shipment-1",
+                    "businessKey": "fish-store",
+                    "lines": [{"itemId": "fish_goldfish", "quantity": 4}],
+                },
+                {
+                    "id": "shipment-2",
+                    "businessKey": "tower-clinic",
+                    "lines": [{"itemId": "clinic_kit", "quantity": 2}],
+                },
+            ],
+            shop_freight_shipments_in_delivery=[],
+        )
+
+        renderer._draw_basement_page(state, SimpleNamespace(), page)
+
+        self.assertIn("shop_freight_pickup:shipment-1", renderer.game_page_actions)
+        self.assertIn("shop_freight_pickup:shipment-2", renderer.game_page_actions)
 
     def test_b4_quarantine_page_exposes_only_active_poison_alarms(self):
         import pygame

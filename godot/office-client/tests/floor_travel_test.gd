@@ -38,6 +38,13 @@ func _run_tests() -> void:
 	}
 	assert(client._basement_response_alarms("b4_supply_response").size() == 1)
 	assert(client._basement_response_alarms("disaster_response").is_empty())
+	client.snapshot["office"] = {
+		"shopFreightShipmentsAtDock": [
+			{"id": "shipment-1", "businessKey": "fish-store"},
+		],
+	}
+	assert(client._shop_freight_shipment_at(1).get("id") == "shipment-1")
+	assert(client._shop_freight_shipment_at(2).is_empty())
 	var floor_plan = JSON.parse_string(FileAccess.get_file_as_string("res://floor_plan.json"))
 	assert(floor_plan is Dictionary)
 	client.floor_plan_data = floor_plan

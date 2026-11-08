@@ -327,6 +327,13 @@ def run(argv: list[str] | None = None) -> int:
                 state.notice = "B4 QUARANTINE SENT / WAITING FOR SERVER"
             else:
                 state.notice = "B4 QUARANTINE UNAVAILABLE / CHECK GAME LINK"
+        elif action.startswith("shop_freight_pickup:"):
+            shipment_id = action.split(":", 1)[1]
+            if building_sync.queue_game_request("shop_freight_pickup", shipment_id):
+                state.game_service_loading.add("shop_freight_pickup")
+                state.notice = "SHOP FREIGHT PICKUP SENT / WAITING FOR SERVER"
+            else:
+                state.notice = "SHOP FREIGHT PICKUP UNAVAILABLE / CHECK GAME LINK"
         elif action == "tower:ask_work_advice":
             dispatch_game_command("ask_tower_work_advice", {})
         elif action.startswith("alarm_mode:"):
@@ -504,6 +511,14 @@ def run(argv: list[str] | None = None) -> int:
                 return True
         elif page == "business_stock" and key == pygame.K_b:
             activate_game_page_action("vending:business-stock")
+            return True
+        elif page == "shop_freight_dock" and pygame.K_1 <= key <= pygame.K_5:
+            index = key - pygame.K_1
+            shipments = state.shop_freight_shipments_at_dock
+            if index < len(shipments):
+                shipment_id = shipments[index].get("id")
+                if isinstance(shipment_id, str):
+                    activate_game_page_action(f"shop_freight_pickup:{shipment_id}")
             return True
         elif page == "phone":
             if key == pygame.K_1:
@@ -835,28 +850,57 @@ def run(argv: list[str] | None = None) -> int:
                             and isinstance(row.get("id"), str)
                             and row.get("status") == "at_dock"
                         ] if isinstance(rows, list) else []
-                        active_courier = next((
+                        state.shop_freight_shipments_in_delivery = [
                             row for row in rows
                             if isinstance(row, dict)
                             and isinstance(row.get("id"), str)
                             and row.get("status") == "in_delivery"
-                        ), None) if isinstance(rows, list) else None
+                        ] if isinstance(rows, list) else []
+                        active_courier = next(
+                            iter(state.shop_freight_shipments_in_delivery),
+                            None,
+                        )
                         state.active_shop_shipment = {
-                            key: active_courier.get(key)
-                            for key in ("id", "businessKey", "status", "lines", "from", "to", "animation")
+                            **active_courier,
+                            "shipmentId": active_courier.get("id"),
                         } if active_courier else None
                         state.notice = (
                             f"SHIP CO / {len(state.shop_freight_shipments_at_dock)} WAITING / "
                             f"{'COURIER EN ROUTE' if active_courier else 'NO ACTIVE COURIER'}"
                         )
                     elif action == "shop_freight_pickup":
-                        state.active_shop_shipment = {
+                        picked_up = {
                             key: payload.get(key)
                             for key in ("shipmentId", "businessKey", "status", "lines", "from", "to", "animation")
                         }
+                        picked_up["id"] = payload.get("shipmentId")
+                        state.shop_freight_shipments_at_dock = [
+                            row for row in state.shop_freight_shipments_at_dock
+                            if row.get("id") != payload.get("shipmentId")
+                        ]
+                        state.shop_freight_shipments_in_delivery = [
+                            picked_up,
+                            *[
+                                row for row in state.shop_freight_shipments_in_delivery
+                                if row.get("id", row.get("shipmentId")) != payload.get("shipmentId")
+                            ],
+                        ]
+                        state.active_shop_shipment = picked_up
                         state.notice = f"SHOP FREIGHT IN TRANSIT / {str(payload.get('businessKey', 'SHOP')).upper()}"
                     elif action == "shop_freight_receive":
-                        state.active_shop_shipment = None
+                        received_id = payload.get("shipmentId")
+                        state.shop_freight_shipments_in_delivery = [
+                            row for row in state.shop_freight_shipments_in_delivery
+                            if row.get("id", row.get("shipmentId")) != received_id
+                        ]
+                        next_shipment = next(
+                            iter(state.shop_freight_shipments_in_delivery),
+                            None,
+                        )
+                        state.active_shop_shipment = {
+                            **next_shipment,
+                            "shipmentId": next_shipment.get("id", next_shipment.get("shipmentId")),
+                        } if next_shipment else None
                         state.notice = "SHOP SHIPMENT DELIVERED TO STORAGE"
                     elif action == "inventory":
                         rows = payload.get("rows", [])
