@@ -33,7 +33,7 @@ import {
   towerShopShipmentsTable,
   towerShopStaffAssignmentsTable,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
 import { recordTowerCompanyRevenueTx } from "../lib/tower-finance";
@@ -502,6 +502,48 @@ describe("Tower shop logistics routes", () => {
     for (const res of responses) {
       expect(res.status).toBe(401);
       expect(res.body.error).toMatch(/desktop credential required/i);
+    }
+  });
+
+  it("returns every active dock shipment instead of truncating the list at fifty", async () => {
+    authState.authed = false;
+    const businessKey = "fish-store";
+    const [priorAccount] = await db.select().from(towerShopAccountsTable)
+      .where(eq(towerShopAccountsTable.businessKey, businessKey)).limit(1);
+    await db.insert(towerShopAccountsTable).values({ businessKey }).onConflictDoNothing();
+    const shipmentIds = Array.from({ length: 55 }, () => randomUUID());
+    const now = Date.now();
+    await db.insert(towerShopShipmentsTable).values(shipmentIds.map((id, index) => ({
+      id,
+      requestKey: `dock-reachability-test:${id}`,
+      businessKey,
+      shippingCompanyKey: "tower_shipping",
+      status: "at_dock",
+      lines: [{ itemId: "fish_goldfish", quantity: 1 }],
+      goodsCostFiat: 0,
+      deliveryFeeFiat: 0,
+      supplierCostFiat: 0,
+      btcMultiplierBps: 10_000,
+      demandIndex: 0,
+      supplyIndex: 0,
+      arrivedAtDockAt: new Date(now - index),
+    })));
+    const desktop = await seedLinkedDesktopAtOffice({ floorNumber: 2, x: 22_884, y: 47_470 });
+
+    try {
+      const res = await request(app).get("/api/items/tower-business/shipments/dock")
+        .set("Authorization", `Bearer ${desktop.token}`)
+        .set("x-salaryman-device-id", desktop.deviceId);
+
+      expect(res.status).toBe(200);
+      const returnedIds = res.body.shipments.map((shipment: { id: string }) => shipment.id);
+      expect(returnedIds.length).toBeGreaterThan(50);
+      expect(returnedIds).toEqual(expect.arrayContaining(shipmentIds));
+    } finally {
+      await db.delete(towerShopShipmentsTable).where(inArray(towerShopShipmentsTable.id, shipmentIds));
+      if (!priorAccount) {
+        await db.delete(towerShopAccountsTable).where(eq(towerShopAccountsTable.businessKey, businessKey));
+      }
     }
   });
 

@@ -826,7 +826,7 @@ router.get("/items/tower-business/shipments/dock", async (req, res) => {
     const rows = await db.select().from(towerShopShipmentsTable).where(or(
       eq(towerShopShipmentsTable.status, "at_dock"),
       eq(towerShopShipmentsTable.status, "in_delivery"),
-    )).orderBy(desc(towerShopShipmentsTable.arrivedAtDockAt)).limit(50);
+    )).orderBy(desc(towerShopShipmentsTable.arrivedAtDockAt));
     const shipments = rows.map((shipment) => ({
       ...shipment,
       from: TOWER_B1_SHOP_DOCK,
