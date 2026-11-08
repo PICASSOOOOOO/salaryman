@@ -389,6 +389,30 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "disaster_response")
         self.assertEqual(self.state.active_object_id, board.id)
 
+    def test_b3_fire_station_opens_the_response_page(self):
+        self.assertTrue(self.scene.select_basement_level(3))
+        station = self.scene.objects.get("basement-b3-fire-station")
+        self.assertIsNotNone(station)
+        assert station is not None
+        self.assertTrue(station.interactive)
+        self.scene.player_position = station.position
+
+        result = apply_command(
+            {
+                "type": "command",
+                "version": PROTOCOL_VERSION,
+                "id": "b3-fire-station-response",
+                "name": "interact",
+                "payload": {"object_id": station.id},
+            },
+            self.state,
+            self.scene,
+        )
+
+        self.assertTrue(result.ok, result.message)
+        self.assertEqual(self.state.active_page, "disaster_response")
+        self.assertEqual(self.state.active_object_id, station.id)
+
     def test_b3_response_page_exposes_the_server_prioritized_work_action(self):
         import pygame
         from pygame_sim.ui import SolarPunkRenderer
@@ -429,6 +453,39 @@ class PygameBridgeTests(unittest.TestCase):
             "ACTIVE INCIDENTS / 1 / B4 FIRE" in line
             for line in rendered_text
         ))
+
+    def test_b3_fire_station_shows_only_local_fire_or_smoke_response_actions(self):
+        import pygame
+        from pygame_sim.ui import SolarPunkRenderer
+
+        renderer = object.__new__(SolarPunkRenderer)
+        renderer.font_mono = None
+        renderer.font_sm = None
+        renderer.screen = pygame.Surface((900, 700))
+        renderer.game_page_actions = {}
+        renderer.text = lambda *_args, **_kwargs: None
+        renderer.panel = lambda *_args, **_kwargs: None
+        page = pygame.Rect(42, 76, 816, 514)
+        scene = SimpleNamespace(basement_snapshot={
+            "building": {},
+            "towerOperations": {},
+            "alarms": [
+                {"id": "b3-smoke", "floor": "B3", "type": "smoke", "status": "active"},
+                {"id": "b4-fire", "floor": "B4", "type": "fire", "status": "active"},
+                {"id": "b3-crime", "floor": "B3", "type": "crime_scene", "status": "active"},
+            ],
+        })
+        state = SimpleNamespace(
+            active_page="disaster_response",
+            active_object_id="basement-b3-fire-station",
+            tower_work_advice="",
+        )
+
+        renderer._draw_basement_page(state, scene, page)
+
+        self.assertIn("alarm_response:b3-smoke", renderer.game_page_actions)
+        self.assertNotIn("alarm_response:b4-fire", renderer.game_page_actions)
+        self.assertNotIn("alarm_response:b3-crime", renderer.game_page_actions)
 
     def test_tower_food_water_and_triage_items_appear_as_usable_stamina_supplies(self):
         self.state.game_inventory = [{

@@ -2546,6 +2546,36 @@ class SolarPunkRenderer:
                 self.font_sm,
                 Palette.MATRIX_AMBER if active_alarms else Palette.MATRIX_GREEN,
             )
+            if getattr(state, "active_object_id", None) == "basement-b3-fire-station":
+                fire_incidents = [
+                    alarm for alarm in active_alarms
+                    if alarm.get("floor") == "B3" and alarm.get("type") in {"fire", "smoke"}
+                    and isinstance(alarm.get("id"), str)
+                ]
+                if fire_incidents:
+                    response = fire_incidents[0]
+                    response_button = pygame.Rect(page.x + 28, content + 48, page.width - 56, 30)
+                    self.game_page_actions[f"alarm_response:{response['id']}"] = response_button
+                    self.panel(
+                        response_button,
+                        Palette.MATRIX_PANEL_2,
+                        Palette.MATRIX_AMBER,
+                        radius=3,
+                        width=1,
+                    )
+                    self.text(
+                        f"CONTAIN / {str(response.get('type', 'fire')).upper()} / B3",
+                        (response_button.x + 12, response_button.y + 8),
+                        self.font_mono,
+                        Palette.MATRIX_BRIGHT,
+                    )
+                else:
+                    self.text(
+                        "NO B3 FIRE OR SMOKE INCIDENT AWAITS RESPONSE",
+                        (page.x + 28, content + 52),
+                        self.font_sm,
+                        Palette.MATRIX_GREEN,
+                    )
             system_rows = (
                 ("GRID POWER", "powerCondition", "powerOperational"),
                 ("PLUMBING", "plumbingCondition", "waterOperational"),

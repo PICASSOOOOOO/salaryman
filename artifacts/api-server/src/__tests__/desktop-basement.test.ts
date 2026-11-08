@@ -16,6 +16,7 @@ import {
   playerLedgerTable,
   salarymanSavesTable,
   towerStaffAssignmentsTable,
+  towerAlarmEventsTable,
   towerBuildingVitalsTable,
   towerOperationsStateTable,
   towerRestroomSessionsTable,
@@ -39,6 +40,7 @@ app.use("/api", desktopBasementRouter);
 const userIds: string[] = [];
 const linkIds: string[] = [];
 const pestIds: string[] = [];
+const alarmIds: string[] = [];
 const userId = `test-basement-${randomUUID()}`;
 const deviceId = `basement-${randomUUID()}`;
 const token = `test-token-${randomUUID()}`;
@@ -147,6 +149,10 @@ describe("desktop basement survival authority", () => {
     if (pestIds.length) {
       await db.delete(desktopBasementPestsTable)
         .where(eq(desktopBasementPestsTable.id, pestIds[0]));
+    }
+    if (alarmIds.length) {
+      await db.delete(towerAlarmEventsTable)
+        .where(eq(towerAlarmEventsTable.id, alarmIds[0]));
     }
     await db.delete(desktopBasementPresenceTable).where(eq(desktopBasementPresenceTable.userId, userId));
     await db.delete(desktopBasementCollectionsCasesTable)
@@ -822,5 +828,92 @@ describe("desktop basement survival authority", () => {
     expect(duplicateFinal.status).toBe(200);
     expect(duplicateFinal.body.stage).toBe(5);
     expect(duplicateFinal.body.accepted).toBe(false);
+  });
+
+  it("allows assigned B3 maintenance staff to resolve only a local fire or smoke incident", async () => {
+    await db.delete(towerStaffAssignmentsTable)
+      .where(eq(towerStaffAssignmentsTable.userId, userId));
+    const [alarm] = await db.insert(towerAlarmEventsTable).values({
+      eventKey: `test-b3-response:${randomUUID()}`,
+      alarmType: "fire",
+      floorKey: "B3",
+      zoneKey: "b3-fire-bay",
+      x: 2_000,
+      y: 4_000,
+      radius: 900,
+      mode: "loud",
+      summary: "Test response incident",
+    }).returning();
+    alarmIds.push(alarm.id);
+    const [otherLocationAlarm] = await db.insert(towerAlarmEventsTable).values({
+      eventKey: `test-b3-response-other-location:${randomUUID()}`,
+      alarmType: "smoke",
+      floorKey: "B3",
+      zoneKey: "b3-maintenance-bay",
+      x: 2_000,
+      y: 6_000,
+      radius: 900,
+      mode: "loud",
+      summary: "Test incident at another B3 location",
+    }).returning();
+    alarmIds.push(otherLocationAlarm.id);
+    await db.insert(desktopBasementPresenceTable).values({
+      userId,
+      linkId,
+      level: 3,
+      x: 2_000,
+      y: 4_000,
+      action: "stand",
+      lastSeenAt: new Date(),
+    }).onConflictDoUpdate({
+      target: desktopBasementPresenceTable.userId,
+      set: {
+        linkId,
+        level: 3,
+        x: 2_000,
+        y: 4_000,
+        action: "stand",
+        lastSeenAt: new Date(),
+      },
+    });
+
+    const noAssignment = await desktopPost("/api/desktop-building/alarms/respond")
+      .send({ alarmId: alarm.id });
+    expect(noAssignment.status).toBe(403);
+
+    await db.insert(towerStaffAssignmentsTable).values({
+      userId,
+      role: "maintenance",
+      assignedByUserId: userId,
+    }).onConflictDoUpdate({
+      target: towerStaffAssignmentsTable.userId,
+      set: { role: "maintenance", assignedByUserId: userId },
+    });
+
+    await db.update(desktopBasementPresenceTable)
+      .set({ x: 4_000, y: 4_000, lastSeenAt: new Date() })
+      .where(eq(desktopBasementPresenceTable.userId, userId));
+    const tooFar = await desktopPost("/api/desktop-building/alarms/respond")
+      .send({ alarmId: alarm.id });
+    expect(tooFar.status).toBe(409);
+
+    await db.update(desktopBasementPresenceTable)
+      .set({ x: 2_000, y: 4_000, lastSeenAt: new Date() })
+      .where(eq(desktopBasementPresenceTable.userId, userId));
+    const wrongLocation = await desktopPost("/api/desktop-building/alarms/respond")
+      .send({ alarmId: otherLocationAlarm.id });
+    expect(wrongLocation.status).toBe(409);
+    const resolved = await desktopPost("/api/desktop-building/alarms/respond")
+      .send({ alarmId: alarm.id });
+    expect(resolved.status).toBe(200);
+    expect(resolved.body).toMatchObject({
+      ok: true,
+      alarmId: alarm.id,
+      type: "fire",
+      status: "resolved",
+    });
+    const duplicate = await desktopPost("/api/desktop-building/alarms/respond")
+      .send({ alarmId: alarm.id });
+    expect(duplicate.status).toBe(409);
   });
 });

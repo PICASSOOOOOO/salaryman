@@ -105,6 +105,31 @@ class BuildingSyncTests(unittest.TestCase):
             ),
         )
 
+    def test_b3_fire_response_uses_the_allowlisted_server_route(self):
+        requests = []
+
+        def opener(request, timeout):
+            del timeout
+            body = json.loads(request.data.decode("utf-8")) if request.data else None
+            requests.append((request.get_method(), request.full_url.rsplit("/api", 1)[-1], body))
+            return FakeResponse({"ok": True, "status": "resolved"})
+
+        sync = DesktopBuildingSync(
+            DesktopLink("https://salaryman.test", "desktop-test-123", "credential"),
+            opener=opener,
+        )
+        alarm_id = "12345678-1234-1234-1234-123456789abc"
+        self.assertFalse(sync.queue_game_request("alarm_response", "../alarms"))
+        self.assertTrue(sync.queue_game_request("alarm_response", alarm_id))
+        sync._sync_once()
+
+        event = sync.drain_events()[0]
+        self.assertTrue(event.ok)
+        self.assertEqual(
+            requests,
+            [("POST", "/desktop-building/alarms/respond", {"alarmId": alarm_id})],
+        )
+
     def test_shelf_stock_request_is_authenticated_read_only_and_rejects_invalid_keys(self):
         requests = []
 

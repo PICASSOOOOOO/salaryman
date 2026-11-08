@@ -313,6 +313,13 @@ def run(argv: list[str] | None = None) -> int:
             alarm_id = action.split(":", 1)[1]
             if basement_sync is None or not basement_sync.queue_alarm_shutdown(alarm_id):
                 state.notice = "ALARM SHUTDOWN REQUIRES SECURITY CONSOLE ACCESS"
+        elif action.startswith("alarm_response:"):
+            alarm_id = action.split(":", 1)[1]
+            if building_sync.queue_game_request("alarm_response", alarm_id):
+                state.game_service_loading.add("alarm_response")
+                state.notice = "B3 RESPONSE SENT / WAITING FOR SERVER"
+            else:
+                state.notice = "B3 RESPONSE UNAVAILABLE / CHECK GAME LINK"
         elif action == "tower:ask_work_advice":
             dispatch_game_command("ask_tower_work_advice", {})
         elif action.startswith("alarm_mode:"):

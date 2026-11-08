@@ -102,6 +102,8 @@ const B4_SUPPLY_STORE = { level: 4, x: 5_000, y: 6_500 };
 const B4_SUPPLY_STORE_RADIUS = 650;
 const SECURITY_ALARM_STATION = { level: 2, x: 7_200, y: 5_000 };
 const SECURITY_ALARM_RADIUS = 1_250;
+const B3_FIRE_RESPONSE_STATION = { level: 3, x: 2_000, y: 4_000 };
+const B3_FIRE_RESPONSE_RADIUS = 900;
 const CARRIED_ITEM_CAPACITY = 24;
 
 const MOVES = {
@@ -1833,6 +1835,52 @@ router.post("/desktop-building/alarms/shutdown", async (req, res): Promise<void>
   } catch (error) {
     req.log.error({ err: error }, "Tower alarm shutdown failed");
     res.status(500).json({ error: "Could not silence alarm" });
+  }
+});
+
+router.post("/desktop-building/alarms/respond", async (req, res): Promise<void> => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const presence = await activePresence(link.userId, link.id, B3_FIRE_RESPONSE_STATION.level);
+  if (!presence || distance(presence, B3_FIRE_RESPONSE_STATION) > B3_FIRE_RESPONSE_RADIUS) {
+    res.status(409).json({ error: "Use the B3 fire station at the reported response point" });
+    return;
+  }
+  const [assignment] = await db.select({ role: towerStaffAssignmentsTable.role })
+    .from(towerStaffAssignmentsTable)
+    .where(eq(towerStaffAssignmentsTable.userId, link.userId))
+    .limit(1);
+  if (!assignment || !["maintenance", "operations"].includes(assignment.role)) {
+    res.status(403).json({ error: "B3 fire response is restricted to assigned maintenance or operations staff" });
+    return;
+  }
+  const alarmId = req.body?.alarmId;
+  if (!isUuid(alarmId)) {
+    res.status(400).json({ error: "Choose an active B3 fire or smoke incident" });
+    return;
+  }
+  const now = new Date();
+  try {
+    const [alarm] = await db.update(towerAlarmEventsTable).set({
+      status: "resolved",
+      resolvedAt: now,
+    }).where(and(
+      eq(towerAlarmEventsTable.id, alarmId),
+      eq(towerAlarmEventsTable.buildingKey, BUILDING_KEY),
+      eq(towerAlarmEventsTable.floorKey, "B3"),
+      eq(towerAlarmEventsTable.x, B3_FIRE_RESPONSE_STATION.x),
+      eq(towerAlarmEventsTable.y, B3_FIRE_RESPONSE_STATION.y),
+      inArray(towerAlarmEventsTable.alarmType, ["fire", "smoke"]),
+      inArray(towerAlarmEventsTable.status, ["active", "silenced"]),
+    )).returning({ id: towerAlarmEventsTable.id, alarmType: towerAlarmEventsTable.alarmType });
+    if (!alarm) {
+      res.status(409).json({ error: "That B3 fire or smoke incident is no longer awaiting response" });
+      return;
+    }
+    res.json({ ok: true, alarmId: alarm.id, type: alarm.alarmType, status: "resolved" });
+  } catch (error) {
+    req.log.error({ err: error }, "B3 fire response failed");
+    res.status(500).json({ error: "Could not complete B3 fire response" });
   }
 });
 

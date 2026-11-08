@@ -360,7 +360,7 @@ def _handle_basement_interact(
     if (
         scene.basement_level == 3
         and nearby is not None
-        and nearby.id == "basement-b3-disaster-response"
+        and nearby.id in {"basement-b3-disaster-response", "basement-b3-fire-station"}
     ):
         state.open_page(
             "disaster_response",
