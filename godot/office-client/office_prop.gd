@@ -7,6 +7,8 @@ const SUPPORTED_KINDS := [
 	"temple_tree", "reflection_screen", "meditation_cushion", "temple_audio_control",
 	"chapel_pew", "chapel_altar", "library_shelf", "reading_table", "museum_case",
 	"furniture_lounge_chair", "furniture_couch", "furniture_sideboard", "furniture_display_shelf",
+	"music_console_desk", "synth_keyboard_module", "step_rhythm_module",
+	"audio_rack_module", "nearfield_monitor",
 	"microphone_stand",
 ]
 var finish: StandardMaterial3D
@@ -78,6 +80,16 @@ func _build(kind: String, reception: bool, variant: int) -> void:
 			_furniture_sideboard(wood, edge, brass, cream)
 		"furniture_display_shelf":
 			_furniture_display_shelf(wood, edge, brass)
+		"music_console_desk":
+			_music_console_desk(wood, edge, brass, charcoal)
+		"synth_keyboard_module":
+			_synth_keyboard_module(charcoal, cream, brass)
+		"step_rhythm_module":
+			_step_rhythm_module(charcoal, cream, brass)
+		"audio_rack_module":
+			_audio_rack_module(wood, edge, brass, charcoal)
+		"nearfield_monitor":
+			_nearfield_monitor(wood, brass, charcoal)
 	set_surface_state(100, 100)
 
 
@@ -446,6 +458,108 @@ func _furniture_display_shelf(wood: Material, edge: Material, brass: Material) -
 		_box("BrassUpright", Vector3(side * 1.13, 1.30, 0.13), Vector3(0.055, 2.62, 0.055), brass)
 		_box("WalnutFoot", Vector3(side * 1.13, 0.12, 0.04), Vector3(0.20, 0.20, 0.64), wood)
 	_wear_detail(Vector3(0, 0.28, 0.302), Vector3(0.18, 0.004, 0.008), brass)
+
+
+func _music_console_desk(wood: Material, edge: Material, brass: Material, charcoal: Material) -> void:
+	finish = _finish("#242b28")
+	surface_base = Color("#242b28")
+	_box("DeskTop", Vector3(0, 0.98, 0), Vector3(2.15, 0.13, 0.92), wood)
+	_box("WorkSurface", Vector3(0, 1.055, 0), Vector3(2.05, 0.035, 0.81), charcoal)
+	_box("BrassFrontInlay", Vector3(0, 0.965, 0.466), Vector3(2.02, 0.025, 0.025), brass)
+	for side in [-1.0, 1.0]:
+		_box("DeskPedestal", Vector3(side * 0.76, 0.47, 0), Vector3(0.13, 0.84, 0.70), wood)
+		_box("PedestalFoot", Vector3(side * 0.76, 0.07, 0), Vector3(0.42, 0.10, 0.72), brass)
+	_box("ControlBridge", Vector3(0, 1.20, -0.28), Vector3(1.16, 0.22, 0.20), finish)
+	for knob_index in range(8):
+		var x := -0.48 + float(knob_index) * 0.137
+		_cylinder("DeskControlKnob%d" % knob_index, Vector3(x, 1.345, -0.28), 0.035, 0.055, brass)
+	_box("CableTray", Vector3(0, 0.77, -0.30), Vector3(1.72, 0.12, 0.16), edge)
+	_wear_detail(Vector3(0, 0.88, 0.466), Vector3(0.20, 0.004, 0.008), brass)
+
+
+func _synth_keyboard_module(dark: Material, cream: Material, brass: Material) -> void:
+	finish = _finish("#242b28")
+	surface_base = Color("#242b28")
+	_box("KeyboardCase", Vector3(0, 0.35, 0), Vector3(1.42, 0.18, 0.58), dark)
+	_box("KeyboardCheekLeft", Vector3(-0.70, 0.39, 0), Vector3(0.08, 0.24, 0.64), brass)
+	_box("KeyboardCheekRight", Vector3(0.70, 0.39, 0), Vector3(0.08, 0.24, 0.64), brass)
+	var key_width := 1.22 / 25.0
+	for key_index in range(25):
+		var x := -0.61 + (float(key_index) + 0.5) * key_width
+		_box(
+			"WhiteKey%d" % key_index,
+			Vector3(x, 0.46, 0.055),
+			Vector3(key_width * 0.92, 0.045, 0.34),
+			cream,
+		)
+		var pitch_class := key_index % 7
+		if pitch_class not in [2, 6] and key_index < 24:
+			_box(
+				"BlackKey%d" % key_index,
+				Vector3(x + key_width * 0.47, 0.495, -0.035),
+				Vector3(key_width * 0.52, 0.055, 0.20),
+				dark,
+			)
+	_box("Display", Vector3(-0.48, 0.49, -0.19), Vector3(0.20, 0.035, 0.08), _finish("#779781"))
+	for knob_index in range(4):
+		_cylinder("KeyboardKnob%d" % knob_index, Vector3(0.24 + float(knob_index) * 0.12, 0.49, -0.19), 0.028, 0.05, brass)
+	_wear_detail(Vector3(0, 0.255, 0.293), Vector3(0.14, 0.004, 0.008), brass)
+
+
+func _step_rhythm_module(dark: Material, cream: Material, brass: Material) -> void:
+	finish = _finish("#242b28")
+	surface_base = Color("#242b28")
+	_box("RhythmCase", Vector3(0, 0.36, 0), Vector3(0.88, 0.18, 0.72), dark)
+	_box("RhythmFace", Vector3(0, 0.465, 0.01), Vector3(0.80, 0.045, 0.62), finish)
+	_box("RhythmDisplay", Vector3(-0.22, 0.50, -0.22), Vector3(0.25, 0.035, 0.09), _finish("#779781"))
+	for pad_index in range(16):
+		var column := pad_index % 4
+		var row := int(pad_index / 4)
+		var x := -0.25 + float(column) * 0.17
+		var z := -0.02 + float(row) * 0.14
+		_box("RhythmPad%d" % pad_index, Vector3(x, 0.515, z), Vector3(0.13, 0.045, 0.105), cream)
+		_box("PadLed%d" % pad_index, Vector3(x + 0.048, 0.542, z - 0.035), Vector3(0.018, 0.008, 0.012), brass)
+	for knob_index in range(4):
+		_cylinder("RhythmKnob%d" % knob_index, Vector3(0.24, 0.50, -0.20 + float(knob_index) * 0.11), 0.027, 0.05, brass)
+	_wear_detail(Vector3(0, 0.265, 0.365), Vector3(0.12, 0.004, 0.008), brass)
+
+
+func _audio_rack_module(wood: Material, edge: Material, brass: Material, dark: Material) -> void:
+	finish = _finish("#242b28")
+	surface_base = Color("#242b28")
+	for side in [-1.0, 1.0]:
+		_box("RackRail", Vector3(side * 0.31, 0.91, 0), Vector3(0.11, 1.72, 0.64), wood)
+		_box("RackFoot", Vector3(side * 0.31, 0.10, 0.02), Vector3(0.20, 0.18, 0.72), brass)
+	_box("RackTop", Vector3(0, 1.79, 0), Vector3(0.74, 0.12, 0.66), wood)
+	_box("RackBase", Vector3(0, 0.20, 0), Vector3(0.70, 0.12, 0.64), wood)
+	for unit_index in range(4):
+		var y := 0.48 + float(unit_index) * 0.30
+		_box("RackUnit%d" % unit_index, Vector3(0, y, 0.245), Vector3(0.51, 0.24, 0.07), dark)
+		_box("RackUnitInlay%d" % unit_index, Vector3(0, y, 0.285), Vector3(0.43, 0.018, 0.012), edge)
+		for knob_index in range(3):
+			_cylinder(
+				"RackKnob%d_%d" % [unit_index, knob_index],
+				Vector3(-0.14 + float(knob_index) * 0.14, y - 0.025, 0.31),
+				0.024,
+				0.035,
+				brass,
+			)
+	_wear_detail(Vector3(0, 0.30, 0.33), Vector3(0.12, 0.004, 0.008), brass)
+
+
+func _nearfield_monitor(wood: Material, brass: Material, dark: Material) -> void:
+	finish = _finish("#303a35")
+	surface_base = Color("#303a35")
+	_box("SpeakerCabinet", Vector3(0, 0.46, 0), Vector3(0.48, 0.72, 0.42), finish)
+	_box("SpeakerBaffle", Vector3(0, 0.46, 0.218), Vector3(0.40, 0.64, 0.035), dark)
+	var tweeter := _cylinder("Tweeter", Vector3(0, 0.64, 0.245), 0.065, 0.035, brass)
+	tweeter.rotation.x = PI / 2.0
+	var woofer := _cylinder("Woofer", Vector3(0, 0.35, 0.25), 0.15, 0.04, wood)
+	woofer.rotation.x = PI / 2.0
+	var wooferCone := _cylinder("WooferCone", Vector3(0, 0.35, 0.275), 0.09, 0.025, dark)
+	wooferCone.rotation.x = PI / 2.0
+	_box("SpeakerFoot", Vector3(0, 0.08, 0), Vector3(0.36, 0.08, 0.34), brass)
+	_wear_detail(Vector3(0, 0.18, 0.242), Vector3(0.10, 0.004, 0.008), brass)
 
 
 func _wear_detail(at: Vector3, size: Vector3, material: Material) -> void:

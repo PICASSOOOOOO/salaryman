@@ -108,7 +108,7 @@ export class ObjectStorageService {
 
   async getObjectEntityUploadURL(
     objectId: string = randomUUID(),
-    namespace: "uploads" | "organization-document-staging" = "uploads",
+    namespace: "uploads" | "organization-document-staging" | "1999-emulator-saves" = "uploads",
   ): Promise<string> {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(objectId)) {
       throw new Error("Invalid object ID");

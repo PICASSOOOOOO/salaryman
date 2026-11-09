@@ -199,6 +199,92 @@
   font-size: 0.57rem;
 }
 
+.fm1-save-bridge {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid rgba(255, 140, 0, 0.3);
+  background: rgba(255, 140, 0, 0.045);
+}
+
+.fm1-save-bridge-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #ffbb66;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+}
+
+.fm1-save-bridge-heading span {
+  color: #9fe0bd;
+}
+
+.fm1-save-file-name,
+.fm1-save-help,
+.fm1-save-status {
+  margin: 0;
+  color: rgba(214, 228, 220, 0.62);
+  font-size: 0.59rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.fm1-save-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.fm1-save-file-input,
+.fm1-save-download {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: #090d0b;
+  color: #bfefff;
+  font: inherit;
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.fm1-save-file-input input {
+  width: 100%;
+  min-width: 0;
+  color: rgba(214, 228, 220, 0.72);
+  font: inherit;
+  font-size: 0.55rem;
+}
+
+.fm1-save-file-input input::file-selector-button {
+  margin-right: 6px;
+  border: 0;
+  background: #12303a;
+  color: #e6f8ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fm1-save-download:hover:not(:disabled),
+.fm1-save-file-input:hover {
+  border-color: #38bdf8;
+}
+
+.fm1-save-download:disabled,
+.fm1-save-file-input input:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.fm1-save-status {
+  color: #9fe0bd;
+}
+
 .fm1-player-column {
   display: flex;
   flex-direction: column;

@@ -25,7 +25,16 @@ describe("1999 project validation", () => {
   it("accepts bounded track controls and selected emulator firmware", () => {
     const project = {
       ...legacyProject,
-      emulatorState: { firmwareIds: { fm1: "factory-1", smk37: "warm-pad" } },
+      emulatorState: {
+        firmwareIds: { fm1: "factory-1", smk37: "warm-pad" },
+        patchSaves: {
+          fm1: {
+            objectPath: "/objects/1999-emulator-saves/123e4567-e89b-42d3-a456-426614174000",
+            filename: "bright-lead.fm1save",
+            sizeBytes: 8192,
+          },
+        },
+      },
       tracks: [{ ...legacyProject.tracks[0], soundState: { tone: 65, decayMs: 420 } }],
     };
     expect(parseNineteenNinetyNineProject(JSON.stringify(project))).not.toBeNull();
@@ -40,7 +49,35 @@ describe("1999 project validation", () => {
       ...legacyProject,
       emulatorState: { firmwareIds: { fm1: "not valid\u0000firmware" } },
     };
+    const badPatchPath = {
+      ...legacyProject,
+      emulatorState: {
+        firmwareIds: {},
+        patchSaves: {
+          fm1: {
+            objectPath: "/objects/uploads/123e4567-e89b-42d3-a456-426614174000",
+            filename: "bright-lead.fm1save",
+            sizeBytes: 8192,
+          },
+        },
+      },
+    };
+    const oversizedPatch = {
+      ...legacyProject,
+      emulatorState: {
+        firmwareIds: {},
+        patchSaves: {
+          smk37: {
+            objectPath: "/objects/1999-emulator-saves/123e4567-e89b-42d3-a456-426614174000",
+            filename: "warm-pad.fm1save",
+            sizeBytes: 16 * 1024 * 1024 + 1,
+          },
+        },
+      },
+    };
     expect(parseNineteenNinetyNineProject(JSON.stringify(badSound))).toBeNull();
     expect(parseNineteenNinetyNineProject(JSON.stringify(badFirmware))).toBeNull();
+    expect(parseNineteenNinetyNineProject(JSON.stringify(badPatchPath))).toBeNull();
+    expect(parseNineteenNinetyNineProject(JSON.stringify(oversizedPatch))).toBeNull();
   });
 });

@@ -95,7 +95,9 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       wildcardPath === "organization-documents" ||
       wildcardPath.startsWith("organization-documents/") ||
       wildcardPath === "organization-document-staging" ||
-      wildcardPath.startsWith("organization-document-staging/")
+      wildcardPath.startsWith("organization-document-staging/") ||
+      wildcardPath === "1999-emulator-saves" ||
+      wildcardPath.startsWith("1999-emulator-saves/")
     ) {
       res.status(404).json({ error: "Object not found" });
       return;

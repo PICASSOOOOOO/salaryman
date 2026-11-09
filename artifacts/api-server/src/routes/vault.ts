@@ -1,9 +1,37 @@
 import { Router, type Request, type Response } from "express";
+import { Readable } from "stream";
 import { db, vaultEntriesTable, vaultConnectionsTable } from "@workspace/db";
 import { eq, and, or, desc, ilike, sql } from "drizzle-orm";
 import { parseNineteenNinetyNineProject } from "../lib/1999-project";
+import { getObjectAclPolicy } from "../lib/objectAcl";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
 const router = Router();
+const objectStorageService = new ObjectStorageService();
+const MAX_EMULATOR_SAVE_BYTES = 16 * 1024 * 1024;
+type EmulatorMachineId = "fm1" | "smk37";
+
+function isEmulatorMachineId(value: string): value is EmulatorMachineId {
+  return value === "fm1" || value === "smk37";
+}
+
+function emulatorSaveObjectId(objectPath: unknown): string | null {
+  if (typeof objectPath !== "string") return null;
+  return objectPath.match(
+    /^\/objects\/1999-emulator-saves\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+  )?.[1] ?? null;
+}
+
+function isValidEmulatorSaveMetadata(filename: unknown, sizeBytes: unknown): filename is string {
+  return typeof filename === "string"
+    && filename.length > 0
+    && filename.length <= 120
+    && !/[\u0000-\u001f]/.test(filename)
+    && /\.fm1save$/i.test(filename)
+    && Number.isInteger(sizeBytes)
+    && Number(sizeBytes) >= 1
+    && Number(sizeBytes) <= MAX_EMULATOR_SAVE_BYTES;
+}
 
 function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
   if (!req.isAuthenticated()) {
@@ -175,6 +203,139 @@ router.get("/vault/entries/:id", async (req: Request, res: Response) => {
   return res.json({ entry, connections, backlinks });
 });
 
+router.post("/vault/entries/:id/emulator-save/:machine/upload-url", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const id = Number.parseInt(req.params.id as string, 10);
+  const machine = String(req.params.machine);
+  const { filename, sizeBytes } = req.body ?? {};
+  if (!Number.isInteger(id) || id <= 0 || !isEmulatorMachineId(machine)) {
+    return res.status(400).json({ error: "Invalid project or emulator." });
+  }
+  if (!isValidEmulatorSaveMetadata(filename, sizeBytes)) {
+    return res.status(400).json({ error: "Choose a valid .fm1save file under 16 MB." });
+  }
+
+  const [entry] = await db.select().from(vaultEntriesTable)
+    .where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, req.user!.id)));
+  if (!entry || entry.entryType !== "1999_project" || entry.folder !== "/1999") {
+    return res.status(404).json({ error: "Project not found." });
+  }
+  const project = parseNineteenNinetyNineProject(entry.content);
+  if (!project) return res.status(400).json({ error: "Project data is invalid." });
+
+  let objectId: string | undefined;
+  const existingPath = project.emulatorState?.patchSaves?.[machine]?.objectPath;
+  const existingObjectId = emulatorSaveObjectId(existingPath);
+  if (existingObjectId && existingPath) {
+    try {
+      const file = await objectStorageService.getObjectEntityFile(existingPath);
+      const policy = await getObjectAclPolicy(file);
+      if (policy?.visibility === "private" && policy.owner === req.user!.id) {
+        objectId = existingObjectId;
+      }
+    } catch {
+      // A missing or unowned old object gets a fresh private object path.
+    }
+  }
+
+  try {
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL(objectId, "1999-emulator-saves");
+    const objectPath = objectId
+      ? `/objects/1999-emulator-saves/${objectId}`
+      : objectStorageService.normalizeObjectEntityPath(uploadURL);
+    return res.json({ uploadURL, objectPath });
+  } catch (error) {
+    console.error("Error preparing 1999 emulator save upload:", error);
+    return res.status(500).json({ error: "Could not prepare the private patch-save upload." });
+  }
+});
+
+router.post("/vault/entries/:id/emulator-save/:machine/complete", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const id = Number.parseInt(req.params.id as string, 10);
+  const machine = String(req.params.machine);
+  const { objectPath, filename, sizeBytes } = req.body ?? {};
+  if (!Number.isInteger(id) || id <= 0 || !isEmulatorMachineId(machine)
+    || !emulatorSaveObjectId(objectPath)
+    || !isValidEmulatorSaveMetadata(filename, sizeBytes)) {
+    return res.status(400).json({ error: "Invalid emulator save metadata." });
+  }
+
+  const [entry] = await db.select({ id: vaultEntriesTable.id, entryType: vaultEntriesTable.entryType, folder: vaultEntriesTable.folder })
+    .from(vaultEntriesTable)
+    .where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, req.user!.id)));
+  if (!entry || entry.entryType !== "1999_project" || entry.folder !== "/1999") {
+    return res.status(404).json({ error: "Project not found." });
+  }
+
+  try {
+    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    const policy = await getObjectAclPolicy(file);
+    if (policy && policy.owner !== req.user!.id) {
+      return res.status(403).json({ error: "This patch file belongs to another account." });
+    }
+    const [metadata] = await file.getMetadata();
+    if (Number(metadata.size) !== Number(sizeBytes)) {
+      return res.status(400).json({ error: "Uploaded patch size did not match." });
+    }
+    await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+      owner: req.user!.id,
+      visibility: "private",
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      return res.status(404).json({ error: "Uploaded patch file was not found." });
+    }
+    console.error("Error securing 1999 emulator save:", error);
+    return res.status(500).json({ error: "Could not secure the uploaded patch file." });
+  }
+});
+
+router.get("/vault/entries/:id/emulator-save/:machine", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const id = Number.parseInt(req.params.id as string, 10);
+  const machine = String(req.params.machine);
+  if (!Number.isInteger(id) || id <= 0 || !isEmulatorMachineId(machine)) {
+    return res.status(400).json({ error: "Invalid project or emulator." });
+  }
+
+  const [entry] = await db.select().from(vaultEntriesTable)
+    .where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, req.user!.id)));
+  if (!entry || entry.entryType !== "1999_project" || entry.folder !== "/1999") {
+    return res.status(404).json({ error: "Project not found." });
+  }
+  const project = parseNineteenNinetyNineProject(entry.content);
+  const save = project?.emulatorState?.patchSaves?.[machine];
+  if (!save || !emulatorSaveObjectId(save.objectPath)) {
+    return res.status(404).json({ error: "No saved patch for this machine." });
+  }
+
+  try {
+    const file = await objectStorageService.getObjectEntityFile(save.objectPath);
+    const policy = await getObjectAclPolicy(file);
+    if (!policy || policy.visibility !== "private" || policy.owner !== req.user!.id) {
+      return res.status(403).json({ error: "Patch file is not owned by this account." });
+    }
+    const response = await objectStorageService.downloadObject(file, 0);
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    const safeName = save.filename.replace(/[^a-z0-9._-]/gi, "_");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(save.filename)}`);
+    res.setHeader("Cache-Control", "private, no-store");
+    if (response.body) {
+      return Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+    }
+    return res.end();
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      return res.status(404).json({ error: "Saved patch file is missing." });
+    }
+    console.error("Error downloading 1999 emulator save:", error);
+    return res.status(500).json({ error: "Could not download the saved patch." });
+  }
+});
+
 router.post("/vault/entries", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const { title, content, entryType, tags, color, folder, frontmatter } = req.body;
@@ -289,6 +450,20 @@ router.delete("/vault/entries/:id", async (req: Request, res: Response) => {
     .where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, req.user!.id)))
     .returning();
   if (!entry) return res.status(404).json({ error: "Not found" });
+  if (entry.entryType === "1999_project") {
+    const project = parseNineteenNinetyNineProject(entry.content);
+    const saves = Object.values(project?.emulatorState?.patchSaves ?? {});
+    await Promise.all(saves.map(async save => {
+      if (!save) return;
+      try {
+        const file = await objectStorageService.getObjectEntityFile(save.objectPath);
+        const policy = await getObjectAclPolicy(file);
+        if (policy?.owner === req.user!.id) await objectStorageService.deleteObject(save.objectPath);
+      } catch {
+        // A missing attachment does not prevent deletion of its project.
+      }
+    }));
+  }
   return res.json({ ok: true });
 });
 

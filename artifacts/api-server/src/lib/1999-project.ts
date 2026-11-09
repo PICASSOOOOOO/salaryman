@@ -15,6 +15,11 @@ export type NineteenNinetyNineProject = {
   bpm: number;
   emulatorState?: {
     firmwareIds: Partial<Record<"fm1" | "smk37", string>>;
+    patchSaves?: Partial<Record<"fm1" | "smk37", {
+      objectPath: string;
+      filename: string;
+      sizeBytes: number;
+    }>>;
   };
   tracks: Array<{
     id: string;
@@ -69,11 +74,28 @@ function isProjectTrack(value: unknown): value is NineteenNinetyNineProject["tra
 
 function isEmulatorState(value: unknown): boolean {
   if (!isRecord(value) || !isRecord(value.firmwareIds)) return false;
-  return Object.entries(value.firmwareIds).every(([machineId, firmwareId]) => (
+  const firmwareIdsValid = Object.entries(value.firmwareIds).every(([machineId, firmwareId]) => (
     (machineId === "fm1" || machineId === "smk37")
     && typeof firmwareId === "string"
     && firmwareId.length <= 120
     && !/[\u0000-\u001f]/.test(firmwareId)
+  ));
+  if (!firmwareIdsValid) return false;
+  if (value.patchSaves === undefined) return true;
+  if (!isRecord(value.patchSaves)) return false;
+  return Object.entries(value.patchSaves).every(([machineId, save]) => (
+    (machineId === "fm1" || machineId === "smk37")
+    && isRecord(save)
+    && typeof save.objectPath === "string"
+    && /^\/objects\/1999-emulator-saves\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(save.objectPath)
+    && typeof save.filename === "string"
+    && save.filename.length > 0
+    && save.filename.length <= 120
+    && !/[\u0000-\u001f]/.test(save.filename)
+    && /\.fm1save$/i.test(save.filename)
+    && Number.isInteger(save.sizeBytes)
+    && Number(save.sizeBytes) >= 1
+    && Number(save.sizeBytes) <= 16 * 1024 * 1024
   ));
 }
 

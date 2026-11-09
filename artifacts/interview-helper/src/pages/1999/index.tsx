@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileAudio, FileJson, Mic, Play, Plus, Radio, RefreshCw, Save, Square, Volume2 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
-import Fm1EmulatorPanel from "@/components/Fm1EmulatorPanel";
+import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
 import "./1999.css";
 
 type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37";
 type EmulatorMachine = "fm1" | "smk37";
 type SoundEngineState = { tone: number; decayMs: number };
-type EmulatorState = { firmwareIds: Partial<Record<EmulatorMachine, string>> };
+type EmulatorState = {
+  firmwareIds: Partial<Record<EmulatorMachine, string>>;
+  patchSaves?: Partial<Record<EmulatorMachine, EmulatorPatchSave>>;
+};
 type ProjectTrack = {
   id: string;
   name: string;
@@ -37,6 +40,10 @@ type MidiNavigator = Navigator & {
   requestMIDIAccess?: (options?: { sysex?: boolean }) => Promise<MidiAccessPort>;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 const machines: { id: MachineId; name: string; descriptor: string }[] = [
   { id: "op1", name: "OP-1", descriptor: "Portable sketch instrument" },
   { id: "sp404mkii", name: "SP-404MKII", descriptor: "Sampler and performance lane" },
@@ -52,7 +59,7 @@ const freshProject = (): Project => ({
   schemaVersion: 1,
   name: "Untitled session",
   bpm: 92,
-  emulatorState: { firmwareIds: {} },
+  emulatorState: { firmwareIds: {}, patchSaves: {} },
   tracks: [
     { id: "trk-1", name: "Pulse", kind: "instrument", machineId: "op1", steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 72, soundState: { tone: 72, decayMs: 240 } },
     { id: "trk-2", name: "Low end", kind: "instrument", machineId: "fm1", steps: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 66, soundState: { tone: 48, decayMs: 420 } },
@@ -69,13 +76,31 @@ function isSoundEngineState(value: unknown): value is SoundEngineState {
 
 function isEmulatorState(value: unknown): value is EmulatorState {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const firmwareIds = (value as Partial<EmulatorState>).firmwareIds;
+  const state = value as Partial<EmulatorState>;
+  const firmwareIds = state.firmwareIds;
   if (!firmwareIds || typeof firmwareIds !== "object" || Array.isArray(firmwareIds)) return false;
-  return Object.entries(firmwareIds).every(([machineId, firmwareId]) => (
+  const firmwareValid = Object.entries(firmwareIds).every(([machineId, firmwareId]) => (
     (machineId === "fm1" || machineId === "smk37")
     && typeof firmwareId === "string"
     && firmwareId.length <= 120
     && !/[\u0000-\u001f]/.test(firmwareId)
+  ));
+  if (!firmwareValid) return false;
+  if (state.patchSaves === undefined) return true;
+  if (!state.patchSaves || typeof state.patchSaves !== "object" || Array.isArray(state.patchSaves)) return false;
+  return Object.entries(state.patchSaves).every(([machineId, save]) => (
+    (machineId === "fm1" || machineId === "smk37")
+    && !!save
+    && typeof save.objectPath === "string"
+    && /^\/objects\/1999-emulator-saves\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(save.objectPath)
+    && typeof save.filename === "string"
+    && save.filename.length > 0
+    && save.filename.length <= 120
+    && /\.fm1save$/i.test(save.filename)
+    && !/[\u0000-\u001f]/.test(save.filename)
+    && Number.isInteger(save.sizeBytes)
+    && save.sizeBytes >= 1
+    && save.sizeBytes <= 16 * 1024 * 1024
   ));
 }
 
@@ -119,7 +144,7 @@ function parseProject(content: string): Project | null {
     return {
       ...(candidate as Project),
       tracks,
-      emulatorState: candidate.emulatorState ?? { firmwareIds: {} },
+      emulatorState: candidate.emulatorState ?? { firmwareIds: {}, patchSaves: {} },
     };
   } catch { return null; }
 }
@@ -343,8 +368,8 @@ export default function Salaryman1999() {
     if (!conflict && saveState !== "loading") setSaveState("unsaved");
   }, [project]);
 
-  const saveProject = useCallback(async (snapshot: Project, createAsNew = false) => {
-    if (savingRef.current || (conflict && !createAsNew)) return;
+  const saveProject = useCallback(async (snapshot: Project, createAsNew = false): Promise<boolean> => {
+    if (savingRef.current || (conflict && !createAsNew)) return false;
     savingRef.current = true;
     setSaveState("saving");
     const current = activeRef.current;
@@ -383,7 +408,7 @@ export default function Salaryman1999() {
       if (response.status === 409) {
         setConflict(true);
         setSaveState("conflict");
-        return;
+        return false;
       }
       if (!response.ok || !data.entry) throw new Error(data.error || `Could not save project (${response.status})`);
       activeRef.current = { id: data.entry.id, updatedAt: data.entry.updatedAt };
@@ -395,9 +420,11 @@ export default function Salaryman1999() {
       saveAgain = JSON.stringify(projectRef.current) !== snapshotJson;
       dirtyRef.current = saveAgain;
       setSaveState(saveAgain ? "unsaved" : "saved");
+      return true;
     } catch (error) {
       setSaveState("error");
       setLoadError(error instanceof Error ? error.message : "Project save failed.");
+      return false;
     } finally {
       savingRef.current = false;
       if (saveAgain) window.setTimeout(() => { void saveProject(projectRef.current); }, 50);
@@ -502,6 +529,91 @@ export default function Salaryman1999() {
     if (!saved.ok || !result.track?.id) throw new Error(result.error || "The audio file uploaded but could not be added to your library.");
     await refresh();
     return result.track.id;
+  };
+
+  const uploadEmulatorPatch = async (machine: EmulatorMachine, file: File) => {
+    if (file.size < 1 || file.size > 16 * 1024 * 1024) {
+      throw new Error("The .fm1save file must be smaller than 16 MB.");
+    }
+    let saveData: unknown;
+    try {
+      saveData = JSON.parse(await file.text());
+    } catch {
+      throw new Error("This .fm1save file is not valid JSON.");
+    }
+    if (!isRecord(saveData)
+      || saveData.format !== "fm1-emulator-save"
+      || saveData.version !== 1
+      || typeof saveData.name !== "string"
+      || saveData.name.length > 256
+      || typeof saveData.hash !== "string"
+      || !/^[a-f0-9]{64}$/.test(saveData.hash)
+      || !Array.isArray(saveData.sectors)
+      || saveData.sectors.length > 256
+      || (saveData.package !== null && typeof saveData.package !== "string")) {
+      throw new Error("This file is not a supported FM-1/SMK-37 emulator save.");
+    }
+    if (conflict) throw new Error("Resolve the project save conflict before attaching a patch.");
+    if (!activeRef.current.id) {
+      const created = await saveProject(projectRef.current, true);
+      if (!created || !activeRef.current.id) {
+        throw new Error("The 1999 project could not be saved. Try again when its save status is clear.");
+      }
+    }
+    const projectId = activeRef.current.id!;
+    const metadata = { filename: file.name, sizeBytes: file.size };
+    const request = await apiFetch(`/api/vault/entries/${projectId}/emulator-save/${machine}/upload-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    });
+    const signed = await request.json().catch(() => ({})) as { uploadURL?: string; objectPath?: string; error?: string };
+    if (!request.ok || !signed.uploadURL || !signed.objectPath) {
+      throw new Error(signed.error || "Could not prepare the private patch upload.");
+    }
+    const uploaded = await fetch(signed.uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/json" },
+      body: file,
+    });
+    if (!uploaded.ok) throw new Error(`Patch upload failed (${uploaded.status}).`);
+
+    const completed = await apiFetch(`/api/vault/entries/${projectId}/emulator-save/${machine}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...metadata, objectPath: signed.objectPath }),
+    });
+    const completion = await completed.json().catch(() => ({})) as { error?: string };
+    if (!completed.ok) throw new Error(completion.error || "The uploaded patch could not be secured.");
+
+    const next: Project = {
+      ...projectRef.current,
+      emulatorState: {
+        ...projectRef.current.emulatorState,
+        patchSaves: {
+          ...projectRef.current.emulatorState.patchSaves,
+          [machine]: { objectPath: signed.objectPath, filename: file.name, sizeBytes: file.size },
+        },
+      },
+    };
+    skipDirtyRef.current = true;
+    projectRef.current = next;
+    setProject(next);
+    dirtyRef.current = true;
+    const saved = await saveProject(next);
+    if (!saved) throw new Error("The patch uploaded, but its project link did not save. Resolve the project conflict and retry.");
+  };
+
+  const downloadEmulatorPatch = async (machine: EmulatorMachine) => {
+    const projectId = activeRef.current.id;
+    if (!projectId) throw new Error("Save this project before downloading its patch.");
+    const response = await apiFetch(`/api/vault/entries/${projectId}/emulator-save/${machine}`);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      throw new Error(data.error || `Patch download failed (${response.status}).`);
+    }
+    const save = projectRef.current.emulatorState.patchSaves?.[machine];
+    downloadBlob(await response.blob(), save?.filename ?? `${machine}-patch.fm1save`);
   };
 
   const togglePlayback = async () => {
@@ -862,10 +974,14 @@ export default function Salaryman1999() {
             <Fm1EmulatorPanel
               initialMachine={selectedTrack.machineId}
               initialFirmwareId={project.emulatorState.firmwareIds[selectedTrack.machineId as EmulatorMachine] ?? ""}
+              patchSaves={project.emulatorState.patchSaves}
+              onSavePatchFile={uploadEmulatorPatch}
+              onDownloadPatchFile={downloadEmulatorPatch}
               onMachineChange={(machineId) => updateTrack(selectedTrack.id, track => ({ ...track, machineId }))}
               onFirmwareChange={(machineId, firmwareId) => updateProject(current => ({
                 ...current,
                 emulatorState: {
+                  ...current.emulatorState,
                   firmwareIds: { ...current.emulatorState.firmwareIds, [machineId]: firmwareId },
                 },
               }))}

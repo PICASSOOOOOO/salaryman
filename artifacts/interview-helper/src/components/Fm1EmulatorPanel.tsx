@@ -5,6 +5,12 @@ const EMULATOR_ORIGIN = 'https://joakimeriksson.github.io/fm1-emu';
 
 export type EmulatorMachine = 'fm1' | 'smk37';
 
+export interface EmulatorPatchSave {
+  objectPath: string;
+  filename: string;
+  sizeBytes: number;
+}
+
 export interface EmulatorFirmware {
   id: string;
   name: string;
@@ -98,21 +104,29 @@ function CatalogLoading({ machine }: { machine: EmulatorMachine }) {
 export interface Fm1EmulatorPanelProps {
   initialMachine?: EmulatorMachine;
   initialFirmwareId?: string;
+  patchSaves?: Partial<Record<EmulatorMachine, EmulatorPatchSave>>;
   onMachineChange?: (machine: EmulatorMachine) => void;
   onFirmwareChange?: (machine: EmulatorMachine, firmwareId: string) => void;
+  onSavePatchFile?: (machine: EmulatorMachine, file: File) => Promise<void>;
+  onDownloadPatchFile?: (machine: EmulatorMachine) => Promise<void>;
 }
 
 export default function Fm1EmulatorPanel({
   initialMachine = 'fm1',
   initialFirmwareId = '',
+  patchSaves = {},
   onMachineChange,
   onFirmwareChange,
+  onSavePatchFile,
+  onDownloadPatchFile,
 }: Fm1EmulatorPanelProps) {
   const [machine, setMachine] = useState<EmulatorMachine>(initialMachine);
   const [catalogs, setCatalogs] = useState<Partial<Record<EmulatorMachine, EmulatorFirmwareCatalog>>>({});
   const [catalogErrors, setCatalogErrors] = useState<Partial<Record<EmulatorMachine, string>>>({});
   const [firmwareIds, setFirmwareIds] = useState<Partial<Record<EmulatorMachine, string>>>({});
   const [search, setSearch] = useState('');
+  const [patchBusy, setPatchBusy] = useState(false);
+  const [patchMessage, setPatchMessage] = useState('');
 
   useEffect(() => {
     setMachine(initialMachine);
@@ -185,6 +199,42 @@ export default function Fm1EmulatorPanel({
   const fullPageUrl = selectedFirmware
     ? createEmulatorUrl(machine, selectedFirmware.id, false)
     : createEmulatorUrl(machine, '', false);
+  const savedPatch = patchSaves[machine];
+  const attachPatchFile = async (file?: File) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.fm1save') || file.size < 1 || file.size > 16 * 1024 * 1024) {
+      setPatchMessage('Choose a valid .fm1save file under 16 MB.');
+      return;
+    }
+    if (file.name.length > 120 || /[\u0000-\u001f]/.test(file.name)) {
+      setPatchMessage('This filename is too long or contains unsupported characters.');
+      return;
+    }
+    if (savedPatch && !window.confirm(`Replace the saved ${MACHINES[machine].name} patch for this project?`)) return;
+    setPatchBusy(true);
+    setPatchMessage('Uploading patch backup…');
+    try {
+      await onSavePatchFile?.(machine, file);
+      setPatchMessage('Patch backup saved with this project.');
+    } catch (error) {
+      setPatchMessage(error instanceof Error ? error.message : 'Patch backup could not be saved.');
+    } finally {
+      setPatchBusy(false);
+    }
+  };
+  const downloadPatchFile = async () => {
+    if (!savedPatch || !onDownloadPatchFile) return;
+    setPatchBusy(true);
+    setPatchMessage('Preparing patch download…');
+    try {
+      await onDownloadPatchFile(machine);
+      setPatchMessage('Patch backup downloaded. Import it inside the emulator.');
+    } catch (error) {
+      setPatchMessage(error instanceof Error ? error.message : 'Patch backup could not be downloaded.');
+    } finally {
+      setPatchBusy(false);
+    }
+  };
 
   return (
     <section className="fm1-emulator-panel" aria-label="FM-1 and SMK-37 emulator">
@@ -283,6 +333,46 @@ export default function Fm1EmulatorPanel({
             )}
           </div>
         )}
+
+        <div className="fm1-save-bridge" data-testid="section-emulator-patch-save">
+          <div className="fm1-save-bridge-heading">
+            <strong>PROJECT PATCH SAVE</strong>
+            <span>{savedPatch ? 'SAVED' : 'NONE'}</span>
+          </div>
+          {savedPatch && (
+            <p className="fm1-save-file-name">
+              {savedPatch.filename} · {(savedPatch.sizeBytes / 1024).toFixed(0)} KB
+            </p>
+          )}
+          <div className="fm1-save-actions">
+            <label className="fm1-save-file-input">
+              <span>{savedPatch ? 'REPLACE .FM1SAVE' : 'ATTACH .FM1SAVE'}</span>
+              <input
+                type="file"
+                accept=".fm1save,application/json"
+                aria-label={`Attach a ${MACHINES[machine].name} patch save`}
+                disabled={patchBusy || !onSavePatchFile}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = '';
+                  void attachPatchFile(file);
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              className="fm1-save-download"
+              disabled={!savedPatch || patchBusy || !onDownloadPatchFile}
+              onClick={() => void downloadPatchFile()}
+            >
+              DOWNLOAD SAVE
+            </button>
+          </div>
+          <p className="fm1-save-help">
+            Export a save in the emulator, attach it here, then download it later and use the emulator’s Import control.
+          </p>
+          {patchMessage && <p className="fm1-save-status" role="status" aria-live="polite">{patchMessage}</p>}
+        </div>
 
         <p className="fm1-attribution">
           Emulator by <a href="https://github.com/joakimeriksson/fm1-emu" target="_blank" rel="noopener noreferrer">
