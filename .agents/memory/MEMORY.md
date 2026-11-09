@@ -141,3 +141,4 @@
 - [Org integrations](org-wide-external-integrations.md) — owner-authorized bidirectional sync; members join through verified SALARYMAN invites and can have characters.
 - [Cyber Deck licensing and evidence boundary](cyber-deck-licensing.md) — Meshtastic browser SDK is GPL-3.0-only; evidence stays local and radio actions stay user-initiated.
 - [Ableton plugin scope](ableton-plugin-scope.md) — Ableton support should target the full 1999 workstation, not only the FM-1 emulator.
+- [1999 machine ecosystem](1999-machine-ecosystem.md) — expand beyond FM-1 with a resource-aware lineup across Akai, Korg, Boss, Roland, and Teenage Engineering.
