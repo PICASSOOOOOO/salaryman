@@ -6,6 +6,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useTrackPicker } from '@/components/TrackPicker';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
+import Fm1EmulatorPanel from '@/components/Fm1EmulatorPanel';
 import { apiFetch } from '@/lib/api-client';
 import { groupedSamples, findSample, type Sample } from '@/lib/salaryman-samples';
 
@@ -119,7 +120,7 @@ interface SynthVoice {
   filterRes: number;
 }
 
-type DAWSection = 'machine' | 'synth' | 'arpeggiator' | 'sampler' | 'timeline' | 'mixer' | 'effects';
+type DAWSection = 'machine' | 'synth' | 'fm1-emulator' | 'arpeggiator' | 'sampler' | 'timeline' | 'mixer' | 'effects';
 
 const TRACK_COLORS = ['#38bdf8', '#ff4444', '#4488ff', '#ffaa00', '#cc44ff', '#44ffff', '#ff44cc', '#7dd3fc'];
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -2175,6 +2176,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   const SECTIONS: { id: DAWSection; label: string }[] = [
     { id: 'machine', label: 'MACHINE' },
     { id: 'synth', label: 'SYNTH' },
+    { id: 'fm1-emulator', label: 'FM-1 / SMK-37' },
     { id: 'arpeggiator', label: 'ARP' },
     { id: 'sampler', label: 'SAMPLER' },
     { id: 'timeline', label: 'TIMELINE' },
@@ -2389,6 +2391,8 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
         <div style={{ display: section === 'synth' ? 'block' : 'none' }}>
           <SynthPanel busGain={engineRef.current?.trackBuses[1]?.gain ?? null} synth={synthVoice} onSynthChange={setSynthVoice} />
         </div>
+
+        {section === 'fm1-emulator' && <Fm1EmulatorPanel />}
 
         <div style={{ display: section === 'arpeggiator' ? 'block' : 'none' }}>
           <Arpeggiator

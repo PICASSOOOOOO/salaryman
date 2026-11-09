@@ -1,0 +1,264 @@
+.fm1-emulator-panel {
+  display: grid;
+  grid-template-columns: minmax(245px, 315px) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 530px;
+  color: #d6e4dc;
+  font-family: var(--font-sans);
+}
+
+.fm1-catalog,
+.fm1-player-column {
+  min-width: 0;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: linear-gradient(155deg, rgba(16, 24, 20, 0.98), rgba(7, 10, 8, 0.98));
+}
+
+.fm1-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+}
+
+.fm1-panel-heading h2 {
+  margin: 4px 0;
+  color: #ff8c00;
+  font-size: 0.88rem;
+  letter-spacing: 0.16em;
+}
+
+.fm1-panel-heading p,
+.fm1-firmware-details p,
+.fm1-attribution {
+  margin: 0;
+  color: rgba(214, 228, 220, 0.68);
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.fm1-eyebrow,
+.fm1-search-label,
+.fm1-firmware-author {
+  color: #38bdf8;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+}
+
+.fm1-machine-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.fm1-machine-option {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: #090d0b;
+  color: rgba(214, 228, 220, 0.7);
+  cursor: pointer;
+  text-align: left;
+}
+
+.fm1-machine-option strong {
+  color: inherit;
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+}
+
+.fm1-machine-option span {
+  color: rgba(214, 228, 220, 0.48);
+  font-size: 0.56rem;
+  line-height: 1.25;
+}
+
+.fm1-machine-option:hover,
+.fm1-machine-option:focus-visible {
+  border-color: rgba(56, 189, 248, 0.65);
+  outline: none;
+}
+
+.fm1-machine-option.is-active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  color: #e6f8ff;
+}
+
+.fm1-machine-option.is-active span {
+  color: rgba(214, 228, 220, 0.7);
+}
+
+.fm1-search-label {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.fm1-search,
+.fm1-firmware-list {
+  width: 100%;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 2px;
+  background: #050805;
+  color: #d6e4dc;
+  font: inherit;
+  font-size: 0.68rem;
+}
+
+.fm1-search {
+  padding: 7px 8px;
+}
+
+.fm1-search::placeholder {
+  color: rgba(214, 228, 220, 0.35);
+}
+
+.fm1-firmware-list {
+  min-height: 170px;
+  flex: 1;
+  padding: 3px;
+  overflow: auto;
+}
+
+.fm1-firmware-list option {
+  padding: 4px 5px;
+}
+
+.fm1-firmware-list option:checked {
+  background: #0a3442 linear-gradient(#0a3442, #0a3442);
+  color: #e6f8ff;
+}
+
+.fm1-panel-state {
+  display: grid;
+  min-height: 170px;
+  place-items: center;
+  padding: 12px;
+  border: 1px dashed rgba(56, 189, 248, 0.2);
+  color: rgba(214, 228, 220, 0.58);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.fm1-panel-error {
+  border-color: rgba(255, 100, 100, 0.45);
+  color: #ffb4a9;
+}
+
+.fm1-firmware-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(56, 189, 248, 0.16);
+}
+
+.fm1-firmware-byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: baseline;
+  font-size: 0.7rem;
+}
+
+.fm1-firmware-byline strong {
+  color: #f4e6cf;
+}
+
+.fm1-firmware-byline span {
+  color: rgba(214, 228, 220, 0.5);
+  font-size: 0.59rem;
+}
+
+.fm1-firmware-note {
+  color: #ffc278 !important;
+}
+
+.fm1-firmware-details a,
+.fm1-attribution a,
+.fm1-player-footer a {
+  color: #73d7fb;
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+
+.fm1-firmware-details a:hover,
+.fm1-attribution a:hover,
+.fm1-player-footer a:hover {
+  text-decoration: underline;
+}
+
+.fm1-attribution {
+  padding-top: 7px;
+  border-top: 1px solid rgba(56, 189, 248, 0.12);
+  font-size: 0.57rem;
+}
+
+.fm1-player-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 530px;
+  background: #050706;
+}
+
+.fm1-player {
+  display: block;
+  width: 100%;
+  min-height: 490px;
+  flex: 1;
+  border: 0;
+  background: #050706;
+}
+
+.fm1-player-placeholder {
+  display: grid;
+  min-height: 490px;
+  flex: 1;
+  place-items: center;
+  padding: 24px;
+  color: rgba(214, 228, 220, 0.58);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.fm1-player-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(56, 189, 248, 0.18);
+  background: #0b100d;
+  color: rgba(214, 228, 220, 0.56);
+  font-size: 0.58rem;
+}
+
+@media (max-width: 760px) {
+  .fm1-emulator-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fm1-catalog {
+    max-height: 520px;
+  }
+
+  .fm1-firmware-list {
+    min-height: 190px;
+    flex: 0 1 230px;
+  }
+
+  .fm1-player-column {
+    min-height: 440px;
+  }
+
+  .fm1-player,
+  .fm1-player-placeholder {
+    min-height: 400px;
+  }
+}

@@ -140,3 +140,4 @@
 - [Brand rivalries and NPC personhood](game-only-rivalries.md) — each brand has shop-level bosses; NPCs act in real systems only with explicit access.
 - [Org integrations](org-wide-external-integrations.md) — owner-authorized bidirectional sync; members join through verified SALARYMAN invites and can have characters.
 - [Cyber Deck licensing and evidence boundary](cyber-deck-licensing.md) — Meshtastic browser SDK is GPL-3.0-only; evidence stays local and radio actions stay user-initiated.
+- [Ableton plugin scope](ableton-plugin-scope.md) — Ableton support should target the full 1999 workstation, not only the FM-1 emulator.
