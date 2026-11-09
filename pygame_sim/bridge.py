@@ -77,6 +77,7 @@ COMMANDS = {
     "terminal_choice",
     "reception_choice",
     "phone_choice",
+    "music_studio_choice",
     "toggle_business_stock",
     "toggle_drawer",
     "close_page",
@@ -192,6 +193,9 @@ def validate_command(command: object) -> tuple[bool, str]:
         choice = payload.get("choice")
         if not _is_int(choice) or choice not in PHONE_SERVICE_ROUTES:
             return False, "PHONE SERVICE CHOICE MUST BE 1-2"
+    elif name == "music_studio_choice":
+        if payload.get("choice") != 1 or not _is_int(payload.get("choice")):
+            return False, "MUSIC STUDIO CHOICE MUST BE 1"
     elif name == "competition_choice":
         choice = payload.get("choice")
         if not _is_int(choice) or not 1 <= choice <= len(COMPETITION_ACTIONS):
@@ -1169,6 +1173,30 @@ def _apply_command(
         if not opened:
             return CommandResult(False, "COULD NOT OPEN THE SELECTED PHONE SERVICE")
         return CommandResult(True, f"OPENING {label}")
+    if name == "music_studio_choice":
+        studio = scene.objects.get(state.active_object_id or "")
+        nearby = scene.nearby_object
+        if (
+            state.active_page != "music_studio"
+            or studio is None
+            or studio.kind != "business_suite"
+            or studio.business_key != "music_studio"
+            or nearby is None
+            or nearby.id != studio.id
+        ):
+            return CommandResult(False, "RETURN TO THE MUSIC STUDIO WORKSTATION")
+        link = getattr(building_sync, "link", None)
+        if link is None:
+            return CommandResult(False, "LINK A GAME ACCOUNT TO OPEN 1999")
+        try:
+            opened = webbrowser.open(f"{link.server_url.rstrip('/')}/1999")
+        except Exception:
+            opened = False
+        if not opened:
+            return CommandResult(False, "COULD NOT OPEN THE 1999 WORKSPACE")
+        state.close_page()
+        state.notice = "OPENING 1999 PRODUCTION WORKSPACE"
+        return CommandResult(True, state.notice)
     if name == "terminal_choice":
         if state.active_page != "systems":
             return CommandResult(False, "SYSTEMS TERMINAL NOT ACTIVE")

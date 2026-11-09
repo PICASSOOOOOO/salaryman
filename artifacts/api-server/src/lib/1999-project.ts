@@ -13,6 +13,9 @@ export type NineteenNinetyNineProject = {
   schemaVersion: 1;
   name: string;
   bpm: number;
+  emulatorState?: {
+    firmwareIds: Partial<Record<"fm1" | "smk37", string>>;
+  };
   tracks: Array<{
     id: string;
     name: string;
@@ -22,6 +25,10 @@ export type NineteenNinetyNineProject = {
     audioTrackId: number | null;
     muted: boolean;
     volume: number;
+    soundState?: {
+      tone: number;
+      decayMs: number;
+    };
   }>;
 };
 
@@ -31,7 +38,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isProjectTrack(value: unknown): value is NineteenNinetyNineProject["tracks"][number] {
   if (!isRecord(value)) return false;
-  return typeof value.id === "string"
+  const validSoundState = value.soundState === undefined
+    || (
+      isRecord(value.soundState)
+      && Number.isInteger(value.soundState.tone)
+      && Number(value.soundState.tone) >= 0
+      && Number(value.soundState.tone) <= 100
+      && Number.isInteger(value.soundState.decayMs)
+      && Number(value.soundState.decayMs) >= 80
+      && Number(value.soundState.decayMs) <= 800
+    );
+  return validSoundState
+    && typeof value.id === "string"
     && value.id.length > 0 && value.id.length <= 80
     && typeof value.name === "string"
     && value.name.trim().length > 0 && value.name.length <= 80
@@ -47,6 +65,16 @@ function isProjectTrack(value: unknown): value is NineteenNinetyNineProject["tra
     && typeof value.volume === "number"
     && Number.isFinite(value.volume)
     && value.volume >= 0 && value.volume <= 100;
+}
+
+function isEmulatorState(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.firmwareIds)) return false;
+  return Object.entries(value.firmwareIds).every(([machineId, firmwareId]) => (
+    (machineId === "fm1" || machineId === "smk37")
+    && typeof firmwareId === "string"
+    && firmwareId.length <= 120
+    && !/[\u0000-\u001f]/.test(firmwareId)
+  ));
 }
 
 export function parseNineteenNinetyNineProject(content: unknown) {
@@ -66,6 +94,7 @@ export function parseNineteenNinetyNineProject(content: unknown) {
       || Number(parsed.bpm) > 240
       || !Array.isArray(parsed.tracks)
       || parsed.tracks.length > 8
+      || (parsed.emulatorState !== undefined && !isEmulatorState(parsed.emulatorState))
       || !parsed.tracks.every(isProjectTrack)) {
       return null;
     }

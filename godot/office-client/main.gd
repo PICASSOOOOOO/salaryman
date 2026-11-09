@@ -4653,6 +4653,10 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_body.size.y = 132
 			native_app_body.text = "%s\n\nChoose an existing SALARYMAN service. Links open only after selection." % location
 			native_app_footer.text = "1–3 OPEN A SERVICE  ·  ESC CLOSE"
+		"music_studio":
+			native_app_title.text = "1999 / MUSIC STUDIO"
+			native_app_body.text = "%s\n\nThe 1999 production workspace opens with your linked SALARYMAN account. Saved sessions stay in your Vault; MIDI output can route patterns to a VST3 instrument in your desktop DAW." % location
+			native_app_footer.text = "1 OPEN 1999 IN YOUR BROWSER  ·  ESC CLOSE"
 		"systems":
 			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
 			native_app_body.size.y = 132
@@ -5126,6 +5130,8 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 				labels = ["1 > PHONE CENTER", "2 > COMMS"]
 		"reception":
 			labels = ["1 > JOBS", "2 > CONTRACTS", "3 > REALTY"]
+		"music_studio":
+			labels = ["1 > OPEN 1999 WORKSPACE"]
 		"competition":
 			labels = ["1 > RUMOR", "2 > SUPPRESS", "3 > BRIBE", "4 > SABOTAGE", "5 > FIRE", "6 > ROBBERY", "7 > EXTORT", "8 > FIGHT"]
 		"systems":
@@ -5291,6 +5297,8 @@ func _on_native_app_action_pressed(page: String, choice: Variant) -> void:
 			_send_command("phone_choice", {"choice": choice})
 		"reception":
 			_send_command("reception_choice", {"choice": choice})
+		"music_studio":
+			_send_command("music_studio_choice", {"choice": choice})
 		"systems":
 			_send_command("terminal_choice", {"choice": choice})
 		"competition":
@@ -5465,6 +5473,8 @@ func _input(event: InputEvent) -> void:
 						_send_command("buy_vending", {"item_id": str(item_value.get("id", ""))})
 			elif active_page == "reception" and event.keycode in [KEY_1, KEY_2, KEY_3]:
 				_send_command("reception_choice", {"choice": event.keycode - KEY_0})
+			elif active_page == "music_studio" and event.keycode == KEY_1:
+				_send_command("music_studio_choice", {"choice": 1})
 			elif active_page == "pest_jobs" and event.keycode in [KEY_1, KEY_2]:
 				var job_id := "pest_w2" if event.keycode == KEY_1 else "pest_1099"
 				_send_command("start_pest_job", {"job_id": job_id})

@@ -426,6 +426,8 @@ class OfficeObjectRegistry:
             page = (
                 "reception"
                 if item.business_key == "tower_reception_kiosk"
+                else "music_studio"
+                if item.business_key == "music_studio"
                 else "business_shop"
                 if item.business_key in PURCHASABLE_BUSINESSES
                 else "business"

@@ -89,6 +89,9 @@
 .n-machine-chip { padding: 4px 6px; background: var(--n-acid); color: #202310; font: 700 8px var(--font-mono, monospace); letter-spacing: .07em; text-transform: uppercase; }
 .n-machine-copy { margin: 12px 0 14px; color: var(--n-muted); font-size: 11px; line-height: 1.45; }
 .n-machine-select, .n-select { width: 100%; min-height: 37px; padding: 0 9px; border: 1px solid var(--n-line); border-radius: 0; background: var(--n-card); color: var(--n-ink); font: 10px var(--font-mono, monospace); }
+.n-midi-controls { display: grid; gap: 9px; }
+.n-midi-controls .n-machine-copy { margin: 0; }
+.n-midi-status { min-height: 14px; margin: 0; color: var(--n-muted); font: 9px/1.45 var(--font-mono, monospace); }
 .n-knob-row { display: grid; grid-template-columns: 1fr 42px; gap: 8px; align-items: center; margin-top: 13px; font: 9px var(--font-mono, monospace); color: var(--n-muted); text-transform: uppercase; }
 .n-knob-row input { width: 100%; accent-color: #68771f; }
 .n-knob-val { text-align: right; color: var(--n-ink); }

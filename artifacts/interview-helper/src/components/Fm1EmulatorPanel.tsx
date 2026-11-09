@@ -97,12 +97,16 @@ function CatalogLoading({ machine }: { machine: EmulatorMachine }) {
 
 export interface Fm1EmulatorPanelProps {
   initialMachine?: EmulatorMachine;
+  initialFirmwareId?: string;
   onMachineChange?: (machine: EmulatorMachine) => void;
+  onFirmwareChange?: (machine: EmulatorMachine, firmwareId: string) => void;
 }
 
 export default function Fm1EmulatorPanel({
   initialMachine = 'fm1',
+  initialFirmwareId = '',
   onMachineChange,
+  onFirmwareChange,
 }: Fm1EmulatorPanelProps) {
   const [machine, setMachine] = useState<EmulatorMachine>(initialMachine);
   const [catalogs, setCatalogs] = useState<Partial<Record<EmulatorMachine, EmulatorFirmwareCatalog>>>({});
@@ -112,7 +116,10 @@ export default function Fm1EmulatorPanel({
 
   useEffect(() => {
     setMachine(initialMachine);
-  }, [initialMachine]);
+    if (initialFirmwareId) {
+      setFirmwareIds((current) => ({ ...current, [initialMachine]: initialFirmwareId }));
+    }
+  }, [initialMachine, initialFirmwareId]);
 
   useEffect(() => {
     let disposed = false;
@@ -127,14 +134,20 @@ export default function Fm1EmulatorPanel({
         })
         .then((catalog) => {
           if (disposed) return;
+          const preferredFirmware = machineId === initialMachine ? initialFirmwareId : '';
+          const selectedFirmware = preferredFirmware
+            && catalog.firmwares.some((firmware) => firmware.id === preferredFirmware)
+            ? preferredFirmware
+            : catalog.default;
           setCatalogs((current) => ({ ...current, [machineId]: catalog }));
           setFirmwareIds((current) => ({
             ...current,
             [machineId]: current[machineId]
               && catalog.firmwares.some((firmware) => firmware.id === current[machineId])
               ? current[machineId]
-              : catalog.default,
+              : selectedFirmware,
           }));
+          onFirmwareChange?.(machineId, selectedFirmware);
           setCatalogErrors((current) => ({ ...current, [machineId]: undefined }));
         })
         .catch((error: unknown) => {
@@ -193,6 +206,8 @@ export default function Fm1EmulatorPanel({
               onClick={() => {
                 setMachine(machineId);
                 onMachineChange?.(machineId);
+                const selectedFirmware = firmwareIds[machineId] ?? catalogs[machineId]?.default ?? '';
+                if (selectedFirmware) onFirmwareChange?.(machineId, selectedFirmware);
                 setSearch('');
               }}
             >
@@ -227,6 +242,7 @@ export default function Fm1EmulatorPanel({
             onChange={(event) => {
               if (event.target.value) {
                 setFirmwareIds((current) => ({ ...current, [machine]: event.target.value }));
+                onFirmwareChange?.(machine, event.target.value);
               }
             }}
             data-testid="select-firmware"

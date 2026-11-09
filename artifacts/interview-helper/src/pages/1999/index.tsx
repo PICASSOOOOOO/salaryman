@@ -6,6 +6,9 @@ import Fm1EmulatorPanel from "@/components/Fm1EmulatorPanel";
 import "./1999.css";
 
 type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37";
+type EmulatorMachine = "fm1" | "smk37";
+type SoundEngineState = { tone: number; decayMs: number };
+type EmulatorState = { firmwareIds: Partial<Record<EmulatorMachine, string>> };
 type ProjectTrack = {
   id: string;
   name: string;
@@ -15,10 +18,24 @@ type ProjectTrack = {
   audioTrackId: number | null;
   muted: boolean;
   volume: number;
+  soundState: SoundEngineState;
 };
-type Project = { schemaVersion: 1; name: string; bpm: number; tracks: ProjectTrack[] };
+type Project = { schemaVersion: 1; name: string; bpm: number; tracks: ProjectTrack[]; emulatorState: EmulatorState };
 type VaultEntry = { id: number; title: string; content: string; entryType: string; tags: string[]; folder: string; updatedAt: string };
 type SaveState = "loading" | "saved" | "saving" | "unsaved" | "error" | "conflict";
+type MidiOutputPort = {
+  id: string;
+  name?: string;
+  state?: string;
+  send: (data: number[], timestamp?: number) => void;
+};
+type MidiAccessPort = {
+  outputs: Map<string, MidiOutputPort>;
+  onstatechange: (() => void) | null;
+};
+type MidiNavigator = Navigator & {
+  requestMIDIAccess?: (options?: { sysex?: boolean }) => Promise<MidiAccessPort>;
+};
 
 const machines: { id: MachineId; name: string; descriptor: string }[] = [
   { id: "op1", name: "OP-1", descriptor: "Portable sketch instrument" },
@@ -35,12 +52,39 @@ const freshProject = (): Project => ({
   schemaVersion: 1,
   name: "Untitled session",
   bpm: 92,
+  emulatorState: { firmwareIds: {} },
   tracks: [
-    { id: "trk-1", name: "Pulse", kind: "instrument", machineId: "op1", steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 72 },
-    { id: "trk-2", name: "Low end", kind: "instrument", machineId: "fm1", steps: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 66 },
-    { id: "trk-3", name: "Air", kind: "instrument", machineId: "korg_m1", steps: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0], audioTrackId: null, muted: false, volume: 54 },
+    { id: "trk-1", name: "Pulse", kind: "instrument", machineId: "op1", steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 72, soundState: { tone: 72, decayMs: 240 } },
+    { id: "trk-2", name: "Low end", kind: "instrument", machineId: "fm1", steps: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 66, soundState: { tone: 48, decayMs: 420 } },
+    { id: "trk-3", name: "Air", kind: "instrument", machineId: "korg_m1", steps: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0], audioTrackId: null, muted: false, volume: 54, soundState: { tone: 82, decayMs: 560 } },
   ],
 });
+
+function isSoundEngineState(value: unknown): value is SoundEngineState {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const state = value as Partial<SoundEngineState>;
+  return Number.isInteger(state.tone) && Number(state.tone) >= 0 && Number(state.tone) <= 100
+    && Number.isInteger(state.decayMs) && Number(state.decayMs) >= 80 && Number(state.decayMs) <= 800;
+}
+
+function isEmulatorState(value: unknown): value is EmulatorState {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const firmwareIds = (value as Partial<EmulatorState>).firmwareIds;
+  if (!firmwareIds || typeof firmwareIds !== "object" || Array.isArray(firmwareIds)) return false;
+  return Object.entries(firmwareIds).every(([machineId, firmwareId]) => (
+    (machineId === "fm1" || machineId === "smk37")
+    && typeof firmwareId === "string"
+    && firmwareId.length <= 120
+    && !/[\u0000-\u001f]/.test(firmwareId)
+  ));
+}
+
+function defaultSoundState(machineId: MachineId): SoundEngineState {
+  if (machineId === "fm1") return { tone: 48, decayMs: 420 };
+  if (machineId === "mpc_sample" || machineId === "sp404mkii") return { tone: 62, decayMs: 180 };
+  if (machineId === "korg_m1") return { tone: 82, decayMs: 560 };
+  return { tone: 72, decayMs: 260 };
+}
 
 function parseProject(content: string): Project | null {
   if (content.length > 256 * 1024) return null;
@@ -54,7 +98,7 @@ function parseProject(content: string): Project | null {
       || !Array.isArray(candidate.tracks) || candidate.tracks.length > 8) return null;
     const validTracks = candidate.tracks.every((track) => {
       if (!track || typeof track !== "object") return false;
-      const item = track as ProjectTrack;
+      const item = track as ProjectTrack & { soundState?: SoundEngineState };
       return typeof item.id === "string" && item.id.length > 0 && item.id.length <= 80
         && typeof item.name === "string" && !!item.name.trim() && item.name.length <= 80
         && (item.kind === "instrument" || item.kind === "recording")
@@ -63,10 +107,20 @@ function parseProject(content: string): Project | null {
         && item.steps.every(step => Number.isInteger(step) && step >= 0 && step <= 127)
         && (item.audioTrackId === null || (Number.isInteger(item.audioTrackId) && Number(item.audioTrackId) > 0))
         && typeof item.muted === "boolean"
-        && Number.isFinite(item.volume) && item.volume >= 0 && item.volume <= 100;
+        && Number.isFinite(item.volume) && item.volume >= 0 && item.volume <= 100
+        && (item.soundState === undefined || isSoundEngineState(item.soundState));
     });
     if (!validTracks) return null;
-    return candidate as Project;
+    if (candidate.emulatorState !== undefined && !isEmulatorState(candidate.emulatorState)) return null;
+    const tracks = candidate.tracks.map((track) => {
+      const item = track as ProjectTrack & { soundState?: SoundEngineState };
+      return { ...item, soundState: item.soundState ?? defaultSoundState(item.machineId) };
+    });
+    return {
+      ...(candidate as Project),
+      tracks,
+      emulatorState: candidate.emulatorState ?? { firmwareIds: {} },
+    };
   } catch { return null; }
 }
 
@@ -85,6 +139,14 @@ function safeFilename(value: string) {
   return value.trim().replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "1999-project";
 }
 
+function baseFrequencyForMachine(machineId: MachineId) {
+  return machineId === "mpc_sample" ? 82
+    : machineId === "fm1" ? 110
+      : machineId === "korg_m1" ? 261.63
+        : machineId === "korg_ms2000r" ? 146.83
+          : machineId === "smk37" ? 196 : 164.81;
+}
+
 function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, stepIndex: number, atTime: number) {
   const wave: Record<MachineId, OscillatorType> = {
     op1: "triangle",
@@ -96,22 +158,46 @@ function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, step
     fm1: "sine",
     smk37: "sawtooth",
   };
-  const base = track.machineId === "mpc_sample" ? 82
-    : track.machineId === "fm1" ? 110
-      : track.machineId === "korg_m1" ? 261.63
-        : track.machineId === "korg_ms2000r" ? 146.83
-          : track.machineId === "smk37" ? 196 : 164.81;
   const oscillator = context.createOscillator();
+  const filter = context.createBiquadFilter();
   const gain = context.createGain();
   oscillator.type = wave[track.machineId];
-  oscillator.frequency.setValueAtTime(base * Math.pow(2, (stepIndex % 7) / 12), atTime);
+  oscillator.frequency.setValueAtTime(baseFrequencyForMachine(track.machineId) * Math.pow(2, (stepIndex % 7) / 12), atTime);
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(180 * Math.pow(40, track.soundState.tone / 100), atTime);
+  filter.Q.setValueAtTime(0.8, atTime);
+  const decaySeconds = Math.max(0.08, Math.min(0.8, track.soundState.decayMs / 1000));
   gain.gain.setValueAtTime(0.0001, atTime);
-  gain.gain.linearRampToValueAtTime(Math.max(0.0001, (track.volume / 100) * 0.18), atTime + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.0001, atTime + (track.machineId === "mpc_sample" ? 0.12 : 0.2));
-  oscillator.connect(gain);
+  gain.gain.linearRampToValueAtTime(Math.max(0.0001, (track.volume / 100) * 0.18), atTime + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, atTime + decaySeconds);
+  oscillator.connect(filter);
+  filter.connect(gain);
   gain.connect(context.destination);
   oscillator.start(atTime);
-  oscillator.stop(atTime + 0.22);
+  oscillator.stop(atTime + decaySeconds + 0.03);
+}
+
+function scheduleMidiNote(
+  output: MidiOutputPort,
+  track: ProjectTrack,
+  trackIndex: number,
+  stepIndex: number,
+  context: AudioContext,
+  atTime: number,
+) {
+  const channel = trackIndex % 16;
+  const note = Math.max(0, Math.min(127, Math.round(69 + 12 * Math.log2(baseFrequencyForMachine(track.machineId) / 440) + (stepIndex % 7))));
+  const velocity = Math.max(1, Math.min(127, Math.round(track.volume * 1.27)));
+  const timestamp = performance.now() + Math.max(0, (atTime - context.currentTime) * 1000);
+  output.send([0x90 + channel, note, velocity], timestamp);
+  output.send([0x80 + channel, note, 0], timestamp + Math.max(80, Math.min(800, track.soundState.decayMs)));
+}
+
+function sendMidiAllNotesOff(output: MidiOutputPort) {
+  const timestamp = performance.now();
+  for (let channel = 0; channel < 16; channel += 1) {
+    output.send([0xb0 + channel, 123, 0], timestamp);
+  }
 }
 
 async function renderWav(project: Project): Promise<Blob> {
@@ -183,6 +269,10 @@ export default function Salaryman1999() {
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
   const [wavBusy, setWavBusy] = useState(false);
   const [vaultMixBusy, setVaultMixBusy] = useState(false);
+  const [midiOutputs, setMidiOutputs] = useState<MidiOutputPort[]>([]);
+  const [selectedMidiOutputId, setSelectedMidiOutputId] = useState("");
+  const [midiConnected, setMidiConnected] = useState(false);
+  const [midiStatus, setMidiStatus] = useState("MIDI output is not connected.");
   const dirtyRef = useRef(false);
   const skipDirtyRef = useRef(true);
   const projectRef = useRef(project);
@@ -198,6 +288,9 @@ export default function Salaryman1999() {
   const playingRef = useRef(false);
   const nextStepTimeRef = useRef(0);
   const playStepRef = useRef(0);
+  const midiAccessRef = useRef<MidiAccessPort | null>(null);
+  const selectedMidiOutputRef = useRef("");
+  const midiErrorRef = useRef(false);
 
   const refreshEntries = useCallback(async () => {
     const response = await apiFetch("/api/vault/entries?folder=%2F1999");
@@ -322,6 +415,11 @@ export default function Salaryman1999() {
     streamRef.current?.getTracks().forEach(track => track.stop());
     if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
     playingRef.current = false;
+    if (midiAccessRef.current) midiAccessRef.current.onstatechange = null;
+    const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
+    if (midiOutput) {
+      try { sendMidiAllNotesOff(midiOutput); } catch { /* The device may already be disconnected. */ }
+    }
     void audioContextRef.current?.close().catch(() => undefined);
   }, []);
 
@@ -330,6 +428,45 @@ export default function Salaryman1999() {
   const updateTrack = (id: string, updater: (track: ProjectTrack) => ProjectTrack) => updateProject(current => ({
     ...current, tracks: current.tracks.map(track => track.id === id ? updater(track) : track),
   }));
+  const refreshMidiOutputs = (access: MidiAccessPort) => {
+    const outputs = Array.from(access.outputs.values()).filter(output => output.state !== "disconnected");
+    setMidiOutputs(outputs);
+    const selected = outputs.some(output => output.id === selectedMidiOutputRef.current)
+      ? selectedMidiOutputRef.current
+      : outputs[0]?.id ?? "";
+    selectedMidiOutputRef.current = selected;
+    setSelectedMidiOutputId(selected);
+    setMidiStatus(outputs.length
+      ? `${outputs.length} MIDI output${outputs.length === 1 ? "" : "s"} available.`
+      : "MIDI is connected, but no output devices were found.");
+  };
+  const connectMidi = async () => {
+    const requestMIDIAccess = (navigator as MidiNavigator).requestMIDIAccess;
+    if (!requestMIDIAccess) {
+      setMidiStatus("Web MIDI is unavailable here. Use a current Chrome or Edge browser over HTTPS.");
+      return;
+    }
+    try {
+      const access = await requestMIDIAccess.call(navigator, { sysex: false });
+      midiAccessRef.current = access;
+      access.onstatechange = () => refreshMidiOutputs(access);
+      setMidiConnected(true);
+      midiErrorRef.current = false;
+      refreshMidiOutputs(access);
+    } catch (error) {
+      setMidiConnected(false);
+      setMidiStatus(error instanceof Error
+        ? `MIDI permission or device access failed: ${error.message}`
+        : "MIDI permission or device access failed.");
+    }
+  };
+  const chooseMidiOutput = (outputId: string) => {
+    selectedMidiOutputRef.current = outputId;
+    setSelectedMidiOutputId(outputId);
+    midiErrorRef.current = false;
+    const output = midiOutputs.find(candidate => candidate.id === outputId);
+    setMidiStatus(output ? `Ready to send notes to ${output.name || "selected MIDI output"}.` : "Choose a MIDI output.");
+  };
   const uploadAudioToLibrary = async (file: File, durationSec: number) => {
     const request = await apiFetch("/api/storage/uploads/request-url", {
       method: "POST",
@@ -374,6 +511,11 @@ export default function Salaryman1999() {
       setPlayhead(-1);
       if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
       schedulerRef.current = null;
+      const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
+      if (midiOutput) {
+        try { sendMidiAllNotesOff(midiOutput); }
+        catch { setMidiStatus("MIDI output disconnected before notes could be stopped."); }
+      }
       return;
     }
     const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -394,9 +536,22 @@ export default function Salaryman1999() {
         while (nextStepTimeRef.current < context.currentTime + 0.12) {
           const snapshot = projectRef.current;
           const stepIndex = playStepRef.current;
-          snapshot.tracks.forEach(track => {
+          const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
+          snapshot.tracks.forEach((track, trackIndex) => {
             if (!track.muted && track.kind === "instrument" && track.steps[stepIndex]) {
               scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current);
+              if (midiOutput) {
+                try {
+                  scheduleMidiNote(midiOutput, track, trackIndex, stepIndex, context, nextStepTimeRef.current);
+                } catch (error) {
+                  if (!midiErrorRef.current) {
+                    midiErrorRef.current = true;
+                    setMidiStatus(error instanceof Error
+                      ? `MIDI output stopped: ${error.message}`
+                      : "MIDI output stopped unexpectedly.");
+                  }
+                }
+              }
             }
           });
           setPlayhead(stepIndex);
@@ -531,6 +686,7 @@ export default function Salaryman1999() {
     const newTrack: ProjectTrack = {
       id: `trk-${Date.now()}-${index}`, name: kind === "recording" ? `Take ${index}` : `Track ${index}`, kind,
       machineId: "op1", steps: Array(16).fill(0), audioTrackId: null, muted: false, volume: 65,
+      soundState: defaultSoundState("op1"),
     };
     updateProject(current => ({ ...current, tracks: [...current.tracks, newTrack] }));
     setSelectedTrackId(newTrack.id);
@@ -639,18 +795,38 @@ export default function Salaryman1999() {
               {selectedTrack ? (
                 <div className="n-machine-body">
                   <div className="n-machine-plate"><span className="n-machine-index">99<br />/ {String(project.tracks.indexOf(selectedTrack) + 1).padStart(2, "0")}</span><span className="n-machine-chip">{selectedTrack.kind === "recording" ? "REC" : "SKETCH"}</span></div>
-                   <p className="n-machine-copy">{machines.find(machine => machine.id === selectedTrack.machineId)?.descriptor ?? "Recorded microphone take"}.<br />{selectedTrack.machineId === "fm1" || selectedTrack.machineId === "smk37" ? "The FM-1/SMK-37 emulator is below; its firmware session is not yet saved inside this project. VST3 routing is separate." : "Original browser sketch voice today; accurate device emulation and VST3 routing are separate targets."}</p>
+                  <p className="n-machine-copy">{machines.find(machine => machine.id === selectedTrack.machineId)?.descriptor ?? "Recorded microphone take"}.<br />Tone and decay are saved with this lane. FM-1/SMK-37 firmware selection also saves; the embedded emulator does not expose its internal patch session.</p>
                   <label className="n-screen-reader" htmlFor="machine-select">Machine</label>
                   <select id="machine-select" className="n-machine-select" value={selectedTrack.machineId} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, machineId: event.target.value as MachineId }))} data-testid="select-machine">
                     {machines.map(machine => <option key={machine.id} value={machine.id}>{machine.name}</option>)}
                   </select>
                   <div className="n-knob-row"><label htmlFor="track-volume">OUTPUT LEVEL</label><span className="n-knob-val">{selectedTrack.volume}%</span><input id="track-volume" type="range" min="0" max="100" value={selectedTrack.volume} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, volume: Number(event.target.value) }))} data-testid="input-track-volume" /></div>
+                  {selectedTrack.kind === "instrument" && (
+                    <>
+                      <div className="n-knob-row"><label htmlFor="track-tone">TONE</label><span className="n-knob-val">{selectedTrack.soundState.tone}</span><input id="track-tone" type="range" min="0" max="100" value={selectedTrack.soundState.tone} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, tone: Number(event.target.value) } }))} data-testid="input-track-tone" /></div>
+                      <div className="n-knob-row"><label htmlFor="track-decay">DECAY</label><span className="n-knob-val">{selectedTrack.soundState.decayMs} ms</span><input id="track-decay" type="range" min="80" max="800" step="10" value={selectedTrack.soundState.decayMs} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, decayMs: Number(event.target.value) } }))} data-testid="input-track-decay" /></div>
+                    </>
+                  )}
                 </div>
               ) : <div className="n-empty">Select or add a lane to shape the sketch.</div>}
             </section>
 
+            <section className="n-panel" aria-label="MIDI output for VST3 instruments" data-testid="section-midi-output">
+              <div className="n-panel-head"><p className="n-eyebrow">03 / MIDI Out</p><span className="n-subtle">VST3 ROUTING</span></div>
+              <div className="n-machine-body n-midi-controls">
+                <p className="n-machine-copy">Send the 1999 pattern to a MIDI port feeding a VST3 instrument in your desktop DAW. This browser does not load VST3 plugins.</p>
+                <button className="n-btn" type="button" onClick={() => void connectMidi()} data-testid="button-connect-midi">{midiConnected ? "Refresh MIDI" : "Connect MIDI"}</button>
+                <label className="n-screen-reader" htmlFor="midi-output-select">MIDI output</label>
+                <select id="midi-output-select" className="n-machine-select" value={selectedMidiOutputId} onChange={event => chooseMidiOutput(event.target.value)} disabled={!midiConnected || midiOutputs.length === 0 || isPlaying} data-testid="select-midi-output">
+                  <option value="">{midiOutputs.length ? "Choose an output" : "No output selected"}</option>
+                  {midiOutputs.map(output => <option key={output.id} value={output.id}>{output.name || output.id}</option>)}
+                </select>
+                <p className="n-midi-status" role="status" aria-live="polite" data-testid="status-midi-output">{midiStatus}</p>
+              </div>
+            </section>
+
             <section className="n-panel" aria-label="Saved projects" data-testid="section-project-library">
-              <div className="n-panel-head"><p className="n-eyebrow">03 / Sessions</p><button className="n-icon-btn" type="button" aria-label="Refresh project list" onClick={() => void refreshEntries().catch(error => setLoadError(error instanceof Error ? error.message : "Could not refresh projects."))} data-testid="button-refresh-projects"><RefreshCw size={13} /></button></div>
+              <div className="n-panel-head"><p className="n-eyebrow">04 / Sessions</p><button className="n-icon-btn" type="button" aria-label="Refresh project list" onClick={() => void refreshEntries().catch(error => setLoadError(error instanceof Error ? error.message : "Could not refresh projects."))} data-testid="button-refresh-projects"><RefreshCw size={13} /></button></div>
               <div className="n-library">
                 {saveState === "loading" && entries.length === 0
                   ? <div className="n-empty" role="status" data-testid="status-library-loading">Finding your sketches…</div>
@@ -667,7 +843,7 @@ export default function Salaryman1999() {
             </section>
 
             <section className="n-panel" aria-label="Microphone recorder" data-testid="section-recorder">
-              <div className="n-panel-head"><p className="n-eyebrow">04 / Capture</p><Radio size={14} /></div>
+              <div className="n-panel-head"><p className="n-eyebrow">05 / Capture</p><Radio size={14} /></div>
               <div className="n-machine-body">
                 <p className="n-machine-copy" style={{ marginTop: 0 }}>Record a voice or instrument take. Microphone permission is requested only when you start.</p>
                  <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake} onClick={() => {
@@ -685,7 +861,14 @@ export default function Salaryman1999() {
           <section className="n-emulator-panel" aria-label="Selected machine emulator" data-testid="section-machine-emulator">
             <Fm1EmulatorPanel
               initialMachine={selectedTrack.machineId}
+              initialFirmwareId={project.emulatorState.firmwareIds[selectedTrack.machineId as EmulatorMachine] ?? ""}
               onMachineChange={(machineId) => updateTrack(selectedTrack.id, track => ({ ...track, machineId }))}
+              onFirmwareChange={(machineId, firmwareId) => updateProject(current => ({
+                ...current,
+                emulatorState: {
+                  firmwareIds: { ...current.emulatorState.firmwareIds, [machineId]: firmwareId },
+                },
+              }))}
             />
           </section>
         )}

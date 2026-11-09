@@ -467,6 +467,8 @@ def run(argv: list[str] | None = None) -> int:
                 )
             except Exception:
                 state.notice = "COULD NOT OPEN SERVICE"
+        elif action == "music:open":
+            dispatch_game_command("music_studio_choice", {"choice": 1})
 
     def handle_page_key(key: int) -> bool:
         if key == pygame.K_ESCAPE:
@@ -550,6 +552,9 @@ def run(argv: list[str] | None = None) -> int:
                 return True
         elif page == "reception" and pygame.K_1 <= key <= pygame.K_3:
             activate_game_page_action(f"reception:{key - pygame.K_0}")
+            return True
+        elif page == "music_studio" and key == pygame.K_1:
+            activate_game_page_action("music:open")
             return True
         elif page == "pest_jobs":
             if key in (pygame.K_1, pygame.K_2):

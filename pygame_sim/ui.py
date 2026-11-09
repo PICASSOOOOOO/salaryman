@@ -2241,6 +2241,18 @@ class SolarPunkRenderer:
                 self.font_sm,
                 (85, 103, 94),
             )
+        elif state.active_page == "music_studio":
+            button(
+                "music:open",
+                "OPEN 1999 PRODUCTION WORKSPACE",
+                pygame.Rect(panel.x + 26, content_y, panel.width - 52, 56),
+            )
+            self.text(
+                "Continue in the browser with your saved 1999 sessions. MIDI output can route patterns to a VST3 instrument in your desktop DAW.",
+                (panel.x + 28, content_y + 82),
+                self.font_sm,
+                (85, 103, 94),
+            )
 
     def draw_game_page(self, state: OfficeState, scene: TowerScene) -> None:
         self.game_page_actions = {}
@@ -2264,6 +2276,7 @@ class SolarPunkRenderer:
             "shop_freight_dock": "B1 SHOP FREIGHT DOCK",
             "alarm_console": "B2 TOWER ALARM CONSOLE",
             "business": "TOWER BUSINESS OFFICE",
+            "music_studio": "1999 MUSIC STUDIO",
         }
         self.text(
             "ECONOMIC CONTROL" if state.active_page == "economy" else custom_titles.get(
