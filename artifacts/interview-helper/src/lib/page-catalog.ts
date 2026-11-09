@@ -87,6 +87,7 @@ const ALIASES: Record<string, string[]> = {
   "/marketing/ads": ["ads", "ad bots", "advertising"],
   "/creative/music": ["music", "humming bird", "hummingbird", "tracks", "songs"],
   "/creative/darkroom": ["dark room", "photos", "image editor", "photo studio"],
+  "/1999": ["1999", "music production", "audio production", "music workstation", "step sequencer"],
   "/creative/design": ["design studio", "design", "graphics"],
   "/creative/brand": ["brand kit", "branding", "logo"],
   "/creative/writer": ["writer", "hemingway", "writing", "copywriting"],

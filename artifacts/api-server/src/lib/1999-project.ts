@@ -1,0 +1,76 @@
+export const NINETEEN_NINETY_NINE_MACHINE_IDS = [
+  "op1",
+  "sp404mkii",
+  "mpc_sample",
+  "korg_ms2000r",
+  "korg_m1",
+  "boss_ce2",
+  "fm1",
+  "smk37",
+] as const;
+
+export type NineteenNinetyNineProject = {
+  schemaVersion: 1;
+  name: string;
+  bpm: number;
+  tracks: Array<{
+    id: string;
+    name: string;
+    kind: "instrument" | "recording";
+    machineId: (typeof NINETEEN_NINETY_NINE_MACHINE_IDS)[number];
+    steps: number[];
+    audioTrackId: number | null;
+    muted: boolean;
+    volume: number;
+  }>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isProjectTrack(value: unknown): value is NineteenNinetyNineProject["tracks"][number] {
+  if (!isRecord(value)) return false;
+  return typeof value.id === "string"
+    && value.id.length > 0 && value.id.length <= 80
+    && typeof value.name === "string"
+    && value.name.trim().length > 0 && value.name.length <= 80
+    && (value.kind === "instrument" || value.kind === "recording")
+    && typeof value.machineId === "string"
+    && (NINETEEN_NINETY_NINE_MACHINE_IDS as readonly string[]).includes(value.machineId)
+    && Array.isArray(value.steps)
+    && value.steps.length === 16
+    && value.steps.every((step) => Number.isInteger(step) && Number(step) >= 0 && Number(step) <= 127)
+    && (value.audioTrackId === null
+      || (Number.isInteger(value.audioTrackId) && Number(value.audioTrackId) > 0))
+    && typeof value.muted === "boolean"
+    && typeof value.volume === "number"
+    && Number.isFinite(value.volume)
+    && value.volume >= 0 && value.volume <= 100;
+}
+
+export function parseNineteenNinetyNineProject(content: unknown) {
+  if (typeof content !== "string" || Buffer.byteLength(content, "utf8") > 256 * 1024) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(content);
+    if (!isRecord(parsed)
+      || parsed.schemaVersion !== 1
+      || typeof parsed.name !== "string"
+      || parsed.name.trim().length === 0
+      || parsed.name.length > 80
+      || !Number.isInteger(parsed.bpm)
+      || Number(parsed.bpm) < 40
+      || Number(parsed.bpm) > 240
+      || !Array.isArray(parsed.tracks)
+      || parsed.tracks.length > 8
+      || !parsed.tracks.every(isProjectTrack)) {
+      return null;
+    }
+    return parsed as unknown as NineteenNinetyNineProject;
+  } catch {
+    return null;
+  }
+}

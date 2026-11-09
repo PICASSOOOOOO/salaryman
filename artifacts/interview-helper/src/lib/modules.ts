@@ -154,7 +154,7 @@ export const MODULES: Module[] = [
     defaultPath: '/creative/design',
     subs: [
       // AUDIO group (left)
-      { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
+      { id: 'lab', path: '/1999', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
       { id: 'stems', path: '/creative/stems', label: 'STEMS', boomerLabel: 'STEM PLAYER', codename: 'STEM-X', icon: Music2 },
       // WRITING (middle)
       { id: 'writer', path: '/creative/writer', label: 'HEMINGWAY', boomerLabel: 'HEMINGWAY', codename: 'HEMINGWAY', icon: PenTool },

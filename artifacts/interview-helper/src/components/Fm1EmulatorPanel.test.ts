@@ -95,4 +95,12 @@ describe('FM-1 emulator catalog', () => {
     expect(container.querySelector<HTMLIFrameElement>('[data-testid="iframe-fm1-emulator"]')?.getAttribute('src'))
       .toBe('https://joakimeriksson.github.io/fm1-emu/smk37/?fw=polly&embed=1');
   });
+
+  it('opens the emulator on the machine selected by the production lane', async () => {
+    await act(async () => root.render(createElement(Fm1EmulatorPanel, { initialMachine: 'smk37' })));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.querySelector<HTMLIFrameElement>('[data-testid="iframe-fm1-emulator"]')?.getAttribute('src'))
+      .toBe('https://joakimeriksson.github.io/fm1-emu/smk37/?fw=snoop37&embed=1');
+  });
 });

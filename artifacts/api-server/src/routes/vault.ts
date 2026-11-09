@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, vaultEntriesTable, vaultConnectionsTable } from "@workspace/db";
 import { eq, and, or, desc, ilike, sql } from "drizzle-orm";
+import { parseNineteenNinetyNineProject } from "../lib/1999-project";
 
 const router = Router();
 
@@ -178,6 +179,12 @@ router.post("/vault/entries", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const { title, content, entryType, tags, color, folder, frontmatter } = req.body;
   if (!title || typeof title !== "string") return res.status(400).json({ error: "title required" });
+  if (entryType === "1999_project") {
+    if (folder !== "/1999" || !parseNineteenNinetyNineProject(content)) {
+      res.status(400).json({ error: "Invalid 1999 project data" });
+      return;
+    }
+  }
 
   const [entry] = await db.insert(vaultEntriesTable).values({
     userId: req.user!.id,
@@ -199,7 +206,36 @@ router.put("/vault/entries/:id", async (req: Request, res: Response) => {
   const id = parseInt(req.params.id as string);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
-  const { title, content, entryType, tags, color, folder, frontmatter } = req.body;
+  const { title, content, entryType, tags, color, folder, frontmatter, expectedUpdatedAt } = req.body;
+  const [current] = await db.select().from(vaultEntriesTable)
+    .where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, req.user!.id)));
+  if (!current) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  const targetType = entryType ?? current.entryType;
+  const targetFolder = folder ?? current.folder;
+  const targetContent = content ?? current.content;
+  if (current.entryType === "1999_project" && entryType !== undefined && entryType !== "1999_project") {
+    res.status(400).json({ error: "1999 project type cannot be changed" });
+    return;
+  }
+  if (targetType === "1999_project"
+    && (targetFolder !== "/1999" || !parseNineteenNinetyNineProject(targetContent))) {
+    res.status(400).json({ error: "Invalid 1999 project data" });
+    return;
+  }
+
+  let expectedDate: Date | undefined;
+  if (expectedUpdatedAt !== undefined) {
+    if (typeof expectedUpdatedAt !== "string" || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
+      res.status(400).json({ error: "Invalid expectedUpdatedAt" });
+      return;
+    }
+    expectedDate = new Date(expectedUpdatedAt);
+  }
+
   const updates: Record<string, any> = { updatedAt: new Date() };
   if (title !== undefined) updates.title = title.trim();
   if (content !== undefined) updates.content = content;
@@ -208,11 +244,34 @@ router.put("/vault/entries/:id", async (req: Request, res: Response) => {
   if (color !== undefined) updates.color = color;
   if (folder !== undefined) updates.folder = folder;
   if (frontmatter !== undefined) updates.frontmatter = frontmatter;
+  if (expectedDate) {
+    updates.updatedAt = new Date(Math.max(Date.now(), expectedDate.getTime() + 1));
+  }
 
+  const conditions = [
+    eq(vaultEntriesTable.id, id),
+    eq(vaultEntriesTable.userId, req.user!.id),
+  ];
+  if (expectedDate) {
+    // API JSON dates have millisecond precision; truncate the database value
+    // so default timestamps with sub-millisecond precision still round-trip.
+    conditions.push(sql`date_trunc('milliseconds', ${vaultEntriesTable.updatedAt}) = ${expectedDate}`);
+  }
   const [entry] = await db.update(vaultEntriesTable).set(updates)
-    .where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, req.user!.id)))
+    .where(and(...conditions))
     .returning();
-  if (!entry) return res.status(404).json({ error: "Not found" });
+  if (!entry) {
+    if (expectedDate) {
+      const [latest] = await db.select().from(vaultEntriesTable)
+        .where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, req.user!.id)));
+      if (latest) {
+        res.status(409).json({ error: "Project changed in another session", entry: latest });
+        return;
+      }
+    }
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
 
   if (content !== undefined) {
     await syncWikiLinks(req.user!.id, id, content);

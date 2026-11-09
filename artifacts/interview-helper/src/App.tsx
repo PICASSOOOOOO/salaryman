@@ -69,6 +69,7 @@ const OrgWebsite = lazy(() => import("@/pages/OrgWebsite"));
 const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 
 const DarkRoom = lazy(() => import("@/pages/DarkRoom"));
+const NineteenNinetyNine = lazy(() => import("@/pages/1999"));
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const WriterStudio = lazy(() => import("@/pages/WriterStudio"));
 const Classroom = lazy(() => import("@/pages/Classroom"));
@@ -191,7 +192,7 @@ const queryClient = new QueryClient({
 });
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/onboarding", "/theater", "/device-link", "/sms-opt-in", "/my-office/monitor"];
+const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/onboarding", "/theater", "/device-link", "/sms-opt-in", "/my-office/monitor", "/1999"];
 
 function LoadingFallback() {
   return (
@@ -692,6 +693,8 @@ function AppShell() {
             <Route path="/business" component={BusinessHub} />
 
             {/* CREATIVE module */}
+            <Route path="/1999" component={NineteenNinetyNine} />
+            <Route path="/creative/1999">{() => <Redirect to="/1999" />}</Route>
             <Route path="/creative/darkroom" component={DarkRoom} />
             <Route path="/creative/scene">{() => <SceneComposer />}</Route>
             <Route path="/creative/studio">{() => <Redirect to="/creative/design" />}</Route>

@@ -95,12 +95,24 @@ function CatalogLoading({ machine }: { machine: EmulatorMachine }) {
   );
 }
 
-export default function Fm1EmulatorPanel() {
-  const [machine, setMachine] = useState<EmulatorMachine>('fm1');
+export interface Fm1EmulatorPanelProps {
+  initialMachine?: EmulatorMachine;
+  onMachineChange?: (machine: EmulatorMachine) => void;
+}
+
+export default function Fm1EmulatorPanel({
+  initialMachine = 'fm1',
+  onMachineChange,
+}: Fm1EmulatorPanelProps) {
+  const [machine, setMachine] = useState<EmulatorMachine>(initialMachine);
   const [catalogs, setCatalogs] = useState<Partial<Record<EmulatorMachine, EmulatorFirmwareCatalog>>>({});
   const [catalogErrors, setCatalogErrors] = useState<Partial<Record<EmulatorMachine, string>>>({});
   const [firmwareIds, setFirmwareIds] = useState<Partial<Record<EmulatorMachine, string>>>({});
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    setMachine(initialMachine);
+  }, [initialMachine]);
 
   useEffect(() => {
     let disposed = false;
@@ -180,6 +192,7 @@ export default function Fm1EmulatorPanel() {
               data-testid={`button-machine-${machineId}`}
               onClick={() => {
                 setMachine(machineId);
+                onMachineChange?.(machineId);
                 setSearch('');
               }}
             >

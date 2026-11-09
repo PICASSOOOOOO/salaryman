@@ -95,7 +95,7 @@ export const HISTORIC_MODULES: HistoricModule[] = [
     defaultPath: '/creative/studio',
     subs: [
       { id: 'studio', path: '/creative/studio', boomerLabel: 'STUDIO', codename: 'FORGE-7', icon: Layers },
-      { id: 'lab', path: '/creative/lab', boomerLabel: 'THE LAB', codename: '1999', icon: Music2 },
+      { id: 'lab', path: '/1999', boomerLabel: 'THE LAB', codename: '1999', icon: Music2 },
       { id: 'campaigns', path: '/creative/campaigns', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
       { id: 'brand', path: '/creative/brand', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
     ],
