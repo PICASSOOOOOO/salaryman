@@ -40,3 +40,9 @@ Recorded microphone loops must remain playable after a 1999 session is saved and
 **Why:** The user selected verification of saved-loop synchronization as a follow-up.
 
 **How to apply:** Cover a saved recording lane through project serialization, reload, audio retrieval, and loop playback in regression tests.
+
+Overdubbing is non-destructive: keep the original take, add new takes as layers on the same lane, and share that lane's mute and volume controls. Match each overdub's length and tempo to the base loop.
+
+**Why:** The user asked to overdub into an existing loop; preserving the original avoids destructive replacement, and matching capture timing prevents layered takes from drifting apart.
+
+**How to apply:** Retain each audio-library reference in project data, use the stored loop bars/BPM for later overdubs, and start all layers together for playback and export.

@@ -21,6 +21,9 @@ type ProjectTrack = {
   machineId: MachineId;
   steps: number[];
   audioTrackId: number | null;
+  overdubTrackIds?: number[];
+  loopBars?: 1 | 2 | 4;
+  loopBpm?: number;
   muted: boolean;
   volume: number;
   soundState: SoundEngineState;
@@ -135,6 +138,20 @@ function parseProject(content: string): Project | null {
         && Array.isArray(item.steps) && item.steps.length === 16
         && item.steps.every(step => Number.isInteger(step) && step >= 0 && step <= 127)
         && (item.audioTrackId === null || (Number.isInteger(item.audioTrackId) && Number(item.audioTrackId) > 0))
+        && (item.overdubTrackIds === undefined || (
+          item.kind === "recording"
+          && item.audioTrackId !== null
+          && Array.isArray(item.overdubTrackIds)
+          && item.overdubTrackIds.length <= 49
+          && item.overdubTrackIds.every(id => Number.isInteger(id) && id > 0 && id !== item.audioTrackId)
+          && new Set(item.overdubTrackIds).size === item.overdubTrackIds.length
+        ))
+        && ((item.loopBars === undefined && item.loopBpm === undefined) || (
+          item.kind === "recording"
+          && item.audioTrackId !== null
+          && (item.loopBars === 1 || item.loopBars === 2 || item.loopBars === 4)
+          && Number.isInteger(item.loopBpm) && Number(item.loopBpm) >= 40 && Number(item.loopBpm) <= 240
+        ))
         && typeof item.muted === "boolean"
         && Number.isFinite(item.volume) && item.volume >= 0 && item.volume <= 100
         && (item.soundState === undefined || isSoundEngineState(item.soundState));
@@ -162,6 +179,11 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function recordingAudioTrackIds(track: ProjectTrack): number[] {
+  if (track.kind !== "recording" || track.audioTrackId === null) return [];
+  return [track.audioTrackId, ...(track.overdubTrackIds ?? [])];
 }
 
 function safeFilename(value: string) {
@@ -240,10 +262,13 @@ async function renderWav(project: Project): Promise<Blob> {
   const decoder = new AudioContextClass();
   try {
     for (const track of project.tracks) {
-      if (track.muted || track.kind !== "recording" || track.audioTrackId === null || clipBuffers.has(track.audioTrackId)) continue;
-      const response = await apiFetch(`/api/music/stream/${track.audioTrackId}`);
-      if (!response.ok) throw new Error(`Saved take could not be loaded (${response.status}).`);
-      clipBuffers.set(track.audioTrackId, await decoder.decodeAudioData(await response.arrayBuffer()));
+      if (track.muted || track.kind !== "recording") continue;
+      for (const audioTrackId of recordingAudioTrackIds(track)) {
+        if (clipBuffers.has(audioTrackId)) continue;
+        const response = await apiFetch(`/api/music/stream/${audioTrackId}`);
+        if (!response.ok) throw new Error(`Saved take could not be loaded (${response.status}).`);
+        clipBuffers.set(audioTrackId, await decoder.decodeAudioData(await response.arrayBuffer()));
+      }
     }
   } finally {
     await decoder.close().catch(() => undefined);
@@ -253,16 +278,18 @@ async function renderWav(project: Project): Promise<Blob> {
   project.tracks.forEach(track => {
     if (track.muted) return;
     if (track.kind === "recording" && track.audioTrackId !== null) {
-      const audio = clipBuffers.get(track.audioTrackId);
-      if (!audio) return;
-      const source = context.createBufferSource();
       const gain = context.createGain();
-      source.buffer = audio;
-      source.loop = true;
       gain.gain.value = track.volume / 100;
-      source.connect(gain);
       gain.connect(context.destination);
-      source.start(0);
+      recordingAudioTrackIds(track).forEach(audioTrackId => {
+        const audio = clipBuffers.get(audioTrackId);
+        if (!audio) return;
+        const source = context.createBufferSource();
+        source.buffer = audio;
+        source.loop = true;
+        source.connect(gain);
+        source.start(0);
+      });
       return;
     }
     for (let bar = 0; bar < 4; bar += 1) {
@@ -296,7 +323,7 @@ export default function Salaryman1999() {
   const [selectedTrackId, setSelectedTrackId] = useState("trk-1");
   const [isRecording, setIsRecording] = useState(false);
   const [isUploadingTake, setIsUploadingTake] = useState(false);
-  const [loopBars, setLoopBars] = useState(1);
+  const [loopBars, setLoopBars] = useState<1 | 2 | 4>(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(-1);
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
@@ -468,6 +495,8 @@ export default function Salaryman1999() {
   }, []);
 
   const selectedTrack = useMemo(() => project.tracks.find(track => track.id === selectedTrackId) ?? project.tracks[0], [project.tracks, selectedTrackId]);
+  const selectedLoopBars = selectedTrack?.kind === "recording" ? selectedTrack.loopBars : undefined;
+  const captureBarsForSelection = selectedLoopBars ?? loopBars;
   useEffect(() => {
     const context = audioContextRef.current;
     if (!context) return;
@@ -670,7 +699,8 @@ export default function Salaryman1999() {
       await context.resume();
       const snapshot = projectRef.current;
       const recordingTracks = snapshot.tracks.filter(track => track.kind === "recording" && track.audioTrackId !== null);
-      for (const audioTrackId of new Set(recordingTracks.map(track => track.audioTrackId!))) {
+      const recordingAudioIds = new Set(recordingTracks.flatMap(recordingAudioTrackIds));
+      for (const audioTrackId of recordingAudioIds) {
         if (clipBufferCacheRef.current.has(audioTrackId)) continue;
         const response = await apiFetch(`/api/music/stream/${audioTrackId}`);
         if (!response.ok) throw new Error(`Loop audio could not be loaded (${response.status}).`);
@@ -681,17 +711,21 @@ export default function Salaryman1999() {
       playbackSourcesRef.current = [];
       playbackGainsRef.current.clear();
       recordingTracks.forEach(track => {
-        const audio = clipBufferCacheRef.current.get(track.audioTrackId!);
-        if (!audio) return;
-        const source = context.createBufferSource();
+        const audioTrackIds = recordingAudioTrackIds(track);
+        if (!audioTrackIds.length) return;
         const gain = context.createGain();
-        source.buffer = audio;
-        source.loop = true;
         gain.gain.value = track.muted ? 0 : track.volume / 100;
-        source.connect(gain);
         gain.connect(context.destination);
-        source.start(startsAt);
-        playbackSourcesRef.current.push(source);
+        audioTrackIds.forEach(audioTrackId => {
+          const audio = clipBufferCacheRef.current.get(audioTrackId);
+          if (!audio) return;
+          const source = context.createBufferSource();
+          source.buffer = audio;
+          source.loop = true;
+          source.connect(gain);
+          source.start(startsAt);
+          playbackSourcesRef.current.push(source);
+        });
         playbackGainsRef.current.set(track.id, gain);
       });
       playingRef.current = true;
@@ -799,7 +833,11 @@ export default function Salaryman1999() {
   };
 
   const startRecording = async () => {
-    if (projectRef.current.tracks.length >= 8) {
+    const selectedAtStart = projectRef.current.tracks.find(track => track.id === selectedTrackId);
+    const recordingTargetId = selectedAtStart?.kind === "recording" ? selectedAtStart.id : null;
+    const recordingBars = selectedAtStart?.kind === "recording" ? selectedAtStart.loopBars ?? loopBars : loopBars;
+    const recordingBpm = selectedAtStart?.kind === "recording" ? selectedAtStart.loopBpm ?? projectRef.current.bpm : projectRef.current.bpm;
+    if (!recordingTargetId && projectRef.current.tracks.length >= 8) {
       setRecordingLabel("Arrangement full · 8 lane limit");
       return;
     }
@@ -831,27 +869,50 @@ export default function Salaryman1999() {
         try {
           const audioTrackId = await uploadAudioToLibrary(take, duration);
           const current = projectRef.current;
-          if (current.tracks.length >= 8) throw new Error("Arrangement full · 8 lane limit");
-          const index = current.tracks.length + 1;
-          const id = `trk-${Date.now()}-${index}`;
-          const loopTrack: ProjectTrack = {
-            id,
-            name: `Loop ${index}`,
-            kind: "recording",
-            machineId: "op1",
-            steps: Array(16).fill(0),
-            audioTrackId,
-            muted: false,
-            volume: 82,
-            soundState: defaultSoundState("op1"),
-          };
-          const next = { ...current, tracks: [...current.tracks, loopTrack] };
+          const target = recordingTargetId
+            ? current.tracks.find(track => track.id === recordingTargetId && track.kind === "recording")
+            : undefined;
+          if (recordingTargetId && !target) throw new Error("The selected loop is no longer available.");
+          if (!recordingTargetId && current.tracks.length >= 8) throw new Error("Arrangement full · 8 lane limit");
+          let next: Project;
+          let id: string;
+          if (target) {
+            id = target.id;
+            next = {
+              ...current,
+              tracks: current.tracks.map(track => track.id !== target.id ? track : target.audioTrackId === null
+                ? { ...target, audioTrackId, loopBars: recordingBars, loopBpm: recordingBpm }
+                : {
+                  ...target,
+                  loopBars: target.loopBars ?? recordingBars,
+                  loopBpm: target.loopBpm ?? recordingBpm,
+                  overdubTrackIds: [...(target.overdubTrackIds ?? []), audioTrackId],
+                }),
+            };
+          } else {
+            const index = current.tracks.length + 1;
+            id = `trk-${Date.now()}-${index}`;
+            const loopTrack: ProjectTrack = {
+              id,
+              name: `Loop ${index}`,
+              kind: "recording",
+              machineId: "op1",
+              steps: Array(16).fill(0),
+              audioTrackId,
+              loopBars: recordingBars,
+              loopBpm: recordingBpm,
+              muted: false,
+              volume: 82,
+              soundState: defaultSoundState("op1"),
+            };
+            next = { ...current, tracks: [...current.tracks, loopTrack] };
+          }
           skipDirtyRef.current = false;
           projectRef.current = next;
           dirtyRef.current = true;
           setProject(next);
           setSelectedTrackId(id);
-          setRecordingLabel("Loop added to arrangement.");
+          setRecordingLabel(target ? "Overdub added to loop." : "Loop added to arrangement.");
         } catch (error) {
           setRecordingLabel(error instanceof Error ? error.message : "The take could not be saved.");
         } finally {
@@ -860,7 +921,7 @@ export default function Salaryman1999() {
       };
       setIsRecording(true);
       const bpm = projectRef.current.bpm;
-      const loopDurationMs = (60_000 / bpm) * 4 * loopBars;
+      const loopDurationMs = (60_000 / recordingBpm) * 4 * recordingBars;
       const stepDurationMs = (60_000 / bpm) / 4;
       const stepsUntilBar = (16 - playStepRef.current) % 16;
       const context = audioContextRef.current;
@@ -983,7 +1044,7 @@ export default function Salaryman1999() {
                 <div className="n-loop-screen">
                   <span className="n-loop-code">LOOP / {String(project.tracks.indexOf(selectedTrack) + 1).padStart(2, "0")}</span>
                   <strong>{selectedTrack.name}</strong>
-                  <span>{selectedTrack.audioTrackId === null ? "EMPTY" : "READY"}</span>
+                  <span>{selectedTrack.audioTrackId === null ? "EMPTY" : `READY · ${recordingAudioTrackIds(selectedTrack).length} LAYER${recordingAudioTrackIds(selectedTrack).length === 1 ? "" : "S"}`}</span>
                 </div>
               </div>
             ) : selectedTrack?.machineId === "fm1" || selectedTrack?.machineId === "smk37" ? (
@@ -1053,7 +1114,7 @@ export default function Salaryman1999() {
                       </div>
                       {track.kind === "recording" ? (
                         <div className={`n-audio-clip${track.audioTrackId === null ? " is-empty" : ""}`} data-testid={`clip-loop-${track.id}`}>
-                          <span>{track.audioTrackId === null ? "EMPTY LOOP" : "AUDIO LOOP"}</span>
+                          <span>{track.audioTrackId === null ? "EMPTY LOOP" : `AUDIO LOOP${recordingAudioTrackIds(track).length > 1 ? ` · ${recordingAudioTrackIds(track).length} LAYERS` : ""}`}</span>
                         </div>
                       ) : (
                         <div className="n-steps" role="group" aria-label={`${track.name} steps`}>
@@ -1127,15 +1188,15 @@ export default function Salaryman1999() {
               <div className="n-machine-body n-loop-controls">
                 <label className="n-loop-length" htmlFor="loop-length">
                   <span>LOOP BARS</span>
-                  <select id="loop-length" value={loopBars} disabled={isRecording || isUploadingTake} onChange={event => setLoopBars(Number(event.target.value))} data-testid="select-loop-bars">
+                  <select id="loop-length" value={captureBarsForSelection} disabled={isRecording || isUploadingTake || selectedLoopBars !== undefined} onChange={event => setLoopBars(Number(event.target.value) as 1 | 2 | 4)} data-testid="select-loop-bars">
                     {[1, 2, 4].map(bars => <option key={bars} value={bars}>{bars}</option>)}
                   </select>
                 </label>
-                <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake || (!isRecording && project.tracks.length >= 8)} onClick={() => {
+                <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake || (!isRecording && project.tracks.length >= 8 && selectedTrack?.kind !== "recording")} onClick={() => {
                   if (isRecording) stopRecording();
                   else void startRecording();
                 }} data-testid="button-record">
-                  {isRecording ? <><Square size={12} /> Stop loop</> : <><Mic size={13} /> {isUploadingTake ? "Saving loop" : `Record ${loopBars} bar${loopBars === 1 ? "" : "s"}`}</>}
+                  {isRecording ? <><Square size={12} /> Stop loop</> : <><Mic size={13} /> {isUploadingTake ? "Saving loop" : `${selectedTrack?.kind === "recording" && selectedTrack.audioTrackId !== null ? "Overdub" : "Record"} ${captureBarsForSelection} bar${captureBarsForSelection === 1 ? "" : "s"}`}</>}
                 </button>
               </div>
             </section>

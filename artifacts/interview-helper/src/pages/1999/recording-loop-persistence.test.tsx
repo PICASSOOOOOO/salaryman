@@ -49,6 +49,9 @@ const savedProject = {
       machineId: "op1",
       steps: Array(16).fill(0),
       audioTrackId: 501,
+      overdubTrackIds: [],
+      loopBars: 2,
+      loopBpm: 92,
       muted: true,
       volume: 68,
       soundState: { tone: 72, decayMs: 240 },
@@ -87,6 +90,22 @@ class FakeAudioContext {
     };
     audioGains.push(gain);
     return gain as any;
+  }
+}
+
+class FakeMediaRecorder {
+  state: RecordingState = "inactive";
+  mimeType = "audio/webm";
+  ondataavailable: ((event: { data: Blob }) => void) | null = null;
+  onstop: (() => void) | null = null;
+  constructor(_stream: MediaStream) {}
+  start() {
+    this.state = "recording";
+    this.ondataavailable?.({ data: new Blob(["overdub audio"], { type: this.mimeType }) });
+  }
+  stop() {
+    this.state = "inactive";
+    this.onstop?.();
   }
 }
 
@@ -142,7 +161,13 @@ beforeEach(() => {
       currentUpdatedAt = "2026-11-10T00:00:01.000Z";
       return jsonResponse({ entry: projectEntry() });
     }
-    if (path === "/api/music/stream/501") {
+    if (path === "/api/storage/uploads/request-url") {
+      return jsonResponse({ uploadURL: "https://storage.test/upload", objectPath: "/objects/test/overdub" });
+    }
+    if (path === "/api/music/tracks" && init?.method === "POST") {
+      return jsonResponse({ track: { id: 502 } });
+    }
+    if (path === "/api/music/stream/501" || path === "/api/music/stream/502") {
       return {
         ok: true,
         status: 200,
@@ -152,6 +177,12 @@ beforeEach(() => {
     return jsonResponse({ error: `Unexpected request: ${path}` });
   });
   vi.stubGlobal("AudioContext", FakeAudioContext);
+  vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop: vi.fn() }] })) },
+  });
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -164,11 +195,27 @@ afterEach(() => {
 });
 
 describe("1999 recorded-loop persistence", () => {
-  it("saves the library reference and mix state, reloads it, and loops the same audio", async () => {
+  it("overdubs without replacing the original, saves both takes, and reloads them in sync", async () => {
     await mount();
     click("row-track-trk-loop");
     expect(container.querySelector('[data-testid="panel-audio-loop"]')?.textContent).toContain("READY");
     expect((container.querySelector('[data-testid="input-track-volume"]') as HTMLInputElement).value).toBe("68");
+    const loopLength = container.querySelector('[data-testid="select-loop-bars"]') as HTMLSelectElement;
+    expect(loopLength.value).toBe("2");
+    expect(loopLength.disabled).toBe(true);
+    expect(container.querySelector('[data-testid="button-record"]')?.textContent).toContain("Overdub 2 bars");
+
+    const recorderTimerSpy = vi.spyOn(window, "setTimeout");
+    click("button-record");
+    await flush();
+    expect(container.querySelector('[data-testid="button-record"]')?.textContent).toContain("Stop loop");
+    expect(recorderTimerSpy.mock.calls.some(([, delay]) => (
+      Math.abs(Number(delay) - ((60_000 / 92) * 4 * 2)) < 1
+    ))).toBe(true);
+    recorderTimerSpy.mockRestore();
+    click("button-record");
+    await flush();
+    expect(container.querySelector('[data-testid="status-recording"]')?.textContent).toContain("Overdub added to loop.");
 
     await act(async () => {
       (container.querySelector('[data-testid="button-save-project"]') as HTMLButtonElement).click();
@@ -182,9 +229,14 @@ describe("1999 recorded-loop persistence", () => {
       id: "trk-loop",
       kind: "recording",
       audioTrackId: 501,
+      overdubTrackIds: [502],
+      loopBars: 2,
+      loopBpm: 92,
       muted: true,
       volume: 68,
     });
+    expect(JSON.parse(String(h.apiFetch.mock.calls.find(([path]) => path === "/api/music/tracks")?.[1]?.body))
+      .source).toBe("upload");
 
     act(() => root.unmount());
     root = createRoot(container);
@@ -199,9 +251,12 @@ describe("1999 recorded-loop persistence", () => {
     click("button-toggle-playback");
     await flush();
     expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/501");
-    expect(audioSources).toHaveLength(1);
-    expect(audioSources[0].loop).toBe(true);
-    expect(audioSources[0].start).toHaveBeenCalled();
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/502");
+    expect(audioSources).toHaveLength(2);
+    expect(audioSources.every(source => source.loop && source.start.mock.calls.length === 1)).toBe(true);
+    expect(audioSources[0].start.mock.calls[0]).toEqual(audioSources[1].start.mock.calls[0]);
+    expect(audioSources[0].connect).toHaveBeenCalledWith(audioGains[0]);
+    expect(audioSources[1].connect).toHaveBeenCalledWith(audioGains[0]);
     expect(audioGains[0].gain.value).toBe(0);
 
     click("button-mute-trk-loop");

@@ -29,6 +29,9 @@ export type NineteenNinetyNineProject = {
     machineId: (typeof NINETEEN_NINETY_NINE_MACHINE_IDS)[number];
     steps: number[];
     audioTrackId: number | null;
+    overdubTrackIds?: number[];
+    loopBars?: 1 | 2 | 4;
+    loopBpm?: number;
     muted: boolean;
     volume: number;
     soundState?: {
@@ -67,6 +70,22 @@ function isProjectTrack(value: unknown): value is NineteenNinetyNineProject["tra
     && value.steps.every((step) => Number.isInteger(step) && Number(step) >= 0 && Number(step) <= 127)
     && (value.audioTrackId === null
       || (Number.isInteger(value.audioTrackId) && Number(value.audioTrackId) > 0))
+    && (value.overdubTrackIds === undefined || (
+      value.kind === "recording"
+      && value.audioTrackId !== null
+      && Array.isArray(value.overdubTrackIds)
+      && value.overdubTrackIds.length <= 49
+      && value.overdubTrackIds.every((id) => Number.isInteger(id) && Number(id) > 0 && id !== value.audioTrackId)
+      && new Set(value.overdubTrackIds).size === value.overdubTrackIds.length
+    ))
+    && ((value.loopBars === undefined && value.loopBpm === undefined) || (
+      value.kind === "recording"
+      && value.audioTrackId !== null
+      && (value.loopBars === 1 || value.loopBars === 2 || value.loopBars === 4)
+      && Number.isInteger(value.loopBpm)
+      && Number(value.loopBpm) >= 40
+      && Number(value.loopBpm) <= 240
+    ))
     && typeof value.muted === "boolean"
     && typeof value.volume === "number"
     && Number.isFinite(value.volume)
