@@ -433,10 +433,11 @@ async function renderWav(project: Project): Promise<Blob> {
       if (!audio) return [];
       const pitchOffset = pad.tune + (pad.rootKey === null ? 0 : keySemitone(project.key) - pad.rootKey);
       const rate = Math.max(0.25, Math.min(4, pad.speed * Math.pow(2, pitchOffset / 12)));
-      return [audio.duration / rate];
+      return [audio.duration / rate + (pad.echo > 0 ? 2.5 : 0)];
     })
   ));
-  const seconds = Math.min(90, Math.max(loopSeconds, ...clipDurationsAtSessionTempo, ...samplerDurations));
+  const samplerTail = Math.max(0, ...samplerDurations);
+  const seconds = Math.min(90, Math.max(loopSeconds + samplerTail, ...clipDurationsAtSessionTempo));
   const context = new OfflineAudioContext(1, Math.ceil(seconds * sampleRate), sampleRate);
   project.tracks.forEach(track => {
     if (track.muted) return;
@@ -705,10 +706,17 @@ export default function Salaryman1999() {
     typeof track.mimeType === "string" && track.mimeType.toLowerCase().startsWith("audio/")
     && typeof track.objectPath === "string" && track.objectPath.startsWith("/objects/")
   )), [libraryTracks]);
+  const selectedSamplerSample = availableSamplerSamples.find(sample => sample.id === selectedSamplerPad?.audioTrackId);
   const selectedLoopBars = selectedTrack?.kind === "recording" ? selectedTrack.loopBars : undefined;
   const captureBarsForSelection = selectedLoopBars ?? loopBars;
+  const selectedMachineSteps = selectedTrack?.machineId === "mpc_sample"
+    ? selectedTrack.padPatterns?.[selectedPadIndex] ?? selectedTrack.steps
+    : selectedTrack?.steps ?? [];
   useEffect(() => {
     setSelectedLibraryTakeId("");
+  }, [selectedTrackId]);
+  useEffect(() => {
+    setSelectedPadIndex(0);
   }, [selectedTrackId]);
   const availableLibraryTakes = useMemo(() => {
     if (selectedTrack?.kind !== "recording" || selectedTrack.audioTrackId === null) return [];
@@ -992,6 +1000,7 @@ export default function Salaryman1999() {
     const generation = samplerPreviewGenerationRef.current;
     const pad = track.samplerPads?.[padIndex];
     if (!pad?.audioTrackId) return;
+    setSamplerPreviewPadIndex(padIndex);
     try {
       const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextClass) throw new Error("Sampler preview is not supported in this browser.");
@@ -1008,7 +1017,6 @@ export default function Salaryman1999() {
         setSamplerPreviewPadIndex(null);
       };
       samplerPreviewSourcesRef.current = [source];
-      setSamplerPreviewPadIndex(padIndex);
     } catch (error) {
       if (generation === samplerPreviewGenerationRef.current) {
         setSamplerPreviewPadIndex(null);
@@ -1133,12 +1141,13 @@ export default function Salaryman1999() {
       const snapshot = projectRef.current;
       const recordingTracks = snapshot.tracks.filter(track => track.kind === "recording" && track.audioTrackId !== null);
       const recordingAudioIds = new Set(recordingTracks.flatMap(recordingAudioTrackIds));
-      for (const audioTrackId of recordingAudioIds) {
-        if (clipBufferCacheRef.current.has(audioTrackId)) continue;
-        const response = await apiFetch(`/api/music/stream/${audioTrackId}`);
-        if (!response.ok) throw new Error(`Loop audio could not be loaded (${response.status}).`);
-        const buffer = await context.decodeAudioData(await response.arrayBuffer());
-        clipBufferCacheRef.current.set(audioTrackId, buffer);
+      const samplerAudioIds = new Set(snapshot.tracks.flatMap(track => (
+        track.machineId === "mpc_sample"
+          ? (track.samplerPads ?? []).flatMap(pad => pad.audioTrackId === null ? [] : [pad.audioTrackId])
+          : []
+      )));
+      for (const audioTrackId of new Set([...recordingAudioIds, ...samplerAudioIds])) {
+        await loadAudioBuffer(context, audioTrackId, clipBufferCacheRef.current);
       }
       const startsAt = context.currentTime + 0.04;
       playbackSourcesRef.current = [];
@@ -1177,7 +1186,25 @@ export default function Salaryman1999() {
           const stepIndex = playStepRef.current;
           const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
           snapshot.tracks.forEach((track, trackIndex) => {
-            if (!track.muted && track.kind === "instrument" && track.steps[stepIndex]) {
+            if (track.muted || track.kind !== "instrument") return;
+            if (track.machineId === "mpc_sample") {
+              (track.padPatterns ?? []).forEach((pattern, padIndex) => {
+                const velocity = pattern[stepIndex];
+                const pad = track.samplerPads?.[padIndex];
+                const buffer = pad?.audioTrackId === null ? undefined : clipBufferCacheRef.current.get(pad?.audioTrackId ?? -1);
+                if (velocity && pad && buffer) {
+                  const source = scheduleSamplerPad(context, track, pad, buffer, nextStepTimeRef.current, snapshot.key, velocity);
+                  if (source) {
+                    source.onended = () => {
+                      playbackSourcesRef.current = playbackSourcesRef.current.filter(item => item !== source);
+                    };
+                    playbackSourcesRef.current.push(source);
+                  }
+                }
+              });
+              return;
+            }
+            if (track.steps[stepIndex]) {
               scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current, snapshot.key);
               if (midiOutput) {
                 try {
@@ -1263,7 +1290,7 @@ export default function Salaryman1999() {
       const blob = await renderWav(project);
       const filename = `${safeFilename(project.name)}.wav`;
       const file = new File([blob], filename, { type: "audio/wav", lastModified: Date.now() });
-      const seconds = Math.ceil(Math.min(90, (60 / project.bpm) * 16));
+      const seconds = Math.ceil(Math.max(0, blob.size - 44) / (22050 * 2));
       await uploadAudioToLibrary(file, seconds);
       setRecordingLabel("Mix saved to your SALARYMAN music library.");
     } catch (error) {
@@ -1483,7 +1510,17 @@ export default function Salaryman1999() {
               {selectedTrack?.kind === "instrument" ? (
                 <>
                   <label className="n-screen-reader" htmlFor="machine-select">Machine</label>
-                  <select id="machine-select" className="n-machine-select" value={selectedTrack.machineId} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, machineId: event.target.value as MachineId }))} data-testid="select-machine">
+                  <select id="machine-select" className="n-machine-select" value={selectedTrack.machineId} onChange={event => {
+                    const machineId = event.target.value as MachineId;
+                    updateTrack(selectedTrack.id, track => ({
+                      ...track,
+                      machineId,
+                      ...(machineId === "mpc_sample" ? {
+                        samplerPads: track.samplerPads ?? createEmptySamplerPads(),
+                        padPatterns: track.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0)),
+                      } : {}),
+                    }));
+                  }} data-testid="select-machine">
                     {machines.map(machine => <option key={machine.id} value={machine.id}>{machine.name}</option>)}
                   </select>
                 </>
@@ -1519,18 +1556,107 @@ export default function Salaryman1999() {
                 <div className="n-native-screen">
                   <div className="n-native-screen-head">
                     <span>{machines.find(machine => machine.id === selectedTrack.machineId)?.name}</span>
-                    <span>{selectedTrack.steps.filter(Boolean).length} / 16</span>
+                    <span>{selectedMachineSteps.filter(Boolean).length} / 16</span>
                   </div>
                   <strong>{selectedTrack.name}</strong>
                   <div className="n-native-sequence" aria-label={`${selectedTrack.name} pattern`}>
-                    {selectedTrack.steps.map((step, index) => <span key={index} className={`${step ? "is-on" : ""}${playhead === index && isPlaying ? " is-playhead" : ""}`} />)}
+                    {selectedMachineSteps.map((step, index) => <span key={index} className={`${step ? "is-on" : ""}${playhead === index && isPlaying ? " is-playhead" : ""}`} />)}
                   </div>
-                  <span className="n-native-tempo">{project.bpm} BPM · LOOP</span>
+                  <span className="n-native-tempo">{project.bpm} BPM · {project.timeSignature} · {project.key}</span>
                 </div>
                 <div className="n-native-controls">
                   <div className="n-knob-row"><label htmlFor="track-tone">TONE</label><span className="n-knob-val">{selectedTrack.soundState.tone}</span><input id="track-tone" type="range" min="0" max="100" value={selectedTrack.soundState.tone} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, tone: Number(event.target.value) } }))} data-testid="input-track-tone" /></div>
                   <div className="n-knob-row"><label htmlFor="track-decay">DECAY</label><span className="n-knob-val">{selectedTrack.soundState.decayMs} ms</span><input id="track-decay" type="range" min="80" max="800" step="10" value={selectedTrack.soundState.decayMs} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, decayMs: Number(event.target.value) } }))} data-testid="input-track-decay" /></div>
                 </div>
+                {selectedTrack.machineId === "mpc_sample" && (
+                  <div className="n-mpc-sampler" data-testid="panel-mpc-sampler">
+                    <div className="n-mpc-pad-grid" role="group" aria-label="MPC sample pads">
+                      {(selectedTrack.samplerPads ?? createEmptySamplerPads()).map((pad, padIndex) => {
+                        const sampleTitle = availableSamplerSamples.find(sample => sample.id === pad.audioTrackId)?.title
+                          ?? (pad.audioTrackId === null ? "EMPTY" : `SAMPLE ${pad.audioTrackId}`);
+                        return <button
+                          key={padIndex}
+                          type="button"
+                          className={`n-mpc-pad${selectedPadIndex === padIndex ? " is-selected" : ""}${samplerPreviewPadIndex === padIndex ? " is-playing" : ""}`}
+                          aria-label={`Pad ${padIndex + 1}: ${sampleTitle}`}
+                          aria-pressed={selectedPadIndex === padIndex}
+                          onClick={() => { void previewSamplerPad(padIndex); }}
+                          disabled={isPlaying || isRecording || isUploadingTake}
+                          data-testid={`button-mpc-pad-${padIndex + 1}`}
+                        >
+                          <strong>{String(padIndex + 1).padStart(2, "0")}</strong>
+                          <span>{sampleTitle.slice(0, 12)}</span>
+                        </button>;
+                      })}
+                    </div>
+                    <div className="n-mpc-pad-edit">
+                      <div className="n-mpc-pad-edit-head">
+                        <strong>PAD {String(selectedPadIndex + 1).padStart(2, "0")}</strong>
+                        <span>{selectedSamplerPad?.audioTrackId ? "SAMPLE LOADED" : "EMPTY PAD"}</span>
+                      </div>
+                      <label className="n-mpc-field">
+                        <span>SAMPLE</span>
+                        <select
+                          value={selectedSamplerPad?.audioTrackId ?? ""}
+                          disabled={isPlaying || isRecording || isUploadingTake}
+                          onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({
+                            ...pad,
+                            audioTrackId: event.target.value ? Number(event.target.value) : null,
+                            startSec: 0,
+                            endSec: 0,
+                            rootKey: null,
+                          }))}
+                          data-testid="select-mpc-sample"
+                        >
+                          <option value="">Choose audio from library</option>
+                          {availableSamplerSamples.map(sample => <option key={sample.id} value={sample.id}>{sample.title}</option>)}
+                        </select>
+                      </label>
+                      <input
+                        ref={samplerFileInputRef}
+                        className="n-screen-reader"
+                        type="file"
+                        accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.opus,.webm,.flac"
+                        disabled={isUploadingTake}
+                        onChange={event => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) void uploadSamplerSample(file);
+                        }}
+                        data-testid="input-mpc-upload"
+                      />
+                      <button className="n-btn n-mpc-upload" type="button" onClick={() => samplerFileInputRef.current?.click()} disabled={isPlaying || isRecording || isUploadingTake} data-testid="button-mpc-upload">
+                        <Plus size={12} /> {isUploadingTake ? "Importing" : "Upload sample"}
+                      </button>
+                      {selectedSamplerPad?.audioTrackId && (
+                        <>
+                          <div className="n-mpc-trim">
+                            <label className="n-mpc-field"><span>START SEC</span><input type="number" min="0" max={selectedSamplerSample?.durationSec || undefined} step="0.01" value={selectedSamplerPad.startSec} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => {
+                              const maxStart = Math.max(0, (selectedSamplerSample?.durationSec || Number.MAX_SAFE_INTEGER) - 0.01);
+                              const requested = Math.max(0, Number(event.target.value) || 0);
+                              return { ...pad, startSec: Math.min(maxStart, pad.endSec > 0 ? Math.min(pad.endSec - 0.01, requested) : requested) };
+                            })} data-testid="input-mpc-trim-start" /></label>
+                            <label className="n-mpc-field"><span>END SEC</span><input type="number" min="0" max={selectedSamplerSample?.durationSec || undefined} step="0.01" placeholder="Full sample" value={selectedSamplerPad.endSec || ""} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => {
+                              if (!event.target.value) return { ...pad, endSec: 0 };
+                              const maxEnd = selectedSamplerSample?.durationSec || Number.MAX_SAFE_INTEGER;
+                              return { ...pad, endSec: Math.max(pad.startSec + 0.01, Math.min(maxEnd, Number(event.target.value) || 0)) };
+                            })} data-testid="input-mpc-trim-end" /></label>
+                          </div>
+                          <label className="n-mpc-field"><span>TUNE · {selectedSamplerPad.tune} ST</span><input type="range" min="-24" max="24" value={selectedSamplerPad.tune} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, tune: Number(event.target.value) }))} data-testid="input-mpc-tune" /></label>
+                          <label className="n-mpc-field"><span>SPEED · {selectedSamplerPad.speed.toFixed(2)}×</span><input type="range" min="0.5" max="2" step="0.01" value={selectedSamplerPad.speed} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, speed: Number(event.target.value) }))} data-testid="input-mpc-speed" /></label>
+                          <label className="n-mpc-field"><span>ROOT KEY</span><select value={selectedSamplerPad.rootKey ?? ""} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, rootKey: event.target.value === "" ? null : Number(event.target.value) }))} data-testid="select-mpc-root-key">
+                            <option value="">Unknown</option>
+                            {projectKeys.map((key, index) => <option key={key} value={index}>{key}</option>)}
+                          </select></label>
+                          <div className="n-mpc-trim">
+                            <label className="n-mpc-field"><span>LEVEL · {selectedSamplerPad.level}</span><input type="range" min="0" max="100" value={selectedSamplerPad.level} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, level: Number(event.target.value) }))} data-testid="input-mpc-level" /></label>
+                            <label className="n-mpc-field"><span>TONE · {selectedSamplerPad.tone}</span><input type="range" min="0" max="100" value={selectedSamplerPad.tone} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, tone: Number(event.target.value) }))} data-testid="input-mpc-tone" /></label>
+                          </div>
+                          <label className="n-mpc-field"><span>ECHO · {selectedSamplerPad.echo}</span><input type="range" min="0" max="100" value={selectedSamplerPad.echo} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, echo: Number(event.target.value) }))} data-testid="input-mpc-echo" /></label>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : <div className="n-empty">NO MACHINE SELECTED</div>}
           </section>
@@ -1544,6 +1670,12 @@ export default function Salaryman1999() {
                     {isPlaying ? <Square size={12} /> : <Play size={12} />}{isPlaying ? "Stop" : "Play"}
                   </button>
                   <label className="n-bpm">BPM <input aria-label="Tempo in beats per minute" aria-description="Recorded loops follow session tempo; pitch shifts with speed." title="Recorded loops follow session tempo; pitch shifts with speed." data-testid="input-bpm" type="number" min="40" max="240" value={project.bpm} disabled={isRecording} onChange={event => updateProject(current => ({ ...current, bpm: Math.max(40, Math.min(240, Number(event.target.value) || 40)) }))} /></label>
+                  <label className="n-bpm">KEY <select aria-label="Project key" value={project.key} onChange={event => updateProject(current => ({ ...current, key: event.target.value as ProjectKey }))} data-testid="select-project-key">
+                    {projectKeys.map(key => <option key={key} value={key}>{key}</option>)}
+                  </select></label>
+                  <label className="n-bpm">METER <select aria-label="Time signature" value={project.timeSignature} disabled={isRecording} onChange={event => updateProject(current => ({ ...current, timeSignature: event.target.value as TimeSignature }))} data-testid="select-time-signature">
+                    {timeSignatures.map(meter => <option key={meter} value={meter}>{meter}</option>)}
+                  </select></label>
                 </div>
               </div>
               <div className="n-grid-scroll">
@@ -1564,15 +1696,39 @@ export default function Salaryman1999() {
                       </div>
                       {track.kind === "recording" ? (
                         <div className={`n-audio-clip${track.audioTrackId === null ? " is-empty" : ""}`} data-testid={`clip-loop-${track.id}`}>
-                          <span>{track.audioTrackId === null ? "EMPTY LOOP" : `AUDIO LOOP${recordingAudioTrackIds(track).length > 1 ? ` · ${recordingAudioTrackIds(track).length} LAYERS` : ""}`}</span>
+                          {track.audioTrackId === null ? <span className="n-tape-empty">EMPTY TAPE</span> : (
+                            <>
+                              <span className="n-screen-reader">AUDIO LOOP</span>
+                              <div className="n-tape-layers" aria-label={`${recordingAudioTrackIds(track).length} tape layers`}>
+                                {recordingAudioTrackIds(track).map((audioTrackId, layerIndex) => (
+                                  <div className={`n-tape-layer n-tape-color-${layerIndex % 4}`} key={audioTrackId} data-testid={`tape-layer-${track.id}-${audioTrackId}`}>
+                                    <span className="n-tape-reel" aria-hidden="true" />
+                                    <span className="n-tape-label">{libraryTracks.find(item => item.id === audioTrackId)?.title ?? `TAKE ${layerIndex + 1}`}</span>
+                                    <span className="n-tape-splice" aria-hidden="true" />
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div className="n-steps" role="group" aria-label={`${track.name} steps`}>
-                          {track.steps.map((step, stepIndex) => <button
+                          {(track.machineId === "mpc_sample" ? track.padPatterns?.[selectedPadIndex] ?? track.steps : track.steps).map((step, stepIndex) => <button
                             type="button" key={stepIndex} className={`n-step${step ? " is-on" : ""}${playhead === stepIndex && isPlaying ? " is-playhead" : ""}`}
                             aria-label={`${track.name}, step ${stepIndex + 1}, ${step ? "on" : "off"}`}
                             aria-pressed={!!step} data-testid={`button-step-${track.id}-${stepIndex + 1}`}
-                            onClick={event => { event.stopPropagation(); updateTrack(track.id, current => ({ ...current, steps: current.steps.map((value, i) => i === stepIndex ? value ? 0 : 1 : value) })); }}
+                            onClick={event => {
+                              event.stopPropagation();
+                              setSelectedTrackId(track.id);
+                              updateTrack(track.id, current => {
+                                const togglePattern = (pattern: number[]) => pattern.map((value, i) => i === stepIndex ? value ? 0 : 100 : value);
+                                if (current.machineId === "mpc_sample") {
+                                  const patterns = current.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0));
+                                  return { ...current, padPatterns: patterns.map((pattern, index) => index === selectedPadIndex ? togglePattern(pattern) : pattern) };
+                                }
+                                return { ...current, steps: togglePattern(current.steps) };
+                              });
+                            }}
                           />)}
                         </div>
                       )}
@@ -1596,7 +1752,7 @@ export default function Salaryman1999() {
                 </div>
               </div>
               <div className="n-track-add">
-                <button className="n-btn" type="button" onClick={() => addTrack("instrument")} disabled={project.tracks.length >= 8 || isRecording || isUploadingTake} data-testid="button-add-track"><Plus size={13} /> Add lane</button>
+                  <button className="n-btn" type="button" onClick={() => addTrack("instrument")} disabled={project.tracks.length >= 8 || isLoopPreviewActive || isRecording || isUploadingTake} data-testid="button-add-track"><Plus size={13} /> Add lane</button>
                 <span className="n-subtle">{project.tracks.length} / 8</span>
               </div>
               <div className={`n-recording${isRecording ? " is-live" : ""}`} data-testid="status-recording" role="status" aria-live="polite">
@@ -1652,7 +1808,7 @@ export default function Salaryman1999() {
                     {[1, 2, 4].map(bars => <option key={bars} value={bars}>{bars}</option>)}
                   </select>
                 </label>
-                <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake || (!isRecording && project.tracks.length >= 8 && selectedTrack?.kind !== "recording")} onClick={() => {
+                <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake || (!isRecording && isLoopPreviewActive) || (!isRecording && project.tracks.length >= 8 && selectedTrack?.kind !== "recording")} onClick={() => {
                   if (isRecording) stopRecording();
                   else void startRecording();
                 }} data-testid="button-record">
@@ -1676,7 +1832,7 @@ export default function Salaryman1999() {
                         className="n-loop-take-remove"
                         aria-label={`Remove overdub ${index + 1}`}
                         title="Remove from loop; keep take in library"
-                        disabled={isPlaying || isRecording || isUploadingTake}
+                        disabled={isPlaying || isLoopPreviewActive || isRecording || isUploadingTake}
                         onClick={event => {
                           event.stopPropagation();
                           removeOverdubLayer(selectedTrack.id, audioTrackId);
@@ -1693,7 +1849,7 @@ export default function Salaryman1999() {
                       <select
                         id="library-loop-take"
                         value={selectedLibraryTakeId}
-                        disabled={isPlaying || isRecording || isUploadingTake || availableLibraryTakes.length === 0}
+                        disabled={isPlaying || isLoopPreviewActive || isRecording || isUploadingTake || availableLibraryTakes.length === 0}
                         onChange={event => setSelectedLibraryTakeId(event.target.value)}
                         data-testid="select-library-overdub"
                       >
@@ -1708,7 +1864,7 @@ export default function Salaryman1999() {
                     <button
                       type="button"
                       className="n-btn n-loop-library-add-button"
-                      disabled={isPlaying || isRecording || isUploadingTake || !availableLibraryTakes.some(track => track.id === Number(selectedLibraryTakeId))}
+                      disabled={isPlaying || isLoopPreviewActive || isRecording || isUploadingTake || !availableLibraryTakes.some(track => track.id === Number(selectedLibraryTakeId))}
                       onClick={addLibraryTakeToLoop}
                       data-testid="button-add-library-overdub"
                     >

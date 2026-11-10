@@ -7,6 +7,12 @@ The user sees SALARYMAN as a work platform for unemployed people, job seekers, c
 
 The 1999 workstation should support Akai MPC, Korg, Boss, Roland SP-404MKII, Teenage Engineering OP-1, and similar machines, with their sounds. Switching machines should change the panel and sound engine while keeping one shared recording/programming workflow across plugin and non-plugin versions; live recording should follow OP-1-style workflows. In SALARYMAN, machine-specific rendered workstations should be purchasable and usable as desks in office studios.
 
+The first 1999 sampler/tape milestone keeps the eight-lane limit and current branding, pairs an MPC-style 16-pad sample/chop/sequence workflow with an OP-1-inspired tape display for recorded layers, and stores uploaded audio in private storage with project references. USB/MIDI controller input, broad server-side codec conversion, and emulator research are later milestones. Do not fetch or extract audio from YouTube or movie URLs.
+
+**Why:** the user chose the sampler-and-tape core first, while explicitly deferring controller connectivity and emulator research; uploaded audio must remain user-provided rather than ripped from streaming or movie sources.
+
+**How to apply:** keep project JSON compact by storing music-library IDs, and make WAV export include assigned pad patterns and recording layers. Clearly distinguish browser-supported upload codecs from later server-side conversion coverage.
+
 1999 is a free app within SALARYMAN. Keep it inside SALARYMAN; do not create a separate 1999 homepage or sales page. SALARYMAN's existing main homepage remains the only product homepage.
 
 **Why:** the user explicitly clarified the product structure and that 1999 is free, not a standalone product to sell.

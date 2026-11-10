@@ -86,17 +86,30 @@ class FakeAudioContext {
       connect: vi.fn(),
       start: vi.fn(),
       stop: vi.fn(),
+      onended: null as (() => void) | null,
     };
     audioSources.push(source);
     return source as any;
   }
   createGain() {
     const gain = {
-      gain: { value: 1, setTargetAtTime: vi.fn() },
+      gain: { value: 1, setTargetAtTime: vi.fn(), setValueAtTime: vi.fn() },
       connect: vi.fn(),
+      disconnect: vi.fn(),
     };
     audioGains.push(gain);
     return gain as any;
+  }
+  createBiquadFilter() {
+    return {
+      type: "lowpass",
+      frequency: { setValueAtTime: vi.fn() },
+      Q: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+    } as any;
+  }
+  createDelay() {
+    return { delayTime: { setValueAtTime: vi.fn() }, connect: vi.fn() } as any;
   }
 }
 
@@ -120,7 +133,13 @@ class FakeOfflineAudioContext {
     return source as any;
   }
   createGain() {
-    return { gain: { value: 1 }, connect: vi.fn() } as any;
+    return { gain: { value: 1, setValueAtTime: vi.fn() }, connect: vi.fn() } as any;
+  }
+  createBiquadFilter() {
+    return { type: "lowpass", frequency: { setValueAtTime: vi.fn() }, Q: { setValueAtTime: vi.fn() }, connect: vi.fn() } as any;
+  }
+  createDelay() {
+    return { delayTime: { setValueAtTime: vi.fn() }, connect: vi.fn() } as any;
   }
   async startRendering() {
     return { getChannelData: () => new Float32Array(this.length) } as any;
@@ -176,6 +195,16 @@ function click(testId: string) {
   act(() => target.click());
 }
 
+function setValue(testId: string, value: string, eventName: "input" | "change" = "input") {
+  const target = container.querySelector(`[data-testid="${testId}"]`) as HTMLInputElement | HTMLSelectElement | null;
+  if (!target) throw new Error(`Missing element: ${testId}`);
+  act(() => {
+    const prototype = target instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(target, value);
+    target.dispatchEvent(new Event(eventName, { bubbles: true }));
+  });
+}
+
 beforeEach(() => {
   currentProject = JSON.stringify(savedProject);
   currentUpdatedAt = "2026-11-10T00:00:00.000Z";
@@ -209,7 +238,7 @@ beforeEach(() => {
     if (path === "/api/music/tracks" && init?.method === "POST") {
       return jsonResponse({ track: { id: 502 } });
     }
-    if (path === "/api/music/stream/501" || path === "/api/music/stream/502") {
+    if (path === "/api/music/stream/501" || path === "/api/music/stream/502" || path === "/api/music/stream/503") {
       return {
         ok: true,
         status: 200,
@@ -443,5 +472,112 @@ describe("1999 recorded-loop persistence", () => {
     await flush();
     expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/502");
     click("button-toggle-playback");
+  });
+
+  it("previews every loop layer together for one pass and supports stopping early", async () => {
+    const layeredProject = {
+      ...savedProject,
+      tracks: savedProject.tracks.map((track, index) => index === 1
+        ? { ...track, muted: false, overdubTrackIds: [502, 503] }
+        : track),
+    };
+    currentProject = JSON.stringify(layeredProject);
+    await mount();
+
+    click("button-play-loop-trk-loop");
+    await flush();
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/501");
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/502");
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/503");
+    expect(audioSources).toHaveLength(3);
+    expect(audioSources.every(source => !source.loop && source.start.mock.calls.length === 1)).toBe(true);
+    expect(audioSources[0].start.mock.calls[0]).toEqual(audioSources[1].start.mock.calls[0]);
+    expect(audioSources[1].start.mock.calls[0]).toEqual(audioSources[2].start.mock.calls[0]);
+    expect(audioSources.every(source => source.connect.mock.calls.length === 1)).toBe(true);
+    expect(audioSources.every(source => source.connect.mock.calls[0][0] === audioGains[0])).toBe(true);
+    expect(audioGains[0].gain.value).toBe(0.68);
+    expect(h.music.previewTrack).not.toHaveBeenCalled();
+    expect((container.querySelector('[data-testid="button-record"]') as HTMLButtonElement).disabled).toBe(true);
+
+    act(() => audioSources.slice(0, 3).forEach(source => source.onended?.()));
+    await flush();
+    expect(container.querySelector('[data-testid="button-play-loop-trk-loop"]')?.getAttribute("aria-label"))
+      .toBe("Preview all loop layers");
+
+    click("button-play-loop-trk-loop");
+    await flush();
+    const latestSources = audioSources.slice(3);
+    expect(latestSources).toHaveLength(3);
+    click("button-play-loop-trk-loop");
+    expect(latestSources.every(source => source.stop.mock.calls.length === 1)).toBe(true);
+    expect((container.querySelector('[data-testid="button-record"]') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("uploads, chops, tunes, sequences, and saves an MPC pad sample", async () => {
+    await mount();
+    click("row-track-trk-main");
+    setValue("select-machine", "mpc_sample", "change");
+    await flush();
+    expect(container.querySelectorAll('[data-testid^="button-mpc-pad-"]')).toHaveLength(16);
+
+    const file = new File(["sampler audio"], "chop.wav", { type: "audio/wav" });
+    const uploadInput = container.querySelector('[data-testid="input-mpc-upload"]') as HTMLInputElement;
+    Object.defineProperty(uploadInput, "files", { configurable: true, value: [file] });
+    act(() => uploadInput.dispatchEvent(new Event("change", { bubbles: true })));
+    await flush();
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/storage/uploads/request-url", expect.objectContaining({ method: "POST" }));
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/tracks", expect.objectContaining({ method: "POST" }));
+
+    setValue("select-project-key", "D", "change");
+    setValue("select-time-signature", "3/4", "change");
+    setValue("input-mpc-trim-start", "0.2");
+    setValue("input-mpc-trim-end", "0.8");
+    setValue("input-mpc-tune", "12");
+    setValue("input-mpc-speed", "1.5");
+    setValue("select-mpc-root-key", "2", "change");
+    setValue("input-mpc-echo", "50");
+    click("button-mpc-pad-1");
+    await flush();
+
+    expect(audioSources[0].start.mock.calls[0][1]).toBe(0.2);
+    expect(audioSources[0].start.mock.calls[0][2]).toBeCloseTo(0.6);
+    expect(audioSources[0].playbackRate.value).toBeCloseTo(3);
+    expect(h.apiFetch).not.toHaveBeenCalledWith("/api/music/stream/502");
+    expect(container.querySelector('[data-testid="panel-mpc-sampler"]')).not.toBeNull();
+
+    click("button-step-trk-main-1");
+    const sourcesBeforeSequence = audioSources.length;
+    click("button-toggle-playback");
+    await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 35)); });
+    await flush();
+    expect(audioSources.length).toBeGreaterThan(sourcesBeforeSequence + 1);
+    expect(audioSources.slice(sourcesBeforeSequence).some(source => source.start.mock.calls.some((args: number[]) => args.length === 3))).toBe(true);
+    click("button-toggle-playback");
+
+    await act(async () => {
+      (container.querySelector('[data-testid="button-save-project"]') as HTMLButtonElement).click();
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    const put = h.apiFetch.mock.calls.find(([path, init]) => path === "/api/vault/entries/77" && init?.method === "PUT");
+    expect(put).toBeDefined();
+    const saved = JSON.parse(JSON.parse(String(put![1].body)).content);
+    expect(saved).toMatchObject({ key: "D", timeSignature: "3/4" });
+    expect(saved.tracks[0].samplerPads[0]).toMatchObject({
+      audioTrackId: 502,
+      startSec: 0.2,
+      endSec: 0.8,
+      tune: 12,
+      speed: 1.5,
+      rootKey: 2,
+      echo: 50,
+    });
+    expect(saved.tracks[0].padPatterns[0][0]).toBe(100);
+
+    offlineSources.length = 0;
+    click("button-export-wav");
+    await flush();
+    const exportedPadSources = offlineSources.filter(source => source.start.mock.calls.some((args: number[]) => args.length === 3));
+    expect(exportedPadSources.length).toBeGreaterThan(0);
+    expect(exportedPadSources[0].playbackRate.value).toBeCloseTo(3);
   });
 });
