@@ -186,6 +186,10 @@ function recordingAudioTrackIds(track: ProjectTrack): number[] {
   return [track.audioTrackId, ...(track.overdubTrackIds ?? [])];
 }
 
+function recordingPlaybackRate(track: ProjectTrack, projectBpm: number): number {
+  return track.kind === "recording" && track.loopBpm ? projectBpm / track.loopBpm : 1;
+}
+
 function safeFilename(value: string) {
   return value.trim().replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "1999-project";
 }
@@ -273,7 +277,13 @@ async function renderWav(project: Project): Promise<Blob> {
   } finally {
     await decoder.close().catch(() => undefined);
   }
-  const seconds = Math.min(90, Math.max(loopSeconds, ...Array.from(clipBuffers.values(), audio => audio.duration)));
+  const clipDurationsAtSessionTempo = project.tracks.flatMap(track => (
+    track.muted || track.kind !== "recording" ? [] : recordingAudioTrackIds(track).map(audioTrackId => {
+      const audio = clipBuffers.get(audioTrackId);
+      return audio ? audio.duration / recordingPlaybackRate(track, project.bpm) : 0;
+    })
+  ));
+  const seconds = Math.min(90, Math.max(loopSeconds, ...clipDurationsAtSessionTempo));
   const context = new OfflineAudioContext(1, Math.ceil(seconds * sampleRate), sampleRate);
   project.tracks.forEach(track => {
     if (track.muted) return;
@@ -287,6 +297,7 @@ async function renderWav(project: Project): Promise<Blob> {
         const source = context.createBufferSource();
         source.buffer = audio;
         source.loop = true;
+        source.playbackRate.value = recordingPlaybackRate(track, project.bpm);
         source.connect(gain);
         source.start(0);
       });
@@ -347,6 +358,7 @@ export default function Salaryman1999() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const clipBufferCacheRef = useRef<Map<number, AudioBuffer>>(new Map());
   const playbackSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const playbackSourcesByTrackRef = useRef<Map<string, AudioBufferSourceNode[]>>(new Map());
   const playbackGainsRef = useRef<Map<string, GainNode>>(new Map());
   const schedulerRef = useRef<number | null>(null);
   const playingRef = useRef(false);
@@ -483,6 +495,7 @@ export default function Salaryman1999() {
     streamRef.current?.getTracks().forEach(track => track.stop());
     playbackSourcesRef.current.forEach(source => { try { source.stop(); } catch { /* Already stopped. */ } });
     playbackSourcesRef.current = [];
+    playbackSourcesByTrackRef.current.clear();
     playbackGainsRef.current.clear();
     if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
     playingRef.current = false;
@@ -502,10 +515,12 @@ export default function Salaryman1999() {
     if (!context) return;
     project.tracks.forEach(track => {
       const gain = playbackGainsRef.current.get(track.id);
-      if (!gain) return;
-      gain.gain.setTargetAtTime(track.muted ? 0 : track.volume / 100, context.currentTime, 0.02);
+      if (gain) gain.gain.setTargetAtTime(track.muted ? 0 : track.volume / 100, context.currentTime, 0.02);
+      playbackSourcesByTrackRef.current.get(track.id)?.forEach(source => {
+        source.playbackRate.setTargetAtTime(recordingPlaybackRate(track, project.bpm), context.currentTime, 0.02);
+      });
     });
-  }, [project.tracks]);
+  }, [project.bpm, project.tracks]);
   const updateProject = (updater: (current: Project) => Project) => setProject(current => updater(current));
   const updateTrack = (id: string, updater: (track: ProjectTrack) => ProjectTrack) => updateProject(current => ({
     ...current, tracks: current.tracks.map(track => track.id === id ? updater(track) : track),
@@ -680,6 +695,7 @@ export default function Salaryman1999() {
       schedulerRef.current = null;
       playbackSourcesRef.current.forEach(source => { try { source.stop(); } catch { /* Already stopped. */ } });
       playbackSourcesRef.current = [];
+      playbackSourcesByTrackRef.current.clear();
       playbackGainsRef.current.clear();
       const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
       if (midiOutput) {
@@ -709,6 +725,7 @@ export default function Salaryman1999() {
       }
       const startsAt = context.currentTime + 0.04;
       playbackSourcesRef.current = [];
+      playbackSourcesByTrackRef.current.clear();
       playbackGainsRef.current.clear();
       recordingTracks.forEach(track => {
         const audioTrackIds = recordingAudioTrackIds(track);
@@ -716,16 +733,20 @@ export default function Salaryman1999() {
         const gain = context.createGain();
         gain.gain.value = track.muted ? 0 : track.volume / 100;
         gain.connect(context.destination);
+        const trackSources: AudioBufferSourceNode[] = [];
         audioTrackIds.forEach(audioTrackId => {
           const audio = clipBufferCacheRef.current.get(audioTrackId);
           if (!audio) return;
           const source = context.createBufferSource();
           source.buffer = audio;
           source.loop = true;
+          source.playbackRate.value = recordingPlaybackRate(track, snapshot.bpm);
           source.connect(gain);
           source.start(startsAt);
           playbackSourcesRef.current.push(source);
+          trackSources.push(source);
         });
+        playbackSourcesByTrackRef.current.set(track.id, trackSources);
         playbackGainsRef.current.set(track.id, gain);
       });
       playingRef.current = true;
@@ -765,6 +786,7 @@ export default function Salaryman1999() {
       setIsPlaying(false);
       playbackSourcesRef.current.forEach(source => { try { source.stop(); } catch { /* Already stopped. */ } });
       playbackSourcesRef.current = [];
+      playbackSourcesByTrackRef.current.clear();
       playbackGainsRef.current.clear();
       setLoadError(error instanceof Error ? error.message : "Loop playback could not start.");
     }
@@ -1093,7 +1115,7 @@ export default function Salaryman1999() {
                   <button className="n-btn n-play-btn" type="button" onClick={() => void togglePlayback()} data-testid="button-toggle-playback" aria-label={isPlaying ? "Stop loop playback" : "Play loop"}>
                     {isPlaying ? <Square size={12} /> : <Play size={12} />}{isPlaying ? "Stop" : "Play"}
                   </button>
-                  <label className="n-bpm">BPM <input aria-label="Tempo in beats per minute" data-testid="input-bpm" type="number" min="40" max="240" value={project.bpm} disabled={isRecording} onChange={event => updateProject(current => ({ ...current, bpm: Math.max(40, Math.min(240, Number(event.target.value) || 40)) }))} /></label>
+                  <label className="n-bpm">BPM <input aria-label="Tempo in beats per minute" aria-description="Recorded loops follow session tempo; pitch shifts with speed." title="Recorded loops follow session tempo; pitch shifts with speed." data-testid="input-bpm" type="number" min="40" max="240" value={project.bpm} disabled={isRecording} onChange={event => updateProject(current => ({ ...current, bpm: Math.max(40, Math.min(240, Number(event.target.value) || 40)) }))} /></label>
                 </div>
               </div>
               <div className="n-grid-scroll">

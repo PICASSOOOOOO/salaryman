@@ -46,3 +46,9 @@ Overdubbing is non-destructive: keep the original take, add new takes as layers 
 **Why:** The user asked to overdub into an existing loop; preserving the original avoids destructive replacement, and matching capture timing prevents layered takes from drifting apart.
 
 **How to apply:** Retain each audio-library reference in project data, use the stored loop bars/BPM for later overdubs, and start all layers together for playback and export.
+
+Recorded loops follow the session BPM through playback-rate adjustment in live playback and WAV export. This changes pitch along with speed; do not imply that the current implementation preserves pitch.
+
+**Why:** A shared playback-rate ratio keeps overdubs aligned without rewriting user-owned audio, while browser-native buffer playback does not provide pitch-preserving time stretch.
+
+**How to apply:** Derive the rate from current session BPM divided by the lane's captured BPM; keep legacy lanes with no captured BPM at their original speed, and apply the same policy to every lane layer and WAV duration.
