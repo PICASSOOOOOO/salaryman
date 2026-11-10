@@ -17,7 +17,7 @@
 .salary-1999 * { box-sizing: border-box; }
 .n-shell { width: min(1440px, 100%); margin: 0 auto; }
 .n-topline { display: flex; align-items: center; border-bottom: 1px solid var(--n-line); padding: 0 0 12px; }
-.n-brand { color: #ff8c00; font: 800 1.6rem/1 var(--font-sans, sans-serif); letter-spacing: .25em; text-shadow: 0 0 16px rgba(255, 140, 0, .53), 0 0 4px rgba(255, 140, 0, .27); }
+.n-brand { color: #b5e65e; font: 800 1rem/1 var(--font-sans, sans-serif); letter-spacing: .2em; text-shadow: 0 0 8px rgba(181, 230, 94, .28); }
 .n-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 12px; padding: 8px; border: 1px solid var(--n-line); background: #090b0c; }
 .n-project-name { flex: 1 1 190px; min-width: 130px; height: 36px; padding: 0 10px; border: 1px solid transparent; background: transparent; color: var(--n-ink); font: 600 13px var(--font-sans, sans-serif); }
 .n-project-name:focus { outline: 1px solid var(--n-muted); background: var(--n-card); }

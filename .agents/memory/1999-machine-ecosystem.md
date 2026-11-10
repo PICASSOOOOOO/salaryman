@@ -19,11 +19,11 @@ Keep 1999 interfaces stripped and tool-focused: show controls, short labels, sta
 
 **How to apply:** remove promotional, tutorial, and descriptive paragraphs from 1999 workspace surfaces; retain only concise operational feedback and required attribution.
 
-1999 uses a black background. Keep the machine view primary, place machine/firmware selection discreetly, and use the side panel for the sequencer, recording, and mixing DAW. Use the legacy `1999` logo only.
+1999 uses a black background. Keep the machine view primary, place machine/firmware selection discreetly, and use the side panel for the sequencer, recording, and mixing DAW. Use only the legacy `1999` logo, in its original green at a restrained size.
 
-**Why:** the user explicitly requested a black 1999 interface, machine-focused layout, looper-style recording, and the old logo with no added wording.
+**Why:** the user explicitly requested a black 1999 interface, machine-focused layout, looper-style recording, and the old logo with no added wording; they also prefer the original green and a smaller logo.
 
-**How to apply:** build the visual hierarchy around playable machine controls and an arrangement-focused DAW; keep SALARYMAN branding and other labels out of the 1999 wordmark.
+**How to apply:** build the visual hierarchy around playable machine controls and an arrangement-focused DAW; keep the 1999 wordmark small and green, with no SALARYMAN branding or added wording.
 
 **Why:** the user wants a shared creative-work system that can support paid work, practice, and business creation in and out of the game, with machine-specific workstation desks usable in in-game studios.
 

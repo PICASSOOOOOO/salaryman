@@ -391,10 +391,10 @@
   margin: 0 auto 12px;
   padding: 0 0 10px;
   border-bottom: 1px solid var(--n-line);
-  color: #ff8c00;
-  font: 800 1.6rem/1 var(--font-sans, sans-serif);
-  letter-spacing: .25em;
-  text-shadow: 0 0 16px rgba(255, 140, 0, .53), 0 0 4px rgba(255, 140, 0, .27);
+  color: #b5e65e;
+  font: 800 1rem/1 var(--font-sans, sans-serif);
+  letter-spacing: .2em;
+  text-shadow: 0 0 8px rgba(181, 230, 94, .28);
 }
 
 .visual-refresh__layout {
