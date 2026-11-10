@@ -162,6 +162,11 @@
 .n-mpc-field input[type="range"] { width: 100%; margin: 2px 0 0; accent-color: #a5d65b; }
 .n-mpc-trim { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .n-mpc-upload { min-height: 28px; justify-content: center; padding-inline: 6px; font-size: 8px; }
+.n-mpc-chop { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 6px; padding: 7px; border: 1px solid #343c3b; background: #101413; }
+.n-mpc-chop .n-mpc-trim { grid-column: 1 / -1; }
+.n-mpc-chop-button { min-height: 26px; justify-content: center; padding-inline: 7px; border-color: #758f52; color: #c6e49a; font-size: 8px; }
+.n-mpc-chop-status, .n-mpc-chop-credit { align-self: center; color: var(--n-muted); font: 7px var(--font-mono, monospace); white-space: nowrap; }
+.n-mpc-chop-credit { text-decoration: underline; text-underline-offset: 2px; }
 .n-audio-clip { height: auto; min-height: 29px; padding: 2px 4px; border-color: #475640; background: #0b100c; }
 .n-audio-clip.is-empty { border-color: #383f3f; }
 .n-tape-empty { color: var(--n-muted); font: 7px var(--font-mono, monospace); letter-spacing: .1em; }

@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api-client";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
 import MinimoogEmulatorPanel from "@/components/MinimoogEmulatorPanel";
+import { createRegionSlices, findTransientSlices } from "./sampler-chops";
 import "./1999.css";
 import "./EmulatorPanels.css";
 
@@ -539,6 +540,10 @@ export default function Salaryman1999() {
   const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
   const [samplerPreviewPadIndex, setSamplerPreviewPadIndex] = useState<number | null>(null);
   const [selectedPadIndex, setSelectedPadIndex] = useState(0);
+  const [samplerSliceMode, setSamplerSliceMode] = useState<"regions" | "transient">("regions");
+  const [samplerSliceCount, setSamplerSliceCount] = useState<4 | 8 | 16>(8);
+  const [samplerSliceSensitivity, setSamplerSliceSensitivity] = useState(55);
+  const [isChoppingSample, setIsChoppingSample] = useState(false);
   const samplerFileInputRef = useRef<HTMLInputElement | null>(null);
   const [playhead, setPlayhead] = useState(-1);
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
@@ -765,6 +770,13 @@ export default function Salaryman1999() {
     && typeof track.objectPath === "string" && track.objectPath.startsWith("/objects/")
   )), [libraryTracks]);
   const selectedSamplerSample = availableSamplerSamples.find(sample => sample.id === selectedSamplerPad?.audioTrackId);
+  const emptySamplerPadIndices = useMemo(() => {
+    if (selectedTrack?.machineId !== "mpc_sample") return [];
+    return (selectedTrack.samplerPads ?? createEmptySamplerPads()).flatMap((pad, index) => {
+      const hasPattern = (selectedTrack.padPatterns?.[index] ?? []).some(Boolean);
+      return index !== selectedPadIndex && pad.audioTrackId === null && !hasPattern ? [index] : [];
+    });
+  }, [selectedPadIndex, selectedTrack]);
   const selectedLoopBars = selectedTrack?.kind === "recording" ? selectedTrack.loopBars : undefined;
   const captureBarsForSelection = selectedLoopBars ?? loopBars;
   const selectedMachineSteps = selectedTrack?.machineId === "mpc_sample"
@@ -1084,6 +1096,85 @@ export default function Salaryman1999() {
     } finally {
       setIsUploadingTake(false);
       if (samplerFileInputRef.current) samplerFileInputRef.current.value = "";
+    }
+  };
+  const chopSamplerSample = async () => {
+    const trackId = selectedTrackId;
+    const padIndex = selectedPadIndex;
+    const track = projectRef.current.tracks.find(candidate => candidate.id === trackId);
+    const sourcePad = track?.machineId === "mpc_sample" ? track.samplerPads?.[padIndex] : undefined;
+    if (!track || track.machineId !== "mpc_sample" || !sourcePad?.audioTrackId) return;
+
+    const freeIndices = (track.samplerPads ?? createEmptySamplerPads()).flatMap((pad, index) => (
+      index !== padIndex && pad.audioTrackId === null && !(track.padPatterns?.[index] ?? []).some(Boolean) ? [index] : []
+    ));
+    if (freeIndices.length < samplerSliceCount - 1) {
+      setLoadError(`Need ${samplerSliceCount - 1} empty pads; ${freeIndices.length} available.`);
+      return;
+    }
+
+    setIsChoppingSample(true);
+    setLoadError("");
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Sample slicing is not supported in this browser.");
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      await context.resume();
+      const buffer = await loadAudioBuffer(context, sourcePad.audioTrackId, clipBufferCacheRef.current);
+      const startSec = Math.min(buffer.duration, Math.max(0, sourcePad.startSec));
+      const endSec = Math.min(buffer.duration, sourcePad.endSec > startSec ? sourcePad.endSec : buffer.duration);
+      const slices = samplerSliceMode === "regions"
+        ? createRegionSlices(startSec, endSec, samplerSliceCount)
+        : findTransientSlices(
+          Array.from({ length: buffer.numberOfChannels }, (_, channel) => buffer.getChannelData(channel)),
+          buffer.sampleRate,
+          startSec,
+          endSec,
+          samplerSliceCount,
+          samplerSliceSensitivity,
+        );
+      if (slices.length < 2) throw new Error("No clear transients found. Try Regions mode or lower sensitivity.");
+
+      const latestTrack = projectRef.current.tracks.find(candidate => candidate.id === trackId);
+      const latestSource = latestTrack?.machineId === "mpc_sample" ? latestTrack.samplerPads?.[padIndex] : undefined;
+      if (latestSource?.audioTrackId !== sourcePad.audioTrackId) {
+        throw new Error("The selected sample changed. Select it again and retry.");
+      }
+      const latestFreeIndices = (latestTrack?.samplerPads ?? createEmptySamplerPads()).flatMap((pad, index) => (
+        index !== padIndex && pad.audioTrackId === null && !(latestTrack?.padPatterns?.[index] ?? []).some(Boolean) ? [index] : []
+      ));
+      if (latestFreeIndices.length < slices.length - 1) {
+        throw new Error("There are not enough empty pads for these slices.");
+      }
+      const targets = [padIndex, ...latestFreeIndices.slice(0, slices.length - 1)];
+      if (!window.confirm(
+        `Create ${slices.length} slices? PAD ${String(padIndex + 1).padStart(2, "0")} becomes slice 1; remaining slices use empty pads. The original audio stays in your library.`,
+      )) return;
+
+      updateTrack(trackId, current => {
+        if (current.machineId !== "mpc_sample" || current.samplerPads?.[padIndex]?.audioTrackId !== sourcePad.audioTrackId) return current;
+        const pads = current.samplerPads ?? createEmptySamplerPads();
+        return {
+          ...current,
+          samplerPads: pads.map((pad, index) => {
+            const sliceIndex = targets.indexOf(index);
+            return sliceIndex < 0 ? pad : {
+              ...sourcePad,
+              audioTrackId: sourcePad.audioTrackId,
+              startSec: slices[sliceIndex].startSec,
+              endSec: slices[sliceIndex].endSec,
+            };
+          }),
+        };
+      });
+      setSelectedPadIndex(padIndex);
+      setRecordingLabel(`${slices.length} slices assigned from PAD ${String(padIndex + 1).padStart(2, "0")}.`);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "The sample could not be sliced.");
+      setRecordingLabel("Sample slicing failed.");
+    } finally {
+      setIsChoppingSample(false);
     }
   };
   const previewSamplerPad = async (padIndex: number) => {
@@ -1757,7 +1848,7 @@ export default function Salaryman1999() {
                           aria-label={`Pad ${padIndex + 1}: ${sampleTitle}`}
                           aria-pressed={selectedPadIndex === padIndex}
                           onClick={() => { void previewSamplerPad(padIndex); }}
-                          disabled={isPlaying || isRecording || isUploadingTake}
+                          disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample}
                           data-testid={`button-mpc-pad-${padIndex + 1}`}
                         >
                           <strong>{String(padIndex + 1).padStart(2, "0")}</strong>
@@ -1774,7 +1865,7 @@ export default function Salaryman1999() {
                         <span>SAMPLE</span>
                         <select
                           value={selectedSamplerPad?.audioTrackId ?? ""}
-                          disabled={isPlaying || isRecording || isUploadingTake}
+                          disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample}
                           onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({
                             ...pad,
                             audioTrackId: event.target.value ? Number(event.target.value) : null,
@@ -1793,18 +1884,35 @@ export default function Salaryman1999() {
                         className="n-screen-reader"
                         type="file"
                         accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.opus,.webm,.flac"
-                        disabled={isUploadingTake}
+                        disabled={isUploadingTake || isChoppingSample}
                         onChange={event => {
                           const file = event.currentTarget.files?.[0];
                           if (file) void uploadSamplerSample(file);
                         }}
                         data-testid="input-mpc-upload"
                       />
-                      <button className="n-btn n-mpc-upload" type="button" onClick={() => samplerFileInputRef.current?.click()} disabled={isPlaying || isRecording || isUploadingTake} data-testid="button-mpc-upload">
+                      <button className="n-btn n-mpc-upload" type="button" onClick={() => samplerFileInputRef.current?.click()} disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample} data-testid="button-mpc-upload">
                         <Plus size={12} /> {isUploadingTake ? "Importing" : "Upload sample"}
                       </button>
                       {selectedSamplerPad?.audioTrackId && (
                         <>
+                          <div className="n-mpc-chop" data-testid="section-mpc-slicing">
+                            <div className="n-mpc-trim">
+                              <label className="n-mpc-field"><span>CHOP MODE</span><select value={samplerSliceMode} disabled={isPlaying || isRecording || isChoppingSample} onChange={event => setSamplerSliceMode(event.target.value as "regions" | "transient")} data-testid="select-mpc-slice-mode">
+                                <option value="regions">Regions</option>
+                                <option value="transient">Transient</option>
+                              </select></label>
+                              <label className="n-mpc-field"><span>{samplerSliceMode === "regions" ? "SLICES" : "MAX SLICES"}</span><select value={samplerSliceCount} disabled={isPlaying || isRecording || isChoppingSample} onChange={event => setSamplerSliceCount(Number(event.target.value) as 4 | 8 | 16)} data-testid="select-mpc-slice-count">
+                                {[4, 8, 16].map(count => <option key={count} value={count} disabled={emptySamplerPadIndices.length < count - 1}>{count}</option>)}
+                              </select></label>
+                            </div>
+                            {samplerSliceMode === "transient" && <label className="n-mpc-field"><span>SENSITIVITY · {samplerSliceSensitivity}</span><input type="range" min="0" max="100" value={samplerSliceSensitivity} disabled={isPlaying || isRecording || isChoppingSample} onChange={event => setSamplerSliceSensitivity(Number(event.target.value))} data-testid="input-mpc-slice-sensitivity" /></label>}
+                            <button className="n-btn n-mpc-chop-button" type="button" onClick={() => void chopSamplerSample()} disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample || emptySamplerPadIndices.length < samplerSliceCount - 1} data-testid="button-mpc-chop">
+                              {isChoppingSample ? "Analyzing" : `Chop · ${samplerSliceCount}`}
+                            </button>
+                            <span className="n-mpc-chop-status">{emptySamplerPadIndices.length} EMPTY PADS</span>
+                            <a className="n-mpc-chop-credit" href="https://github.com/snarebes/SampQOL-OS/releases" target="_blank" rel="noreferrer">SampQOL reference</a>
+                          </div>
                           <div className="n-mpc-trim">
                             <label className="n-mpc-field"><span>START SEC</span><input type="number" min="0" max={selectedSamplerSample?.durationSec || undefined} step="0.01" value={selectedSamplerPad.startSec} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => {
                               const maxStart = Math.max(0, (selectedSamplerSample?.durationSec || Number.MAX_SAFE_INTEGER) - 0.01);

@@ -584,6 +584,54 @@ describe("1999 recorded-loop persistence", () => {
     expect(exportedPadSources[0].playbackRate.value).toBeCloseTo(3);
   });
 
+  it("chops a library sample into unused pads and saves shared audio references", async () => {
+    const pads = Array.from({ length: 16 }, (_, index) => ({
+      audioTrackId: null,
+      startSec: 0,
+      endSec: 0,
+      tune: 0,
+      speed: 1,
+      level: 100,
+      tone: 100,
+      echo: 0,
+      rootKey: null,
+    }));
+    currentProject = JSON.stringify({
+      ...savedProject,
+      tracks: [
+        {
+          ...savedProject.tracks[0],
+          machineId: "mpc_sample" as const,
+          samplerPads: pads,
+          padPatterns: Array.from({ length: 16 }, () => Array(16).fill(0)),
+        },
+        savedProject.tracks[1],
+      ],
+    });
+    await mount();
+    click("row-track-trk-main");
+    setValue("select-mpc-sample", "501", "change");
+    await flush();
+    setValue("select-mpc-slice-count", "4", "change");
+    click("button-mpc-chop");
+    await flush();
+
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/501");
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("The original audio stays in your library."));
+    click("button-save-project");
+    await flush();
+
+    const put = h.apiFetch.mock.calls.find(([path, init]) => path === "/api/vault/entries/77" && init?.method === "PUT");
+    expect(put).toBeDefined();
+    const saved = JSON.parse(JSON.parse(String(put![1].body)).content);
+    expect(saved.tracks[0].samplerPads.slice(0, 4)).toEqual([
+      expect.objectContaining({ audioTrackId: 501, startSec: 0, endSec: 0.25 }),
+      expect.objectContaining({ audioTrackId: 501, startSec: 0.25, endSec: 0.5 }),
+      expect.objectContaining({ audioTrackId: 501, startSec: 0.5, endSec: 0.75 }),
+      expect.objectContaining({ audioTrackId: 501, startSec: 0.75, endSec: 1 }),
+    ]);
+  });
+
   it("triggers MPC pads from MIDI notes and learns a browser-local mapping", async () => {
     const pads = Array.from({ length: 16 }, (_, index) => ({
       audioTrackId: index < 2 ? 501 : null,
