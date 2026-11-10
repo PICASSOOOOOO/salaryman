@@ -1,0 +1,66 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&family=Space+Mono:wght@400;700&family=Syne:wght@600;700;800&display=swap");
+
+:root {
+  --font-sans: "DM Sans", sans-serif;
+  --font-mono: "Space Mono", "Fira Code", monospace;
+  --font-display: "Syne", "DM Sans", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.hardware-showcase {
+  min-height: 100vh;
+  padding: 24px;
+  color: #171713;
+  background: #f7f4ed;
+  font-family: var(--font-sans);
+}
+
+.hardware-showcase__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 18px;
+  border-bottom: 1px solid #d9d4c9;
+  padding-bottom: 12px;
+}
+
+.hardware-showcase__title h1 {
+  margin: 0;
+  font: 800 24px/1 var(--font-display);
+  letter-spacing: -.06em;
+}
+
+.hardware-showcase__title span {
+  font: 10px var(--font-mono);
+  letter-spacing: .1em;
+  color: #77756d;
+}
+
+.hardware-showcase__panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.hardware-showcase__section {
+  min-width: 0;
+  border: 1px solid #d9d4c9;
+  background: #fffdf8;
+}
+
+.hardware-showcase__section > h2 {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid #d9d4c9;
+  font: 700 10px/1.2 var(--font-mono);
+  letter-spacing: .12em;
+}
+
+@media (max-width: 900px) {
+  .hardware-showcase { padding: 14px; }
+  .hardware-showcase__panels { grid-template-columns: 1fr; }
+}

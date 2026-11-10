@@ -237,11 +237,11 @@ export default function Fm1EmulatorPanel({
   };
 
   return (
-    <section className="fm1-emulator-panel" aria-label="FM-1 and SMK-37 emulator">
+    <section className="fm1-emulator-panel" aria-label="FM-1 and SMK-37 emulator" data-machine={machine}>
       <aside className="fm1-catalog">
         <div className="fm1-panel-heading">
           <span className="fm1-eyebrow">1999 HARDWARE BAY</span>
-          <h2>FM-1 EMULATOR</h2>
+          <h2>{MACHINES[machine].name} EMULATOR</h2>
           <p>Choose a real machine, then browse the firmware built for it.</p>
         </div>
 

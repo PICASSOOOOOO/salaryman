@@ -5,6 +5,7 @@ import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
 import MinimoogEmulatorPanel from "@/components/MinimoogEmulatorPanel";
 import "./1999.css";
+import "./EmulatorPanels.css";
 
 type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37" | "minimoog";
 type EmulatorMachine = "fm1" | "smk37";

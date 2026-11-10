@@ -1,0 +1,315 @@
+.salary-1999 .n-emulator-panel {
+  overflow: hidden;
+  border-color: #c5c2b5;
+  background: #f7f5ee;
+  box-shadow: 0 5px 16px rgba(53, 49, 38, 0.07);
+}
+
+.salary-1999 .fm1-emulator-panel {
+  --device-accent: #788768;
+  --device-accent-soft: #e2e7d9;
+  --device-accent-line: #c8cdbd;
+  display: grid;
+  grid-template-columns: minmax(245px, 315px) minmax(0, 1fr);
+  gap: 10px;
+  min-height: 530px;
+  padding: 9px;
+  border: 1px solid #c5c2b5;
+  background: #e7e4d9;
+  color: #343a31;
+}
+
+.salary-1999 .fm1-emulator-panel[data-machine="smk37"] {
+  --device-accent: #64728a;
+  --device-accent-soft: #e1e4e9;
+  --device-accent-line: #c1c7d2;
+}
+
+.salary-1999 .fm1-catalog,
+.salary-1999 .fm1-player-column {
+  min-width: 0;
+  border: 1px solid #cfccbe;
+  background: #f4f2e9;
+  color: #383b32;
+}
+
+.salary-1999 .fm1-catalog {
+  gap: 8px;
+  padding: 10px;
+}
+
+.salary-1999 .fm1-panel-heading {
+  padding-bottom: 9px;
+  border-bottom: 1px solid #d4d1c5;
+}
+
+.salary-1999 .fm1-panel-heading::before {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--device-accent);
+  content: "M·VAVE / POCKET FM";
+  font: 700 0.58rem/1.3 var(--font-mono, monospace);
+  letter-spacing: 0.11em;
+}
+
+.salary-1999 .fm1-emulator-panel[data-machine="smk37"] .fm1-panel-heading::before {
+  content: "M·VAVE / KEYBOARD SYNTH";
+}
+
+.salary-1999 .fm1-panel-heading h2 {
+  margin: 4px 0;
+  color: #272b23;
+  font-size: 0.9rem;
+  letter-spacing: 0.09em;
+}
+
+.salary-1999 .fm1-panel-heading p,
+.salary-1999 .fm1-firmware-details p,
+.salary-1999 .fm1-attribution {
+  margin: 0;
+  color: #6e7066;
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.salary-1999 .fm1-eyebrow,
+.salary-1999 .fm1-search-label,
+.salary-1999 .fm1-firmware-author {
+  color: #74776b;
+  font-size: 0.59rem;
+  letter-spacing: 0.1em;
+}
+
+.salary-1999 .fm1-machine-options {
+  gap: 6px;
+}
+
+.salary-1999 .fm1-machine-option,
+.salary-1999 .fm1-search,
+.salary-1999 .fm1-firmware-list {
+  border-color: #cfccbe;
+  background: #e9e6db;
+  color: #393d34;
+}
+
+.salary-1999 .fm1-machine-option {
+  padding: 8px;
+}
+
+.salary-1999 .fm1-machine-option strong {
+  color: inherit;
+  font-size: 0.65rem;
+}
+
+.salary-1999 .fm1-machine-option span {
+  color: #74766c;
+  font-size: 0.58rem;
+}
+
+.salary-1999 .fm1-machine-option:hover,
+.salary-1999 .fm1-machine-option:focus-visible {
+  border-color: var(--device-accent);
+}
+
+.salary-1999 .fm1-machine-option.is-active {
+  border-color: var(--device-accent);
+  background: var(--device-accent-soft);
+  color: #333d2f;
+}
+
+.salary-1999 .fm1-machine-option.is-active span {
+  color: #666f5d;
+}
+
+.salary-1999 .fm1-search,
+.salary-1999 .fm1-firmware-list {
+  border-radius: 0;
+  font-size: 0.68rem;
+}
+
+.salary-1999 .fm1-search::placeholder,
+.salary-1999 .fm1-firmware-byline span {
+  color: #77786d;
+}
+
+.salary-1999 .fm1-firmware-list option:checked {
+  background: var(--device-accent) linear-gradient(var(--device-accent), var(--device-accent));
+  color: #fffdf8;
+}
+
+.salary-1999 .fm1-panel-state {
+  border-color: #c8c4b6;
+  color: #77786d;
+}
+
+.salary-1999 .fm1-panel-error {
+  border-color: #c98171;
+  color: #8e3f31;
+}
+
+.salary-1999 .fm1-firmware-details,
+.salary-1999 .fm1-attribution {
+  border-color: #d4d1c5;
+}
+
+.salary-1999 .fm1-firmware-byline strong {
+  color: #35392f;
+}
+
+.salary-1999 .fm1-firmware-note {
+  color: #9b5b2f !important;
+}
+
+.salary-1999 .fm1-firmware-details a,
+.salary-1999 .fm1-attribution a,
+.salary-1999 .fm1-player-footer a {
+  color: #64785b;
+  font-size: 0.61rem;
+}
+
+.salary-1999 .fm1-save-bridge {
+  border-color: #d6b49f;
+  background: #f1e6db;
+}
+
+.salary-1999 .fm1-save-bridge-heading {
+  color: #985435;
+  font-size: 0.61rem;
+}
+
+.salary-1999 .fm1-save-bridge-heading span,
+.salary-1999 .fm1-save-status {
+  color: #627953;
+}
+
+.salary-1999 .fm1-save-file-name,
+.salary-1999 .fm1-save-help,
+.salary-1999 .fm1-save-status {
+  color: #706d62;
+  font-size: 0.62rem;
+}
+
+.salary-1999 .fm1-save-file-input,
+.salary-1999 .fm1-save-download {
+  border-color: #c4c6b5;
+  background: #eeece2;
+  color: #485340;
+  font-size: 0.59rem;
+}
+
+.salary-1999 .fm1-save-file-input input {
+  color: #5f6258;
+  font-size: 0.59rem;
+}
+
+.salary-1999 .fm1-save-file-input input::file-selector-button {
+  background: #dfe4d6;
+  color: #333d2f;
+}
+
+.salary-1999 .fm1-save-download:hover:not(:disabled),
+.salary-1999 .fm1-save-file-input:hover {
+  border-color: var(--device-accent);
+}
+
+.salary-1999 .fm1-player-column {
+  min-height: 530px;
+  background: #d7d3c6;
+}
+
+.salary-1999 .fm1-player {
+  background: #ddd9cb;
+}
+
+.salary-1999 .fm1-player-placeholder {
+  color: #77786d;
+}
+
+.salary-1999 .fm1-player-footer {
+  border-color: #cfccbe;
+  background: #ebe8dd;
+  color: #74756a;
+  font-size: 0.61rem;
+}
+
+.salary-1999 .minimoog-emulator {
+  --device-accent: #a75c3b;
+  min-width: 0;
+  border: 1px solid #c5c2b5;
+  background: #e7e4d9;
+  color: #343a31;
+}
+
+.salary-1999 .minimoog-emulator__header {
+  padding: 13px;
+  border-bottom: 1px solid #cfccbe;
+}
+
+.salary-1999 .minimoog-emulator__eyebrow {
+  color: #74776b;
+  font-size: 0.59rem;
+  letter-spacing: 0.11em;
+}
+
+.salary-1999 .minimoog-emulator__header h2 {
+  margin: 4px 0 6px;
+  color: #272b23;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+}
+
+.salary-1999 .minimoog-emulator__header p {
+  color: #6e7066;
+  font-size: 0.7rem;
+}
+
+.salary-1999 .minimoog-emulator__header a,
+.salary-1999 .minimoog-emulator__controls a {
+  color: #64785b;
+  font-size: 0.65rem;
+}
+
+.salary-1999 .minimoog-emulator__controls {
+  color: #717267;
+  font-size: 0.68rem;
+}
+
+.salary-1999 .minimoog-emulator__launch {
+  border-color: var(--device-accent);
+  background: var(--device-accent);
+  color: #fff8eb;
+}
+
+.salary-1999 .minimoog-emulator__launch:hover,
+.salary-1999 .minimoog-emulator__launch:focus-visible {
+  border-color: #87472f;
+  background: #87472f;
+}
+
+.salary-1999 .minimoog-emulator__frame {
+  background: #151515;
+}
+
+@media (max-width: 760px) {
+  .salary-1999 .fm1-emulator-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .salary-1999 .fm1-catalog {
+    max-height: 520px;
+  }
+
+  .salary-1999 .fm1-firmware-list {
+    min-height: 190px;
+    flex: 0 1 230px;
+  }
+
+  .salary-1999 .fm1-player-column {
+    min-height: 440px;
+  }
+
+  .salary-1999 .fm1-player,
+  .salary-1999 .fm1-player-placeholder {
+    min-height: 400px;
+  }
+}

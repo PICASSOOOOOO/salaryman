@@ -2,6 +2,10 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/OrbitEngine.tsx": () => import("../components/mockups/OrbitEngine.tsx"),
+  "./components/mockups/1999-emulator-visuals/Current.tsx": () => import("../components/mockups/1999-emulator-visuals/Current.tsx"),
+  "./components/mockups/1999-emulator-visuals/Fm1EmulatorPanel.tsx": () => import("../components/mockups/1999-emulator-visuals/Fm1EmulatorPanel.tsx"),
+  "./components/mockups/1999-emulator-visuals/MinimoogEmulatorPanel.tsx": () => import("../components/mockups/1999-emulator-visuals/MinimoogEmulatorPanel.tsx"),
+  "./components/mockups/1999-emulator-visuals/VisualRefresh.tsx": () => import("../components/mockups/1999-emulator-visuals/VisualRefresh.tsx"),
   "./components/mockups/crm-sync/Current.tsx": () => import("../components/mockups/crm-sync/Current.tsx"),
   "./components/mockups/crm-sync/Streamlined.tsx": () => import("../components/mockups/crm-sync/Streamlined.tsx"),
   "./components/mockups/salaryman-gameplay-tour/SalarymanGameplayTour.tsx": () => import("../components/mockups/salaryman-gameplay-tour/SalarymanGameplayTour.tsx"),

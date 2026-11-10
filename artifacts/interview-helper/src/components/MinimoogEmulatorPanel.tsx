@@ -9,7 +9,7 @@ export default function MinimoogEmulatorPanel() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   return (
-    <div className="minimoog-emulator" data-testid="minimoog-emulator">
+    <div className="minimoog-emulator" data-machine="minimoog" data-testid="minimoog-emulator">
       <header className="minimoog-emulator__header">
         <div>
           <span className="minimoog-emulator__eyebrow">1999 HARDWARE BAY</span>

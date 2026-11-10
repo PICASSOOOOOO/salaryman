@@ -79,11 +79,15 @@ describe('FM-1 emulator catalog', () => {
     expect(fm1Frame?.getAttribute('src')).toBe(
       'https://joakimeriksson.github.io/fm1-emu/?fw=felucca&embed=1',
     );
+    expect(container.querySelector('.fm1-emulator-panel')?.getAttribute('data-machine')).toBe('fm1');
+    expect(container.querySelector('.fm1-panel-heading h2')?.textContent).toBe('M-VAVE FM-1 EMULATOR');
     expect(container.querySelectorAll('[data-testid="select-firmware"] option')).toHaveLength(2);
 
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="button-machine-smk37"]')!.click();
     });
+    expect(container.querySelector('.fm1-emulator-panel')?.getAttribute('data-machine')).toBe('smk37');
+    expect(container.querySelector('.fm1-panel-heading h2')?.textContent).toBe('M-VAVE SMK-37 EMULATOR');
     expect(container.querySelector<HTMLIFrameElement>('[data-testid="iframe-fm1-emulator"]')?.getAttribute('src'))
       .toBe('https://joakimeriksson.github.io/fm1-emu/smk37/?fw=snoop37&embed=1');
 

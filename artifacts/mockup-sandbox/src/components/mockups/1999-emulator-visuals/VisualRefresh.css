@@ -1,0 +1,551 @@
+.visual-refresh {
+  --bay-ink: #272b23;
+  --bay-muted: #7d7f72;
+  --bay-paper: #ece9de;
+  --bay-paper-deep: #dfdccf;
+  --bay-line: #cac8b9;
+  --bay-orange: #c45f39;
+  min-height: 100vh;
+  padding: 0 clamp(16px, 4.3vw, 62px) 26px;
+  color: var(--bay-ink);
+  background:
+    radial-gradient(ellipse at 88% 8%, rgba(255,255,255,.46), transparent 30%),
+    var(--bay-paper);
+  font-family: var(--font-sans);
+}
+
+.visual-refresh__topbar {
+  display: flex;
+  min-height: 61px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--bay-line);
+  color: var(--bay-muted);
+  font: 9px/1 var(--font-mono);
+  letter-spacing: .1em;
+}
+
+.visual-refresh__wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bay-ink);
+  font: 800 13px/1 var(--font-display);
+  letter-spacing: -.07em;
+  text-decoration: none;
+}
+
+.visual-refresh__wordmark b {
+  padding: 4px 5px 3px;
+  background: var(--bay-ink);
+  color: var(--bay-paper);
+  font: 700 9px/1 var(--font-mono);
+  letter-spacing: .04em;
+}
+
+.visual-refresh__breadcrumb,
+.visual-refresh__session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.visual-refresh__breadcrumb strong {
+  color: var(--bay-ink);
+  font-weight: 700;
+}
+
+.visual-refresh__session {
+  white-space: nowrap;
+}
+
+.visual-refresh__session i,
+.visual-refresh__status-light {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #77936b;
+  box-shadow: 0 0 0 3px rgba(119,147,107,.14);
+}
+
+.visual-refresh__intro {
+  display: flex;
+  min-height: 214px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 38px 0 32px;
+}
+
+.visual-refresh__overline,
+.visual-refresh__rule,
+.visual-refresh__instrument-heading p,
+.visual-refresh__detail,
+.visual-refresh__bay-status,
+.visual-refresh__footer {
+  font-family: var(--font-mono);
+  letter-spacing: .1em;
+}
+
+.visual-refresh__overline {
+  margin: 0 0 14px;
+  color: var(--bay-orange);
+  font-size: 9px;
+}
+
+.visual-refresh__overline span {
+  padding: 0 4px;
+  color: #a8a696;
+}
+
+.visual-refresh__intro h1 {
+  margin: 0;
+  font: 600 clamp(36px, 5vw, 60px)/.96 var(--font-display);
+  letter-spacing: -.075em;
+}
+
+.visual-refresh__mobile-break {
+  display: none;
+}
+
+.visual-refresh__lede {
+  max-width: 450px;
+  margin: 14px 0 0;
+  color: #6c6e62;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.visual-refresh__bay-status {
+  display: grid;
+  grid-template-columns: 9px auto;
+  align-items: center;
+  gap: 7px 10px;
+  min-width: 174px;
+  padding: 14px 15px;
+  border: 1px solid var(--bay-line);
+  background: rgba(255,255,255,.27);
+  color: var(--bay-muted);
+  font-size: 8px;
+}
+
+.visual-refresh__bay-status strong {
+  grid-column: 2;
+  color: var(--bay-ink);
+  font-size: 11px;
+}
+
+.visual-refresh__bay-status small {
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px solid var(--bay-line);
+  font-size: 7px;
+}
+
+.visual-refresh__rule {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  border-top: 1px solid var(--bay-ink);
+  color: var(--bay-muted);
+  font-size: 8px;
+}
+
+.visual-refresh__rule > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visual-refresh__rule b {
+  color: var(--bay-ink);
+  font-weight: 500;
+}
+
+.visual-refresh__rule i {
+  width: 1px;
+  height: 11px;
+  margin: 0 4px;
+  background: var(--bay-line);
+}
+
+.visual-refresh__fm-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.visual-refresh__instrument {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #c5c2b5;
+  background: #f7f5ee;
+  box-shadow: 0 5px 16px rgba(53,49,38,.07);
+}
+
+.visual-refresh__instrument-heading {
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bay-line);
+}
+
+.visual-refresh__index {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid #c6c1b2;
+  border-radius: 50%;
+  color: var(--bay-orange);
+  font: 10px var(--font-mono);
+}
+
+.visual-refresh__instrument-heading p {
+  margin: 0 0 4px;
+  color: var(--bay-muted);
+  font-size: 7px;
+}
+
+.visual-refresh__instrument-heading h2 {
+  margin: 0;
+  font: 700 16px/1 var(--font-display);
+  letter-spacing: -.04em;
+}
+
+.visual-refresh__detail {
+  margin-left: auto;
+  color: #858477;
+  font-size: 7px;
+  text-align: right;
+}
+
+.visual-refresh__instrument .fm1-emulator-panel {
+  min-height: 0;
+  grid-template-columns: minmax(190px, 42%) minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px;
+  background: #e7e4d9;
+  color: #343a31;
+}
+
+.visual-refresh__instrument .fm1-catalog,
+.visual-refresh__instrument .fm1-player-column {
+  border: 1px solid #cfccbe;
+  background: #f4f2e9;
+  color: #383b32;
+}
+
+.visual-refresh__instrument .fm1-catalog {
+  gap: 8px;
+  padding: 10px;
+}
+
+.visual-refresh__instrument .fm1-panel-heading {
+  display: none;
+}
+
+.visual-refresh__instrument .fm1-panel-heading h2 {
+  color: var(--bay-orange);
+}
+
+.visual-refresh__instrument .fm1-panel-heading p,
+.visual-refresh__instrument .fm1-firmware-details p,
+.visual-refresh__instrument .fm1-attribution {
+  color: #6e7066;
+}
+
+.visual-refresh__instrument .fm1-eyebrow,
+.visual-refresh__instrument .fm1-search-label,
+.visual-refresh__instrument .fm1-firmware-author {
+  color: #788768;
+}
+
+.visual-refresh__instrument .fm1-machine-option,
+.visual-refresh__instrument .fm1-search,
+.visual-refresh__instrument .fm1-firmware-list {
+  border-color: #cfccbe;
+  background: #e9e6db;
+  color: #393d34;
+}
+
+.visual-refresh__instrument .fm1-machine-option span {
+  color: #74766c;
+}
+
+.visual-refresh__instrument .fm1-machine-option.is-active {
+  border-color: #7d8b70;
+  background: #e2e7d9;
+  color: #333d2f;
+}
+
+.visual-refresh__instrument .fm1-machine-option.is-active span {
+  color: #666f5d;
+}
+
+.visual-refresh__instrument .fm1-panel-state {
+  border-color: #c8c4b6;
+  color: #77786d;
+}
+
+.visual-refresh__instrument .fm1-panel-error {
+  color: #a34735;
+}
+
+.visual-refresh__instrument .fm1-firmware-details,
+.visual-refresh__instrument .fm1-attribution {
+  border-color: #d4d1c5;
+}
+
+.visual-refresh__instrument .fm1-firmware-byline strong {
+  color: #35392f;
+}
+
+.visual-refresh__instrument .fm1-firmware-byline span {
+  color: #77786d;
+}
+
+.visual-refresh__instrument .fm1-firmware-note {
+  color: #9b5b2f !important;
+}
+
+.visual-refresh__instrument .fm1-firmware-details a,
+.visual-refresh__instrument .fm1-attribution a,
+.visual-refresh__instrument .fm1-player-footer a {
+  color: #6a7b5d;
+}
+
+.visual-refresh__instrument .fm1-save-bridge {
+  border-color: #d6b49f;
+  background: #f1e6db;
+}
+
+.visual-refresh__instrument .fm1-save-bridge-heading {
+  color: #985435;
+}
+
+.visual-refresh__instrument .fm1-save-bridge-heading span,
+.visual-refresh__instrument .fm1-save-status {
+  color: #627953;
+}
+
+.visual-refresh__instrument .fm1-save-file-name,
+.visual-refresh__instrument .fm1-save-help,
+.visual-refresh__instrument .fm1-save-status {
+  color: #706d62;
+}
+
+.visual-refresh__instrument .fm1-save-file-input,
+.visual-refresh__instrument .fm1-save-download {
+  border-color: #c4c6b5;
+  background: #eeece2;
+  color: #485340;
+}
+
+.visual-refresh__instrument .fm1-player-column {
+  min-height: 530px;
+  background: #d7d3c6;
+}
+
+.visual-refresh__instrument .fm1-player {
+  min-height: 490px;
+  background: #ddd9cb;
+}
+
+.visual-refresh__instrument .fm1-player-placeholder {
+  min-height: 490px;
+  color: #77786d;
+}
+
+.visual-refresh__instrument .fm1-player-footer {
+  border-color: #cfccbe;
+  background: #ebe8dd;
+  color: #74756a;
+}
+
+.visual-refresh__instrument--smk .visual-refresh__index {
+  color: #69748a;
+}
+
+.visual-refresh__instrument--smk .fm1-machine-option.is-active {
+  border-color: #7d879b;
+  background: #e1e4e9;
+  color: #303a4b;
+}
+
+.visual-refresh__instrument--smk .fm1-save-bridge {
+  border-color: #c1c7d2;
+  background: #e7e9eb;
+}
+
+.visual-refresh__instrument--smk .fm1-save-bridge-heading {
+  color: #53617b;
+}
+
+.visual-refresh__instrument--smk .fm1-save-file-input,
+.visual-refresh__instrument--smk .fm1-save-download {
+  color: #45536a;
+}
+
+.visual-refresh__instrument--moog {
+  margin-top: 14px;
+}
+
+.visual-refresh__instrument--moog .visual-refresh__index {
+  border-radius: 3px;
+  color: #a34e32;
+}
+
+.visual-refresh__instrument--moog .minimoog-emulator {
+  border: 0;
+  background: #e7e4d9;
+  color: #343a31;
+}
+
+.visual-refresh__instrument--moog .minimoog-emulator__header {
+  display: none;
+}
+
+.visual-refresh__instrument--moog .minimoog-emulator__controls {
+  min-height: 55px;
+  color: #717267;
+}
+
+.visual-refresh__instrument--moog .minimoog-emulator__launch {
+  border-color: #a75c3b;
+  background: #a75c3b;
+  color: #fff8eb;
+}
+
+.visual-refresh__instrument--moog .minimoog-emulator__controls a {
+  color: #64785b;
+}
+
+.visual-refresh__instrument--moog .minimoog-emulator__frame {
+  min-height: 560px;
+}
+
+.visual-refresh__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 2px 4px;
+  color: #858477;
+  font-size: 7px;
+}
+
+.visual-refresh__footer b {
+  color: var(--bay-orange);
+}
+
+@media (max-width: 820px) {
+  .visual-refresh__intro {
+    min-height: 190px;
+  }
+
+  .visual-refresh__fm-row {
+    grid-template-columns: 1fr;
+  }
+
+  .visual-refresh__instrument .fm1-emulator-panel {
+    grid-template-columns: minmax(220px, 36%) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .visual-refresh {
+    padding: 0 12px 20px;
+  }
+
+  .visual-refresh__topbar {
+    min-height: 54px;
+  }
+
+  .visual-refresh__breadcrumb {
+    display: none;
+  }
+
+  .visual-refresh__session {
+    font-size: 7px;
+  }
+
+  .visual-refresh__intro {
+    min-height: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+    padding: 28px 0 24px;
+  }
+
+  .visual-refresh__intro h1 {
+    font-size: 42px;
+  }
+
+  .visual-refresh__mobile-break {
+    display: initial;
+  }
+
+  .visual-refresh__lede {
+    max-width: 340px;
+    font-size: 12px;
+  }
+
+  .visual-refresh__bay-status {
+    width: 100%;
+    grid-template-columns: 9px auto auto;
+    padding: 10px 12px;
+  }
+
+  .visual-refresh__bay-status strong {
+    grid-column: auto;
+  }
+
+  .visual-refresh__bay-status small {
+    grid-column: 1 / -1;
+  }
+
+  .visual-refresh__rule {
+    font-size: 7px;
+  }
+
+  .visual-refresh__detail {
+    max-width: 85px;
+    line-height: 1.5;
+  }
+
+  .visual-refresh__instrument .fm1-emulator-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .visual-refresh__instrument .fm1-player-column {
+    min-height: 430px;
+  }
+
+  .visual-refresh__instrument .fm1-player,
+  .visual-refresh__instrument .fm1-player-placeholder {
+    min-height: 390px;
+  }
+
+  .visual-refresh__instrument--moog .minimoog-emulator__controls {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .visual-refresh__instrument--moog .minimoog-emulator__frame {
+    height: 600px;
+    min-height: 520px;
+  }
+
+  .visual-refresh__footer {
+    flex-direction: column;
+    line-height: 1.5;
+  }
+}

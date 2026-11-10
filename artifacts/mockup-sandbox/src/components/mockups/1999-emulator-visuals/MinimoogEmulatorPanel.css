@@ -1,0 +1,108 @@
+.minimoog-emulator {
+  min-width: 0;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: linear-gradient(155deg, rgba(16, 24, 20, 0.98), rgba(7, 10, 8, 0.98));
+  color: #d6e4dc;
+  font-family: var(--font-sans);
+}
+
+.minimoog-emulator__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.16);
+}
+
+.minimoog-emulator__eyebrow {
+  color: #38bdf8;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+}
+
+.minimoog-emulator__header h2 {
+  margin: 4px 0 6px;
+  color: #ff8c00;
+  font-size: 0.88rem;
+  letter-spacing: 0.13em;
+}
+
+.minimoog-emulator__header p {
+  max-width: 680px;
+  margin: 0;
+  color: rgba(214, 228, 220, 0.68);
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.minimoog-emulator__header a,
+.minimoog-emulator__controls a {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  color: #38bdf8;
+  font-size: 0.62rem;
+  text-decoration: none;
+}
+
+.minimoog-emulator__header a:hover,
+.minimoog-emulator__controls a:hover {
+  color: #b4e9ff;
+  text-decoration: underline;
+}
+
+.minimoog-emulator__controls {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 13px;
+  color: rgba(214, 228, 220, 0.62);
+  font-size: 0.66rem;
+}
+
+.minimoog-emulator__launch {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 2px;
+  background: rgba(56, 189, 248, 0.09);
+  color: #e6f8ff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.68rem;
+}
+
+.minimoog-emulator__launch:hover,
+.minimoog-emulator__launch:focus-visible {
+  border-color: #38bdf8;
+  outline: none;
+}
+
+.minimoog-emulator__frame {
+  display: block;
+  width: 100%;
+  height: min(76vh, 780px);
+  min-height: 540px;
+  border: 0;
+  background: #151515;
+}
+
+@media (max-width: 640px) {
+  .minimoog-emulator__header {
+    flex-direction: column;
+  }
+
+  .minimoog-emulator__controls {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .minimoog-emulator__frame {
+    height: 680px;
+    min-height: 520px;
+  }
+}
