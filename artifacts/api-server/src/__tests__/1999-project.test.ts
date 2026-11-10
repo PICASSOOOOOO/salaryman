@@ -22,6 +22,14 @@ describe("1999 project validation", () => {
     expect(parseNineteenNinetyNineProject(JSON.stringify(legacyProject))).not.toBeNull();
   });
 
+  it("accepts Minimoog instrument lanes", () => {
+    const project = {
+      ...legacyProject,
+      tracks: [{ ...legacyProject.tracks[0], machineId: "minimoog" }],
+    };
+    expect(parseNineteenNinetyNineProject(JSON.stringify(project))).not.toBeNull();
+  });
+
   it("accepts bounded track controls and selected emulator firmware", () => {
     const project = {
       ...legacyProject,

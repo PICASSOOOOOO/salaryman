@@ -3,9 +3,10 @@ import { Download, FileAudio, FileJson, Mic, Play, Plus, Radio, RefreshCw, Save,
 import { apiFetch } from "@/lib/api-client";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
+import MinimoogEmulatorPanel from "@/components/MinimoogEmulatorPanel";
 import "./1999.css";
 
-type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37";
+type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37" | "minimoog";
 type EmulatorMachine = "fm1" | "smk37";
 type SoundEngineState = { tone: number; decayMs: number };
 type EmulatorState = {
@@ -53,6 +54,7 @@ const machines: { id: MachineId; name: string; descriptor: string }[] = [
   { id: "boss_ce2", name: "BOSS CE-2", descriptor: "Effect lane" },
   { id: "fm1", name: "FM-1", descriptor: "FM tone lane" },
   { id: "smk37", name: "SMK37", descriptor: "Keyboard sketch lane" },
+  { id: "minimoog", name: "Minimoog Model D", descriptor: "Three-oscillator analog-style synth" },
 ];
 
 const freshProject = (): Project => ({
@@ -107,6 +109,7 @@ function isEmulatorState(value: unknown): value is EmulatorState {
 function defaultSoundState(machineId: MachineId): SoundEngineState {
   if (machineId === "fm1") return { tone: 48, decayMs: 420 };
   if (machineId === "mpc_sample" || machineId === "sp404mkii") return { tone: 62, decayMs: 180 };
+  if (machineId === "minimoog") return { tone: 68, decayMs: 420 };
   if (machineId === "korg_m1") return { tone: 82, decayMs: 560 };
   return { tone: 72, decayMs: 260 };
 }
@@ -167,6 +170,7 @@ function safeFilename(value: string) {
 function baseFrequencyForMachine(machineId: MachineId) {
   return machineId === "mpc_sample" ? 82
     : machineId === "fm1" ? 110
+      : machineId === "minimoog" ? 130.81
       : machineId === "korg_m1" ? 261.63
         : machineId === "korg_ms2000r" ? 146.83
           : machineId === "smk37" ? 196 : 164.81;
@@ -182,6 +186,7 @@ function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, step
     boss_ce2: "sine",
     fm1: "sine",
     smk37: "sawtooth",
+    minimoog: "sawtooth",
   };
   const oscillator = context.createOscillator();
   const filter = context.createBiquadFilter();
@@ -986,6 +991,11 @@ export default function Salaryman1999() {
                 },
               }))}
             />
+          </section>
+        )}
+        {selectedTrack?.machineId === "minimoog" && (
+          <section className="n-emulator-panel" aria-label="Minimoog Model D emulator" data-testid="section-minimoog-emulator">
+            <MinimoogEmulatorPanel />
           </section>
         )}
          <footer className="n-footer"><span><b>1999</b> / SKETCH · CAPTURE · KEEP</span><span>{updatedAt ? `LAST SAVE ${new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "LOCAL SESSION"}</span><span>PROJECTS: VAULT · AUDIO: MUSIC LIBRARY</span></footer>

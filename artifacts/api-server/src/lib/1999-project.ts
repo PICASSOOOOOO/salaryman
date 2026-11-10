@@ -7,6 +7,7 @@ export const NINETEEN_NINETY_NINE_MACHINE_IDS = [
   "boss_ce2",
   "fm1",
   "smk37",
+  "minimoog",
 ] as const;
 
 export type NineteenNinetyNineProject = {
