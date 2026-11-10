@@ -182,7 +182,11 @@ beforeEach(() => {
   audioSources.length = 0;
   audioGains.length = 0;
   offlineSources.length = 0;
-  h.music.tracks = [{ id: 501, title: "1999 take" }];
+  h.music.tracks = [
+    { id: 501, title: "1999 take" },
+    { id: 502, title: "Overdub one" },
+    { id: 503, title: "Overdub two" },
+  ];
   h.music.refresh.mockReset();
   h.music.previewTrack.mockReset();
   h.apiFetch.mockReset();
@@ -214,6 +218,7 @@ beforeEach(() => {
   vi.stubGlobal("AudioContext", FakeAudioContext);
   vi.stubGlobal("OfflineAudioContext", FakeOfflineAudioContext);
   vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
+  vi.stubGlobal("confirm", vi.fn(() => true));
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
@@ -329,5 +334,54 @@ describe("1999 recorded-loop persistence", () => {
     expect(offlineSources.every(source => Math.abs(source.playbackRate.value - (110 / 92)) < 0.0001)).toBe(true);
     expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/501");
     expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/502");
+  });
+
+  it("removes only the chosen overdub and keeps its audio-library take", async () => {
+    const layeredProject = {
+      ...savedProject,
+      tracks: savedProject.tracks.map((track, index) => index === 1
+        ? { ...track, overdubTrackIds: [502, 503] }
+        : track),
+    };
+    currentProject = JSON.stringify(layeredProject);
+
+    await mount();
+    click("row-track-trk-loop");
+
+    expect(container.querySelector('[data-testid="row-loop-take-base-trk-loop"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-501"]')).toBeNull();
+    expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-502"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-503"]')).not.toBeNull();
+
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+    click("button-remove-overdub-trk-loop-502");
+    expect(JSON.parse(currentProject).tracks[1].overdubTrackIds).toEqual([502, 503]);
+
+    click("button-remove-overdub-trk-loop-502");
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Remove this overdub from the loop? The take will remain in your music library.",
+    );
+    expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-502"]')).toBeNull();
+    expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-503"]')).not.toBeNull();
+    expect(h.music.tracks.some(track => track.id === 502)).toBe(true);
+
+    await act(async () => {
+      (container.querySelector('[data-testid="button-save-project"]') as HTMLButtonElement).click();
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    const put = h.apiFetch.mock.calls.find(([path, init]) => path === "/api/vault/entries/77" && init?.method === "PUT");
+    expect(put).toBeDefined();
+    const saved = JSON.parse(JSON.parse(String(put![1].body)).content);
+    expect(saved.tracks[1].audioTrackId).toBe(501);
+    expect(saved.tracks[1].overdubTrackIds).toEqual([503]);
+    expect(h.apiFetch.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    await mount();
+    click("row-track-trk-loop");
+    expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-502"]')).toBeNull();
+    expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-503"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="row-loop-take-base-trk-loop"]')).not.toBeNull();
   });
 });

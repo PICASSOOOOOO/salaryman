@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileAudio, FileJson, Mic, Play, Plus, Radio, RefreshCw, Save, Square, Volume2 } from "lucide-react";
+import { Download, FileAudio, FileJson, Mic, Play, Plus, Radio, RefreshCw, Save, Square, Volume2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
@@ -525,6 +525,15 @@ export default function Salaryman1999() {
   const updateTrack = (id: string, updater: (track: ProjectTrack) => ProjectTrack) => updateProject(current => ({
     ...current, tracks: current.tracks.map(track => track.id === id ? updater(track) : track),
   }));
+  const removeOverdubLayer = (trackId: string, audioTrackId: number) => {
+    if (playingRef.current || isRecording || isUploadingTake) return;
+    const target = projectRef.current.tracks.find(track => track.id === trackId && track.kind === "recording");
+    if (!target?.overdubTrackIds?.includes(audioTrackId)) return;
+    if (!window.confirm("Remove this overdub from the loop? The take will remain in your music library.")) return;
+    updateTrack(trackId, track => track.kind === "recording"
+      ? { ...track, overdubTrackIds: (track.overdubTrackIds ?? []).filter(id => id !== audioTrackId) }
+      : track);
+  };
   const refreshMidiOutputs = (access: MidiAccessPort) => {
     const outputs = Array.from(access.outputs.values()).filter(output => output.state !== "disconnected");
     setMidiOutputs(outputs);
@@ -1221,6 +1230,34 @@ export default function Salaryman1999() {
                   {isRecording ? <><Square size={12} /> Stop loop</> : <><Mic size={13} /> {isUploadingTake ? "Saving loop" : `${selectedTrack?.kind === "recording" && selectedTrack.audioTrackId !== null ? "Overdub" : "Record"} ${captureBarsForSelection} bar${captureBarsForSelection === 1 ? "" : "s"}`}</>}
                 </button>
               </div>
+              {selectedTrack?.kind === "recording" && selectedTrack.audioTrackId !== null && (
+                <div className="n-loop-takes" role="group" aria-label={`${selectedTrack.name} recorded takes`} data-testid={`list-loop-takes-${selectedTrack.id}`}>
+                  <span className="n-loop-takes-heading">LOOP TAKES</span>
+                  <div className="n-loop-take-row n-loop-take-base" data-testid={`row-loop-take-base-${selectedTrack.id}`}>
+                    <span>BASE TAKE</span>
+                    <span>ORIGINAL</span>
+                  </div>
+                  {(selectedTrack.overdubTrackIds ?? []).map((audioTrackId, index) => (
+                    <div className="n-loop-take-row" key={audioTrackId} data-testid={`row-loop-overdub-${selectedTrack.id}-${audioTrackId}`}>
+                      <span>OVERDUB {index + 1}</span>
+                      <button
+                        type="button"
+                        className="n-loop-take-remove"
+                        aria-label={`Remove overdub ${index + 1}`}
+                        title="Remove from loop; keep take in library"
+                        disabled={isPlaying || isRecording || isUploadingTake}
+                        onClick={event => {
+                          event.stopPropagation();
+                          removeOverdubLayer(selectedTrack.id, audioTrackId);
+                        }}
+                        data-testid={`button-remove-overdub-${selectedTrack.id}-${audioTrackId}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </aside>
         </div>
