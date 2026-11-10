@@ -1305,7 +1305,17 @@ export default function Salaryman1999() {
                         </div>
                       )}
                       <div className="n-track-actions">
-                        {track.audioTrackId !== null && <button className="n-icon-btn" type="button" title="Preview loop" aria-label="Preview loop" onClick={event => { event.stopPropagation(); if (libraryTracks.some(item => item.id === track.audioTrackId)) previewTrack(track.audioTrackId!); }} data-testid={`button-play-loop-${track.id}`}><Volume2 size={14} /></button>}
+                        {track.audioTrackId !== null && <button
+                          className={`n-icon-btn${previewLoadingTrackId === track.id || previewingTrackId === track.id ? " is-active" : ""}`}
+                          type="button"
+                          title={previewLoadingTrackId === track.id ? "Cancel loop preview" : previewingTrackId === track.id ? "Stop loop preview" : "Preview all loop layers"}
+                          aria-label={previewLoadingTrackId === track.id || previewingTrackId === track.id ? "Stop loop preview" : "Preview all loop layers"}
+                          disabled={isPlaying || isRecording || isUploadingTake}
+                          onClick={event => { event.stopPropagation(); void toggleLoopPreview(track); }}
+                          data-testid={`button-play-loop-${track.id}`}
+                        >
+                          {previewLoadingTrackId === track.id ? <RefreshCw size={13} /> : previewingTrackId === track.id ? <Square size={12} /> : <Volume2 size={14} />}
+                        </button>}
                         <button className={`n-icon-btn${track.muted ? " is-active" : ""}`} type="button" aria-label={track.muted ? "Unmute track" : "Mute track"} aria-pressed={track.muted} onClick={event => { event.stopPropagation(); updateTrack(track.id, current => ({ ...current, muted: !current.muted })); }} data-testid={`button-mute-${track.id}`}>M</button>
                       </div>
                     </div>
