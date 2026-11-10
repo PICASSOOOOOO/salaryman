@@ -7,6 +7,18 @@ The user sees SALARYMAN as a work platform for unemployed people, job seekers, c
 
 The 1999 workstation should support Akai MPC, Korg, Boss, Roland SP-404MKII, Teenage Engineering OP-1, and similar machines, with their sounds. Switching machines should change the panel and sound engine while keeping one shared recording/programming workflow across plugin and non-plugin versions; live recording should follow OP-1-style workflows. In SALARYMAN, machine-specific rendered workstations should be purchasable and usable as desks in office studios.
 
+1999 is a free app within SALARYMAN. Keep it inside SALARYMAN; do not create a separate 1999 homepage or sales page. SALARYMAN's existing main homepage remains the only product homepage.
+
+**Why:** the user explicitly clarified the product structure and that 1999 is free, not a standalone product to sell.
+
+**How to apply:** treat 1999 as an in-app creative workstation and keep its UI consistent with the existing SALARYMAN product. Do not add standalone marketing, pricing, or sales surfaces for it.
+
+Keep 1999 interfaces stripped and tool-focused: show controls, short labels, status, and required source/license attribution without explanatory copy.
+
+**Why:** the user explicitly asked for 1999 to focus on tools without explanation.
+
+**How to apply:** remove promotional, tutorial, and descriptive paragraphs from 1999 workspace surfaces; retain only concise operational feedback and required attribution.
+
 **Why:** the user wants a shared creative-work system that can support paid work, practice, and business creation in and out of the game, with machine-specific workstation desks usable in in-game studios.
 
 **How to apply:** make 1999 the first station on a reusable browser/game creative-workstation foundation, with shared project and asset ownership but station-specific editors. Keep machine support modular and resource-aware: each model gets an engine adapter behind one shared recorder, sequencer, transport, and project-state layer. Connect game furniture ownership/placement to the selected 1999 machine without claiming a visual prop is an emulator. Clearly distinguish hardware-firmware emulation from original recreations, sample-based instruments, and companion plugins; one model's support does not represent an entire brand.

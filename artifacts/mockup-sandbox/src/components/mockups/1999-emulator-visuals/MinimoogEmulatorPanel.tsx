@@ -12,12 +12,8 @@ export default function MinimoogEmulatorPanel() {
     <div className="minimoog-emulator" data-testid="minimoog-emulator">
       <header className="minimoog-emulator__header">
         <div>
-          <span className="minimoog-emulator__eyebrow">1999 HARDWARE BAY</span>
+          <span className="minimoog-emulator__eyebrow">BROWSER EMULATOR</span>
           <h2>MINIMOOG MODEL D</h2>
-          <p>
-            Opens the upstream browser emulator. Its controls and presets are separate
-            from this 1999 project; sequencer playback does not drive the embed.
-          </p>
         </div>
         <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
           SOURCE / LICENSE <ExternalLink size={12} aria-hidden="true" />
@@ -40,7 +36,7 @@ export default function MinimoogEmulatorPanel() {
           </span>
         )}
         <a href={EMULATOR_URL} target="_blank" rel="noopener noreferrer">
-          Open in new tab <ExternalLink size={12} aria-hidden="true" />
+            Open emulator <ExternalLink size={12} aria-hidden="true" />
         </a>
       </div>
 

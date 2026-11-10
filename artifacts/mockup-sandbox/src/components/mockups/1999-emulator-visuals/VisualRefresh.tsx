@@ -1,103 +1,66 @@
+import { useState } from "react";
 import "./_group.css";
 import "./VisualRefresh.css";
 import Fm1EmulatorPanel from "./Fm1EmulatorPanel";
 import MinimoogEmulatorPanel from "./MinimoogEmulatorPanel";
 
-function InstrumentHeading({
-  index,
-  name,
-  family,
-  detail,
-}: {
-  index: string;
-  name: string;
-  family: string;
-  detail: string;
-}) {
-  return (
-    <header className="visual-refresh__instrument-heading">
-      <span className="visual-refresh__index">{index}</span>
-      <div>
-        <p>{family}</p>
-        <h2>{name}</h2>
-      </div>
-      <span className="visual-refresh__detail">{detail}</span>
-    </header>
-  );
-}
+type Machine = "fm1" | "smk37" | "minimoog";
+
+const machineNames: Record<Machine, string> = {
+  fm1: "M-VAVE FM-1",
+  smk37: "M-VAVE SMK-37",
+  minimoog: "Minimoog Model D",
+};
 
 export function VisualRefresh() {
+  const [machine, setMachine] = useState<Machine>("fm1");
+
   return (
     <main className="visual-refresh">
-      <header className="visual-refresh__topbar">
-        <a className="visual-refresh__wordmark" href="#bay" aria-label="SALARYMAN 1999 home">
-          <span>SALARYMAN</span>
-          <b>1999</b>
-        </a>
-        <div className="visual-refresh__breadcrumb">
-          <span>WORKSPACE</span>
-          <span aria-hidden="true">/</span>
-          <strong>HARDWARE BAY</strong>
-        </div>
-        <span className="visual-refresh__session"><i /> SESSION 04 — READY</span>
-      </header>
+      <section className="visual-refresh__workspace" aria-label="1999 selected machine panel">
+        <section className="visual-refresh__machine-panel" aria-label="Selected lane controls">
+          <div className="visual-refresh__panel-head">
+            <p>02 / Machine</p>
+            <span>Lane setup</span>
+          </div>
+          <div className="visual-refresh__machine-body">
+            <div className="visual-refresh__machine-plate">
+              <strong>99<br />/ 01</strong>
+              <span>Sketch</span>
+            </div>
+            <label className="visual-refresh__machine-label" htmlFor="selected-machine">
+              Machine
+            </label>
+            <select
+              id="selected-machine"
+              className="visual-refresh__machine-select"
+              value={machine}
+              onChange={(event) => setMachine(event.target.value as Machine)}
+            >
+              <option value="fm1">{machineNames.fm1}</option>
+              <option value="smk37">{machineNames.smk37}</option>
+              <option value="minimoog">{machineNames.minimoog}</option>
+            </select>
+            <div className="visual-refresh__knob-row">
+              <label htmlFor="output-level">Output level</label>
+              <span>65%</span>
+              <input id="output-level" type="range" min="0" max="100" defaultValue="65" />
+            </div>
+          </div>
+        </section>
 
-      <section className="visual-refresh__intro" id="bay">
-        <div>
-          <p className="visual-refresh__overline">THE INSTRUMENT ROOM <span>·</span> 03 UNITS</p>
-          <h1>Make room<br className="visual-refresh__mobile-break" /> for sound.</h1>
-          <p className="visual-refresh__lede">
-            Three distinct machines. Their original controls, right here in your 1999 workspace.
-          </p>
-        </div>
-        <div className="visual-refresh__bay-status" aria-label="Hardware status">
-          <span className="visual-refresh__status-light" />
-          <span>HARDWARE BAY</span>
-          <strong>ONLINE</strong>
-          <small>LOCAL CONTROLS · NO SYNC</small>
-        </div>
+        <section className="visual-refresh__emulator" aria-label={`${machineNames[machine]} emulator`}>
+          <div className="visual-refresh__panel-head">
+            <p>03 / Emulator</p>
+            <span>{machineNames[machine]}</span>
+          </div>
+          {machine === "minimoog" ? (
+            <MinimoogEmulatorPanel />
+          ) : (
+            <Fm1EmulatorPanel initialMachine={machine} />
+          )}
+        </section>
       </section>
-
-      <div className="visual-refresh__rule">
-        <span>01—03 / SELECT AN INSTRUMENT</span>
-        <span>FM SYNTHS <b>02</b><i /> ANALOG <b>01</b></span>
-      </div>
-
-      <section className="visual-refresh__fm-row" aria-label="M-VAVE synthesizers">
-        <article className="visual-refresh__instrument visual-refresh__instrument--fm">
-          <InstrumentHeading
-            index="01"
-            family="M·VAVE / POCKET FM"
-            name="FM-1"
-            detail="6-VOICE · DIGITAL"
-          />
-          <Fm1EmulatorPanel initialMachine="fm1" />
-        </article>
-        <article className="visual-refresh__instrument visual-refresh__instrument--smk">
-          <InstrumentHeading
-            index="02"
-            family="M·VAVE / KEYBOARD SYNTH"
-            name="SMK-37"
-            detail="37-KEY · CONTROLLER"
-          />
-          <Fm1EmulatorPanel initialMachine="smk37" />
-        </article>
-      </section>
-
-      <section className="visual-refresh__instrument visual-refresh__instrument--moog">
-        <InstrumentHeading
-          index="03"
-          family="MOOG / MONOPHONIC ANALOG"
-          name="Minimoog Model D"
-          detail="1970s CLASSIC · BROWSER EMULATOR"
-        />
-        <MinimoogEmulatorPanel />
-      </section>
-
-      <footer className="visual-refresh__footer">
-        <span>1999 — A PLACE TO MAKE THINGS</span>
-        <span>INSTRUMENTS REMAIN INDEPENDENT <b>·</b> SOUND ON YOUR TERMS</span>
-      </footer>
     </main>
   );
 }

@@ -240,9 +240,8 @@ export default function Fm1EmulatorPanel({
     <section className="fm1-emulator-panel" aria-label="FM-1 and SMK-37 emulator">
       <aside className="fm1-catalog">
         <div className="fm1-panel-heading">
-          <span className="fm1-eyebrow">1999 HARDWARE BAY</span>
+          <span className="fm1-eyebrow">FIRMWARE EMULATOR</span>
           <h2>FM-1 EMULATOR</h2>
-          <p>Choose a real machine, then browse the firmware built for it.</p>
         </div>
 
         <div className="fm1-machine-options" role="group" aria-label="Choose a machine">
@@ -320,11 +319,8 @@ export default function Fm1EmulatorPanel({
               {selectedFirmware.version && <span>{selectedFirmware.version}</span>}
             </div>
             {selectedFirmware.author && <div className="fm1-firmware-author">BY {selectedFirmware.author}</div>}
-            {selectedFirmware.about && <p>{selectedFirmware.about}</p>}
             {selectedFirmware.byo && (
-              <p className="fm1-firmware-note">
-                This stock firmware needs your own .fwsc file; the emulator explains how to open it.
-              </p>
+              <span className="fm1-firmware-note">BYO .FWSC</span>
             )}
             {selectedFirmware.repo && (
               <a href={selectedFirmware.repo} target="_blank" rel="noopener noreferrer">
@@ -368,16 +364,13 @@ export default function Fm1EmulatorPanel({
               DOWNLOAD SAVE
             </button>
           </div>
-          <p className="fm1-save-help">
-            Export a save in the emulator, attach it here, then download it later and use the emulator’s Import control.
-          </p>
           {patchMessage && <p className="fm1-save-status" role="status" aria-live="polite">{patchMessage}</p>}
         </div>
 
         <p className="fm1-attribution">
-          Emulator by <a href="https://github.com/joakimeriksson/fm1-emu" target="_blank" rel="noopener noreferrer">
-            joakimeriksson
-          </a>. Firmware packages are loaded by the emulator from their authors; 1999 does not host them.
+          <a href="https://github.com/joakimeriksson/fm1-emu" target="_blank" rel="noopener noreferrer">
+            SOURCE / LICENSE ↗
+          </a>
         </p>
       </aside>
 
@@ -400,7 +393,6 @@ export default function Fm1EmulatorPanel({
           </div>
         )}
         <div className="fm1-player-footer">
-          <span>Press START inside the emulator to boot the selected firmware.</span>
           <a href={fullPageUrl} target="_blank" rel="noopener noreferrer">
             OPEN FULL EMULATOR ↗
           </a>

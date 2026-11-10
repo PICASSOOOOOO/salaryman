@@ -823,7 +823,6 @@ export default function Salaryman1999() {
         </header>
         <section className="n-heading">
           <h1 className="n-title">1999<small>PRODUCTION WORKSPACE</small></h1>
-          <p className="n-heading-note">A small room for rough ideas. Sketch a loop, capture a take, save it for later.</p>
         </section>
 
         <section className="n-toolbar" aria-label="Project controls" data-testid="section-project-controls">
@@ -895,11 +894,10 @@ export default function Salaryman1999() {
                     </div>
                   </div>
                 ))}
-                {project.tracks.length === 0 && <div className="n-empty" data-testid="empty-tracks">No lanes yet. Add an instrument or record a microphone take.</div>}
+                {project.tracks.length === 0 && <div className="n-empty" data-testid="empty-tracks">NO LANES</div>}
               </div>
             </div>
             <div className="n-track-add">
-              <p className="n-note">Tap a square to place a hit. Four bars, sixteen steps.</p>
               <button className="n-btn" type="button" onClick={() => addTrack("instrument")} disabled={project.tracks.length >= 8} data-testid="button-add-track"><Plus size={13} /> Add lane</button>
             </div>
             <div className={`n-recording${isRecording ? " is-live" : ""}`} data-testid="status-recording" role="status" aria-live="polite">
@@ -913,7 +911,6 @@ export default function Salaryman1999() {
               {selectedTrack ? (
                 <div className="n-machine-body">
                   <div className="n-machine-plate"><span className="n-machine-index">99<br />/ {String(project.tracks.indexOf(selectedTrack) + 1).padStart(2, "0")}</span><span className="n-machine-chip">{selectedTrack.kind === "recording" ? "REC" : "SKETCH"}</span></div>
-                  <p className="n-machine-copy">{machines.find(machine => machine.id === selectedTrack.machineId)?.descriptor ?? "Recorded microphone take"}.<br />Tone and decay are saved with this lane. FM-1/SMK-37 firmware selection also saves; the embedded emulator does not expose its internal patch session.</p>
                   <label className="n-screen-reader" htmlFor="machine-select">Machine</label>
                   <select id="machine-select" className="n-machine-select" value={selectedTrack.machineId} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, machineId: event.target.value as MachineId }))} data-testid="select-machine">
                     {machines.map(machine => <option key={machine.id} value={machine.id}>{machine.name}</option>)}
@@ -926,13 +923,12 @@ export default function Salaryman1999() {
                     </>
                   )}
                 </div>
-              ) : <div className="n-empty">Select or add a lane to shape the sketch.</div>}
+              ) : <div className="n-empty">NO LANE SELECTED</div>}
             </section>
 
             <section className="n-panel" aria-label="MIDI output for VST3 instruments" data-testid="section-midi-output">
               <div className="n-panel-head"><p className="n-eyebrow">03 / MIDI Out</p><span className="n-subtle">VST3 ROUTING</span></div>
               <div className="n-machine-body n-midi-controls">
-                <p className="n-machine-copy">Send the 1999 pattern to a MIDI port feeding a VST3 instrument in your desktop DAW. This browser does not load VST3 plugins.</p>
                 <button className="n-btn" type="button" onClick={() => void connectMidi()} data-testid="button-connect-midi">{midiConnected ? "Refresh MIDI" : "Connect MIDI"}</button>
                 <label className="n-screen-reader" htmlFor="midi-output-select">MIDI output</label>
                 <select id="midi-output-select" className="n-machine-select" value={selectedMidiOutputId} onChange={event => chooseMidiOutput(event.target.value)} disabled={!midiConnected || midiOutputs.length === 0 || isPlaying} data-testid="select-midi-output">
@@ -947,9 +943,9 @@ export default function Salaryman1999() {
               <div className="n-panel-head"><p className="n-eyebrow">04 / Sessions</p><button className="n-icon-btn" type="button" aria-label="Refresh project list" onClick={() => void refreshEntries().catch(error => setLoadError(error instanceof Error ? error.message : "Could not refresh projects."))} data-testid="button-refresh-projects"><RefreshCw size={13} /></button></div>
               <div className="n-library">
                 {saveState === "loading" && entries.length === 0
-                  ? <div className="n-empty" role="status" data-testid="status-library-loading">Finding your sketches…</div>
+                  ? <div className="n-empty" role="status" data-testid="status-library-loading">Loading…</div>
                   : entries.length === 0
-                    ? <div className="n-empty" data-testid="empty-projects">Your saved sessions will live here. Start shaping a loop and it will save automatically.</div>
+                    ? <div className="n-empty" data-testid="empty-projects">NO SAVED SESSIONS</div>
                     : <div className="n-library-list">{entries.map(entry => {
                       const parsed = parseProject(entry.content)!;
                       return <button type="button" className={`n-entry${activeId === entry.id ? " is-current" : ""}`} key={entry.id} onClick={() => openEntry(entry)} data-testid={`button-open-project-${entry.id}`}>
@@ -963,7 +959,6 @@ export default function Salaryman1999() {
             <section className="n-panel" aria-label="Microphone recorder" data-testid="section-recorder">
               <div className="n-panel-head"><p className="n-eyebrow">05 / Capture</p><Radio size={14} /></div>
               <div className="n-machine-body">
-                <p className="n-machine-copy" style={{ marginTop: 0 }}>Record a voice or instrument take. Microphone permission is requested only when you start.</p>
                  <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake} onClick={() => {
                   if (isRecording) recorderRef.current?.stop();
                   else void startRecording();
