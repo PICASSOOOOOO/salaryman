@@ -490,16 +490,21 @@
 }
 
 .salary-1999 .n-machine-stage .fm1-player-column {
+  position: relative;
   min-height: 0;
+  overflow: hidden;
   border: 0;
   background: #050607;
 }
 
 .salary-1999 .n-machine-stage .fm1-player {
+  position: relative;
+  top: -82px;
   display: block;
   width: 100%;
-  height: min(68vh, 740px);
-  min-height: 500px;
+  height: calc(min(68vh, 740px) + 82px);
+  min-height: 582px;
+  margin-bottom: -82px;
   background: #050607;
 }
 
@@ -569,6 +574,11 @@
   .salary-1999 .n-machine-stage .minimoog-emulator__frame {
     height: min(68vh, 640px);
     min-height: 420px;
+  }
+
+  .salary-1999 .n-machine-stage .fm1-player {
+    height: calc(min(68vh, 640px) + 82px);
+    min-height: 502px;
   }
 }
 

@@ -95,6 +95,10 @@
 .n-track-add { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--n-line); }
 .n-machine-body { padding: 11px; }
 .n-midi-controls { display: grid; gap: 8px; }
+.n-loop-controls { display: flex; align-items: center; gap: 8px; }
+.n-loop-length { display: inline-flex; align-items: center; gap: 8px; color: var(--n-muted); font: 8px var(--font-mono, monospace); letter-spacing: .05em; }
+.n-loop-length select { width: 48px; min-height: 34px; padding: 0 6px; border: 1px solid var(--n-line); background: #111618; color: var(--n-ink); font: 10px var(--font-mono, monospace); }
+.n-loop-controls .n-btn-record { flex: 1; }
 .n-midi-status { min-height: 14px; margin: 0; color: var(--n-muted); font: 8px/1.45 var(--font-mono, monospace); }
 .n-knob-row { display: grid; grid-template-columns: 1fr 38px; gap: 7px; align-items: center; margin-top: 8px; color: var(--n-muted); font: 8px var(--font-mono, monospace); text-transform: uppercase; }
 .n-knob-row input { width: 100%; accent-color: #a5d65b; grid-column: 1 / -1; }
@@ -137,6 +141,7 @@
   .n-native-controls { grid-template-columns: 1fr; gap: 8px; }
   .n-loop-screen { min-height: 170px; padding: 20px; }
   .n-stage-head .n-machine-select { width: min(210px, 70%); }
+  .n-loop-controls { align-items: stretch; }
 }
 @media (prefers-reduced-motion: reduce) {
   .salary-1999 *, .salary-1999 *:before, .salary-1999 *:after { transition-duration: .01ms !important; }

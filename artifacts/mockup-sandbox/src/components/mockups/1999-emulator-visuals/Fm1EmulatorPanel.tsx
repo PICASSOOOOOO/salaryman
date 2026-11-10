@@ -29,19 +29,16 @@ export interface EmulatorFirmwareCatalog {
 
 const MACHINES: Record<EmulatorMachine, {
   name: string;
-  subtitle: string;
   catalogUrl: string;
   playerPath: string;
 }> = {
   fm1: {
     name: 'M-VAVE FM-1',
-    subtitle: 'Pocket FM synthesizer',
     catalogUrl: `${EMULATOR_ORIGIN}/firmwares.json`,
     playerPath: './',
   },
   smk37: {
     name: 'M-VAVE SMK-37',
-    subtitle: '37-key synth and controller',
     catalogUrl: `${EMULATOR_ORIGIN}/smk37/firmwares.json`,
     playerPath: 'smk37/',
   },
@@ -55,7 +52,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function parseFirmwareCatalog(value: unknown): EmulatorFirmwareCatalog {
   if (!isRecord(value) || !Array.isArray(value.firmwares) || typeof value.default !== 'string') {
-    throw new Error('The emulator returned an invalid firmware catalog.');
+    throw new Error('The firmware list is invalid.');
   }
 
   const firmwares = value.firmwares.map((entry, index) => {
@@ -75,7 +72,7 @@ export function parseFirmwareCatalog(value: unknown): EmulatorFirmwareCatalog {
   }).filter((firmware) => !firmware.untested);
 
   if (firmwares.length === 0 || !firmwares.some((firmware) => firmware.id === value.default)) {
-    throw new Error('The emulator catalog has no runnable default firmware.');
+    throw new Error('No runnable firmware is available.');
   }
 
   return { default: value.default, firmwares };
@@ -96,7 +93,7 @@ export function createEmulatorUrl(
 function CatalogLoading({ machine }: { machine: EmulatorMachine }) {
   return (
     <div className="fm1-panel-state" role="status" data-testid="status-firmware-loading">
-      Loading the {MACHINES[machine].name} firmware catalog…
+      Loading {MACHINES[machine].name} firmware…
     </div>
   );
 }
@@ -105,7 +102,6 @@ export interface Fm1EmulatorPanelProps {
   initialMachine?: EmulatorMachine;
   initialFirmwareId?: string;
   patchSaves?: Partial<Record<EmulatorMachine, EmulatorPatchSave>>;
-  onMachineChange?: (machine: EmulatorMachine) => void;
   onFirmwareChange?: (machine: EmulatorMachine, firmwareId: string) => void;
   onSavePatchFile?: (machine: EmulatorMachine, file: File) => Promise<void>;
   onDownloadPatchFile?: (machine: EmulatorMachine) => Promise<void>;
@@ -115,7 +111,6 @@ export default function Fm1EmulatorPanel({
   initialMachine = 'fm1',
   initialFirmwareId = '',
   patchSaves = {},
-  onMachineChange,
   onFirmwareChange,
   onSavePatchFile,
   onDownloadPatchFile,
@@ -228,7 +223,7 @@ export default function Fm1EmulatorPanel({
     setPatchMessage('Preparing patch download…');
     try {
       await onDownloadPatchFile(machine);
-      setPatchMessage('Patch backup downloaded. Import it inside the emulator.');
+      setPatchMessage('Patch backup downloaded. Import it on the machine.');
     } catch (error) {
       setPatchMessage(error instanceof Error ? error.message : 'Patch backup could not be downloaded.');
     } finally {
@@ -237,135 +232,70 @@ export default function Fm1EmulatorPanel({
   };
 
   return (
-    <section className="fm1-emulator-panel" aria-label="FM-1 and SMK-37 emulator">
+    <section className="fm1-emulator-panel" aria-label="FM-1 and SMK-37 instruments" data-machine={machine}>
       <aside className="fm1-catalog">
         <div className="fm1-panel-heading">
-          <span className="fm1-eyebrow">FIRMWARE EMULATOR</span>
-          <h2>FM-1 EMULATOR</h2>
+          <h2>{MACHINES[machine].name}</h2>
         </div>
 
-        <div className="fm1-machine-options" role="group" aria-label="Choose a machine">
-          {MACHINE_IDS.map((machineId) => (
-            <button
-              key={machineId}
-              type="button"
-              className={`fm1-machine-option${machine === machineId ? ' is-active' : ''}`}
-              aria-pressed={machine === machineId}
-              data-testid={`button-machine-${machineId}`}
-              onClick={() => {
-                setMachine(machineId);
-                onMachineChange?.(machineId);
-                const selectedFirmware = firmwareIds[machineId] ?? catalogs[machineId]?.default ?? '';
-                if (selectedFirmware) onFirmwareChange?.(machineId, selectedFirmware);
-                setSearch('');
-              }}
-            >
-              <strong>{MACHINES[machineId].name}</strong>
-              <span>{MACHINES[machineId].subtitle}</span>
-            </button>
-          ))}
-        </div>
-
-        <label className="fm1-search-label" htmlFor="fm1-firmware-search">
-          FIRMWARE LIBRARY
-          <span>{catalog ? `${visibleFirmwares.length} / ${firmwareList.length}` : '—'}</span>
-        </label>
-        <input
-          id="fm1-firmware-search"
-          className="fm1-search"
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search name, creator, or sound"
-          aria-label="Search firmware"
-          data-testid="input-firmware-search"
-          disabled={!catalog}
-        />
-
-        {catalog ? (
-          <select
-            className="fm1-firmware-list"
-            aria-label={`${MACHINES[machine].name} firmware`}
-            size={9}
-            value={visibleFirmwares.some((firmware) => firmware.id === firmwareId) ? firmwareId : ''}
-            onChange={(event) => {
-              if (event.target.value) {
-                setFirmwareIds((current) => ({ ...current, [machine]: event.target.value }));
-                onFirmwareChange?.(machine, event.target.value);
-              }
-            }}
-            data-testid="select-firmware"
-          >
-            {visibleFirmwares.length === 0
-              ? <option value="" disabled>No firmware matches this search</option>
-              : visibleFirmwares.map((firmware) => (
-                <option key={firmware.id} value={firmware.id}>
+        <details className="fm1-firmware-browser">
+          <summary data-testid="summary-firmware">
+            <span>FIRMWARE</span>
+            <span>{catalog ? `${visibleFirmwares.length} / ${firmwareList.length}` : '…'}</span>
+          </summary>
+          <label className="fm1-search-label" htmlFor="fm1-firmware-search">SEARCH</label>
+          <input id="fm1-firmware-search" className="fm1-search" type="search" value={search}
+            onChange={(event) => setSearch(event.target.value)} placeholder="Search firmware"
+            aria-label="Search firmware" data-testid="input-firmware-search" disabled={!catalog} />
+          {catalog ? (
+            <select className="fm1-firmware-list" aria-label={`${MACHINES[machine].name} firmware`} size={5}
+              value={visibleFirmwares.some((firmware) => firmware.id === firmwareId) ? firmwareId : ''}
+              onChange={(event) => {
+                if (event.target.value) {
+                  setFirmwareIds((current) => ({ ...current, [machine]: event.target.value }));
+                  onFirmwareChange?.(machine, event.target.value);
+                }
+              }} data-testid="select-firmware">
+              {visibleFirmwares.length === 0
+                ? <option value="" disabled>No results</option>
+                : visibleFirmwares.map((firmware) => <option key={firmware.id} value={firmware.id}>
                   {firmware.name}{firmware.version ? ` · ${firmware.version}` : ''}
-                </option>
-              ))}
-          </select>
-        ) : catalogErrors[machine] ? (
-          <div className="fm1-panel-state fm1-panel-error" role="alert" data-testid="status-firmware-error">
-            Catalog unavailable: {catalogErrors[machine]}
-          </div>
-        ) : (
-          <CatalogLoading machine={machine} />
-        )}
-
-        {selectedFirmware && (
-          <div className="fm1-firmware-details" data-testid="text-firmware-details">
-            <div className="fm1-firmware-byline">
-              <strong>{selectedFirmware.name}</strong>
-              {selectedFirmware.version && <span>{selectedFirmware.version}</span>}
+                </option>)}
+            </select>
+          ) : catalogErrors[machine] ? (
+            <div className="fm1-panel-state fm1-panel-error" role="alert" data-testid="status-firmware-error">{catalogErrors[machine]}</div>
+          ) : <CatalogLoading machine={machine} />}
+          {selectedFirmware && (
+            <div className="fm1-firmware-details" data-testid="text-firmware-details">
+              <div className="fm1-firmware-byline">
+                <strong>{selectedFirmware.name}</strong>
+                {selectedFirmware.version && <span>{selectedFirmware.version}</span>}
+              </div>
+              {selectedFirmware.author && <div className="fm1-firmware-author">BY {selectedFirmware.author}</div>}
+              {selectedFirmware.byo && <span className="fm1-firmware-note">BYO .FWSC</span>}
+              {selectedFirmware.repo && <a href={selectedFirmware.repo} target="_blank" rel="noopener noreferrer">SOURCE ↗</a>}
             </div>
-            {selectedFirmware.author && <div className="fm1-firmware-author">BY {selectedFirmware.author}</div>}
-            {selectedFirmware.byo && (
-              <span className="fm1-firmware-note">BYO .FWSC</span>
-            )}
-            {selectedFirmware.repo && (
-              <a href={selectedFirmware.repo} target="_blank" rel="noopener noreferrer">
-                FIRMWARE SOURCE ↗
-              </a>
-            )}
-          </div>
-        )}
-
-        <div className="fm1-save-bridge" data-testid="section-emulator-patch-save">
-          <div className="fm1-save-bridge-heading">
-            <strong>PROJECT PATCH SAVE</strong>
-            <span>{savedPatch ? 'SAVED' : 'NONE'}</span>
-          </div>
-          {savedPatch && (
-            <p className="fm1-save-file-name">
-              {savedPatch.filename} · {(savedPatch.sizeBytes / 1024).toFixed(0)} KB
-            </p>
           )}
+        </details>
+
+        <details className="fm1-patch-details" data-testid="section-patch-save">
+          <summary><span>PATCH SAVE</span><span>{savedPatch ? 'SAVED' : 'NONE'}</span></summary>
+          {savedPatch && <p className="fm1-save-file-name">{savedPatch.filename} · {(savedPatch.sizeBytes / 1024).toFixed(0)} KB</p>}
           <div className="fm1-save-actions">
             <label className="fm1-save-file-input">
               <span>{savedPatch ? 'REPLACE .FM1SAVE' : 'ATTACH .FM1SAVE'}</span>
-              <input
-                type="file"
-                accept=".fm1save,application/json"
-                aria-label={`Attach a ${MACHINES[machine].name} patch save`}
-                disabled={patchBusy || !onSavePatchFile}
-                onChange={(event) => {
+              <input type="file" accept=".fm1save,application/json" aria-label={`Attach a ${MACHINES[machine].name} patch save`}
+                disabled={patchBusy || !onSavePatchFile} onChange={(event) => {
                   const file = event.currentTarget.files?.[0];
                   event.currentTarget.value = '';
                   void attachPatchFile(file);
-                }}
-              />
+                }} />
             </label>
-            <button
-              type="button"
-              className="fm1-save-download"
-              disabled={!savedPatch || patchBusy || !onDownloadPatchFile}
-              onClick={() => void downloadPatchFile()}
-            >
-              DOWNLOAD SAVE
-            </button>
+            <button type="button" className="fm1-save-download" disabled={!savedPatch || patchBusy || !onDownloadPatchFile}
+              onClick={() => void downloadPatchFile()}>DOWNLOAD</button>
           </div>
           {patchMessage && <p className="fm1-save-status" role="status" aria-live="polite">{patchMessage}</p>}
-        </div>
+        </details>
 
         <p className="fm1-attribution">
           <a href="https://github.com/joakimeriksson/fm1-emu" target="_blank" rel="noopener noreferrer">
@@ -379,7 +309,7 @@ export default function Fm1EmulatorPanel({
           <iframe
             key={`${machine}:${firmwareId}`}
             className="fm1-player"
-            title={`${MACHINES[machine].name} running ${selectedFirmware?.name ?? 'selected firmware'}`}
+            title={`${MACHINES[machine].name} · ${selectedFirmware?.name ?? 'firmware'}`}
             src={playerUrl}
             loading="eager"
             referrerPolicy="strict-origin-when-cross-origin"
@@ -389,12 +319,12 @@ export default function Fm1EmulatorPanel({
           />
         ) : (
           <div className="fm1-player-placeholder" role="status">
-            Select a machine and firmware to open its emulator.
+            SELECT FIRMWARE
           </div>
         )}
         <div className="fm1-player-footer">
           <a href={fullPageUrl} target="_blank" rel="noopener noreferrer">
-            OPEN FULL EMULATOR ↗
+            OPEN IN NEW TAB ↗
           </a>
         </div>
       </div>
