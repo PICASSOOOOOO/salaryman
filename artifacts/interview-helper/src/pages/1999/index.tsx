@@ -10,6 +10,19 @@ import "./EmulatorPanels.css";
 type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37" | "minimoog";
 type EmulatorMachine = "fm1" | "smk37";
 type SoundEngineState = { tone: number; decayMs: number };
+type ProjectKey = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
+type TimeSignature = "3/4" | "4/4" | "6/8";
+type SamplerPad = {
+  audioTrackId: number | null;
+  startSec: number;
+  endSec: number;
+  tune: number;
+  speed: number;
+  level: number;
+  tone: number;
+  echo: number;
+  rootKey: number | null;
+};
 type EmulatorState = {
   firmwareIds: Partial<Record<EmulatorMachine, string>>;
   patchSaves?: Partial<Record<EmulatorMachine, EmulatorPatchSave>>;
@@ -24,11 +37,14 @@ type ProjectTrack = {
   overdubTrackIds?: number[];
   loopBars?: 1 | 2 | 4;
   loopBpm?: number;
+  loopTimeSignature?: TimeSignature;
   muted: boolean;
   volume: number;
   soundState: SoundEngineState;
+  samplerPads?: SamplerPad[];
+  padPatterns?: number[][];
 };
-type Project = { schemaVersion: 1; name: string; bpm: number; tracks: ProjectTrack[]; emulatorState: EmulatorState };
+type Project = { schemaVersion: 1; name: string; bpm: number; key: ProjectKey; timeSignature: TimeSignature; tracks: ProjectTrack[]; emulatorState: EmulatorState };
 type VaultEntry = { id: number; title: string; content: string; entryType: string; tags: string[]; folder: string; updatedAt: string };
 type SaveState = "loading" | "saved" | "saving" | "unsaved" | "error" | "conflict";
 type MidiOutputPort = {
@@ -60,11 +76,26 @@ const machines: { id: MachineId; name: string; descriptor: string }[] = [
   { id: "smk37", name: "SMK37", descriptor: "Keyboard sketch lane" },
   { id: "minimoog", name: "Minimoog Model D", descriptor: "Three-oscillator analog-style synth" },
 ];
+const projectKeys: ProjectKey[] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const timeSignatures: TimeSignature[] = ["3/4", "4/4", "6/8"];
+
+function createEmptySamplerPads(): SamplerPad[] {
+  return Array.from({ length: 16 }, () => ({
+    audioTrackId: null, startSec: 0, endSec: 0, tune: 0, speed: 1, level: 100, tone: 100, echo: 0, rootKey: null,
+  }));
+}
+
+function beatsPerBar(timeSignature: TimeSignature): number {
+  const [numerator, denominator] = timeSignature.split("/").map(Number);
+  return numerator * 4 / denominator;
+}
 
 const freshProject = (): Project => ({
   schemaVersion: 1,
   name: "Untitled session",
   bpm: 92,
+  key: "C",
+  timeSignature: "4/4",
   emulatorState: { firmwareIds: {}, patchSaves: {} },
   tracks: [
     { id: "trk-1", name: "Pulse", kind: "instrument", machineId: "op1", steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 72, soundState: { tone: 72, decayMs: 240 } },
@@ -78,6 +109,19 @@ function isSoundEngineState(value: unknown): value is SoundEngineState {
   const state = value as Partial<SoundEngineState>;
   return Number.isInteger(state.tone) && Number(state.tone) >= 0 && Number(state.tone) <= 100
     && Number.isInteger(state.decayMs) && Number(state.decayMs) >= 80 && Number(state.decayMs) <= 800;
+}
+
+function isSamplerPad(value: unknown): value is SamplerPad {
+  if (!isRecord(value)) return false;
+  return (value.audioTrackId === null || (Number.isInteger(value.audioTrackId) && Number(value.audioTrackId) > 0))
+    && Number.isFinite(value.startSec) && Number(value.startSec) >= 0
+    && Number.isFinite(value.endSec) && Number(value.endSec) >= 0
+    && Number.isInteger(value.tune) && Number(value.tune) >= -24 && Number(value.tune) <= 24
+    && Number.isFinite(value.speed) && Number(value.speed) >= 0.25 && Number(value.speed) <= 4
+    && Number.isInteger(value.level) && Number(value.level) >= 0 && Number(value.level) <= 100
+    && Number.isInteger(value.tone) && Number(value.tone) >= 0 && Number(value.tone) <= 100
+    && Number.isInteger(value.echo) && Number(value.echo) >= 0 && Number(value.echo) <= 100
+    && (value.rootKey === null || (Number.isInteger(value.rootKey) && Number(value.rootKey) >= 0 && Number(value.rootKey) <= 11));
 }
 
 function isEmulatorState(value: unknown): value is EmulatorState {
@@ -127,6 +171,8 @@ function parseProject(content: string): Project | null {
     if (candidate.schemaVersion !== 1
       || typeof candidate.name !== "string" || !candidate.name.trim() || candidate.name.length > 80
       || !Number.isInteger(candidate.bpm) || Number(candidate.bpm) < 40 || Number(candidate.bpm) > 240
+      || (candidate.key !== undefined && !projectKeys.includes(candidate.key))
+      || (candidate.timeSignature !== undefined && !timeSignatures.includes(candidate.timeSignature))
       || !Array.isArray(candidate.tracks) || candidate.tracks.length > 8) return null;
     const validTracks = candidate.tracks.every((track) => {
       if (!track || typeof track !== "object") return false;
@@ -151,19 +197,35 @@ function parseProject(content: string): Project | null {
           && item.audioTrackId !== null
           && (item.loopBars === 1 || item.loopBars === 2 || item.loopBars === 4)
           && Number.isInteger(item.loopBpm) && Number(item.loopBpm) >= 40 && Number(item.loopBpm) <= 240
+          && (item.loopTimeSignature === undefined || timeSignatures.includes(item.loopTimeSignature))
         ))
         && typeof item.muted === "boolean"
         && Number.isFinite(item.volume) && item.volume >= 0 && item.volume <= 100
+        && (item.samplerPads === undefined || (Array.isArray(item.samplerPads) && item.samplerPads.length === 16 && item.samplerPads.every(isSamplerPad)))
+        && (item.padPatterns === undefined || (
+          item.padPatterns.length === 16
+          && item.padPatterns.every(pattern => Array.isArray(pattern) && pattern.length === 16
+            && pattern.every(step => Number.isInteger(step) && step >= 0 && step <= 127))
+        ))
         && (item.soundState === undefined || isSoundEngineState(item.soundState));
     });
     if (!validTracks) return null;
     if (candidate.emulatorState !== undefined && !isEmulatorState(candidate.emulatorState)) return null;
     const tracks = candidate.tracks.map((track) => {
       const item = track as ProjectTrack & { soundState?: SoundEngineState };
-      return { ...item, soundState: item.soundState ?? defaultSoundState(item.machineId) };
+      return {
+        ...item,
+        soundState: item.soundState ?? defaultSoundState(item.machineId),
+        ...(item.machineId === "mpc_sample" ? {
+          samplerPads: item.samplerPads ?? createEmptySamplerPads(),
+          padPatterns: item.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0)),
+        } : {}),
+      };
     });
     return {
       ...(candidate as Project),
+      key: candidate.key ?? "C",
+      timeSignature: candidate.timeSignature ?? "4/4",
       tracks,
       emulatorState: candidate.emulatorState ?? { firmwareIds: {}, patchSaves: {} },
     };
@@ -186,8 +248,25 @@ function recordingAudioTrackIds(track: ProjectTrack): number[] {
   return [track.audioTrackId, ...(track.overdubTrackIds ?? [])];
 }
 
-function recordingPlaybackRate(track: ProjectTrack, projectBpm: number): number {
-  return track.kind === "recording" && track.loopBpm ? projectBpm / track.loopBpm : 1;
+async function loadAudioBuffer(
+  context: AudioContext,
+  audioTrackId: number,
+  cache: Map<number, AudioBuffer>,
+): Promise<AudioBuffer> {
+  const cached = cache.get(audioTrackId);
+  if (cached) return cached;
+  const response = await apiFetch(`/api/music/stream/${audioTrackId}`);
+  if (!response.ok) throw new Error(`Sample audio could not be loaded (${response.status}).`);
+  const buffer = await context.decodeAudioData(await response.arrayBuffer());
+  cache.set(audioTrackId, buffer);
+  return buffer;
+}
+
+function recordingPlaybackRate(track: ProjectTrack, projectBpm: number, projectMeter: TimeSignature): number {
+  if (track.kind !== "recording" || !track.loopBpm) return 1;
+  const recordedBeats = beatsPerBar(track.loopTimeSignature ?? "4/4");
+  const sessionBeats = beatsPerBar(projectMeter);
+  return (projectBpm * recordedBeats) / (track.loopBpm * sessionBeats);
 }
 
 function safeFilename(value: string) {
@@ -203,7 +282,21 @@ function baseFrequencyForMachine(machineId: MachineId) {
           : machineId === "smk37" ? 196 : 164.81;
 }
 
-function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, stepIndex: number, atTime: number) {
+function keySemitone(key: ProjectKey): number {
+  return projectKeys.indexOf(key);
+}
+
+function scaleFrequencyForMachine(machineId: MachineId, stepIndex: number, key: ProjectKey): number {
+  const majorScale = [0, 2, 4, 5, 7, 9, 11];
+  const baseMidi = Math.round(69 + 12 * Math.log2(baseFrequencyForMachine(machineId) / 440));
+  const octave = Math.floor(baseMidi / 12) * 12;
+  let rootMidi = octave + keySemitone(key);
+  if (rootMidi - baseMidi > 6) rootMidi -= 12;
+  if (baseMidi - rootMidi > 6) rootMidi += 12;
+  return 440 * Math.pow(2, (rootMidi + majorScale[stepIndex % majorScale.length] - 69) / 12);
+}
+
+function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, stepIndex: number, atTime: number, key: ProjectKey) {
   const wave: Record<MachineId, OscillatorType> = {
     op1: "triangle",
     sp404mkii: "square",
@@ -219,7 +312,7 @@ function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, step
   const filter = context.createBiquadFilter();
   const gain = context.createGain();
   oscillator.type = wave[track.machineId];
-  oscillator.frequency.setValueAtTime(baseFrequencyForMachine(track.machineId) * Math.pow(2, (stepIndex % 7) / 12), atTime);
+  oscillator.frequency.setValueAtTime(scaleFrequencyForMachine(track.machineId, stepIndex, key), atTime);
   filter.type = "lowpass";
   filter.frequency.setValueAtTime(180 * Math.pow(40, track.soundState.tone / 100), atTime);
   filter.Q.setValueAtTime(0.8, atTime);
@@ -234,6 +327,50 @@ function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, step
   oscillator.stop(atTime + decaySeconds + 0.03);
 }
 
+function scheduleSamplerPad(
+  context: BaseAudioContext,
+  track: ProjectTrack,
+  pad: SamplerPad,
+  buffer: AudioBuffer,
+  atTime: number,
+  key: ProjectKey,
+  velocity = 127,
+) {
+  const startSec = Math.min(buffer.duration, Math.max(0, pad.startSec));
+  const requestedEnd = pad.endSec > startSec ? pad.endSec : buffer.duration;
+  const endSec = Math.min(buffer.duration, Math.max(startSec, requestedEnd));
+  if (endSec - startSec < 0.01) return;
+
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const output = context.createGain();
+  const pitchOffset = pad.tune + (pad.rootKey === null ? 0 : keySemitone(key) - pad.rootKey);
+  source.buffer = buffer;
+  source.playbackRate.value = Math.max(0.25, Math.min(4, pad.speed * Math.pow(2, pitchOffset / 12)));
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(180 * Math.pow(100, pad.tone / 100), atTime);
+  filter.Q.setValueAtTime(0.8, atTime);
+  output.gain.setValueAtTime((track.volume / 100) * (pad.level / 100) * (velocity / 127) * 0.35, atTime);
+  source.connect(filter);
+  filter.connect(output);
+  if (pad.echo > 0) {
+    const delay = context.createDelay(1);
+    const feedback = context.createGain();
+    const wet = context.createGain();
+    delay.delayTime.setValueAtTime(0.18, atTime);
+    feedback.gain.setValueAtTime(Math.min(0.35, pad.echo / 300), atTime);
+    wet.gain.setValueAtTime((pad.echo / 100) * 0.35, atTime);
+    filter.connect(delay);
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(wet);
+    wet.connect(output);
+  }
+  output.connect(context.destination);
+  source.start(atTime, startSec, endSec - startSec);
+  return source;
+}
+
 function scheduleMidiNote(
   output: MidiOutputPort,
   track: ProjectTrack,
@@ -241,9 +378,10 @@ function scheduleMidiNote(
   stepIndex: number,
   context: AudioContext,
   atTime: number,
+  key: ProjectKey,
 ) {
   const channel = trackIndex % 16;
-  const note = Math.max(0, Math.min(127, Math.round(69 + 12 * Math.log2(baseFrequencyForMachine(track.machineId) / 440) + (stepIndex % 7))));
+  const note = Math.max(0, Math.min(127, Math.round(69 + 12 * Math.log2(scaleFrequencyForMachine(track.machineId, stepIndex, key) / 440))));
   const velocity = Math.max(1, Math.min(127, Math.round(track.volume * 1.27)));
   const timestamp = performance.now() + Math.max(0, (atTime - context.currentTime) * 1000);
   output.send([0x90 + channel, note, velocity], timestamp);
@@ -261,13 +399,18 @@ async function renderWav(project: Project): Promise<Blob> {
   const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextClass || !window.OfflineAudioContext) throw new Error("WAV rendering is not supported in this browser.");
   const sampleRate = 22050;
-  const loopSeconds = (60 / project.bpm) * 16;
+  const loopSeconds = (60 / project.bpm) * beatsPerBar(project.timeSignature) * 4;
   const clipBuffers = new Map<number, AudioBuffer>();
   const decoder = new AudioContextClass();
   try {
     for (const track of project.tracks) {
-      if (track.muted || track.kind !== "recording") continue;
-      for (const audioTrackId of recordingAudioTrackIds(track)) {
+      if (track.muted) continue;
+      const ids = track.kind === "recording"
+        ? recordingAudioTrackIds(track)
+        : track.machineId === "mpc_sample"
+          ? (track.samplerPads ?? []).flatMap(pad => pad.audioTrackId === null ? [] : [pad.audioTrackId])
+          : [];
+      for (const audioTrackId of ids) {
         if (clipBuffers.has(audioTrackId)) continue;
         const response = await apiFetch(`/api/music/stream/${audioTrackId}`);
         if (!response.ok) throw new Error(`Saved take could not be loaded (${response.status}).`);
@@ -280,10 +423,20 @@ async function renderWav(project: Project): Promise<Blob> {
   const clipDurationsAtSessionTempo = project.tracks.flatMap(track => (
     track.muted || track.kind !== "recording" ? [] : recordingAudioTrackIds(track).map(audioTrackId => {
       const audio = clipBuffers.get(audioTrackId);
-      return audio ? audio.duration / recordingPlaybackRate(track, project.bpm) : 0;
+      return audio ? audio.duration / recordingPlaybackRate(track, project.bpm, project.timeSignature) : 0;
     })
   ));
-  const seconds = Math.min(90, Math.max(loopSeconds, ...clipDurationsAtSessionTempo));
+  const samplerDurations = project.tracks.flatMap(track => (
+    track.muted || track.machineId !== "mpc_sample" ? [] : (track.samplerPads ?? []).flatMap(pad => {
+      if (pad.audioTrackId === null) return [];
+      const audio = clipBuffers.get(pad.audioTrackId);
+      if (!audio) return [];
+      const pitchOffset = pad.tune + (pad.rootKey === null ? 0 : keySemitone(project.key) - pad.rootKey);
+      const rate = Math.max(0.25, Math.min(4, pad.speed * Math.pow(2, pitchOffset / 12)));
+      return [audio.duration / rate];
+    })
+  ));
+  const seconds = Math.min(90, Math.max(loopSeconds, ...clipDurationsAtSessionTempo, ...samplerDurations));
   const context = new OfflineAudioContext(1, Math.ceil(seconds * sampleRate), sampleRate);
   project.tracks.forEach(track => {
     if (track.muted) return;
@@ -297,16 +450,28 @@ async function renderWav(project: Project): Promise<Blob> {
         const source = context.createBufferSource();
         source.buffer = audio;
         source.loop = true;
-        source.playbackRate.value = recordingPlaybackRate(track, project.bpm);
+        source.playbackRate.value = recordingPlaybackRate(track, project.bpm, project.timeSignature);
         source.connect(gain);
         source.start(0);
       });
       return;
     }
     for (let bar = 0; bar < 4; bar += 1) {
-      track.steps.forEach((active, stepIndex) => {
-        if (active) scheduleSynthVoice(context, track, stepIndex, (60 / project.bpm) * (bar * 4 + stepIndex / 4));
-      });
+      const stepTime = (stepIndex: number) => (60 / project.bpm) * beatsPerBar(project.timeSignature) * (bar + stepIndex / 16);
+      if (track.machineId === "mpc_sample") {
+        (track.padPatterns ?? []).forEach((steps, padIndex) => {
+          const pad = track.samplerPads?.[padIndex];
+          const buffer = pad?.audioTrackId === null ? undefined : clipBuffers.get(pad?.audioTrackId ?? -1);
+          if (!pad || !buffer) return;
+          steps.forEach((active, stepIndex) => {
+            if (active) scheduleSamplerPad(context, track, pad, buffer, stepTime(stepIndex), project.key);
+          });
+        });
+      } else {
+        track.steps.forEach((active, stepIndex) => {
+          if (active) scheduleSynthVoice(context, track, stepIndex, stepTime(stepIndex), project.key);
+        });
+      }
     }
   });
   const rendered = await context.startRendering();
@@ -339,6 +504,9 @@ export default function Salaryman1999() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [previewLoadingTrackId, setPreviewLoadingTrackId] = useState<string | null>(null);
   const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
+  const [samplerPreviewPadIndex, setSamplerPreviewPadIndex] = useState<number | null>(null);
+  const [selectedPadIndex, setSelectedPadIndex] = useState(0);
+  const samplerFileInputRef = useRef<HTMLInputElement | null>(null);
   const [playhead, setPlayhead] = useState(-1);
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
   const [wavBusy, setWavBusy] = useState(false);
@@ -366,6 +534,8 @@ export default function Salaryman1999() {
   const lanePreviewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const lanePreviewGainRef = useRef<GainNode | null>(null);
   const lanePreviewGenerationRef = useRef(0);
+  const samplerPreviewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const samplerPreviewGenerationRef = useRef(0);
   const schedulerRef = useRef<number | null>(null);
   const playingRef = useRef(false);
   const nextStepTimeRef = useRef(0);
@@ -511,6 +681,11 @@ export default function Salaryman1999() {
     lanePreviewSourcesRef.current = [];
     lanePreviewGainRef.current?.disconnect();
     lanePreviewGainRef.current = null;
+    samplerPreviewSourcesRef.current.forEach(source => {
+      source.onended = null;
+      try { source.stop(); } catch { /* Already stopped. */ }
+    });
+    samplerPreviewSourcesRef.current = [];
     if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
     playingRef.current = false;
     if (midiAccessRef.current) midiAccessRef.current.onstatechange = null;
@@ -522,7 +697,14 @@ export default function Salaryman1999() {
   }, []);
 
   const selectedTrack = useMemo(() => project.tracks.find(track => track.id === selectedTrackId) ?? project.tracks[0], [project.tracks, selectedTrackId]);
-  const isLoopPreviewActive = previewLoadingTrackId !== null || previewingTrackId !== null;
+  const isLoopPreviewActive = previewLoadingTrackId !== null || previewingTrackId !== null || samplerPreviewPadIndex !== null;
+  const selectedSamplerPad = selectedTrack?.machineId === "mpc_sample"
+    ? selectedTrack.samplerPads?.[selectedPadIndex]
+    : undefined;
+  const availableSamplerSamples = useMemo(() => libraryTracks.filter(track => (
+    typeof track.mimeType === "string" && track.mimeType.toLowerCase().startsWith("audio/")
+    && typeof track.objectPath === "string" && track.objectPath.startsWith("/objects/")
+  )), [libraryTracks]);
   const selectedLoopBars = selectedTrack?.kind === "recording" ? selectedTrack.loopBars : undefined;
   const captureBarsForSelection = selectedLoopBars ?? loopBars;
   useEffect(() => {
@@ -553,14 +735,14 @@ export default function Salaryman1999() {
       const gain = playbackGainsRef.current.get(track.id);
       if (gain) gain.gain.setTargetAtTime(track.muted ? 0 : track.volume / 100, context.currentTime, 0.02);
       playbackSourcesByTrackRef.current.get(track.id)?.forEach(source => {
-        source.playbackRate.setTargetAtTime(recordingPlaybackRate(track, project.bpm), context.currentTime, 0.02);
+        source.playbackRate.setTargetAtTime(recordingPlaybackRate(track, project.bpm, project.timeSignature), context.currentTime, 0.02);
       });
     });
     const lanePreviewTrack = project.tracks.find(track => track.id === previewingTrackId && track.kind === "recording");
     if (lanePreviewTrack && lanePreviewGainRef.current) {
       lanePreviewGainRef.current.gain.setTargetAtTime(lanePreviewTrack.muted ? 0 : lanePreviewTrack.volume / 100, context.currentTime, 0.02);
       lanePreviewSourcesRef.current.forEach(source => {
-        source.playbackRate.setTargetAtTime(recordingPlaybackRate(lanePreviewTrack, project.bpm), context.currentTime, 0.02);
+        source.playbackRate.setTargetAtTime(recordingPlaybackRate(lanePreviewTrack, project.bpm, project.timeSignature), context.currentTime, 0.02);
       });
     }
   }, [previewingTrackId, project.bpm, project.tracks]);
@@ -568,6 +750,16 @@ export default function Salaryman1999() {
   const updateTrack = (id: string, updater: (track: ProjectTrack) => ProjectTrack) => updateProject(current => ({
     ...current, tracks: current.tracks.map(track => track.id === id ? updater(track) : track),
   }));
+  const updateSamplerPad = (trackId: string, padIndex: number, updater: (pad: SamplerPad) => SamplerPad) => {
+    updateTrack(trackId, track => {
+      const pads = track.samplerPads ?? createEmptySamplerPads();
+      return {
+        ...track,
+        samplerPads: pads.map((pad, index) => index === padIndex ? updater(pad) : pad),
+        padPatterns: track.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0)),
+      };
+    });
+  };
   const removeOverdubLayer = (trackId: string, audioTrackId: number) => {
     if (playingRef.current || isLoopPreviewActive || isRecording || isUploadingTake) return;
     const target = projectRef.current.tracks.find(track => track.id === trackId && track.kind === "recording");
@@ -599,7 +791,17 @@ export default function Salaryman1999() {
       : track);
     setSelectedLibraryTakeId("");
   };
+  const stopSamplerPreview = () => {
+    samplerPreviewGenerationRef.current += 1;
+    samplerPreviewSourcesRef.current.forEach(source => {
+      source.onended = null;
+      try { source.stop(); } catch { /* Already stopped. */ }
+    });
+    samplerPreviewSourcesRef.current = [];
+    setSamplerPreviewPadIndex(null);
+  };
   const stopLoopPreview = () => {
+    stopSamplerPreview();
     lanePreviewGenerationRef.current += 1;
     lanePreviewSourcesRef.current.forEach(source => {
       source.onended = null;
@@ -648,7 +850,7 @@ export default function Salaryman1999() {
         const source = context.createBufferSource();
         source.buffer = buffer;
         source.loop = false;
-        source.playbackRate.value = recordingPlaybackRate(track, projectRef.current.bpm);
+        source.playbackRate.value = recordingPlaybackRate(track, projectRef.current.bpm, projectRef.current.timeSignature);
         source.connect(gain);
         source.onended = () => {
           if (generation !== lanePreviewGenerationRef.current) return;
@@ -748,6 +950,71 @@ export default function Salaryman1999() {
     if (!saved.ok || !result.track?.id) throw new Error(result.error || "The audio file uploaded but could not be added to your library.");
     await refresh();
     return result.track.id;
+  };
+  const uploadSamplerSample = async (file: File) => {
+    const trackId = selectedTrackId;
+    const padIndex = selectedPadIndex;
+    const track = projectRef.current.tracks.find(candidate => candidate.id === trackId);
+    if (!file || track?.machineId !== "mpc_sample") return;
+    if (file.size < 1 || file.size > 100 * 1024 * 1024) {
+      setLoadError("Choose an audio file smaller than 100 MB.");
+      return;
+    }
+    setIsUploadingTake(true);
+    setLoadError("");
+    setRecordingLabel("Importing sample");
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Sample import is not supported in this browser.");
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      await context.resume();
+      const buffer = await context.decodeAudioData(await file.arrayBuffer());
+      const audioTrackId = await uploadAudioToLibrary(file, Math.max(1, Math.ceil(buffer.duration)));
+      clipBufferCacheRef.current.set(audioTrackId, buffer);
+      updateSamplerPad(trackId, padIndex, pad => ({
+        ...pad, audioTrackId, startSec: 0, endSec: 0, rootKey: null,
+      }));
+      setRecordingLabel(`Sample added to pad ${String(padIndex + 1).padStart(2, "0")}.`);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "The sample could not be imported.");
+      setRecordingLabel("Sample import failed.");
+    } finally {
+      setIsUploadingTake(false);
+      if (samplerFileInputRef.current) samplerFileInputRef.current.value = "";
+    }
+  };
+  const previewSamplerPad = async (padIndex: number) => {
+    const track = projectRef.current.tracks.find(candidate => candidate.id === selectedTrackId);
+    setSelectedPadIndex(padIndex);
+    if (playingRef.current || isRecording || isUploadingTake || track?.machineId !== "mpc_sample") return;
+    stopLoopPreview();
+    const generation = samplerPreviewGenerationRef.current;
+    const pad = track.samplerPads?.[padIndex];
+    if (!pad?.audioTrackId) return;
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Sampler preview is not supported in this browser.");
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      await context.resume();
+      const buffer = await loadAudioBuffer(context, pad.audioTrackId, clipBufferCacheRef.current);
+      if (generation !== samplerPreviewGenerationRef.current) return;
+      const source = scheduleSamplerPad(context, track, pad, buffer, context.currentTime + 0.02, projectRef.current.key);
+      if (!source) return;
+      source.onended = () => {
+        if (generation !== samplerPreviewGenerationRef.current) return;
+        samplerPreviewSourcesRef.current = samplerPreviewSourcesRef.current.filter(item => item !== source);
+        setSamplerPreviewPadIndex(null);
+      };
+      samplerPreviewSourcesRef.current = [source];
+      setSamplerPreviewPadIndex(padIndex);
+    } catch (error) {
+      if (generation === samplerPreviewGenerationRef.current) {
+        setSamplerPreviewPadIndex(null);
+        setLoadError(error instanceof Error ? error.message : "Sampler preview could not start.");
+      }
+    }
   };
 
   const uploadEmulatorPatch = async (machine: EmulatorMachine, file: File) => {
@@ -890,7 +1157,7 @@ export default function Salaryman1999() {
           const source = context.createBufferSource();
           source.buffer = audio;
           source.loop = true;
-          source.playbackRate.value = recordingPlaybackRate(track, snapshot.bpm);
+          source.playbackRate.value = recordingPlaybackRate(track, snapshot.bpm, snapshot.timeSignature);
           source.connect(gain);
           source.start(startsAt);
           playbackSourcesRef.current.push(source);
@@ -911,10 +1178,10 @@ export default function Salaryman1999() {
           const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
           snapshot.tracks.forEach((track, trackIndex) => {
             if (!track.muted && track.kind === "instrument" && track.steps[stepIndex]) {
-              scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current);
+              scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current, snapshot.key);
               if (midiOutput) {
                 try {
-                  scheduleMidiNote(midiOutput, track, trackIndex, stepIndex, context, nextStepTimeRef.current);
+                  scheduleMidiNote(midiOutput, track, trackIndex, stepIndex, context, nextStepTimeRef.current, snapshot.key);
                 } catch (error) {
                   if (!midiErrorRef.current) {
                     midiErrorRef.current = true;
@@ -928,7 +1195,7 @@ export default function Salaryman1999() {
           });
           setPlayhead(stepIndex);
           playStepRef.current = (stepIndex + 1) % 16;
-          nextStepTimeRef.current += (60 / snapshot.bpm) / 4;
+          nextStepTimeRef.current += (60 / snapshot.bpm) * beatsPerBar(snapshot.timeSignature) / 16;
         }
       }, 25);
     } catch (error) {
@@ -1015,6 +1282,9 @@ export default function Salaryman1999() {
     const recordingTargetId = selectedAtStart?.kind === "recording" ? selectedAtStart.id : null;
     const recordingBars = selectedAtStart?.kind === "recording" ? selectedAtStart.loopBars ?? loopBars : loopBars;
     const recordingBpm = selectedAtStart?.kind === "recording" ? selectedAtStart.loopBpm ?? projectRef.current.bpm : projectRef.current.bpm;
+    const recordingTimeSignature = selectedAtStart?.kind === "recording"
+      ? selectedAtStart.loopTimeSignature ?? projectRef.current.timeSignature
+      : projectRef.current.timeSignature;
     if (!recordingTargetId && projectRef.current.tracks.length >= 8) {
       setRecordingLabel("Arrangement full · 8 lane limit");
       return;
@@ -1059,11 +1329,12 @@ export default function Salaryman1999() {
             next = {
               ...current,
               tracks: current.tracks.map(track => track.id !== target.id ? track : target.audioTrackId === null
-                ? { ...target, audioTrackId, loopBars: recordingBars, loopBpm: recordingBpm }
+                ? { ...target, audioTrackId, loopBars: recordingBars, loopBpm: recordingBpm, loopTimeSignature: recordingTimeSignature }
                 : {
                   ...target,
                   loopBars: target.loopBars ?? recordingBars,
                   loopBpm: target.loopBpm ?? recordingBpm,
+                  loopTimeSignature: target.loopTimeSignature ?? recordingTimeSignature,
                   overdubTrackIds: [...(target.overdubTrackIds ?? []), audioTrackId],
                 }),
             };
@@ -1079,6 +1350,7 @@ export default function Salaryman1999() {
               audioTrackId,
               loopBars: recordingBars,
               loopBpm: recordingBpm,
+              loopTimeSignature: recordingTimeSignature,
               muted: false,
               volume: 82,
               soundState: defaultSoundState("op1"),
@@ -1099,8 +1371,8 @@ export default function Salaryman1999() {
       };
       setIsRecording(true);
       const bpm = projectRef.current.bpm;
-      const loopDurationMs = (60_000 / recordingBpm) * 4 * recordingBars;
-      const stepDurationMs = (60_000 / bpm) / 4;
+      const loopDurationMs = (60_000 / recordingBpm) * beatsPerBar(recordingTimeSignature) * recordingBars;
+      const stepDurationMs = (60_000 / bpm) * beatsPerBar(projectRef.current.timeSignature) / 16;
       const stepsUntilBar = (16 - playStepRef.current) % 16;
       const context = audioContextRef.current;
       const untilNextStepMs = context
