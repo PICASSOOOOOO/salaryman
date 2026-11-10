@@ -34,3 +34,9 @@ The user wants 1999 to cover recent and classic synths and rhythm machines, incl
 **Why:** The user wants a broad, modular instrument and furniture ecosystem. Open-source engines, vendor firmware, and factory sounds have different license boundaries, and browser projects cannot load native VST3 modules or read private state from a cross-origin emulator.
 
 **How to apply:** Use explicit MIDI permission and output selection for live routing; keep project-owned controls, firmware choice, and owner-private patch-file references in Vault. Make each game workstation component separately placeable and connect it to the same machine registry.
+
+Recorded microphone loops must remain playable after a 1999 session is saved and reloaded, with their mixer settings intact.
+
+**Why:** The user selected verification of saved-loop synchronization as a follow-up.
+
+**How to apply:** Cover a saved recording lane through project serialization, reload, audio retrieval, and loop playback in regression tests.

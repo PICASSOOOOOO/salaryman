@@ -30,6 +30,28 @@ describe("1999 project validation", () => {
     expect(parseNineteenNinetyNineProject(JSON.stringify(project))).not.toBeNull();
   });
 
+  it("preserves recorded-loop library IDs and mix settings across project serialization", () => {
+    const project = {
+      ...legacyProject,
+      tracks: [
+        legacyProject.tracks[0],
+        {
+          id: "trk-loop",
+          name: "Mic loop",
+          kind: "recording",
+          machineId: "op1",
+          steps: Array(16).fill(0),
+          audioTrackId: 501,
+          muted: true,
+          volume: 68,
+          soundState: { tone: 72, decayMs: 240 },
+        },
+      ],
+    };
+
+    expect(parseNineteenNinetyNineProject(JSON.stringify(project))).toEqual(project);
+  });
+
   it("accepts bounded track controls and selected emulator firmware", () => {
     const project = {
       ...legacyProject,
