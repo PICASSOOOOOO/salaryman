@@ -45,7 +45,7 @@ Overdubbing is non-destructive: keep the original take, add new takes as layers 
 
 **Why:** The user asked to overdub into an existing loop; preserving the original avoids destructive replacement, matching capture timing prevents layered takes from drifting apart, and retaining removed audio files prevents loss outside the project.
 
-**How to apply:** Retain each audio-library reference in project data, use the stored loop bars/BPM for later overdubs, and start all layers together for playback and export. To remove a layer, update only the project reference list; never delete the underlying library track.
+**How to apply:** Retain each audio-library reference in project data, use the stored loop bars/BPM for later overdubs, and start all layers together for playback and export. To remove a layer, update only the project reference list; never delete the underlying library track. To restore a take, reuse its existing owned, object-backed music-library ID; do not create a second upload, and offer only audio whose stored whole-second duration matches the loop.
 
 Recorded loops follow the session BPM through playback-rate adjustment in live playback and WAV export. This changes pitch along with speed; do not imply that the current implementation preserves pitch.
 

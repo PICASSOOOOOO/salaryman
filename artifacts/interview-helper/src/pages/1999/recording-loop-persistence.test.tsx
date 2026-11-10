@@ -183,9 +183,12 @@ beforeEach(() => {
   audioGains.length = 0;
   offlineSources.length = 0;
   h.music.tracks = [
-    { id: 501, title: "1999 take" },
-    { id: 502, title: "Overdub one" },
-    { id: 503, title: "Overdub two" },
+    { id: 501, title: "1999 take", artist: "SALARYMAN 1999", mimeType: "audio/webm", durationSec: 5, objectPath: "/objects/test/501" },
+    { id: 502, title: "Overdub one", artist: "SALARYMAN 1999", mimeType: "audio/webm", durationSec: 5, objectPath: "/objects/test/502" },
+    { id: 503, title: "Overdub two", artist: "SALARYMAN 1999", mimeType: "audio/webm", durationSec: 5, objectPath: "/objects/test/503" },
+    { id: 504, title: "Video", artist: "Library", mimeType: "video/mp4", durationSec: 5, objectPath: "/objects/test/504" },
+    { id: 505, title: "Long sample", artist: "Library", mimeType: "audio/mpeg", durationSec: 34, objectPath: "/objects/test/505" },
+    { id: 506, title: "Unknown length", artist: "Library", mimeType: "audio/mpeg", durationSec: 0, objectPath: "/objects/test/506" },
   ];
   h.music.refresh.mockReset();
   h.music.previewTrack.mockReset();
@@ -383,5 +386,62 @@ describe("1999 recorded-loop persistence", () => {
     expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-502"]')).toBeNull();
     expect(container.querySelector('[data-testid="button-remove-overdub-trk-loop-503"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="row-loop-take-base-trk-loop"]')).not.toBeNull();
+  });
+
+  it("reattaches a matching library take without uploading another copy", async () => {
+    await mount();
+    click("row-track-trk-loop");
+
+    const select = container.querySelector('[data-testid="select-library-overdub"]') as HTMLSelectElement;
+    const optionValues = Array.from(select.options, option => option.value);
+    expect(optionValues).toContain("502");
+    expect(optionValues).toContain("503");
+    expect(optionValues).not.toContain("501");
+    expect(optionValues).not.toContain("504");
+    expect(optionValues).not.toContain("505");
+    expect(optionValues).not.toContain("506");
+
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(select, "502");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flush();
+    expect((container.querySelector('[data-testid="button-add-library-overdub"]') as HTMLButtonElement).disabled).toBe(false);
+
+    click("button-add-library-overdub");
+    await flush();
+    expect(container.querySelector('[data-testid="row-loop-overdub-trk-loop-502"]')?.textContent).toContain("Overdub one");
+    expect((container.querySelector('[data-testid="select-library-overdub"]') as HTMLSelectElement).value).toBe("");
+    expect(container.querySelector('[data-testid="option-library-take-502"]')).toBeNull();
+
+    await act(async () => {
+      (container.querySelector('[data-testid="button-save-project"]') as HTMLButtonElement).click();
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    const put = h.apiFetch.mock.calls.find(([path, init]) => path === "/api/vault/entries/77" && init?.method === "PUT");
+    expect(put).toBeDefined();
+    const saved = JSON.parse(JSON.parse(String(put![1].body)).content);
+    expect(saved.tracks[1]).toMatchObject({
+      audioTrackId: 501,
+      overdubTrackIds: [502],
+      loopBars: 2,
+      loopBpm: 92,
+    });
+    expect(h.apiFetch.mock.calls.some(([path, init]) => (
+      path === "/api/storage/uploads/request-url"
+      || (path === "/api/music/tracks" && init?.method === "POST")
+    ))).toBe(false);
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    await mount();
+    click("row-track-trk-loop");
+    expect(container.querySelector('[data-testid="row-loop-overdub-trk-loop-502"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="option-library-take-502"]')).toBeNull();
+
+    click("button-toggle-playback");
+    await flush();
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/502");
+    click("button-toggle-playback");
   });
 });

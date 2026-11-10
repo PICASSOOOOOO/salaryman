@@ -335,6 +335,7 @@ export default function Salaryman1999() {
   const [isRecording, setIsRecording] = useState(false);
   const [isUploadingTake, setIsUploadingTake] = useState(false);
   const [loopBars, setLoopBars] = useState<1 | 2 | 4>(1);
+  const [selectedLibraryTakeId, setSelectedLibraryTakeId] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(-1);
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
@@ -511,6 +512,27 @@ export default function Salaryman1999() {
   const selectedLoopBars = selectedTrack?.kind === "recording" ? selectedTrack.loopBars : undefined;
   const captureBarsForSelection = selectedLoopBars ?? loopBars;
   useEffect(() => {
+    setSelectedLibraryTakeId("");
+  }, [selectedTrackId]);
+  const availableLibraryTakes = useMemo(() => {
+    if (selectedTrack?.kind !== "recording" || selectedTrack.audioTrackId === null) return [];
+    const bars = selectedTrack.loopBars ?? loopBars;
+    const bpm = selectedTrack.loopBpm ?? project.bpm;
+    const loopDurationSec = (60 / bpm) * 4 * bars;
+    const matchingDurations = new Set([Math.floor(loopDurationSec), Math.round(loopDurationSec)]);
+    const linkedTrackIds = new Set(recordingAudioTrackIds(selectedTrack));
+    return libraryTracks.filter(track => (
+      typeof track.mimeType === "string"
+      && track.mimeType.toLowerCase().startsWith("audio/")
+      && typeof track.objectPath === "string"
+      && track.objectPath.startsWith("/objects/")
+      && Number.isInteger(track.durationSec)
+      && track.durationSec > 0
+      && matchingDurations.has(track.durationSec)
+      && !linkedTrackIds.has(track.id)
+    ));
+  }, [libraryTracks, loopBars, project.bpm, selectedTrack]);
+  useEffect(() => {
     const context = audioContextRef.current;
     if (!context) return;
     project.tracks.forEach(track => {
@@ -533,6 +555,28 @@ export default function Salaryman1999() {
     updateTrack(trackId, track => track.kind === "recording"
       ? { ...track, overdubTrackIds: (track.overdubTrackIds ?? []).filter(id => id !== audioTrackId) }
       : track);
+  };
+  const addLibraryTakeToLoop = () => {
+    if (playingRef.current || isRecording || isUploadingTake) return;
+    const audioTrackId = Number(selectedLibraryTakeId);
+    const libraryTake = availableLibraryTakes.find(track => track.id === audioTrackId);
+    const target = projectRef.current.tracks.find(track => (
+      track.id === selectedTrackId && track.kind === "recording" && track.audioTrackId !== null
+    ));
+    if (!libraryTake || !target || recordingAudioTrackIds(target).includes(audioTrackId)) return;
+    const bars = target.loopBars ?? loopBars;
+    const bpm = target.loopBpm ?? projectRef.current.bpm;
+    updateTrack(target.id, track => track.kind === "recording" && track.audioTrackId !== null
+      ? {
+        ...track,
+        loopBars: track.loopBars ?? bars,
+        loopBpm: track.loopBpm ?? bpm,
+        overdubTrackIds: recordingAudioTrackIds(track).includes(audioTrackId)
+          ? track.overdubTrackIds ?? []
+          : [...(track.overdubTrackIds ?? []), audioTrackId],
+      }
+      : track);
+    setSelectedLibraryTakeId("");
   };
   const refreshMidiOutputs = (access: MidiAccessPort) => {
     const outputs = Array.from(access.outputs.values()).filter(output => output.state !== "disconnected");
@@ -1239,7 +1283,9 @@ export default function Salaryman1999() {
                   </div>
                   {(selectedTrack.overdubTrackIds ?? []).map((audioTrackId, index) => (
                     <div className="n-loop-take-row" key={audioTrackId} data-testid={`row-loop-overdub-${selectedTrack.id}-${audioTrackId}`}>
-                      <span>OVERDUB {index + 1}</span>
+                      <span className="n-loop-take-label">
+                        OVERDUB {index + 1} · {libraryTracks.find(track => track.id === audioTrackId)?.title ?? `TAKE ${audioTrackId}`}
+                      </span>
                       <button
                         type="button"
                         className="n-loop-take-remove"
@@ -1256,6 +1302,34 @@ export default function Salaryman1999() {
                       </button>
                     </div>
                   ))}
+                  <div className="n-loop-library-add">
+                    <label className="n-loop-library-picker" htmlFor="library-loop-take">
+                      <span>FROM MUSIC LIBRARY</span>
+                      <select
+                        id="library-loop-take"
+                        value={selectedLibraryTakeId}
+                        disabled={isPlaying || isRecording || isUploadingTake || availableLibraryTakes.length === 0}
+                        onChange={event => setSelectedLibraryTakeId(event.target.value)}
+                        data-testid="select-library-overdub"
+                      >
+                        <option value="">{availableLibraryTakes.length ? "Choose matching audio" : "No matching takes"}</option>
+                        {availableLibraryTakes.map(track => (
+                          <option key={track.id} value={track.id} data-testid={`option-library-take-${track.id}`}>
+                            {track.title} — {track.artist} ({track.durationSec}s)
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="n-btn n-loop-library-add-button"
+                      disabled={isPlaying || isRecording || isUploadingTake || !availableLibraryTakes.some(track => track.id === Number(selectedLibraryTakeId))}
+                      onClick={addLibraryTakeToLoop}
+                      data-testid="button-add-library-overdub"
+                    >
+                      <Plus size={11} /> Add take
+                    </button>
+                  </div>
                 </div>
               )}
             </section>
