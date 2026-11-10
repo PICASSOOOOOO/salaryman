@@ -53,9 +53,17 @@ type MidiOutputPort = {
   state?: string;
   send: (data: number[], timestamp?: number) => void;
 };
+type MidiInputMessage = { data: Uint8Array };
+type MidiInputPort = {
+  id: string;
+  name?: string;
+  state?: string;
+  onmidimessage: ((event: MidiInputMessage) => void) | null;
+};
 type MidiAccessPort = {
   outputs: Map<string, MidiOutputPort>;
-  onstatechange: (() => void) | null;
+  inputs: Map<string, MidiInputPort>;
+  onstatechange: ((event?: unknown) => void) | null;
 };
 type MidiNavigator = Navigator & {
   requestMIDIAccess?: (options?: { sysex?: boolean }) => Promise<MidiAccessPort>;
@@ -78,6 +86,30 @@ const machines: { id: MachineId; name: string; descriptor: string }[] = [
 ];
 const projectKeys: ProjectKey[] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const timeSignatures: TimeSignature[] = ["3/4", "4/4", "6/8"];
+const MIDI_INPUT_SETTINGS_KEY = "salaryman.1999-midi-input.v1";
+const DEFAULT_MIDI_PAD_NOTES = Array.from({ length: 16 }, (_, index) => 36 + index);
+
+function loadMidiInputSettings(): { inputId: string; padNotes: number[] } {
+  const fallback = { inputId: "", padNotes: [...DEFAULT_MIDI_PAD_NOTES] };
+  if (typeof window === "undefined") return fallback;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(MIDI_INPUT_SETTINGS_KEY) || "null") as {
+      inputId?: unknown;
+      padNotes?: unknown;
+    } | null;
+    const padNotes = value?.padNotes;
+    if (!Array.isArray(padNotes) || padNotes.length !== 16
+      || !padNotes.every(note => Number.isInteger(note) && Number(note) >= -1 && Number(note) <= 127)) {
+      return { ...fallback, inputId: typeof value?.inputId === "string" ? value.inputId.slice(0, 256) : "" };
+    }
+    return {
+      inputId: typeof value?.inputId === "string" ? value.inputId.slice(0, 256) : "",
+      padNotes: padNotes.map(Number),
+    };
+  } catch {
+    return fallback;
+  }
+}
 
 function createEmptySamplerPads(): SamplerPad[] {
   return Array.from({ length: 16 }, () => ({
@@ -513,9 +545,14 @@ export default function Salaryman1999() {
   const [wavBusy, setWavBusy] = useState(false);
   const [vaultMixBusy, setVaultMixBusy] = useState(false);
   const [midiOutputs, setMidiOutputs] = useState<MidiOutputPort[]>([]);
+  const [midiInputs, setMidiInputs] = useState<MidiInputPort[]>([]);
   const [selectedMidiOutputId, setSelectedMidiOutputId] = useState("");
+  const [selectedMidiInputId, setSelectedMidiInputId] = useState(() => loadMidiInputSettings().inputId);
+  const [midiPadNotes, setMidiPadNotes] = useState(() => loadMidiInputSettings().padNotes);
+  const [learningMidiPadIndex, setLearningMidiPadIndex] = useState<number | null>(null);
   const [midiConnected, setMidiConnected] = useState(false);
   const [midiStatus, setMidiStatus] = useState("MIDI output is not connected.");
+  const [midiInputStatus, setMidiInputStatus] = useState("Connect MIDI to enable sampler input.");
   const dirtyRef = useRef(false);
   const skipDirtyRef = useRef(true);
   const projectRef = useRef(project);
@@ -537,13 +574,26 @@ export default function Salaryman1999() {
   const lanePreviewGenerationRef = useRef(0);
   const samplerPreviewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const samplerPreviewGenerationRef = useRef(0);
+  const samplerMidiVoicesRef = useRef<AudioBufferSourceNode[]>([]);
   const schedulerRef = useRef<number | null>(null);
   const playingRef = useRef(false);
   const nextStepTimeRef = useRef(0);
   const playStepRef = useRef(0);
   const midiAccessRef = useRef<MidiAccessPort | null>(null);
   const selectedMidiOutputRef = useRef("");
+  const selectedMidiInputRef = useRef(selectedMidiInputId);
   const midiErrorRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MIDI_INPUT_SETTINGS_KEY, JSON.stringify({
+        inputId: selectedMidiInputId,
+        padNotes: midiPadNotes,
+      }));
+    } catch {
+      // MIDI device preferences are best-effort and remain local to this browser.
+    }
+  }, [midiPadNotes, selectedMidiInputId]);
 
   const refreshEntries = useCallback(async () => {
     const response = await apiFetch("/api/vault/entries?folder=%2F1999");
@@ -687,9 +737,17 @@ export default function Salaryman1999() {
       try { source.stop(); } catch { /* Already stopped. */ }
     });
     samplerPreviewSourcesRef.current = [];
+    samplerMidiVoicesRef.current.forEach(source => {
+      source.onended = null;
+      try { source.stop(); } catch { /* Already stopped. */ }
+    });
+    samplerMidiVoicesRef.current = [];
     if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
     playingRef.current = false;
-    if (midiAccessRef.current) midiAccessRef.current.onstatechange = null;
+    if (midiAccessRef.current) {
+      midiAccessRef.current.onstatechange = null;
+      midiAccessRef.current.inputs.forEach(input => { input.onmidimessage = null; });
+    }
     const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
     if (midiOutput) {
       try { sendMidiAllNotesOff(midiOutput); } catch { /* The device may already be disconnected. */ }
@@ -896,24 +954,46 @@ export default function Salaryman1999() {
       ? `${outputs.length} MIDI output${outputs.length === 1 ? "" : "s"} available.`
       : "MIDI is connected, but no output devices were found.");
   };
+  const refreshMidiInputs = (access: MidiAccessPort) => {
+    const inputs = Array.from(access.inputs.values()).filter(input => input.state !== "disconnected");
+    setMidiInputs(inputs);
+    const selected = inputs.some(input => input.id === selectedMidiInputRef.current)
+      ? selectedMidiInputRef.current
+      : inputs[0]?.id ?? "";
+    selectedMidiInputRef.current = selected;
+    setSelectedMidiInputId(selected);
+    setMidiInputStatus(inputs.length
+      ? selected
+        ? `Ready for pad notes from ${inputs.find(input => input.id === selected)?.name || "selected MIDI input"}.`
+        : "Choose a MIDI input."
+      : "MIDI is connected, but no input devices were found.");
+  };
   const connectMidi = async () => {
     const requestMIDIAccess = (navigator as MidiNavigator).requestMIDIAccess;
     if (!requestMIDIAccess) {
       setMidiStatus("Web MIDI is unavailable here. Use a current Chrome or Edge browser over HTTPS.");
+      setMidiInputStatus("Web MIDI input is unavailable here. Use a current Chrome or Edge browser over HTTPS.");
       return;
     }
     try {
       const access = await requestMIDIAccess.call(navigator, { sysex: false });
       midiAccessRef.current = access;
-      access.onstatechange = () => refreshMidiOutputs(access);
+      access.onstatechange = () => {
+        refreshMidiOutputs(access);
+        refreshMidiInputs(access);
+      };
       setMidiConnected(true);
       midiErrorRef.current = false;
       refreshMidiOutputs(access);
+      refreshMidiInputs(access);
     } catch (error) {
       setMidiConnected(false);
       setMidiStatus(error instanceof Error
         ? `MIDI permission or device access failed: ${error.message}`
         : "MIDI permission or device access failed.");
+      setMidiInputStatus(error instanceof Error
+        ? `MIDI input permission failed: ${error.message}`
+        : "MIDI input permission failed.");
     }
   };
   const chooseMidiOutput = (outputId: string) => {
@@ -922,6 +1002,20 @@ export default function Salaryman1999() {
     midiErrorRef.current = false;
     const output = midiOutputs.find(candidate => candidate.id === outputId);
     setMidiStatus(output ? `Ready to send notes to ${output.name || "selected MIDI output"}.` : "Choose a MIDI output.");
+  };
+  const chooseMidiInput = (inputId: string) => {
+    selectedMidiInputRef.current = inputId;
+    setSelectedMidiInputId(inputId);
+    setLearningMidiPadIndex(null);
+    const input = midiInputs.find(candidate => candidate.id === inputId);
+    setMidiInputStatus(input
+      ? `Ready for pad notes from ${input.name || "selected MIDI input"}.`
+      : "Choose a MIDI input.");
+  };
+  const resetMidiPadNotes = () => {
+    setMidiPadNotes([...DEFAULT_MIDI_PAD_NOTES]);
+    setLearningMidiPadIndex(null);
+    setMidiInputStatus("Restored default mapping: MIDI notes 36–51 to pads 01–16.");
   };
   const uploadAudioToLibrary = async (file: File, durationSec: number) => {
     const request = await apiFetch("/api/storage/uploads/request-url", {
@@ -1024,6 +1118,86 @@ export default function Salaryman1999() {
       }
     }
   };
+  const triggerMidiSamplerPad = useCallback(async (padIndex: number, velocity: number) => {
+    const track = projectRef.current.tracks.find(candidate => candidate.id === selectedTrackId);
+    if (track?.kind !== "instrument" || track.machineId !== "mpc_sample") {
+      setMidiInputStatus("Select an MPC Sample lane to use MIDI pad input.");
+      return;
+    }
+    if (isRecording || isUploadingTake) {
+      setMidiInputStatus("Stop recording or sample import before playing MIDI pads.");
+      return;
+    }
+    setSelectedPadIndex(padIndex);
+    if (track.muted) {
+      setMidiInputStatus(`PAD ${String(padIndex + 1).padStart(2, "0")} is muted with its lane.`);
+      return;
+    }
+    const pad = track.samplerPads?.[padIndex];
+    if (!pad?.audioTrackId) {
+      setMidiInputStatus(`PAD ${String(padIndex + 1).padStart(2, "0")} has no sample.`);
+      return;
+    }
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Sampler playback is not supported in this browser.");
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      await context.resume();
+      const buffer = await loadAudioBuffer(context, pad.audioTrackId, clipBufferCacheRef.current);
+      const currentTrack = projectRef.current.tracks.find(candidate => candidate.id === track.id);
+      const currentPad = currentTrack?.samplerPads?.[padIndex];
+      if (!currentTrack || currentTrack.machineId !== "mpc_sample" || currentPad?.audioTrackId !== pad.audioTrackId) return;
+      const source = scheduleSamplerPad(
+        context,
+        currentTrack,
+        currentPad,
+        buffer,
+        context.currentTime + 0.01,
+        projectRef.current.key,
+        velocity,
+      );
+      if (!source) {
+        setMidiInputStatus(`PAD ${String(padIndex + 1).padStart(2, "0")} has an invalid sample trim.`);
+        return;
+      }
+      samplerMidiVoicesRef.current.push(source);
+      if (playingRef.current) playbackSourcesRef.current.push(source);
+      source.onended = () => {
+        samplerMidiVoicesRef.current = samplerMidiVoicesRef.current.filter(item => item !== source);
+        playbackSourcesRef.current = playbackSourcesRef.current.filter(item => item !== source);
+      };
+      setMidiInputStatus(`PAD ${String(padIndex + 1).padStart(2, "0")} · velocity ${velocity}.`);
+    } catch (error) {
+      setMidiInputStatus(error instanceof Error ? error.message : "MIDI pad sample could not play.");
+    }
+  }, [isRecording, isUploadingTake, selectedTrackId]);
+
+  useEffect(() => {
+    const input = midiConnected ? midiAccessRef.current?.inputs.get(selectedMidiInputId) : undefined;
+    if (!input) return;
+    const handleMidiMessage = (event: MidiInputMessage) => {
+      const [statusByte, note, velocity] = event.data;
+      if (!Number.isInteger(statusByte) || !Number.isInteger(note) || !Number.isInteger(velocity)) return;
+      if ((statusByte & 0xf0) !== 0x90 || velocity === 0) return;
+      if (learningMidiPadIndex !== null) {
+        const learnedPadIndex = learningMidiPadIndex;
+        setMidiPadNotes(current => current.map((existing, index) => (
+          index === learnedPadIndex ? note : existing === note ? -1 : existing
+        )));
+        setLearningMidiPadIndex(null);
+        setMidiInputStatus(`PAD ${String(learnedPadIndex + 1).padStart(2, "0")} learned MIDI note ${note}.`);
+        void triggerMidiSamplerPad(learnedPadIndex, velocity);
+        return;
+      }
+      const padIndex = midiPadNotes.indexOf(note);
+      if (padIndex >= 0) void triggerMidiSamplerPad(padIndex, velocity);
+    };
+    input.onmidimessage = handleMidiMessage;
+    return () => {
+      if (input.onmidimessage === handleMidiMessage) input.onmidimessage = null;
+    };
+  }, [learningMidiPadIndex, midiConnected, midiPadNotes, selectedMidiInputId, triggerMidiSamplerPad]);
 
   const uploadEmulatorPatch = async (machine: EmulatorMachine, file: File) => {
     if (file.size < 1 || file.size > 16 * 1024 * 1024) {
@@ -1117,7 +1291,9 @@ export default function Salaryman1999() {
       setPlayhead(-1);
       if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
       schedulerRef.current = null;
+      const stoppedSources = new Set(playbackSourcesRef.current);
       playbackSourcesRef.current.forEach(source => { try { source.stop(); } catch { /* Already stopped. */ } });
+      samplerMidiVoicesRef.current = samplerMidiVoicesRef.current.filter(source => !stoppedSources.has(source));
       playbackSourcesRef.current = [];
       playbackSourcesByTrackRef.current.clear();
       playbackGainsRef.current.clear();
@@ -1779,6 +1955,40 @@ export default function Salaryman1999() {
                   {midiOutputs.map(output => <option key={output.id} value={output.id}>{output.name || output.id}</option>)}
                 </select>
                 <p className="n-midi-status" role="status" aria-live="polite" data-testid="status-midi-output">{midiStatus}</p>
+              </div>
+            </section>
+
+            <section className="n-panel" aria-label="MIDI sampler input" data-testid="section-midi-input">
+              <div className="n-panel-head"><p className="n-eyebrow">MIDI IN</p><span className="n-subtle">MPC PADS</span></div>
+              <div className="n-machine-body n-midi-controls">
+                <label className="n-screen-reader" htmlFor="midi-input-select">MIDI input device</label>
+                <select id="midi-input-select" className="n-machine-select" value={selectedMidiInputId} onChange={event => chooseMidiInput(event.target.value)} disabled={!midiConnected || midiInputs.length === 0} data-testid="select-midi-input">
+                  <option value="">{midiInputs.length ? "Choose an input" : "No input selected"}</option>
+                  {midiInputs.map(input => <option key={input.id} value={input.id}>{input.name || input.id}</option>)}
+                </select>
+                <div className="n-midi-map-row">
+                  <span>PAD {String(selectedPadIndex + 1).padStart(2, "0")} · NOTE {midiPadNotes[selectedPadIndex] < 0 ? "—" : midiPadNotes[selectedPadIndex]}</span>
+                  <button
+                    className={`n-btn${learningMidiPadIndex === selectedPadIndex ? " is-learning" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      if (learningMidiPadIndex === selectedPadIndex) {
+                        setLearningMidiPadIndex(null);
+                        setMidiInputStatus("Pad mapping cancelled.");
+                      } else {
+                        setLearningMidiPadIndex(selectedPadIndex);
+                        setMidiInputStatus(`Press a pad to map PAD ${String(selectedPadIndex + 1).padStart(2, "0")}.`);
+                      }
+                    }}
+                    disabled={!midiConnected || !selectedMidiInputId || selectedTrack?.machineId !== "mpc_sample"}
+                    data-testid="button-learn-midi-pad"
+                  >
+                    {learningMidiPadIndex === selectedPadIndex ? "Listening…" : `Learn pad ${String(selectedPadIndex + 1).padStart(2, "0")}`}
+                  </button>
+                </div>
+                <button className="n-btn" type="button" onClick={resetMidiPadNotes} data-testid="button-reset-midi-map">Reset notes 36–51</button>
+                <p className="n-midi-status" role="status" aria-live="polite" data-testid="status-midi-input">{midiInputStatus}</p>
+                <p className="n-midi-map-hint">Notes 36–51 map to pads 01–16 by default. Mapping stays in this browser.</p>
               </div>
             </section>
 

@@ -206,6 +206,8 @@ function setValue(testId: string, value: string, eventName: "input" | "change" =
 }
 
 beforeEach(() => {
+  window.localStorage.removeItem("salaryman.1999-midi-input.v1");
+  Object.defineProperty(navigator, "requestMIDIAccess", { configurable: true, value: undefined });
   currentProject = JSON.stringify(savedProject);
   currentUpdatedAt = "2026-11-10T00:00:00.000Z";
   audioSources.length = 0;
@@ -264,6 +266,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  delete (navigator as any).requestMIDIAccess;
   vi.unstubAllGlobals();
 });
 
@@ -579,5 +582,92 @@ describe("1999 recorded-loop persistence", () => {
     const exportedPadSources = offlineSources.filter(source => source.start.mock.calls.some((args: number[]) => args.length === 3));
     expect(exportedPadSources.length).toBeGreaterThan(0);
     expect(exportedPadSources[0].playbackRate.value).toBeCloseTo(3);
+  });
+
+  it("triggers MPC pads from MIDI notes and learns a browser-local mapping", async () => {
+    const pads = Array.from({ length: 16 }, (_, index) => ({
+      audioTrackId: index < 2 ? 501 : null,
+      startSec: 0,
+      endSec: 0,
+      tune: 0,
+      speed: 1,
+      level: 100,
+      tone: 100,
+      echo: 0,
+      rootKey: null,
+    }));
+    const midiProject = {
+      ...savedProject,
+      tracks: [
+        {
+          ...savedProject.tracks[0],
+          machineId: "mpc_sample" as const,
+          samplerPads: pads,
+          padPatterns: Array.from({ length: 16 }, () => Array(16).fill(0)),
+        },
+        savedProject.tracks[1],
+      ],
+    };
+    currentProject = JSON.stringify(midiProject);
+    const input: any = { id: "usb-pad", name: "USB Pad Controller", state: "connected", onmidimessage: null };
+    const access: any = { inputs: new Map([["usb-pad", input]]), outputs: new Map(), onstatechange: null };
+    Object.defineProperty(navigator, "requestMIDIAccess", {
+      configurable: true,
+      value: vi.fn(async () => access),
+    });
+    await mount();
+
+    click("button-connect-midi");
+    await flush();
+    expect((container.querySelector('[data-testid="select-midi-input"]') as HTMLSelectElement).value).toBe("usb-pad");
+    expect(typeof input.onmidimessage).toBe("function");
+
+    act(() => input.onmidimessage({ data: new Uint8Array([0x90, 36, 100]) }));
+    await flush();
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/stream/501");
+    expect(audioSources).toHaveLength(1);
+    expect(audioSources[0].playbackRate.value).toBe(1);
+    expect(audioGains[0].gain.setValueAtTime.mock.calls[0][0]).toBeCloseTo(0.72 * (100 / 127) * 0.35);
+
+    click("button-mpc-pad-2");
+    click("button-learn-midi-pad");
+    await flush();
+    act(() => input.onmidimessage({ data: new Uint8Array([0x9f, 60, 110]) }));
+    await flush();
+    expect(audioSources).toHaveLength(3);
+    expect(audioGains[2].gain.setValueAtTime.mock.calls[0][0]).toBeCloseTo(0.72 * (110 / 127) * 0.35);
+    const learnedSettings = JSON.parse(window.localStorage.getItem("salaryman.1999-midi-input.v1") || "{}");
+    expect(learnedSettings.inputId).toBe("usb-pad");
+    expect(learnedSettings.padNotes.slice(0, 2)).toEqual([36, 60]);
+    expect(container.querySelector('[data-testid="status-midi-input"]')?.textContent).toContain("velocity 110");
+
+    act(() => input.onmidimessage({ data: new Uint8Array([0x80, 60, 100]) }));
+    await flush();
+    expect(audioSources).toHaveLength(3);
+
+    click("button-reset-midi-map");
+    await flush();
+    const resetSettings = JSON.parse(window.localStorage.getItem("salaryman.1999-midi-input.v1") || "{}");
+    expect(resetSettings.padNotes.slice(0, 4)).toEqual([36, 37, 38, 39]);
+
+    access.inputs.delete("usb-pad");
+    act(() => access.onstatechange?.());
+    await flush();
+    expect((container.querySelector('[data-testid="select-midi-input"]') as HTMLSelectElement).value).toBe("");
+    expect(container.querySelector('[data-testid="status-midi-input"]')?.textContent).toContain("no input devices");
+    expect(input.onmidimessage).toBeNull();
+  });
+
+  it("reports unsupported MIDI input without hiding sampler controls", async () => {
+    currentProject = JSON.stringify({
+      ...savedProject,
+      tracks: [{ ...savedProject.tracks[0], machineId: "mpc_sample" as const }, savedProject.tracks[1]],
+    });
+    await mount();
+    click("button-connect-midi");
+    await flush();
+    expect(container.querySelector('[data-testid="status-midi-input"]')?.textContent).toContain("Web MIDI input is unavailable");
+    expect(container.querySelector('[data-testid="section-midi-input"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="panel-mpc-sampler"]')).not.toBeNull();
   });
 });
