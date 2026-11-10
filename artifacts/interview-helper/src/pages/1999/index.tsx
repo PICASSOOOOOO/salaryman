@@ -323,7 +323,7 @@ async function renderWav(project: Project): Promise<Blob> {
 }
 
 export default function Salaryman1999() {
-  const { tracks: libraryTracks, refresh, previewTrack } = useMusicPlayer();
+  const { tracks: libraryTracks, refresh } = useMusicPlayer();
   const [project, setProject] = useState<Project>(freshProject);
   const [entries, setEntries] = useState<VaultEntry[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -337,6 +337,8 @@ export default function Salaryman1999() {
   const [loopBars, setLoopBars] = useState<1 | 2 | 4>(1);
   const [selectedLibraryTakeId, setSelectedLibraryTakeId] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [previewLoadingTrackId, setPreviewLoadingTrackId] = useState<string | null>(null);
+  const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
   const [playhead, setPlayhead] = useState(-1);
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
   const [wavBusy, setWavBusy] = useState(false);
@@ -361,6 +363,9 @@ export default function Salaryman1999() {
   const playbackSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const playbackSourcesByTrackRef = useRef<Map<string, AudioBufferSourceNode[]>>(new Map());
   const playbackGainsRef = useRef<Map<string, GainNode>>(new Map());
+  const lanePreviewSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const lanePreviewGainRef = useRef<GainNode | null>(null);
+  const lanePreviewGenerationRef = useRef(0);
   const schedulerRef = useRef<number | null>(null);
   const playingRef = useRef(false);
   const nextStepTimeRef = useRef(0);
@@ -498,6 +503,14 @@ export default function Salaryman1999() {
     playbackSourcesRef.current = [];
     playbackSourcesByTrackRef.current.clear();
     playbackGainsRef.current.clear();
+    lanePreviewGenerationRef.current += 1;
+    lanePreviewSourcesRef.current.forEach(source => {
+      source.onended = null;
+      try { source.stop(); } catch { /* Already stopped. */ }
+    });
+    lanePreviewSourcesRef.current = [];
+    lanePreviewGainRef.current?.disconnect();
+    lanePreviewGainRef.current = null;
     if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
     playingRef.current = false;
     if (midiAccessRef.current) midiAccessRef.current.onstatechange = null;
@@ -509,6 +522,7 @@ export default function Salaryman1999() {
   }, []);
 
   const selectedTrack = useMemo(() => project.tracks.find(track => track.id === selectedTrackId) ?? project.tracks[0], [project.tracks, selectedTrackId]);
+  const isLoopPreviewActive = previewLoadingTrackId !== null || previewingTrackId !== null;
   const selectedLoopBars = selectedTrack?.kind === "recording" ? selectedTrack.loopBars : undefined;
   const captureBarsForSelection = selectedLoopBars ?? loopBars;
   useEffect(() => {
@@ -542,13 +556,20 @@ export default function Salaryman1999() {
         source.playbackRate.setTargetAtTime(recordingPlaybackRate(track, project.bpm), context.currentTime, 0.02);
       });
     });
-  }, [project.bpm, project.tracks]);
+    const lanePreviewTrack = project.tracks.find(track => track.id === previewingTrackId && track.kind === "recording");
+    if (lanePreviewTrack && lanePreviewGainRef.current) {
+      lanePreviewGainRef.current.gain.setTargetAtTime(lanePreviewTrack.muted ? 0 : lanePreviewTrack.volume / 100, context.currentTime, 0.02);
+      lanePreviewSourcesRef.current.forEach(source => {
+        source.playbackRate.setTargetAtTime(recordingPlaybackRate(lanePreviewTrack, project.bpm), context.currentTime, 0.02);
+      });
+    }
+  }, [previewingTrackId, project.bpm, project.tracks]);
   const updateProject = (updater: (current: Project) => Project) => setProject(current => updater(current));
   const updateTrack = (id: string, updater: (track: ProjectTrack) => ProjectTrack) => updateProject(current => ({
     ...current, tracks: current.tracks.map(track => track.id === id ? updater(track) : track),
   }));
   const removeOverdubLayer = (trackId: string, audioTrackId: number) => {
-    if (playingRef.current || isRecording || isUploadingTake) return;
+    if (playingRef.current || isLoopPreviewActive || isRecording || isUploadingTake) return;
     const target = projectRef.current.tracks.find(track => track.id === trackId && track.kind === "recording");
     if (!target?.overdubTrackIds?.includes(audioTrackId)) return;
     if (!window.confirm("Remove this overdub from the loop? The take will remain in your music library.")) return;
@@ -557,7 +578,7 @@ export default function Salaryman1999() {
       : track);
   };
   const addLibraryTakeToLoop = () => {
-    if (playingRef.current || isRecording || isUploadingTake) return;
+    if (playingRef.current || isLoopPreviewActive || isRecording || isUploadingTake) return;
     const audioTrackId = Number(selectedLibraryTakeId);
     const libraryTake = availableLibraryTakes.find(track => track.id === audioTrackId);
     const target = projectRef.current.tracks.find(track => (
@@ -577,6 +598,81 @@ export default function Salaryman1999() {
       }
       : track);
     setSelectedLibraryTakeId("");
+  };
+  const stopLoopPreview = () => {
+    lanePreviewGenerationRef.current += 1;
+    lanePreviewSourcesRef.current.forEach(source => {
+      source.onended = null;
+      try { source.stop(); } catch { /* Already stopped. */ }
+    });
+    lanePreviewSourcesRef.current = [];
+    lanePreviewGainRef.current?.disconnect();
+    lanePreviewGainRef.current = null;
+    setPreviewLoadingTrackId(null);
+    setPreviewingTrackId(null);
+  };
+  const toggleLoopPreview = async (track: ProjectTrack) => {
+    if (playingRef.current || isRecording || isUploadingTake) return;
+    if (previewLoadingTrackId === track.id || previewingTrackId === track.id) {
+      stopLoopPreview();
+      return;
+    }
+    stopLoopPreview();
+    const generation = lanePreviewGenerationRef.current;
+    setLoadError("");
+    setPreviewLoadingTrackId(track.id);
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Loop preview is not supported in this browser.");
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      await context.resume();
+      const audioTrackIds = recordingAudioTrackIds(track);
+      if (!audioTrackIds.length) throw new Error("This loop has no audio takes to preview.");
+      const buffers = await Promise.all(audioTrackIds.map(async audioTrackId => {
+        const cached = clipBufferCacheRef.current.get(audioTrackId);
+        if (cached) return cached;
+        const response = await apiFetch(`/api/music/stream/${audioTrackId}`);
+        if (!response.ok) throw new Error(`Loop audio could not be loaded (${response.status}).`);
+        const buffer = await context.decodeAudioData(await response.arrayBuffer());
+        clipBufferCacheRef.current.set(audioTrackId, buffer);
+        return buffer;
+      }));
+      if (generation !== lanePreviewGenerationRef.current) return;
+
+      const gain = context.createGain();
+      gain.gain.value = track.muted ? 0 : track.volume / 100;
+      gain.connect(context.destination);
+      let remaining = buffers.length;
+      const sources = buffers.map(buffer => {
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = false;
+        source.playbackRate.value = recordingPlaybackRate(track, projectRef.current.bpm);
+        source.connect(gain);
+        source.onended = () => {
+          if (generation !== lanePreviewGenerationRef.current) return;
+          remaining -= 1;
+          if (remaining === 0) {
+            lanePreviewSourcesRef.current = [];
+            lanePreviewGainRef.current?.disconnect();
+            lanePreviewGainRef.current = null;
+            setPreviewingTrackId(null);
+          }
+        };
+        return source;
+      });
+      lanePreviewSourcesRef.current = sources;
+      lanePreviewGainRef.current = gain;
+      setPreviewLoadingTrackId(null);
+      setPreviewingTrackId(track.id);
+      const startsAt = context.currentTime + 0.04;
+      sources.forEach(source => source.start(startsAt));
+    } catch (error) {
+      if (generation !== lanePreviewGenerationRef.current) return;
+      stopLoopPreview();
+      setLoadError(error instanceof Error ? error.message : "Loop preview could not start.");
+    }
   };
   const refreshMidiOutputs = (access: MidiAccessPort) => {
     const outputs = Array.from(access.outputs.values()).filter(output => output.state !== "disconnected");
@@ -757,6 +853,7 @@ export default function Salaryman1999() {
       }
       return;
     }
+    stopLoopPreview();
     const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) {
       setLoadError("Loop playback is not supported in this browser.");
@@ -853,6 +950,7 @@ export default function Salaryman1999() {
     if ((dirtyRef.current || conflict) && !window.confirm("Switch sessions and discard the unsaved local version?")) return;
     const parsed = parseProject(entry.content);
     if (!parsed) return;
+    stopLoopPreview();
     skipDirtyRef.current = true;
     projectRef.current = parsed;
     setProject(parsed);
@@ -870,6 +968,7 @@ export default function Salaryman1999() {
       return;
     }
     if ((dirtyRef.current || conflict) && !window.confirm("Start a new session and discard the unsaved local version?")) return;
+    stopLoopPreview();
     const next = freshProject();
     next.name = "Untitled session";
     skipDirtyRef.current = false;
@@ -908,6 +1007,10 @@ export default function Salaryman1999() {
   };
 
   const startRecording = async () => {
+    if (isLoopPreviewActive) {
+      setRecordingLabel("Stop loop preview before recording.");
+      return;
+    }
     const selectedAtStart = projectRef.current.tracks.find(track => track.id === selectedTrackId);
     const recordingTargetId = selectedAtStart?.kind === "recording" ? selectedAtStart.id : null;
     const recordingBars = selectedAtStart?.kind === "recording" ? selectedAtStart.loopBars ?? loopBars : loopBars;
