@@ -2,13 +2,13 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/OrbitEngine.tsx": () => import("../components/mockups/OrbitEngine.tsx"),
+  "./components/mockups/crm-sync/Current.tsx": () => import("../components/mockups/crm-sync/Current.tsx"),
+  "./components/mockups/crm-sync/Streamlined.tsx": () => import("../components/mockups/crm-sync/Streamlined.tsx"),
+  "./components/mockups/salaryman-gameplay-tour/SalarymanGameplayTour.tsx": () => import("../components/mockups/salaryman-gameplay-tour/SalarymanGameplayTour.tsx"),
+  "./components/mockups/salaryman-home-pablo-crm/Home.tsx": () => import("../components/mockups/salaryman-home-pablo-crm/Home.tsx"),
   "./components/mockups/1999-emulator-visuals/Fm1EmulatorPanel.tsx": () => import("../components/mockups/1999-emulator-visuals/Fm1EmulatorPanel.tsx"),
   "./components/mockups/1999-emulator-visuals/MinimoogEmulatorPanel.tsx": () => import("../components/mockups/1999-emulator-visuals/MinimoogEmulatorPanel.tsx"),
   "./components/mockups/1999-emulator-visuals/VisualRefresh.tsx": () => import("../components/mockups/1999-emulator-visuals/VisualRefresh.tsx"),
-  "./components/mockups/salaryman-gameplay-tour/SalarymanGameplayTour.tsx": () => import("../components/mockups/salaryman-gameplay-tour/SalarymanGameplayTour.tsx"),
-  "./components/mockups/crm-sync/Current.tsx": () => import("../components/mockups/crm-sync/Current.tsx"),
-  "./components/mockups/crm-sync/Streamlined.tsx": () => import("../components/mockups/crm-sync/Streamlined.tsx"),
-  "./components/mockups/salaryman-home-pablo-crm/Home.tsx": () => import("../components/mockups/salaryman-home-pablo-crm/Home.tsx"),
   "./components/mockups/salaryman-kinetic-blueprint/KineticBlueprint.tsx": () => import("../components/mockups/salaryman-kinetic-blueprint/KineticBlueprint.tsx"),
   "./components/mockups/salaryman-mainnav/Consolidated.tsx": () => import("../components/mockups/salaryman-mainnav/Consolidated.tsx"),
   "./components/mockups/salaryman-mainnav/Current.tsx": () => import("../components/mockups/salaryman-mainnav/Current.tsx"),

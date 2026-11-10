@@ -313,3 +313,283 @@
     min-height: 400px;
   }
 }
+
+.salary-1999 .n-machine-stage .fm1-emulator-panel {
+  --device-accent: #b5e65e;
+  --device-accent-soft: #192116;
+  --device-accent-line: #34432d;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--n-ink);
+}
+
+.salary-1999 .n-machine-stage .fm1-emulator-panel[data-machine="smk37"] {
+  --device-accent: #84c7d8;
+  --device-accent-soft: #132026;
+  --device-accent-line: #2e4650;
+}
+
+.salary-1999 .n-machine-stage .fm1-catalog {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 0;
+  border-bottom: 1px solid var(--n-line);
+  background: #080a0b;
+  color: var(--n-ink);
+}
+
+.salary-1999 .n-machine-stage .fm1-panel-heading {
+  padding: 0;
+  border: 0;
+}
+
+.salary-1999 .n-machine-stage .fm1-panel-heading::before {
+  display: none;
+}
+
+.salary-1999 .n-machine-stage .fm1-panel-heading h2 {
+  margin: 0;
+  color: var(--n-ink);
+  font: 700 9px var(--font-mono, monospace);
+  letter-spacing: .09em;
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-browser,
+.salary-1999 .n-machine-stage .fm1-patch-details {
+  position: relative;
+  min-width: 105px;
+  border: 1px solid var(--n-line);
+  background: #101416;
+  color: var(--n-ink);
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-browser summary,
+.salary-1999 .n-machine-stage .fm1-patch-details summary {
+  display: flex;
+  min-height: 29px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 8px;
+  color: #a3acad;
+  cursor: pointer;
+  font: 8px var(--font-mono, monospace);
+  letter-spacing: .06em;
+  list-style: none;
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-browser summary::-webkit-details-marker,
+.salary-1999 .n-machine-stage .fm1-patch-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-browser[open],
+.salary-1999 .n-machine-stage .fm1-patch-details[open] {
+  align-self: start;
+  padding: 7px;
+  border-color: var(--device-accent-line);
+}
+
+.salary-1999 .n-machine-stage .fm1-search-label {
+  display: block;
+  margin: 6px 0 4px;
+  color: var(--n-muted);
+  font: 8px var(--font-mono, monospace);
+}
+
+.salary-1999 .n-machine-stage .fm1-search,
+.salary-1999 .n-machine-stage .fm1-firmware-list {
+  width: 100%;
+  border: 1px solid var(--n-line);
+  border-radius: 0;
+  background: #080a0b;
+  color: var(--n-ink);
+  font: 9px var(--font-mono, monospace);
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-list {
+  min-height: 110px;
+  max-height: 150px;
+  margin-top: 5px;
+  padding: 3px;
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-list option:checked {
+  background: var(--device-accent) linear-gradient(var(--device-accent), var(--device-accent));
+  color: #101410;
+}
+
+.salary-1999 .n-machine-stage .fm1-panel-state {
+  min-height: 55px;
+  border-color: var(--n-line);
+  color: var(--n-muted);
+  font-size: 9px;
+}
+
+.salary-1999 .n-machine-stage .fm1-panel-error {
+  color: #ff9690;
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-details {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--n-muted);
+  font-size: 8px;
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-byline strong {
+  color: var(--n-ink);
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-byline span,
+.salary-1999 .n-machine-stage .fm1-firmware-author,
+.salary-1999 .n-machine-stage .fm1-firmware-note {
+  color: var(--n-muted) !important;
+  font-size: 8px;
+}
+
+.salary-1999 .n-machine-stage .fm1-firmware-details a,
+.salary-1999 .n-machine-stage .fm1-attribution a,
+.salary-1999 .n-machine-stage .fm1-player-footer a {
+  color: var(--device-accent);
+  font-size: 8px;
+}
+
+.salary-1999 .n-machine-stage .fm1-save-file-name,
+.salary-1999 .n-machine-stage .fm1-save-status {
+  color: var(--n-muted);
+  font-size: 8px;
+}
+
+.salary-1999 .n-machine-stage .fm1-save-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.salary-1999 .n-machine-stage .fm1-save-file-input,
+.salary-1999 .n-machine-stage .fm1-save-download {
+  border: 1px solid var(--n-line);
+  background: #080a0b;
+  color: var(--n-ink);
+  font-size: 8px;
+}
+
+.salary-1999 .n-machine-stage .fm1-attribution {
+  margin: 0;
+  color: var(--n-muted);
+  font-size: 8px;
+}
+
+.salary-1999 .n-machine-stage .fm1-player-column {
+  min-height: 0;
+  border: 0;
+  background: #050607;
+}
+
+.salary-1999 .n-machine-stage .fm1-player {
+  display: block;
+  width: 100%;
+  height: min(68vh, 740px);
+  min-height: 500px;
+  background: #050607;
+}
+
+.salary-1999 .n-machine-stage .fm1-player-placeholder {
+  display: grid;
+  min-height: 500px;
+  place-items: center;
+  background: #050607;
+  color: var(--n-muted);
+  font: 9px var(--font-mono, monospace);
+}
+
+.salary-1999 .n-machine-stage .fm1-player-footer {
+  min-height: 30px;
+  border-color: var(--n-line);
+  background: #080a0b;
+  color: var(--n-muted);
+}
+
+.salary-1999 .n-machine-stage .minimoog-emulator {
+  border: 0;
+  background: transparent;
+  color: var(--n-ink);
+}
+
+.salary-1999 .n-machine-stage .minimoog-emulator__header {
+  align-items: center;
+  padding: 9px 11px;
+  border-color: var(--n-line);
+}
+
+.salary-1999 .n-machine-stage .minimoog-emulator__header h2 {
+  margin: 0;
+  color: var(--n-ink);
+  font: 700 9px var(--font-mono, monospace);
+}
+
+.salary-1999 .n-machine-stage .minimoog-emulator__header a,
+.salary-1999 .n-machine-stage .minimoog-emulator__controls a {
+  color: #b5e65e;
+  font-size: 8px;
+}
+
+.salary-1999 .n-machine-stage .minimoog-emulator__controls {
+  min-height: 48px;
+  padding: 7px 11px;
+  color: var(--n-muted);
+}
+
+.salary-1999 .n-machine-stage .minimoog-emulator__launch {
+  min-height: 30px;
+  border-color: #38442c;
+  background: #121811;
+  color: var(--n-ink);
+  font-size: 9px;
+}
+
+.salary-1999 .n-machine-stage .minimoog-emulator__frame {
+  height: min(68vh, 740px);
+  min-height: 500px;
+  background: #050607;
+}
+
+@media (max-width: 780px) {
+  .salary-1999 .n-machine-stage .fm1-player,
+  .salary-1999 .n-machine-stage .fm1-player-placeholder,
+  .salary-1999 .n-machine-stage .minimoog-emulator__frame {
+    height: min(68vh, 640px);
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 520px) {
+  .salary-1999 .n-machine-stage .fm1-catalog {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .salary-1999 .n-machine-stage .fm1-firmware-browser {
+    grid-column: 2;
+  }
+
+  .salary-1999 .n-machine-stage .fm1-patch-details {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .salary-1999 .n-machine-stage .fm1-attribution {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+}

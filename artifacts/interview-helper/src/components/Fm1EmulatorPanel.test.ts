@@ -41,7 +41,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('FM-1 emulator catalog', () => {
+describe('FM-1 firmware catalog', () => {
   it('keeps runnable firmware and excludes entries the upstream emulator marks untested', () => {
     const catalog = parseFirmwareCatalog({
       default: 'felucca',
@@ -59,7 +59,7 @@ describe('FM-1 emulator catalog', () => {
     expect(() => parseFirmwareCatalog({
       default: 'missing',
       firmwares: [{ id: 'only-one', name: 'Only one' }],
-    })).toThrow('no runnable default firmware');
+    })).toThrow('No runnable firmware is available.');
   });
 
   it('builds the FM-1 and SMK-37 player paths with the selected firmware', () => {
@@ -71,7 +71,7 @@ describe('FM-1 emulator catalog', () => {
     );
   });
 
-  it('switches machine catalogs and launches the selected firmware inside 1999', async () => {
+  it('keeps firmware browsing compact and follows the selected machine lane', async () => {
     await act(async () => root.render(createElement(Fm1EmulatorPanel)));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
 
@@ -80,14 +80,14 @@ describe('FM-1 emulator catalog', () => {
       'https://joakimeriksson.github.io/fm1-emu/?fw=felucca&embed=1',
     );
     expect(container.querySelector('.fm1-emulator-panel')?.getAttribute('data-machine')).toBe('fm1');
-    expect(container.querySelector('.fm1-panel-heading h2')?.textContent).toBe('M-VAVE FM-1 EMULATOR');
+    expect(container.querySelector('.fm1-panel-heading h2')?.textContent).toBe('M-VAVE FM-1');
     expect(container.querySelectorAll('[data-testid="select-firmware"] option')).toHaveLength(2);
+    expect(container.querySelector<HTMLDetailsElement>('.fm1-firmware-browser')?.open).toBe(false);
+    expect(container.textContent?.toLowerCase()).not.toContain('emulator');
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-testid="button-machine-smk37"]')!.click();
-    });
+    await act(async () => root.render(createElement(Fm1EmulatorPanel, { initialMachine: 'smk37' })));
     expect(container.querySelector('.fm1-emulator-panel')?.getAttribute('data-machine')).toBe('smk37');
-    expect(container.querySelector('.fm1-panel-heading h2')?.textContent).toBe('M-VAVE SMK-37 EMULATOR');
+    expect(container.querySelector('.fm1-panel-heading h2')?.textContent).toBe('M-VAVE SMK-37');
     expect(container.querySelector<HTMLIFrameElement>('[data-testid="iframe-fm1-emulator"]')?.getAttribute('src'))
       .toBe('https://joakimeriksson.github.io/fm1-emu/smk37/?fw=snoop37&embed=1');
 

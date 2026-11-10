@@ -11,13 +11,19 @@ The 1999 workstation should support Akai MPC, Korg, Boss, Roland SP-404MKII, Tee
 
 **Why:** the user explicitly clarified the product structure and that 1999 is free, not a standalone product to sell.
 
-**How to apply:** treat 1999 as an in-app creative workstation and keep its UI consistent with the existing SALARYMAN product. Do not add standalone marketing, pricing, or sales surfaces for it.
+**How to apply:** treat 1999 as an in-app creative workstation. Do not add standalone marketing, pricing, or sales surfaces for it.
 
 Keep 1999 interfaces stripped and tool-focused: show controls, short labels, status, and required source/license attribution without explanatory copy.
 
 **Why:** the user explicitly asked for 1999 to focus on tools without explanation.
 
 **How to apply:** remove promotional, tutorial, and descriptive paragraphs from 1999 workspace surfaces; retain only concise operational feedback and required attribution.
+
+1999 uses a black background. Keep the machine view primary, place machine/firmware selection discreetly, and use the side panel for the sequencer, recording, and mixing DAW. Use the legacy `1999` logo only.
+
+**Why:** the user explicitly requested a black 1999 interface, machine-focused layout, looper-style recording, and the old logo with no added wording.
+
+**How to apply:** build the visual hierarchy around playable machine controls and an arrangement-focused DAW; keep SALARYMAN branding and other labels out of the 1999 wordmark.
 
 **Why:** the user wants a shared creative-work system that can support paid work, practice, and business creation in and out of the game, with machine-specific workstation desks usable in in-game studios.
 

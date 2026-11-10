@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import "./MinimoogEmulatorPanel.css";
 
-const EMULATOR_URL = "https://www.minimoog.app/";
+const MINIMOOG_URL = "https://www.minimoog.app/";
 const SOURCE_URL = "https://github.com/stevebarakat/Minimoog";
 
 export default function MinimoogEmulatorPanel() {
@@ -12,7 +12,6 @@ export default function MinimoogEmulatorPanel() {
     <div className="minimoog-emulator" data-machine="minimoog" data-testid="minimoog-emulator">
       <header className="minimoog-emulator__header">
         <div>
-          <span className="minimoog-emulator__eyebrow">BROWSER EMULATOR</span>
           <h2>MINIMOOG MODEL D</h2>
         </div>
         <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
@@ -28,23 +27,23 @@ export default function MinimoogEmulatorPanel() {
             onClick={() => setIsLoaded(true)}
             data-testid="button-load-minimoog"
           >
-            Load Minimoog emulator
+            Load Minimoog
           </button>
         ) : (
           <span role="status" data-testid="status-minimoog-loaded">
-            Emulator loaded from minimoog.app
+            Instrument is ready
           </span>
         )}
-        <a href={EMULATOR_URL} target="_blank" rel="noopener noreferrer">
-          Open emulator <ExternalLink size={12} aria-hidden="true" />
+        <a href={MINIMOOG_URL} target="_blank" rel="noopener noreferrer">
+          Open in new tab <ExternalLink size={12} aria-hidden="true" />
         </a>
       </div>
 
       {isLoaded && (
         <iframe
           className="minimoog-emulator__frame"
-          src={EMULATOR_URL}
-          title="Minimoog Model D browser emulator"
+          src={MINIMOOG_URL}
+          title="Minimoog Model D"
           loading="lazy"
           referrerPolicy="no-referrer"
           allow="autoplay; midi"

@@ -258,6 +258,7 @@ async function renderWav(project: Project): Promise<Blob> {
       const source = context.createBufferSource();
       const gain = context.createGain();
       source.buffer = audio;
+      source.loop = true;
       gain.gain.value = track.volume / 100;
       source.connect(gain);
       gain.connect(context.destination);
@@ -295,6 +296,7 @@ export default function Salaryman1999() {
   const [selectedTrackId, setSelectedTrackId] = useState("trk-1");
   const [isRecording, setIsRecording] = useState(false);
   const [isUploadingTake, setIsUploadingTake] = useState(false);
+  const [loopBars, setLoopBars] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(-1);
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
@@ -313,8 +315,12 @@ export default function Salaryman1999() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const recordingStartRef = useRef(0);
-  const recordingTargetRef = useRef<string | null>(null);
+  const recordingStartTimerRef = useRef<number | null>(null);
+  const recordingStopTimerRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const clipBufferCacheRef = useRef<Map<number, AudioBuffer>>(new Map());
+  const playbackSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const playbackGainsRef = useRef<Map<string, GainNode>>(new Map());
   const schedulerRef = useRef<number | null>(null);
   const playingRef = useRef(false);
   const nextStepTimeRef = useRef(0);
@@ -444,8 +450,13 @@ export default function Salaryman1999() {
   }, [project, conflict, saveState, saveProject]);
 
   useEffect(() => () => {
-    recorderRef.current?.stop();
+    if (recordingStartTimerRef.current !== null) window.clearTimeout(recordingStartTimerRef.current);
+    if (recordingStopTimerRef.current !== null) window.clearTimeout(recordingStopTimerRef.current);
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     streamRef.current?.getTracks().forEach(track => track.stop());
+    playbackSourcesRef.current.forEach(source => { try { source.stop(); } catch { /* Already stopped. */ } });
+    playbackSourcesRef.current = [];
+    playbackGainsRef.current.clear();
     if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
     playingRef.current = false;
     if (midiAccessRef.current) midiAccessRef.current.onstatechange = null;
@@ -457,6 +468,15 @@ export default function Salaryman1999() {
   }, []);
 
   const selectedTrack = useMemo(() => project.tracks.find(track => track.id === selectedTrackId) ?? project.tracks[0], [project.tracks, selectedTrackId]);
+  useEffect(() => {
+    const context = audioContextRef.current;
+    if (!context) return;
+    project.tracks.forEach(track => {
+      const gain = playbackGainsRef.current.get(track.id);
+      if (!gain) return;
+      gain.gain.setTargetAtTime(track.muted ? 0 : track.volume / 100, context.currentTime, 0.02);
+    });
+  }, [project.tracks]);
   const updateProject = (updater: (current: Project) => Project) => setProject(current => updater(current));
   const updateTrack = (id: string, updater: (track: ProjectTrack) => ProjectTrack) => updateProject(current => ({
     ...current, tracks: current.tracks.map(track => track.id === id ? updater(track) : track),
@@ -557,7 +577,7 @@ export default function Salaryman1999() {
       || !Array.isArray(saveData.sectors)
       || saveData.sectors.length > 256
       || (saveData.package !== null && typeof saveData.package !== "string")) {
-      throw new Error("This file is not a supported FM-1/SMK-37 emulator save.");
+      throw new Error("This file is not a supported FM-1/SMK-37 patch save.");
     }
     if (conflict) throw new Error("Resolve the project save conflict before attaching a patch.");
     if (!activeRef.current.id) {
@@ -629,6 +649,9 @@ export default function Salaryman1999() {
       setPlayhead(-1);
       if (schedulerRef.current !== null) window.clearInterval(schedulerRef.current);
       schedulerRef.current = null;
+      playbackSourcesRef.current.forEach(source => { try { source.stop(); } catch { /* Already stopped. */ } });
+      playbackSourcesRef.current = [];
+      playbackGainsRef.current.clear();
       const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
       if (midiOutput) {
         try { sendMidiAllNotesOff(midiOutput); }
@@ -645,10 +668,36 @@ export default function Salaryman1999() {
       const context = audioContextRef.current ?? new AudioContextClass();
       audioContextRef.current = context;
       await context.resume();
+      const snapshot = projectRef.current;
+      const recordingTracks = snapshot.tracks.filter(track => track.kind === "recording" && track.audioTrackId !== null);
+      for (const audioTrackId of new Set(recordingTracks.map(track => track.audioTrackId!))) {
+        if (clipBufferCacheRef.current.has(audioTrackId)) continue;
+        const response = await apiFetch(`/api/music/stream/${audioTrackId}`);
+        if (!response.ok) throw new Error(`Loop audio could not be loaded (${response.status}).`);
+        const buffer = await context.decodeAudioData(await response.arrayBuffer());
+        clipBufferCacheRef.current.set(audioTrackId, buffer);
+      }
+      const startsAt = context.currentTime + 0.04;
+      playbackSourcesRef.current = [];
+      playbackGainsRef.current.clear();
+      recordingTracks.forEach(track => {
+        const audio = clipBufferCacheRef.current.get(track.audioTrackId!);
+        if (!audio) return;
+        const source = context.createBufferSource();
+        const gain = context.createGain();
+        source.buffer = audio;
+        source.loop = true;
+        gain.gain.value = track.muted ? 0 : track.volume / 100;
+        source.connect(gain);
+        gain.connect(context.destination);
+        source.start(startsAt);
+        playbackSourcesRef.current.push(source);
+        playbackGainsRef.current.set(track.id, gain);
+      });
       playingRef.current = true;
       setIsPlaying(true);
       playStepRef.current = 0;
-      nextStepTimeRef.current = context.currentTime + 0.04;
+      nextStepTimeRef.current = startsAt;
       schedulerRef.current = window.setInterval(() => {
         if (!playingRef.current) return;
         while (nextStepTimeRef.current < context.currentTime + 0.12) {
@@ -680,6 +729,9 @@ export default function Salaryman1999() {
     } catch (error) {
       playingRef.current = false;
       setIsPlaying(false);
+      playbackSourcesRef.current.forEach(source => { try { source.stop(); } catch { /* Already stopped. */ } });
+      playbackSourcesRef.current = [];
+      playbackGainsRef.current.clear();
       setLoadError(error instanceof Error ? error.message : "Loop playback could not start.");
     }
   };
@@ -747,6 +799,10 @@ export default function Salaryman1999() {
   };
 
   const startRecording = async () => {
+    if (projectRef.current.tracks.length >= 8) {
+      setRecordingLabel("Arrangement full · 8 lane limit");
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setRecordingLabel("Microphone recording is not available in this browser.");
       return;
@@ -754,12 +810,15 @@ export default function Salaryman1999() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      recordingTargetRef.current = selectedTrack?.id ?? null;
       chunksRef.current = [];
       const recorder = new MediaRecorder(stream);
       recorderRef.current = recorder;
       recorder.ondataavailable = event => { if (event.data.size) chunksRef.current.push(event.data); };
       recorder.onstop = async () => {
+        if (recordingStartTimerRef.current !== null) window.clearTimeout(recordingStartTimerRef.current);
+        if (recordingStopTimerRef.current !== null) window.clearTimeout(recordingStopTimerRef.current);
+        recordingStartTimerRef.current = null;
+        recordingStopTimerRef.current = null;
         const duration = Math.max(1, Math.round((Date.now() - recordingStartRef.current) / 1000));
         stream.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -767,29 +826,73 @@ export default function Salaryman1999() {
         setIsRecording(false);
         const type = recorder.mimeType || "audio/webm";
         const take = new File(chunksRef.current, `1999-take-${Date.now()}.${type.includes("mp4") ? "m4a" : "webm"}`, { type, lastModified: Date.now() });
-        setRecordingLabel(`Uploading take · ${duration}s`);
+        setRecordingLabel(`Saving loop · ${duration}s`);
         setIsUploadingTake(true);
         try {
           const audioTrackId = await uploadAudioToLibrary(take, duration);
-          const targetTrackId = recordingTargetRef.current;
-          if (targetTrackId) {
-            updateTrack(targetTrackId, track => ({ ...track, kind: "recording", audioTrackId }));
-            setSelectedTrackId(targetTrackId);
-            setRecordingLabel("Take saved and linked to this project.");
-          } else {
-            setRecordingLabel("Take saved to your SALARYMAN music library.");
-          }
+          const current = projectRef.current;
+          if (current.tracks.length >= 8) throw new Error("Arrangement full · 8 lane limit");
+          const index = current.tracks.length + 1;
+          const id = `trk-${Date.now()}-${index}`;
+          const loopTrack: ProjectTrack = {
+            id,
+            name: `Loop ${index}`,
+            kind: "recording",
+            machineId: "op1",
+            steps: Array(16).fill(0),
+            audioTrackId,
+            muted: false,
+            volume: 82,
+            soundState: defaultSoundState("op1"),
+          };
+          const next = { ...current, tracks: [...current.tracks, loopTrack] };
+          skipDirtyRef.current = false;
+          projectRef.current = next;
+          dirtyRef.current = true;
+          setProject(next);
+          setSelectedTrackId(id);
+          setRecordingLabel("Loop added to arrangement.");
         } catch (error) {
           setRecordingLabel(error instanceof Error ? error.message : "The take could not be saved.");
         } finally {
           setIsUploadingTake(false);
-          recordingTargetRef.current = null;
         }
       };
-      recordingStartRef.current = Date.now();
-      recorder.start();
       setIsRecording(true);
-      setRecordingLabel("Recording microphone take");
+      const bpm = projectRef.current.bpm;
+      const loopDurationMs = (60_000 / bpm) * 4 * loopBars;
+      const stepDurationMs = (60_000 / bpm) / 4;
+      const stepsUntilBar = (16 - playStepRef.current) % 16;
+      const context = audioContextRef.current;
+      const untilNextStepMs = context
+        ? Math.max(0, (nextStepTimeRef.current - context.currentTime) * 1000)
+        : 0;
+      const startDelayMs = playingRef.current
+        ? untilNextStepMs + stepsUntilBar * stepDurationMs
+        : 0;
+      const beginCapture = () => {
+        recordingStartTimerRef.current = null;
+        try {
+          recordingStartRef.current = Date.now();
+          recorder.start();
+          setRecordingLabel("Recording loop");
+          recordingStopTimerRef.current = window.setTimeout(() => {
+            if (recorder.state === "recording") recorder.stop();
+          }, loopDurationMs);
+        } catch (error) {
+          stream.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+          recorderRef.current = null;
+          setIsRecording(false);
+          setRecordingLabel(error instanceof Error ? error.message : "Loop recording could not start.");
+        }
+      };
+      if (startDelayMs > 0) {
+        setRecordingLabel("Armed · next bar");
+        recordingStartTimerRef.current = window.setTimeout(beginCapture, startDelayMs);
+      } else {
+        beginCapture();
+      }
     } catch (error) {
       streamRef.current?.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -798,8 +901,22 @@ export default function Salaryman1999() {
     }
   };
 
+  const stopRecording = () => {
+    if (recordingStartTimerRef.current !== null && recorderRef.current?.state === "inactive") {
+      window.clearTimeout(recordingStartTimerRef.current);
+      recordingStartTimerRef.current = null;
+      recorderRef.current = null;
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      setIsRecording(false);
+      setRecordingLabel("Loop cancelled");
+      return;
+    }
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  };
+
   const addTrack = (kind: "instrument" | "recording") => {
-    if (project.tracks.length >= 8) return;
+    if (project.tracks.length >= 8 || isRecording || isUploadingTake) return;
     const index = project.tracks.length + 1;
     const newTrack: ProjectTrack = {
       id: `trk-${Date.now()}-${index}`, name: kind === "recording" ? `Take ${index}` : `Track ${index}`, kind,
@@ -818,12 +935,8 @@ export default function Salaryman1999() {
     <main className="salary-1999" data-testid="page-1999">
       <div className="n-shell">
         <header className="n-topline">
-          <div className="n-brand" data-testid="text-1999-brand"><span className="n-mark">S</span><span>SALARYMAN</span><span>/</span><span>1999</span></div>
-          <div className="n-top-meta"><span className="n-live" data-testid="status-workspace">WORKSPACE READY</span><span>STEREO / 01</span></div>
+          <div className="n-brand" data-testid="text-1999-brand">1999</div>
         </header>
-        <section className="n-heading">
-          <h1 className="n-title">1999<small>PRODUCTION WORKSPACE</small></h1>
-        </section>
 
         <section className="n-toolbar" aria-label="Project controls" data-testid="section-project-controls">
            <input className="n-project-name" aria-label="Project name" maxLength={80} data-testid="input-project-name" value={project.name} onChange={event => updateProject(current => ({ ...current, name: event.target.value }))} />
@@ -832,7 +945,7 @@ export default function Salaryman1999() {
           <button className="n-btn" type="button" onClick={exportProject} data-testid="button-export-project"><FileJson size={14} /> Project</button>
           <button className="n-btn" type="button" onClick={() => void exportWav()} disabled={wavBusy} data-testid="button-export-wav"><FileAudio size={14} /> {wavBusy ? "Rendering" : "WAV"}</button>
            <button className="n-btn" type="button" onClick={() => void saveWavToLibrary()} disabled={vaultMixBusy} data-testid="button-save-mix-library"><Save size={13} /> {vaultMixBusy ? "Saving mix" : "Music library"}</button>
-          <div className="n-save-state" data-state={saveState} role="status" aria-live="polite" data-testid="status-autosave">{stateLabel}</div>
+          <div className="n-save-state" data-state={saveState} title={updatedAt ? `Last saved ${new Date(updatedAt).toLocaleString()}` : undefined} role="status" aria-live="polite" data-testid="status-autosave">{stateLabel}</div>
         </section>
 
         {conflict && (
@@ -853,81 +966,134 @@ export default function Salaryman1999() {
         )}
 
         <div className="n-workspace">
-          <section className="n-main n-panel" aria-label="Step sequencer">
-            <div className="n-panel-head">
-              <p className="n-eyebrow">01 / Pattern</p>
-              <div className="n-transport">
-                <button className="n-btn n-play-btn" type="button" onClick={() => void togglePlayback()} data-testid="button-toggle-playback" aria-label={isPlaying ? "Stop loop playback" : "Play loop"}>
-                  {isPlaying ? <Square size={12} /> : <Play size={12} />}{isPlaying ? "Stop" : "Play"}
-                </button>
-                <label className="n-bpm">BPM <input aria-label="Tempo in beats per minute" data-testid="input-bpm" type="number" min="40" max="240" value={project.bpm} onChange={event => updateProject(current => ({ ...current, bpm: Math.max(40, Math.min(240, Number(event.target.value) || 40)) }))} /></label>
-                <span className="n-subtle">{project.tracks.length} / 8 LANES</span>
-              </div>
-            </div>
-            <div className="n-grid-scroll">
-              <div className="n-grid">
-                <div className="n-grid-ruler">
-                  <span className="n-ruler-label">TRACK / MACHINE</span>
-                  <div className="n-step-ruler">{Array.from({ length: 16 }, (_, index) => <span key={index}>{index % 4 === 0 ? index / 4 + 1 : "·"}</span>)}</div>
-                  <span />
-                </div>
-                {project.tracks.map((track, index) => (
-                  <div className="n-track-row" key={track.id} onClick={() => setSelectedTrackId(track.id)} data-testid={`row-track-${track.id}`}>
-                    <div className="n-track-info">
-                      <span className="n-track-num">{String(index + 1).padStart(2, "0")}</span>
-                      <div>
-                        <input className="n-track-name" aria-label={`Track ${index + 1} name`} data-testid={`input-track-name-${track.id}`} value={track.name} onChange={event => updateTrack(track.id, current => ({ ...current, name: event.target.value }))} />
-                        <span className="n-kind">{track.kind === "recording" ? "MIC TAKE" : machines.find(machine => machine.id === track.machineId)?.name}</span>
-                      </div>
-                    </div>
-                    <div className="n-steps" role="group" aria-label={`${track.name} steps`}>
-                      {track.steps.map((step, stepIndex) => <button
-                         type="button" key={stepIndex} className={`n-step${step ? " is-on" : ""}${playhead === stepIndex && isPlaying ? " is-playhead" : ""}`}
-                        aria-label={`${track.name}, step ${stepIndex + 1}, ${step ? "on" : "off"}`}
-                        aria-pressed={!!step} data-testid={`button-step-${track.id}-${stepIndex + 1}`}
-                        onClick={event => { event.stopPropagation(); updateTrack(track.id, current => ({ ...current, steps: current.steps.map((value, i) => i === stepIndex ? value ? 0 : 1 : value) })); }}
-                      />)}
-                    </div>
-                    <div className="n-track-actions">
-                      {track.audioTrackId !== null && <button className="n-icon-btn" type="button" title="Play saved take" aria-label="Play saved take" onClick={event => { event.stopPropagation(); if (libraryTracks.some(item => item.id === track.audioTrackId)) previewTrack(track.audioTrackId!); }} data-testid={`button-play-take-${track.id}`}><Volume2 size={14} /></button>}
-                      <button className={`n-icon-btn${track.muted ? " is-active" : ""}`} type="button" aria-label={track.muted ? "Unmute track" : "Mute track"} aria-pressed={track.muted} onClick={event => { event.stopPropagation(); updateTrack(track.id, current => ({ ...current, muted: !current.muted })); }} data-testid={`button-mute-${track.id}`}>M</button>
-                    </div>
-                  </div>
-                ))}
-                {project.tracks.length === 0 && <div className="n-empty" data-testid="empty-tracks">NO LANES</div>}
-              </div>
-            </div>
-            <div className="n-track-add">
-              <button className="n-btn" type="button" onClick={() => addTrack("instrument")} disabled={project.tracks.length >= 8} data-testid="button-add-track"><Plus size={13} /> Add lane</button>
-            </div>
-            <div className={`n-recording${isRecording ? " is-live" : ""}`} data-testid="status-recording" role="status" aria-live="polite">
-              <span className="n-pulse" />{recordingLabel}
-            </div>
-          </section>
-
-          <aside className="n-side">
-            <section className="n-panel" aria-label="Selected lane controls" data-testid="section-machine-panel">
-              <div className="n-panel-head"><p className="n-eyebrow">02 / Machine</p><span className="n-subtle">LANE SETUP</span></div>
-              {selectedTrack ? (
-                <div className="n-machine-body">
-                  <div className="n-machine-plate"><span className="n-machine-index">99<br />/ {String(project.tracks.indexOf(selectedTrack) + 1).padStart(2, "0")}</span><span className="n-machine-chip">{selectedTrack.kind === "recording" ? "REC" : "SKETCH"}</span></div>
+          <section className="n-machine-stage n-panel" aria-label="Selected machine" data-testid="section-machine-stage">
+            <div className="n-stage-head">
+              <span className="n-eyebrow">MACHINE</span>
+              {selectedTrack?.kind === "instrument" ? (
+                <>
                   <label className="n-screen-reader" htmlFor="machine-select">Machine</label>
                   <select id="machine-select" className="n-machine-select" value={selectedTrack.machineId} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, machineId: event.target.value as MachineId }))} data-testid="select-machine">
                     {machines.map(machine => <option key={machine.id} value={machine.id}>{machine.name}</option>)}
                   </select>
-                  <div className="n-knob-row"><label htmlFor="track-volume">OUTPUT LEVEL</label><span className="n-knob-val">{selectedTrack.volume}%</span><input id="track-volume" type="range" min="0" max="100" value={selectedTrack.volume} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, volume: Number(event.target.value) }))} data-testid="input-track-volume" /></div>
-                  {selectedTrack.kind === "instrument" && (
-                    <>
-                      <div className="n-knob-row"><label htmlFor="track-tone">TONE</label><span className="n-knob-val">{selectedTrack.soundState.tone}</span><input id="track-tone" type="range" min="0" max="100" value={selectedTrack.soundState.tone} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, tone: Number(event.target.value) } }))} data-testid="input-track-tone" /></div>
-                      <div className="n-knob-row"><label htmlFor="track-decay">DECAY</label><span className="n-knob-val">{selectedTrack.soundState.decayMs} ms</span><input id="track-decay" type="range" min="80" max="800" step="10" value={selectedTrack.soundState.decayMs} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, decayMs: Number(event.target.value) } }))} data-testid="input-track-decay" /></div>
-                    </>
-                  )}
+                </>
+              ) : <span className="n-stage-mode">MIC LOOP</span>}
+            </div>
+            {selectedTrack?.kind === "recording" ? (
+              <div className="n-loop-machine" data-testid="panel-audio-loop">
+                <div className="n-loop-screen">
+                  <span className="n-loop-code">LOOP / {String(project.tracks.indexOf(selectedTrack) + 1).padStart(2, "0")}</span>
+                  <strong>{selectedTrack.name}</strong>
+                  <span>{selectedTrack.audioTrackId === null ? "EMPTY" : "READY"}</span>
                 </div>
-              ) : <div className="n-empty">NO LANE SELECTED</div>}
+              </div>
+            ) : selectedTrack?.machineId === "fm1" || selectedTrack?.machineId === "smk37" ? (
+              <Fm1EmulatorPanel
+                initialMachine={selectedTrack.machineId}
+                initialFirmwareId={project.emulatorState.firmwareIds[selectedTrack.machineId as EmulatorMachine] ?? ""}
+                patchSaves={project.emulatorState.patchSaves}
+                onSavePatchFile={uploadEmulatorPatch}
+                onDownloadPatchFile={downloadEmulatorPatch}
+                onFirmwareChange={(machineId, firmwareId) => updateProject(current => ({
+                  ...current,
+                  emulatorState: {
+                    ...current.emulatorState,
+                    firmwareIds: { ...current.emulatorState.firmwareIds, [machineId]: firmwareId },
+                  },
+                }))}
+              />
+            ) : selectedTrack?.machineId === "minimoog" ? (
+              <MinimoogEmulatorPanel />
+            ) : selectedTrack ? (
+              <div className="n-native-machine" data-machine={selectedTrack.machineId} data-testid="panel-native-machine">
+                <div className="n-native-screen">
+                  <div className="n-native-screen-head">
+                    <span>{machines.find(machine => machine.id === selectedTrack.machineId)?.name}</span>
+                    <span>{selectedTrack.steps.filter(Boolean).length} / 16</span>
+                  </div>
+                  <strong>{selectedTrack.name}</strong>
+                  <div className="n-native-sequence" aria-label={`${selectedTrack.name} pattern`}>
+                    {selectedTrack.steps.map((step, index) => <span key={index} className={`${step ? "is-on" : ""}${playhead === index && isPlaying ? " is-playhead" : ""}`} />)}
+                  </div>
+                  <span className="n-native-tempo">{project.bpm} BPM · LOOP</span>
+                </div>
+                <div className="n-native-controls">
+                  <div className="n-knob-row"><label htmlFor="track-tone">TONE</label><span className="n-knob-val">{selectedTrack.soundState.tone}</span><input id="track-tone" type="range" min="0" max="100" value={selectedTrack.soundState.tone} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, tone: Number(event.target.value) } }))} data-testid="input-track-tone" /></div>
+                  <div className="n-knob-row"><label htmlFor="track-decay">DECAY</label><span className="n-knob-val">{selectedTrack.soundState.decayMs} ms</span><input id="track-decay" type="range" min="80" max="800" step="10" value={selectedTrack.soundState.decayMs} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, decayMs: Number(event.target.value) } }))} data-testid="input-track-decay" /></div>
+                </div>
+              </div>
+            ) : <div className="n-empty">NO MACHINE SELECTED</div>}
+          </section>
+
+          <aside className="n-side" aria-label="Arrangement and mix">
+            <section className="n-panel n-arrangement" aria-label="Sequencer arrangement" data-testid="section-arrangement">
+              <div className="n-panel-head">
+                <p className="n-eyebrow">ARRANGEMENT</p>
+                <div className="n-transport">
+                  <button className="n-btn n-play-btn" type="button" onClick={() => void togglePlayback()} data-testid="button-toggle-playback" aria-label={isPlaying ? "Stop loop playback" : "Play loop"}>
+                    {isPlaying ? <Square size={12} /> : <Play size={12} />}{isPlaying ? "Stop" : "Play"}
+                  </button>
+                  <label className="n-bpm">BPM <input aria-label="Tempo in beats per minute" data-testid="input-bpm" type="number" min="40" max="240" value={project.bpm} disabled={isRecording} onChange={event => updateProject(current => ({ ...current, bpm: Math.max(40, Math.min(240, Number(event.target.value) || 40)) }))} /></label>
+                </div>
+              </div>
+              <div className="n-grid-scroll">
+                <div className="n-grid">
+                  <div className="n-grid-ruler">
+                    <span className="n-ruler-label">TRACK</span>
+                    <div className="n-step-ruler">{Array.from({ length: 16 }, (_, index) => <span key={index}>{index % 4 === 0 ? index / 4 + 1 : "·"}</span>)}</div>
+                    <span />
+                  </div>
+                  {project.tracks.map((track, index) => (
+                    <div className={`n-track-row${selectedTrackId === track.id ? " is-selected" : ""}`} key={track.id} onClick={() => setSelectedTrackId(track.id)} data-testid={`row-track-${track.id}`}>
+                      <div className="n-track-info">
+                        <span className="n-track-num">{String(index + 1).padStart(2, "0")}</span>
+                        <div>
+                          <input className="n-track-name" aria-label={`Track ${index + 1} name`} data-testid={`input-track-name-${track.id}`} value={track.name} onChange={event => updateTrack(track.id, current => ({ ...current, name: event.target.value }))} />
+                          <span className="n-kind">{track.kind === "recording" ? "MIC LOOP" : machines.find(machine => machine.id === track.machineId)?.name}</span>
+                        </div>
+                      </div>
+                      {track.kind === "recording" ? (
+                        <div className={`n-audio-clip${track.audioTrackId === null ? " is-empty" : ""}`} data-testid={`clip-loop-${track.id}`}>
+                          <span>{track.audioTrackId === null ? "EMPTY LOOP" : "AUDIO LOOP"}</span>
+                        </div>
+                      ) : (
+                        <div className="n-steps" role="group" aria-label={`${track.name} steps`}>
+                          {track.steps.map((step, stepIndex) => <button
+                            type="button" key={stepIndex} className={`n-step${step ? " is-on" : ""}${playhead === stepIndex && isPlaying ? " is-playhead" : ""}`}
+                            aria-label={`${track.name}, step ${stepIndex + 1}, ${step ? "on" : "off"}`}
+                            aria-pressed={!!step} data-testid={`button-step-${track.id}-${stepIndex + 1}`}
+                            onClick={event => { event.stopPropagation(); updateTrack(track.id, current => ({ ...current, steps: current.steps.map((value, i) => i === stepIndex ? value ? 0 : 1 : value) })); }}
+                          />)}
+                        </div>
+                      )}
+                      <div className="n-track-actions">
+                        {track.audioTrackId !== null && <button className="n-icon-btn" type="button" title="Preview loop" aria-label="Preview loop" onClick={event => { event.stopPropagation(); if (libraryTracks.some(item => item.id === track.audioTrackId)) previewTrack(track.audioTrackId!); }} data-testid={`button-play-loop-${track.id}`}><Volume2 size={14} /></button>}
+                        <button className={`n-icon-btn${track.muted ? " is-active" : ""}`} type="button" aria-label={track.muted ? "Unmute track" : "Mute track"} aria-pressed={track.muted} onClick={event => { event.stopPropagation(); updateTrack(track.id, current => ({ ...current, muted: !current.muted })); }} data-testid={`button-mute-${track.id}`}>M</button>
+                      </div>
+                    </div>
+                  ))}
+                  {project.tracks.length === 0 && <div className="n-empty" data-testid="empty-tracks">NO LANES</div>}
+                </div>
+              </div>
+              <div className="n-track-add">
+                <button className="n-btn" type="button" onClick={() => addTrack("instrument")} disabled={project.tracks.length >= 8 || isRecording || isUploadingTake} data-testid="button-add-track"><Plus size={13} /> Add lane</button>
+                <span className="n-subtle">{project.tracks.length} / 8</span>
+              </div>
+              <div className={`n-recording${isRecording ? " is-live" : ""}`} data-testid="status-recording" role="status" aria-live="polite">
+                <span className="n-pulse" />{recordingLabel}
+              </div>
             </section>
 
-            <section className="n-panel" aria-label="MIDI output for VST3 instruments" data-testid="section-midi-output">
-              <div className="n-panel-head"><p className="n-eyebrow">03 / MIDI Out</p><span className="n-subtle">VST3 ROUTING</span></div>
+            <section className="n-panel" aria-label="Mixer" data-testid="section-mixer">
+              <div className="n-panel-head"><p className="n-eyebrow">MIXER</p><span className="n-subtle">{selectedTrack?.name}</span></div>
+              {selectedTrack ? (
+                <div className="n-machine-body">
+                  <div className="n-knob-row"><label htmlFor="track-volume">OUTPUT LEVEL</label><span className="n-knob-val">{selectedTrack.volume}%</span><input id="track-volume" type="range" min="0" max="100" value={selectedTrack.volume} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, volume: Number(event.target.value) }))} data-testid="input-track-volume" /></div>
+                </div>
+              ) : <div className="n-empty">NO TRACK SELECTED</div>}
+            </section>
+
+            <section className="n-panel" aria-label="MIDI output" data-testid="section-midi-output">
+              <div className="n-panel-head"><p className="n-eyebrow">MIDI OUT</p><span className="n-subtle">VST3</span></div>
               <div className="n-machine-body n-midi-controls">
                 <button className="n-btn" type="button" onClick={() => void connectMidi()} data-testid="button-connect-midi">{midiConnected ? "Refresh MIDI" : "Connect MIDI"}</button>
                 <label className="n-screen-reader" htmlFor="midi-output-select">MIDI output</label>
@@ -939,8 +1105,8 @@ export default function Salaryman1999() {
               </div>
             </section>
 
-            <section className="n-panel" aria-label="Saved projects" data-testid="section-project-library">
-              <div className="n-panel-head"><p className="n-eyebrow">04 / Sessions</p><button className="n-icon-btn" type="button" aria-label="Refresh project list" onClick={() => void refreshEntries().catch(error => setLoadError(error instanceof Error ? error.message : "Could not refresh projects."))} data-testid="button-refresh-projects"><RefreshCw size={13} /></button></div>
+            <section className="n-panel" aria-label="Saved sessions" data-testid="section-project-library">
+              <div className="n-panel-head"><p className="n-eyebrow">SESSIONS</p><button className="n-icon-btn" type="button" aria-label="Refresh project list" onClick={() => void refreshEntries().catch(error => setLoadError(error instanceof Error ? error.message : "Could not refresh projects."))} data-testid="button-refresh-projects"><RefreshCw size={13} /></button></div>
               <div className="n-library">
                 {saveState === "loading" && entries.length === 0
                   ? <div className="n-empty" role="status" data-testid="status-library-loading">Loading…</div>
@@ -956,45 +1122,25 @@ export default function Salaryman1999() {
               </div>
             </section>
 
-            <section className="n-panel" aria-label="Microphone recorder" data-testid="section-recorder">
-              <div className="n-panel-head"><p className="n-eyebrow">05 / Capture</p><Radio size={14} /></div>
-              <div className="n-machine-body">
-                 <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake} onClick={() => {
-                  if (isRecording) recorderRef.current?.stop();
+            <section className="n-panel" aria-label="Microphone looper" data-testid="section-recorder">
+              <div className="n-panel-head"><p className="n-eyebrow">LIVE LOOP</p><Radio size={14} /></div>
+              <div className="n-machine-body n-loop-controls">
+                <label className="n-loop-length" htmlFor="loop-length">
+                  <span>LOOP BARS</span>
+                  <select id="loop-length" value={loopBars} disabled={isRecording || isUploadingTake} onChange={event => setLoopBars(Number(event.target.value))} data-testid="select-loop-bars">
+                    {[1, 2, 4].map(bars => <option key={bars} value={bars}>{bars}</option>)}
+                  </select>
+                </label>
+                <button type="button" className={`n-btn n-btn-record${isRecording ? " is-recording" : ""}`} disabled={isUploadingTake || (!isRecording && project.tracks.length >= 8)} onClick={() => {
+                  if (isRecording) stopRecording();
                   else void startRecording();
                 }} data-testid="button-record">
-                   {isRecording ? <><Square size={12} /> Stop take</> : <><Mic size={13} /> {isUploadingTake ? "Saving take" : "Record take"}</>}
+                  {isRecording ? <><Square size={12} /> Stop loop</> : <><Mic size={13} /> {isUploadingTake ? "Saving loop" : `Record ${loopBars} bar${loopBars === 1 ? "" : "s"}`}</>}
                 </button>
-                <button type="button" className="n-btn" style={{ marginLeft: 6 }} onClick={() => addTrack("recording")} disabled={project.tracks.length >= 8} data-testid="button-add-recording-lane"><Plus size={12} /> Take lane</button>
               </div>
             </section>
           </aside>
         </div>
-        {selectedTrack && (selectedTrack.machineId === "fm1" || selectedTrack.machineId === "smk37") && (
-          <section className="n-emulator-panel" aria-label="Selected machine emulator" data-testid="section-machine-emulator">
-            <Fm1EmulatorPanel
-              initialMachine={selectedTrack.machineId}
-              initialFirmwareId={project.emulatorState.firmwareIds[selectedTrack.machineId as EmulatorMachine] ?? ""}
-              patchSaves={project.emulatorState.patchSaves}
-              onSavePatchFile={uploadEmulatorPatch}
-              onDownloadPatchFile={downloadEmulatorPatch}
-              onMachineChange={(machineId) => updateTrack(selectedTrack.id, track => ({ ...track, machineId }))}
-              onFirmwareChange={(machineId, firmwareId) => updateProject(current => ({
-                ...current,
-                emulatorState: {
-                  ...current.emulatorState,
-                  firmwareIds: { ...current.emulatorState.firmwareIds, [machineId]: firmwareId },
-                },
-              }))}
-            />
-          </section>
-        )}
-        {selectedTrack?.machineId === "minimoog" && (
-          <section className="n-emulator-panel" aria-label="Minimoog Model D emulator" data-testid="section-minimoog-emulator">
-            <MinimoogEmulatorPanel />
-          </section>
-        )}
-         <footer className="n-footer"><span><b>1999</b> / SKETCH · CAPTURE · KEEP</span><span>{updatedAt ? `LAST SAVE ${new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "LOCAL SESSION"}</span><span>PROJECTS: VAULT · AUDIO: MUSIC LIBRARY</span></footer>
       </div>
     </main>
   );
