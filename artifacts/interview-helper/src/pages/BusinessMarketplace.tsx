@@ -21,6 +21,7 @@ import {
   ShoppingCart, Plus, Trash2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 
 type Tenure = "own" | "lease";
 
@@ -91,6 +92,7 @@ function gradientFor(cat: string): string {
 
 export default function BusinessMarketplace() {
   const [, navigate] = useLocation();
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [owned, setOwned] = useState<OwnedBusiness[]>([]);
@@ -116,6 +118,9 @@ export default function BusinessMarketplace() {
   }, []);
 
   const loadMine = useCallback(async () => {
+    setOwned([]);
+    setMyListings([]);
+    if (!isAuthenticated) return;
     try {
       const res = await apiFetch(`api/business-market/mine?slot=${currentSlot()}`, { credentials: "include" });
       if (res.ok) {
@@ -124,13 +129,13 @@ export default function BusinessMarketplace() {
         setMyListings(j.listings ?? []);
       }
     } catch { /* keep */ }
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
     void loadCatalog();
     void loadListings();
-    void loadMine();
-  }, [loadCatalog, loadListings, loadMine]);
+    if (isAuthenticated) void loadMine();
+  }, [loadCatalog, loadListings, loadMine, isAuthenticated, user?.id]);
 
   async function doAcquire() {
     if (!target || busy) return;
@@ -319,12 +324,25 @@ export default function BusinessMarketplace() {
         )}
 
         {/* PORTFOLIO */}
-        <SectionHeader icon={Briefcase} title="MY PORTFOLIO" kana="ポートフォリオ" subtitle={`${owned.length} owned · ${myListings.length} listed`} />
+        <SectionHeader icon={Briefcase} title="MY PORTFOLIO" kana="ポートフォリオ" subtitle={
+          authLoading ? "checking sign-in" : isAuthenticated ? `${owned.length} owned · ${myListings.length} listed` : "sign in to view"
+        } />
         <Link href="/business/floor-plans" className="mb-3 flex items-center justify-between border border-cyan-400/30 bg-cyan-400/5 px-4 py-3 text-xs text-cyan-200">
           <span>BUSINESS FLOOR PLANNER · RESTAURANT · MECHANIC · CAFE · CLINIC · MORE</span>
           <span>CUSTOMIZE →</span>
         </Link>
-        {owned.length === 0 && myListings.length === 0 ? (
+        {authLoading ? (
+          <div className="text-zinc-500 text-xs px-3 py-6 border border-dashed border-zinc-700/50 rounded text-center">
+            Checking sign-in…
+          </div>
+        ) : !isAuthenticated ? (
+          <div className="text-zinc-400 text-xs px-3 py-6 border border-dashed border-zinc-700/50 rounded text-center">
+            Sign in to view your owned businesses and listings.
+            <button type="button" onClick={() => login("/business/marketplace")} className="ml-2 text-cyan-200 underline underline-offset-4">
+              Sign in
+            </button>
+          </div>
+        ) : owned.length === 0 && myListings.length === 0 ? (
           <div className="text-zinc-600 text-xs tracking-wide px-3 py-6 border border-dashed border-zinc-700/50 rounded text-center">
             You don't own any businesses yet. Buy one from the showroom to start your portfolio.
           </div>

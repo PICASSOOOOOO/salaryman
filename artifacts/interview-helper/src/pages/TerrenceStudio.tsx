@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, Lock, Music2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
 import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
 
 type Hotspot = 'console' | 'rack' | 'mic' | 'lounge' | 'lana' | 'mothra';
@@ -41,6 +42,7 @@ const TERRENCE_SLUG = 'music-bot';
 
 export default function TerrenceStudio() {
   const [, navigate] = useLocation();
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [intent, setIntent] = useState<string | null>(null);
   const [ownership, setOwnership] = useState<'unknown' | 'owned' | 'unowned'>('unknown');
@@ -50,22 +52,24 @@ export default function TerrenceStudio() {
   // shows a HIRE TERRENCE pill — but here the whole room needs gating).
   useEffect(() => {
     let cancelled = false;
+    setOwnership('unknown');
     (async () => {
       try {
         const [mRes, sRes] = await Promise.all([
           apiFetch('/api/bots/marketplace/list'),
-          apiFetch('/api/bots/marketplace/subscriptions'),
+          isAuthenticated ? apiFetch('/api/bots/marketplace/subscriptions') : Promise.resolve(null),
         ]);
         if (cancelled) return;
         const items = mRes.ok ? (await mRes.json())?.items ?? [] : [];
-        const subs  = sRes.ok ? (await sRes.json())?.subscriptions ?? [] : [];
+        if (!isAuthenticated) return;
+        const subs = sRes?.ok ? (await sRes.json())?.subscriptions ?? [] : [];
         const t = items.find((i: any) => i?.slug === TERRENCE_SLUG || i?.name === 'TERRENCE');
         const owned = !!t && subs.some((s: any) => s?.marketplaceItemId === t.id && s?.status === 'active');
         setOwnership(owned ? 'owned' : 'unowned');
-      } catch { if (!cancelled) setOwnership('unowned'); }
+      } catch { if (!cancelled && isAuthenticated) setOwnership('unowned'); }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   const click = (h: Hotspot) => {
     setIntent(HOTSPOT_INTENTS[h]);
@@ -83,11 +87,17 @@ export default function TerrenceStudio() {
         <div className="flex items-center gap-2 text-[10px] tracking-[0.4em] text-pink-300">
           <Music2 size={12}/> TERRENCE'S STUDIO — MINX CITY · LEVEL 02
         </div>
-        <div className="text-[10px] tracking-[0.4em] text-cyan-300">
-          {ownership === 'owned'   ? 'ON SESSION ●' :
-           ownership === 'unknown' ? '...'         :
-                                     'WALK-IN ONLY'}
-        </div>
+        {authLoading ? (
+          <div className="text-[10px] tracking-[0.4em] text-cyan-300">...</div>
+        ) : !isAuthenticated ? (
+          <button onClick={() => login('/creative/terrence-studio')} className="text-[10px] tracking-[0.25em] text-cyan-300 hover:text-white">
+            SIGN IN TO CHECK ACCESS
+          </button>
+        ) : (
+          <div className="text-[10px] tracking-[0.4em] text-cyan-300">
+            {ownership === 'owned' ? 'ON SESSION ●' : ownership === 'unknown' ? '...' : 'WALK-IN ONLY'}
+          </div>
+        )}
       </header>
 
       {/* Studio scene */}

@@ -16,6 +16,7 @@ import {
   CheckCircle, AlertTriangle, Clock, Loader2, X, MapPin, Zap,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 import { getCityCurrency, getCityMultiplier } from "@/lib/currency";
 import { getActiveCityId, hydrateActiveCityFromSave } from "@/lib/city-defs";
 
@@ -112,9 +113,12 @@ interface CityMarketDisplay {
 }
 
 export default function BusinessServices() {
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   hydrateActiveCityFromSave();
   const [location, navigate] = useLocation();
-  const [tab, setTab] = useState<Tab>("browse");
+  const [tab, setTab] = useState<Tab>(() =>
+    new URLSearchParams(window.location.search).get("tab") === "mine" ? "mine" : "browse"
+  );
   const [listings, setListings] = useState<ServiceListing[]>([]);
   const [mine, setMine] = useState<ServiceListing[]>([]);
   const [bounties, setBounties] = useState<Bounty[]>([]);
@@ -175,12 +179,16 @@ export default function BusinessServices() {
   }, [catFilter, tenantBusinessKey]);
 
   const loadMine = useCallback(async () => {
+    setMine([]);
+    if (!isAuthenticated) {
+      return;
+    }
     try {
       const query = tenantBusinessKey ? `?tenant=${encodeURIComponent(tenantBusinessKey)}` : "";
       const r = await apiFetch(`api/services/mine${query}`, { credentials: "include" });
       if (r.ok) setMine((await r.json()).listings ?? []);
     } catch { /* */ }
-  }, [tenantBusinessKey]);
+  }, [tenantBusinessKey, isAuthenticated, user?.id]);
 
   const loadBounties = useCallback(async () => {
     try {
@@ -196,8 +204,12 @@ export default function BusinessServices() {
     } catch { /* */ }
   }, []);
 
-  useEffect(() => { void loadListings(); void loadMine(); void loadBounties(); void loadVehicles(); },
-    [loadListings, loadMine, loadBounties, loadVehicles]);
+  useEffect(() => {
+    void loadListings();
+    if (isAuthenticated) void loadMine();
+    void loadBounties();
+    void loadVehicles();
+  }, [loadListings, loadMine, loadBounties, loadVehicles, isAuthenticated, user?.id]);
 
   async function doAction(path: string, method = "POST", body?: object) {
     setBusy(true); setMsg(null);
@@ -301,8 +313,19 @@ export default function BusinessServices() {
             tenantName={tenantContext?.name ?? null} tenantUnavailable={tenantViewUnavailable} />
         )}
         {tab === "mine" && (
-          <MyGigsTab listings={mine} onComplete={completeGig} onDispute={disputeGig}
-            onCancel={cancelGig} busy={busy} setRatingTarget={setRatingTarget} cityMarket={cityMarket} />
+          authLoading ? (
+            <div className="py-12 text-center text-xs text-zinc-500">Checking sign-in…</div>
+          ) : !isAuthenticated ? (
+            <div className="border border-dashed border-zinc-700/50 rounded px-4 py-8 text-center text-xs text-zinc-400">
+              Sign in to view and manage your gigs.
+              <button type="button" onClick={() => login("/business/services?tab=mine")} className="ml-2 text-cyan-200 underline underline-offset-4">
+                Sign in
+              </button>
+            </div>
+          ) : (
+            <MyGigsTab listings={mine} onComplete={completeGig} onDispute={disputeGig}
+              onCancel={cancelGig} busy={busy} setRatingTarget={setRatingTarget} cityMarket={cityMarket} />
+          )
         )}
         {tab === "bounties" && (
           <BountyTab bounties={bounties} onAccept={acceptBounty} onCollect={collectBounty}

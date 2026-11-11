@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-zod/shadow-tower";
 import { apiFetch } from "@/lib/api-client";
 import { getActiveCityId } from "@/lib/city-defs";
+import { useAuth } from "@/hooks/use-auth";
 
 type Tenure = "lease" | "own";
 interface Target { listing: ShadowTowerListing; tenure: Tenure; }
@@ -66,6 +67,7 @@ export function ShadowTowerPlanPreview({ archetype, city, floorNumber }: { arche
 
 export default function RealtyStore() {
   const [, navigate] = useLocation();
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   const [city, setCity] = useState<ShadowTowerCity>(() => getActiveCityId() === "huda_city" ? "huda_city" : "minx_city");
   const [floorText, setFloorText] = useState(() => {
     const requested = Number.parseInt(new URLSearchParams(window.location.search).get("floor") || "", 10);
@@ -87,6 +89,9 @@ export default function RealtyStore() {
   const referredByReception = new URLSearchParams(window.location.search).get("from") === "reception";
 
   async function loadOwnedBrokerage() {
+    setOwnedFloor(null);
+    setOwnedUnits([]);
+    if (!isAuthenticated) return;
     const current = await apiFetch("/api/shadow-tower/floors/current", { credentials: "include" });
     if (!current.ok) return;
     const body = await current.json();
@@ -97,7 +102,7 @@ export default function RealtyStore() {
     if (unitsResponse.ok) setOwnedUnits((await unitsResponse.json()).units ?? []);
   }
 
-  useEffect(() => { void loadOwnedBrokerage(); }, []);
+  useEffect(() => { void loadOwnedBrokerage(); }, [isAuthenticated, user?.id]);
   useEffect(() => {
     let cancelled = false;
     apiFetch(`/api/shadow-tower/marketplace?city=${city}`, { credentials: "include" })
@@ -189,7 +194,14 @@ export default function RealtyStore() {
           <label className="text-[10px] text-cyan-300 tracking-widest">FLOOR #<input data-testid="shadow-floor-number" type="number" min="5" max="67" value={floorText} onChange={e => setFloorText(e.target.value)} className="block mt-1 w-24 bg-zinc-950 border border-cyan-400/40 rounded px-2 py-1 text-zinc-100" />{!validFloorNumber && <span className="mt-1 block text-[9px] text-red-300">ENTER 5–67</span>}</label>
         </div>
       </div>
-      {ownedFloor && (
+      {!authLoading && !isAuthenticated ? (
+        <section className="mb-7 flex flex-wrap items-center justify-between gap-3 border border-amber-300/25 bg-amber-300/5 px-4 py-3">
+          <p className="text-xs text-zinc-300">Sign in to view an owned floor and manage its listings. The public marketplace remains open.</p>
+          <button type="button" onClick={() => login("/store/realty")} className="border border-amber-300/40 px-3 py-2 text-[10px] tracking-widest text-amber-100">
+            SIGN IN
+          </button>
+        </section>
+      ) : ownedFloor && (
         <section className="mb-7 border border-amber-300/30 bg-amber-300/5 p-4" data-testid="owner-brokerage">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>

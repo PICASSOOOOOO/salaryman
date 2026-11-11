@@ -474,7 +474,11 @@ function AppShell() {
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
             <Route path="/profile/admin/tickets" component={AdminTickets} />
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
-            <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
+            <Route path="/profile/admin/dev-tasks">{() => (
+              <FeatureAuthGate context="Sign in to access development task administration.">
+                <DevTasksAdmin />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/profile/admin/alpha">{() => (
               <FeatureAuthGate context="Sign in to access alpha program administration.">
@@ -659,7 +663,11 @@ function AppShell() {
                 <KnowledgeVault />
               </FeatureAuthGate>
             )}</Route>
-            <Route path="/console/scraper" component={WebScraper} />
+            <Route path="/console/scraper">{() => (
+              <FeatureAuthGate context="Sign in to extract content and save it to your vault.">
+                <WebScraper />
+              </FeatureAuthGate>
+            )}</Route>
 
             {/* INTEL module */}
             <Route path="/intel/reports" component={Reporting} />
