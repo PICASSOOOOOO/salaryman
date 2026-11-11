@@ -26,6 +26,7 @@ import { isEmbedMode } from "@/lib/embed-mode";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
+import { SignInPage } from "@/components/SignInPrompt";
 import Console from "@/pages/Console";
 import { PHONE_ROUTE_TO_TAB } from "@/pages/phone/CalllHomeContext";
 
@@ -213,6 +214,13 @@ function LoadingFallback() {
       </div>
     </div>
   );
+}
+
+function FeatureAuthGate({ context, children }: { context: string; children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <LoadingFallback />;
+  if (!isAuthenticated) return <SignInPage context={context} />;
+  return <>{children}</>;
 }
 
 const MemoHome = memo(Home as React.ComponentType);
@@ -469,7 +477,11 @@ function AppShell() {
             <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={LegacyUpgradeRedirect} />
             <Route path="/pricing" component={PledgeStoreRoute} />
-            <Route path="/wallet" component={Wallet} />
+            <Route path="/wallet">{() => (
+              <FeatureAuthGate context="Sign in to view your account and balances.">
+                <Wallet />
+              </FeatureAuthGate>
+            )}</Route>
             {/* Playable React gameplay retired. Keep old bookmarks useful by
                 sending them to the native desktop client landing page. */}
             <Route path="/world">{() => <Redirect to="/desktop" />}</Route>
@@ -572,14 +584,26 @@ function AppShell() {
             <Route path="/creative">{() => <Redirect to="/creative/design" />}</Route>
 
             {/* MARKETING module */}
-            <Route path="/marketing/ads" component={Marketing} />
+            <Route path="/marketing/ads">{() => (
+              <FeatureAuthGate context="Sign in to create and access your saved ad creatives.">
+                <Marketing />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/marketing/campaigns" component={Campaigns} />
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />
             <Route path="/leads" component={LeadsPage} />
             <Route path="/marketing/social" component={SocialMediaManager} />
-            <Route path="/marketing/command" component={MarketingCommandCenter} />
-            <Route path="/marketing" component={MarketingCommandCenter} />
+            <Route path="/marketing/command">{() => (
+              <FeatureAuthGate context="Sign in to connect and manage social accounts.">
+                <MarketingCommandCenter />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/marketing">{() => (
+              <FeatureAuthGate context="Sign in to connect and manage social accounts.">
+                <MarketingCommandCenter />
+              </FeatureAuthGate>
+            )}</Route>
 
             {/* ARMORY module */}
             <Route path="/armory/inventory" component={Armory} />
@@ -596,7 +620,11 @@ function AppShell() {
              <Route path="/knowledge">{() => <Redirect to="/console/vault" />}</Route>
              <Route path="/knowledge-hub">{() => <Redirect to="/console/vault" />}</Route>
              <Route path="/vault">{() => <Redirect to="/console/vault" />}</Route>
-            <Route path="/console/vault" component={KnowledgeVault} />
+            <Route path="/console/vault">{() => (
+              <FeatureAuthGate context="Sign in to access your saved knowledge vault.">
+                <KnowledgeVault />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/console/scraper" component={WebScraper} />
 
             {/* INTEL module */}

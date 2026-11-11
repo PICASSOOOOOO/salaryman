@@ -91,9 +91,9 @@ export function notifyFiatChangedSoon(delayMs: number = PABLO_TAX_REFRESH_DELAY_
 const SESSION_EXPIRY_SKIP_PATHS =
   /\/(auth\/user|auth\/providers)(\/|$|\?)/;
 
-// Public routes that handle their own sign-in prompts. A rejected write on
-// these pages must not hijack navigation; feature UI decides when auth is
-// needed. This includes public chat, the guest workstation, and guest meetings.
+// Public routes that remain browseable without an account. A rejected write
+// here is handled by the feature itself rather than by a global route change.
+// This includes public chat, the guest workstation, and guest meetings.
 const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/tower",
   "/desktop",
@@ -104,9 +104,7 @@ const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/sms-opt-in",
   "/1999",
   "/meet",
-  // Auth routes are deliberately anonymous. Background metadata requests may
-  // still return 401 while Clerk is loading; redirecting those responses to
-  // Pablo unmounts the Clerk form before a visitor can sign in or sign up.
+  // Keep auth forms mounted if an action unexpectedly returns 401.
   "/sign-in",
   "/sign-up",
 ];

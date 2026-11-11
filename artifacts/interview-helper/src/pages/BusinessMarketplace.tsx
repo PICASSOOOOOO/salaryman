@@ -144,7 +144,7 @@ export default function BusinessMarketplace() {
         body: JSON.stringify({ key: target.item.key, tenure: target.tenure, slot: currentSlot() }),
       });
       const j = await res.json().catch(() => ({}));
-      if (res.status === 401) { setResult({ ok: false, msg: "Sign in to buy or lease — redirecting…" }); setTimeout(() => navigate("/menu"), 1200); return; }
+      if (res.status === 401) { setResult({ ok: false, msg: "Sign in to buy or lease a business." }); return; }
       if (res.status === 402) { setResult({ ok: false, msg: `Not enough ƒ — need ${formatFiat(j.required ?? 0)}, you have ${formatFiat(j.balance ?? 0)}.` }); return; }
       if (res.status === 404) { setResult({ ok: false, msg: "No save yet — enter the world and save once, then come back." }); return; }
       if (!res.ok || !j?.ok) { setResult({ ok: false, msg: j?.error || "Transaction failed." }); return; }
@@ -172,7 +172,7 @@ export default function BusinessMarketplace() {
       });
       const j = await res.json().catch(() => ({}));
       const verb = mode === "buy" ? "buy" : "lease";
-      if (res.status === 401) { setResult({ ok: false, msg: `Sign in to ${verb} — redirecting…` }); setTimeout(() => navigate("/menu"), 1200); return; }
+      if (res.status === 401) { setResult({ ok: false, msg: `Sign in to ${verb} this business.` }); return; }
       if (res.status === 402) { setResult({ ok: false, msg: `Not enough ƒ — need ${formatFiat(j.required ?? 0)}, you have ${formatFiat(j.balance ?? 0)}.` }); return; }
       if (res.status === 404) { setResult({ ok: false, msg: "No save yet — enter the world and save once, then come back." }); return; }
       if (!res.ok || !j?.ok) { setResult({ ok: false, msg: j?.error || "Transaction failed." }); return; }

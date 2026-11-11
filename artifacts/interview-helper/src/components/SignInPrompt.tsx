@@ -35,7 +35,7 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
           SIGN IN REQUIRED
         </div>
         <div style={{ fontFamily: fontFor(boomer), fontSize: '0.7rem', color: 'rgba(0,0,0,0.58)', letterSpacing: '0.04em', marginBottom: '20px', maxWidth: 320, lineHeight: 1.6 }}>
-          {context || (boomer ? 'Sign in to access this feature.' : 'Authentication required to access this module.')}
+          {context || 'Sign in to continue with this feature.'}
         </div>
         <button
           onClick={signInPrimary}
@@ -89,10 +89,7 @@ export function SignInPrompt({ context, onDismiss, inline, returnTo }: SignInPro
           color: 'rgba(0,0,0,0.58)', letterSpacing: '0.06em',
           lineHeight: 1.7, marginBottom: '24px',
         }}>
-          {context || (boomer
-            ? 'Sign in to access all features.'
-            : 'Salaryman credentials required. All modules locked until authenticated.'
-          )}
+          {context || 'Sign in to continue with this feature.'}
         </div>
 
         <button
