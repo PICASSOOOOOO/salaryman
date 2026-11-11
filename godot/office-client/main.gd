@@ -4654,9 +4654,9 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_body.text = "%s\n\nChoose an existing SALARYMAN service. Links open only after selection." % location
 			native_app_footer.text = "1–3 OPEN A SERVICE  ·  ESC CLOSE"
 		"music_studio":
-			native_app_title.text = "1999 / MUSIC STUDIO"
-			native_app_body.text = "%s\n\nThe 1999 production workspace opens with your linked SALARYMAN account. Saved sessions stay in your Vault; MIDI output can route patterns to a VST3 instrument in your desktop DAW." % location
-			native_app_footer.text = "1 OPEN 1999 IN YOUR BROWSER  ·  ESC CLOSE"
+			native_app_title.text = "1999 / DEDICATED MUSIC TERMINAL"
+			native_app_body.text = "%s\n\nSampler, tape, and sequencing workspace. Sessions and audio stay shared with your SALARYMAN Vault." % location
+			native_app_footer.text = "1 OPEN SHARED 1999 WORKSPACE  ·  ESC CLOSE"
 		"systems":
 			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
 			native_app_body.size.y = 132
@@ -5131,7 +5131,7 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 		"reception":
 			labels = ["1 > JOBS", "2 > CONTRACTS", "3 > REALTY"]
 		"music_studio":
-			labels = ["1 > OPEN 1999 WORKSPACE"]
+			labels = ["1 > OPEN SHARED 1999 WORKSPACE"]
 		"competition":
 			labels = ["1 > RUMOR", "2 > SUPPRESS", "3 > BRIBE", "4 > SABOTAGE", "5 > FIRE", "6 > ROBBERY", "7 > EXTORT", "8 > FIGHT"]
 		"systems":

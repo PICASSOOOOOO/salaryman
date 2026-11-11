@@ -7,6 +7,12 @@ The user sees SALARYMAN as a work platform for unemployed people, job seekers, c
 
 The 1999 workstation should support Akai MPC, Korg, Boss, Roland SP-404MKII, Teenage Engineering OP-1, and similar machines, with their sounds. Switching machines should change the panel and sound engine while keeping one shared recording/programming workflow across plugin and non-plugin versions; live recording should follow OP-1-style workflows. In SALARYMAN, machine-specific rendered workstations should be purchasable and usable as desks in office studios.
 
+The in-game 1999 experience belongs on a large, dedicated 1999 furniture terminal, not a generic music-studio screen.
+
+**Why:** the user clarified that 1999 should be a furniture fixture and “a massive terminal system just for 1999.”
+
+**How to apply:** keep the in-game fixture and its interaction dedicated to 1999, while sharing the existing 1999 project and audio workspace where supported.
+
 The first 1999 sampler/tape milestone keeps the eight-lane limit and current branding, pairs an MPC-style 16-pad sample/chop/sequence workflow with an OP-1-inspired tape display for recorded layers, and stores uploaded audio in private storage with project references. USB/MIDI device access and note mappings stay browser-local, not in project data or server requests. Broad server-side codec conversion and emulator research remain later milestones. Do not fetch or extract audio from YouTube or movie URLs.
 
 **Why:** the user chose the sampler-and-tape core first, while explicitly deferring controller connectivity and emulator research; uploaded audio must remain user-provided rather than ripped from streaming or movie sources.

@@ -3,6 +3,129 @@ export type SamplerSlice = {
   endSec: number;
 };
 
+export type DetectedRootNote = {
+  frequencyHz: number;
+  midiNote: number;
+  pitchClass: number;
+  confidence: number;
+};
+
+const ROOT_NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+export function detectRootNote(
+  channels: readonly Float32Array[],
+  sampleRate: number,
+  startSec = 0,
+  endSec?: number,
+): DetectedRootNote | null {
+  if (!channels.length || !Number.isFinite(sampleRate) || sampleRate < 4000
+    || !Number.isFinite(startSec) || startSec < 0
+    || (endSec !== undefined && (!Number.isFinite(endSec) || endSec <= startSec))) {
+    throw new Error("Root-note analysis needs a valid sample range.");
+  }
+
+  const frameCount = Math.min(...channels.map(channel => channel.length));
+  const firstFrame = Math.min(frameCount, Math.floor(startSec * sampleRate));
+  const requestedEnd = endSec === undefined ? frameCount : Math.floor(endSec * sampleRate);
+  const lastFrame = Math.min(frameCount, requestedEnd);
+  if (lastFrame - firstFrame < sampleRate * 0.08) return null;
+
+  // Analyze at most 1.5 seconds and 12 kHz; this keeps work bounded for long files.
+  const stride = Math.max(1, Math.ceil(sampleRate / 12_000));
+  const maxSamples = Math.ceil((lastFrame - firstFrame) / stride);
+  const sampleCount = Math.min(maxSamples, Math.floor(1.5 * sampleRate / stride));
+  const selectedChannel = channels.reduce((bestIndex, channel, index) => {
+    const best = channels[bestIndex];
+    const length = Math.min(sampleCount, Math.ceil((lastFrame - firstFrame) / stride));
+    let bestEnergy = 0;
+    let energy = 0;
+    for (let offset = 0; offset < length; offset += 1) {
+      const frame = firstFrame + offset * stride;
+      bestEnergy += (best[frame] ?? 0) ** 2;
+      energy += (channel[frame] ?? 0) ** 2;
+    }
+    return energy > bestEnergy ? index : bestIndex;
+  }, 0);
+  const channel = channels[selectedChannel];
+  const samples = new Float32Array(sampleCount);
+  let mean = 0;
+  for (let index = 0; index < sampleCount; index += 1) {
+    const value = channel[firstFrame + index * stride] ?? 0;
+    samples[index] = value;
+    mean += value;
+  }
+  mean /= sampleCount;
+
+  let energy = 0;
+  for (let index = 0; index < sampleCount; index += 1) {
+    samples[index] -= mean;
+    energy += samples[index] * samples[index];
+  }
+  const rms = Math.sqrt(energy / sampleCount);
+  if (rms < 0.003 || sampleCount < 256) return null;
+
+  const analysisRate = sampleRate / stride;
+  const minLag = Math.max(2, Math.floor(analysisRate / 1000));
+  const maxLag = Math.min(Math.floor(analysisRate / 55), Math.floor(sampleCount / 2));
+  if (maxLag <= minLag) return null;
+
+  const differences = new Float64Array(maxLag + 1);
+  const normalized = new Float64Array(maxLag + 1);
+  let cumulativeDifference = 0;
+  for (let lag = 1; lag <= maxLag; lag += 1) {
+    let difference = 0;
+    const compareLength = sampleCount - maxLag;
+    for (let index = 0; index < compareLength; index += 1) {
+      const delta = samples[index] - samples[index + lag];
+      difference += delta * delta;
+    }
+    differences[lag] = difference;
+    cumulativeDifference += difference;
+    normalized[lag] = cumulativeDifference === 0 ? 1 : difference * lag / cumulativeDifference;
+  }
+
+  let chosenLag = -1;
+  for (let lag = minLag; lag <= maxLag; lag += 1) {
+    if (normalized[lag] < 0.16) {
+      while (lag < maxLag && normalized[lag + 1] < normalized[lag]) lag += 1;
+      chosenLag = lag;
+      break;
+    }
+  }
+  if (chosenLag < 0) {
+    let best = 1;
+    for (let lag = minLag; lag <= maxLag; lag += 1) {
+      if (normalized[lag] < best) {
+        best = normalized[lag];
+        chosenLag = lag;
+      }
+    }
+    if (chosenLag < 0 || normalized[chosenLag] > 0.3) return null;
+  }
+
+  const left = normalized[Math.max(minLag, chosenLag - 1)];
+  const center = normalized[chosenLag];
+  const right = normalized[Math.min(maxLag, chosenLag + 1)];
+  const curvature = left - (2 * center) + right;
+  const correction = curvature === 0 ? 0 : 0.5 * (left - right) / curvature;
+  const refinedLag = chosenLag + Math.max(-0.5, Math.min(0.5, correction));
+  const frequencyHz = analysisRate / refinedLag;
+  if (!Number.isFinite(frequencyHz) || frequencyHz < 55 || frequencyHz > 1000) return null;
+
+  const midiNote = Math.round(69 + 12 * Math.log2(frequencyHz / 440));
+  return {
+    frequencyHz,
+    midiNote,
+    pitchClass: ((midiNote % 12) + 12) % 12,
+    confidence: Math.max(0, Math.min(1, 1 - normalized[chosenLag])),
+  };
+}
+
+export function noteNameForMidi(midiNote: number): string {
+  const note = Math.round(midiNote);
+  return `${ROOT_NOTE_NAMES[((note % 12) + 12) % 12]}${Math.floor(note / 12) - 1}`;
+}
+
 function validateRange(startSec: number, endSec: number, maxSlices: number) {
   if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || endSec - startSec < 0.01) {
     throw new Error("Choose a sample range longer than 0.01 seconds.");

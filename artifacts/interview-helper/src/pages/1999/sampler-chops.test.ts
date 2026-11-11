@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRegionSlices, findTransientSlices } from "./sampler-chops";
+import { createRegionSlices, detectRootNote, findTransientSlices, noteNameForMidi } from "./sampler-chops";
 
 describe("1999 MPC sample slicing", () => {
   it("splits a selected range into exact, adjacent regions", () => {
@@ -32,5 +32,29 @@ describe("1999 MPC sample slicing", () => {
     expect(findTransientSlices([new Float32Array(4_000)], 4_000, 0, 1, 8, 50)).toEqual([]);
     expect(() => createRegionSlices(0.5, 0.5, 4)).toThrow("Choose a sample range");
     expect(() => createRegionSlices(0, 1, 17)).toThrow("between 2 and 16");
+  });
+});
+
+describe("1999 sampler root-note detection", () => {
+  it("detects a sample's nearest MIDI pitch class inside the selected range", () => {
+    const sampleRate = 12_000;
+    const samples = new Float32Array(sampleRate);
+    for (let frame = 0; frame < samples.length; frame += 1) {
+      samples[frame] = 0.5 * Math.sin(2 * Math.PI * 261.63 * frame / sampleRate);
+    }
+
+    const result = detectRootNote([samples], sampleRate, 0, 0.8);
+
+    expect(result).not.toBeNull();
+    expect(result?.pitchClass).toBe(0);
+    expect(noteNameForMidi(result?.midiNote ?? 0)).toBe("C4");
+    expect(result?.frequencyHz).toBeCloseTo(261.63, 0);
+  });
+
+  it("does not report silence or a sample range that is too short", () => {
+    expect(detectRootNote([new Float32Array(12_000)], 12_000)).toBeNull();
+    expect(detectRootNote([new Float32Array(600)], 12_000)).toBeNull();
+    expect(() => detectRootNote([new Float32Array(12_000)], 12_000, 0.5, 0.25))
+      .toThrow("valid sample range");
   });
 });

@@ -4,7 +4,7 @@ import { apiFetch } from "@/lib/api-client";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
 import MinimoogEmulatorPanel from "@/components/MinimoogEmulatorPanel";
-import { createRegionSlices, findTransientSlices } from "./sampler-chops";
+import { createRegionSlices, detectRootNote, findTransientSlices, noteNameForMidi } from "./sampler-chops";
 import "./1999.css";
 import "./EmulatorPanels.css";
 
@@ -544,6 +544,8 @@ export default function Salaryman1999() {
   const [samplerSliceCount, setSamplerSliceCount] = useState<4 | 8 | 16>(8);
   const [samplerSliceSensitivity, setSamplerSliceSensitivity] = useState(55);
   const [isChoppingSample, setIsChoppingSample] = useState(false);
+  const [isDetectingRootNote, setIsDetectingRootNote] = useState(false);
+  const [rootNoteStatus, setRootNoteStatus] = useState("");
   const samplerFileInputRef = useRef<HTMLInputElement | null>(null);
   const [playhead, setPlayhead] = useState(-1);
   const [recordingLabel, setRecordingLabel] = useState("Microphone ready");
@@ -788,6 +790,9 @@ export default function Salaryman1999() {
   useEffect(() => {
     setSelectedPadIndex(0);
   }, [selectedTrackId]);
+  useEffect(() => {
+    setRootNoteStatus("");
+  }, [selectedTrackId, selectedPadIndex, selectedSamplerPad?.audioTrackId]);
   const availableLibraryTakes = useMemo(() => {
     if (selectedTrack?.kind !== "recording" || selectedTrack.audioTrackId === null) return [];
     const bars = selectedTrack.loopBars ?? loopBars;
@@ -1175,6 +1180,49 @@ export default function Salaryman1999() {
       setRecordingLabel("Sample slicing failed.");
     } finally {
       setIsChoppingSample(false);
+    }
+  };
+  const detectSamplerRootNote = async () => {
+    const trackId = selectedTrackId;
+    const padIndex = selectedPadIndex;
+    const track = projectRef.current.tracks.find(candidate => candidate.id === trackId);
+    const sourcePad = track?.machineId === "mpc_sample" ? track.samplerPads?.[padIndex] : undefined;
+    if (!track || track.machineId !== "mpc_sample" || !sourcePad?.audioTrackId) return;
+
+    setIsDetectingRootNote(true);
+    setRootNoteStatus("ANALYZING");
+    setLoadError("");
+    try {
+      const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Root-note analysis is not supported in this browser.");
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      await context.resume();
+      const buffer = await loadAudioBuffer(context, sourcePad.audioTrackId, clipBufferCacheRef.current);
+      const endSec = sourcePad.endSec > sourcePad.startSec ? sourcePad.endSec : buffer.duration;
+      const result = detectRootNote(
+        Array.from({ length: buffer.numberOfChannels }, (_, channel) => buffer.getChannelData(channel)),
+        buffer.sampleRate,
+        sourcePad.startSec,
+        endSec,
+      );
+      if (!result) {
+        setRootNoteStatus("NO CLEAR PITCH · SET MANUALLY");
+        return;
+      }
+      const currentTrack = projectRef.current.tracks.find(candidate => candidate.id === trackId);
+      const currentPad = currentTrack?.machineId === "mpc_sample" ? currentTrack.samplerPads?.[padIndex] : undefined;
+      if (currentPad?.audioTrackId !== sourcePad.audioTrackId) {
+        throw new Error("The selected sample changed. Select it again and retry.");
+      }
+      updateSamplerPad(trackId, padIndex, pad => ({ ...pad, rootKey: result.pitchClass }));
+      setRootNoteStatus(`DETECTED ${noteNameForMidi(result.midiNote)} · ${result.frequencyHz.toFixed(1)} HZ`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Root-note analysis failed.";
+      setRootNoteStatus("DETECTION FAILED");
+      setLoadError(message);
+    } finally {
+      setIsDetectingRootNote(false);
     }
   };
   const previewSamplerPad = async (padIndex: number) => {
@@ -1848,7 +1896,7 @@ export default function Salaryman1999() {
                           aria-label={`Pad ${padIndex + 1}: ${sampleTitle}`}
                           aria-pressed={selectedPadIndex === padIndex}
                           onClick={() => { void previewSamplerPad(padIndex); }}
-                          disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample}
+                          disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample || isDetectingRootNote}
                           data-testid={`button-mpc-pad-${padIndex + 1}`}
                         >
                           <strong>{String(padIndex + 1).padStart(2, "0")}</strong>
@@ -1884,14 +1932,14 @@ export default function Salaryman1999() {
                         className="n-screen-reader"
                         type="file"
                         accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.opus,.webm,.flac"
-                        disabled={isUploadingTake || isChoppingSample}
+                        disabled={isUploadingTake || isChoppingSample || isDetectingRootNote}
                         onChange={event => {
                           const file = event.currentTarget.files?.[0];
                           if (file) void uploadSamplerSample(file);
                         }}
                         data-testid="input-mpc-upload"
                       />
-                      <button className="n-btn n-mpc-upload" type="button" onClick={() => samplerFileInputRef.current?.click()} disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample} data-testid="button-mpc-upload">
+                      <button className="n-btn n-mpc-upload" type="button" onClick={() => samplerFileInputRef.current?.click()} disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample || isDetectingRootNote} data-testid="button-mpc-upload">
                         <Plus size={12} /> {isUploadingTake ? "Importing" : "Upload sample"}
                       </button>
                       {selectedSamplerPad?.audioTrackId && (
@@ -1927,10 +1975,16 @@ export default function Salaryman1999() {
                           </div>
                           <label className="n-mpc-field"><span>TUNE · {selectedSamplerPad.tune} ST</span><input type="range" min="-24" max="24" value={selectedSamplerPad.tune} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, tune: Number(event.target.value) }))} data-testid="input-mpc-tune" /></label>
                           <label className="n-mpc-field"><span>SPEED · {selectedSamplerPad.speed.toFixed(2)}×</span><input type="range" min="0.5" max="2" step="0.01" value={selectedSamplerPad.speed} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, speed: Number(event.target.value) }))} data-testid="input-mpc-speed" /></label>
-                          <label className="n-mpc-field"><span>ROOT KEY</span><select value={selectedSamplerPad.rootKey ?? ""} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, rootKey: event.target.value === "" ? null : Number(event.target.value) }))} data-testid="select-mpc-root-key">
+                          <label className="n-mpc-field"><span>ROOT KEY</span><select value={selectedSamplerPad.rootKey ?? ""} disabled={isPlaying || isRecording || isDetectingRootNote} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, rootKey: event.target.value === "" ? null : Number(event.target.value) }))} data-testid="select-mpc-root-key">
                             <option value="">Unknown</option>
                             {projectKeys.map((key, index) => <option key={key} value={index}>{key}</option>)}
                           </select></label>
+                          <div className="n-mpc-root-detect">
+                            <button className="n-btn n-mpc-detect-button" type="button" onClick={() => void detectSamplerRootNote()} disabled={isPlaying || isRecording || isDetectingRootNote || isChoppingSample} data-testid="button-mpc-detect-root">
+                              <Radio size={12} /> {isDetectingRootNote ? "Analyzing" : "Detect root"}
+                            </button>
+                            {rootNoteStatus && <span className="n-mpc-detect-status" role="status" data-testid="text-mpc-root-status">{rootNoteStatus}</span>}
+                          </div>
                           <div className="n-mpc-trim">
                             <label className="n-mpc-field"><span>LEVEL · {selectedSamplerPad.level}</span><input type="range" min="0" max="100" value={selectedSamplerPad.level} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, level: Number(event.target.value) }))} data-testid="input-mpc-level" /></label>
                             <label className="n-mpc-field"><span>TONE · {selectedSamplerPad.tone}</span><input type="range" min="0" max="100" value={selectedSamplerPad.tone} disabled={isPlaying || isRecording} onChange={event => updateSamplerPad(selectedTrack.id, selectedPadIndex, pad => ({ ...pad, tone: Number(event.target.value) }))} data-testid="input-mpc-tone" /></label>

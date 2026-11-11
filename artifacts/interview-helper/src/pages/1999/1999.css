@@ -162,6 +162,9 @@
 .n-mpc-field input[type="range"] { width: 100%; margin: 2px 0 0; accent-color: #a5d65b; }
 .n-mpc-trim { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .n-mpc-upload { min-height: 28px; justify-content: center; padding-inline: 6px; font-size: 8px; }
+.n-mpc-root-detect { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; }
+.n-mpc-detect-button { min-height: 26px; justify-content: center; padding-inline: 7px; border-color: #758f52; color: #c6e49a; font-size: 8px; white-space: nowrap; }
+.n-mpc-detect-status { overflow: hidden; color: var(--n-muted); font: 7px/1.35 var(--font-mono, monospace); text-overflow: ellipsis; }
 .n-mpc-chop { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 6px; padding: 7px; border: 1px solid #343c3b; background: #101413; }
 .n-mpc-chop .n-mpc-trim { grid-column: 1 / -1; }
 .n-mpc-chop-button { min-height: 26px; justify-content: center; padding-inline: 7px; border-color: #758f52; color: #c6e49a; font-size: 8px; }

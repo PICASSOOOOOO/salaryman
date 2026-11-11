@@ -2244,11 +2244,11 @@ class SolarPunkRenderer:
         elif state.active_page == "music_studio":
             button(
                 "music:open",
-                "OPEN 1999 PRODUCTION WORKSPACE",
+                "OPEN SHARED 1999 WORKSPACE",
                 pygame.Rect(panel.x + 26, content_y, panel.width - 52, 56),
             )
             self.text(
-                "Continue in the browser with your saved 1999 sessions. MIDI output can route patterns to a VST3 instrument in your desktop DAW.",
+                "Dedicated 1999 sampler, tape, and sequencing terminal. Open the shared browser workspace to edit sessions and audio in your SALARYMAN Vault.",
                 (panel.x + 28, content_y + 82),
                 self.font_sm,
                 (85, 103, 94),
