@@ -22,7 +22,6 @@ import { hydrateOnboardingStatus, resetOnboardingStatus, useOnboardingResolved }
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
-import { isTutorialDone } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
@@ -338,54 +337,6 @@ function AppShell() {
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  // Visitors can browse without signing in. Business onboarding and account,
-  // price, or persistence checks belong to the feature and its API.
-  // A signed-in visitor can return to the free 1999 workstation without being
-  // forced through unrelated business onboarding before saving a session.
-  const allowedForAuthedNew =
-    pathname === "/pablo" ||
-    pathname === "/landing" ||
-    pathname === "/onboarding" ||
-    pathname === "/upgrade" ||
-    pathname === "/pledge" ||
-    pathname === "/pricing" ||
-    pathname === "/sign-in" ||
-    pathname === "/sign-up" ||
-    pathname === "/1999" ||
-    pathname === "/legal" ||
-    pathname.startsWith("/legal/");
-  const tutorialDone = isTutorialDone();
-  // Wait for auth to resolve before bouncing: isAuthenticated starts false on
-  // cold load, so acting during isLoading would kick a signed-in-but-uncleared
-  // user off a post-sign-in route before we know they're authed.
-  // Also wait for the server onboarding check (authed users only): a returning,
-  // already-onboarded user has no local salaryman_tutorial_done flag yet, so
-  // redirecting before hydrateOnboardingStatus() resolves would force them back
-  // through intake.
-  const onboardingPending = isAuthenticated && !onboardingResolved;
-  // Do not mount a protected game/office surface while the save-list check is
-  // still deciding whether this browser is stale after a development reset.
-  // Once an authenticated empty list is observed, hydration clears the local
-  // tutorial flag and this rerenders into the Tower reception redirect.
-  // /console is the explicit post-login handoff destination. Let its own
-  // auth-aware surface render while the background onboarding check catches up;
-  // otherwise a returning user can be trapped on the sync screen immediately
-  // after the callback even though the session is already valid.
-  const holdForOnboarding =
-    onboardingPending && isAuthenticated && !allowedForAuthedNew && !isConsoleTerminal;
-  const newUserBlocked = isAuthenticated && !isLoading && !onboardingPending && !tutorialDone && !allowedForAuthedNew;
-  // Wait for auth resolution before mounting pages that may start private API
-  // reads. This is only a loading barrier; once resolved, feature-level guards
-  // decide whether a visitor needs to sign in.
-  const holdForAuth = isLoading && pathname !== "/" && pathname !== "/1999";
-  const [, navigate] = useLocation();
-  useEffect(() => {
-    if (!newUserBlocked) return;
-    const requested = `${window.location.pathname}${window.location.search}`;
-    const returnTo = requested === "/onboarding" ? "" : `?returnTo=${encodeURIComponent(requested)}`;
-    navigate(`/onboarding${returnTo}`, { replace: true });
-  }, [newUserBlocked, location, navigate]);
-
   // Server-authoritative onboarding skip: resolve the server state as soon as
   // Clerk reports a signed-in user. Background API work is kept below until
   // this handshake completes.
@@ -435,15 +386,6 @@ function AppShell() {
       document.body.classList.remove("workspace-light");
     };
   }, [isLightWorkspace]);
-
-  // Hold routes behind a loading screen until auth resolves so a page cannot
-  // start private API reads before its feature-level sign-in checks are ready.
-  if (holdForAuth || holdForOnboarding) return <LoadingFallback />;
-  // Do not mount a protected route for even one frame while the effect above
-  // updates browser history. Mounting it can start authenticated API requests;
-  // their expected 401 would otherwise win the race and send the visitor to
-  // the legacy Pablo sign-in surface instead of Tower reception.
-  if (newUserBlocked) return <LoadingFallback />;
 
   return (
     <>

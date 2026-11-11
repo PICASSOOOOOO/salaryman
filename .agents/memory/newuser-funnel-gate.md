@@ -15,5 +15,7 @@ in-memory draft where possible. Do not autosave guest work to a user account.
 business onboarding/status, non-free features, and saving website data.
 
 **How to apply:** Feature-level UI prompts for auth at gated actions, with a safe
-`returnTo`. Keep saved/private APIs protected. Pablo is a product destination,
-not the generic auth or Back fallback; signed-out Back fallback is `/`.
+`returnTo`. Background GET 401s must not redirect globally; a feature may opt a
+specific protected read in. Do not add an app-wide first-login onboarding bounce.
+Keep saved/private APIs protected. Pablo is not the generic auth or Back fallback;
+signed-out Back fallback is `/`.

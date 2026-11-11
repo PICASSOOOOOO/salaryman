@@ -91,9 +91,9 @@ export function notifyFiatChangedSoon(delayMs: number = PABLO_TAX_REFRESH_DELAY_
 const SESSION_EXPIRY_SKIP_PATHS =
   /\/(auth\/user|auth\/providers)(\/|$|\?)/;
 
-// Public routes where a 401 from optional/background API reads is expected and
-// must not hijack navigation. A 401 on other routes still triggers the
-// return-to-sign-in flow for business, paid, and persistence-gated features.
+// Public routes that handle their own sign-in prompts. A rejected write on
+// these pages must not hijack navigation; feature UI decides when auth is
+// needed. This includes public chat, the guest workstation, and guest meetings.
 const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/tower",
   "/desktop",
@@ -103,6 +103,7 @@ const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/device-link",
   "/sms-opt-in",
   "/1999",
+  "/meet",
   // Auth routes are deliberately anonymous. Background metadata requests may
   // still return 401 while Clerk is loading; redirecting those responses to
   // Pablo unmounts the Clerk form before a visitor can sign in or sign up.
@@ -125,6 +126,11 @@ export type ApiFetchOptions = RequestInit & {
    * resolve their own state instead of redirecting the whole app mid-login.
    */
   skipSessionExpiryRedirect?: boolean;
+  /**
+   * Opt in to a sign-in redirect for a specific request. By default, only
+   * rejected writes redirect; a background read must not gate free browsing.
+   */
+  redirectOnUnauthorized?: boolean;
 };
 
 export function apiFetch(path: string, opts?: ApiFetchOptions): Promise<Response> {
@@ -133,18 +139,20 @@ export function apiFetch(path: string, opts?: ApiFetchOptions): Promise<Response
     : path.startsWith('api/')
     ? `${BASE}${path}`
     : path;
-  const { skipSessionExpiryRedirect, ...requestInit } = opts ?? {};
+  const { skipSessionExpiryRedirect, redirectOnUnauthorized, ...requestInit } = opts ?? {};
   const method = (requestInit.method ?? 'GET').toUpperCase();
   const isMutating = method !== 'GET' && method !== 'HEAD';
+  const shouldRedirectOnUnauthorized = redirectOnUnauthorized ?? isMutating;
   const p = fetch(fullPath, { ...requestInit, credentials: 'include' });
 
-  // Session-expiry redirect: when any API call comes back 401 it means the
-  // session has lapsed. Send the user directly to the compact sign-in screen
-  // and preserve the current page as the post-authentication destination.
+  // A rejected background read is not consent to sign in. Writes default to a
+  // sign-in redirect because they represent a user-initiated save/action; read
+  // requests can opt in when the specific feature requires an account.
   p.then((r) => {
     if (
       r.status === 401 &&
       !_sessionExpiredRedirecting &&
+      shouldRedirectOnUnauthorized &&
       !skipSessionExpiryRedirect &&
       typeof window !== "undefined" &&
       !SESSION_EXPIRY_SKIP_PATHS.test(path)
