@@ -211,6 +211,7 @@ beforeEach(() => {
   h.auth.isAuthenticated = true;
   h.auth.isLoading = false;
   window.localStorage.removeItem("salaryman.1999-midi-input.v1");
+  window.sessionStorage.removeItem("salaryman.1999.pending-save.v1");
   Object.defineProperty(navigator, "requestMIDIAccess", { configurable: true, value: undefined });
   currentProject = JSON.stringify(savedProject);
   currentUpdatedAt = "2026-11-10T00:00:00.000Z";
@@ -231,6 +232,12 @@ beforeEach(() => {
   h.apiFetch.mockImplementation(async (path: string, init?: RequestInit) => {
     if (path === "/api/vault/entries?folder=%2F1999") {
       return jsonResponse({ entries: [projectEntry()] });
+    }
+    if (path === "/api/vault/entries" && init?.method === "POST") {
+      const body = JSON.parse(String(init.body));
+      currentProject = body.content;
+      currentUpdatedAt = "2026-11-10T00:00:01.000Z";
+      return jsonResponse({ entry: projectEntry() });
     }
     if (path === "/api/vault/entries/77" && init?.method === "PUT") {
       const body = JSON.parse(String(init.body));
@@ -285,6 +292,26 @@ describe("1999 recorded-loop persistence", () => {
     expect(container.querySelector('[data-testid="status-autosave"]')?.textContent).toContain("Guest");
     expect(container.querySelector('[data-testid="empty-projects"]')?.textContent).toContain("SIGN IN TO OPEN");
     expect(h.apiFetch).not.toHaveBeenCalled();
+
+    setValue("input-project-name", "Guest session draft");
+    await new Promise(resolve => window.setTimeout(resolve, 900));
+    await flush();
+    expect(container.querySelector('[data-testid="status-autosave"]')?.textContent).toContain("Guest");
+    expect(h.apiFetch).not.toHaveBeenCalled();
+  });
+
+  it("restores a guest draft after sign-in and then saves it to Vault", async () => {
+    window.sessionStorage.setItem(
+      "salaryman.1999.pending-save.v1",
+      JSON.stringify({ ...savedProject, name: "Guest session draft" }),
+    );
+    await mount();
+
+    await new Promise(resolve => window.setTimeout(resolve, 950));
+    await flush();
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/vault/entries", expect.objectContaining({ method: "POST" }));
+    expect(JSON.parse(currentProject).name).toBe("Guest session draft");
+    expect(container.querySelector('[data-testid="status-autosave"]')?.textContent).toContain("All changes saved");
   });
 
   it("overdubs without replacing the original, saves both takes, and reloads them in sync", async () => {

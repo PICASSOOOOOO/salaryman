@@ -5,7 +5,6 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import pinoHttp from "pino-http";
 import { authMiddleware } from "./middlewares/authMiddleware";
-import { anonymousAccessMiddleware } from "./middlewares/anonymousAccess";
 import { logger } from "./lib/logger";
 import { isPabloRequestId, safePabloErrorFields } from "./lib/pablo-chat-diagnostics";
 import router from "./routes";
@@ -87,22 +86,7 @@ app.get("/ws", (_req, res) => {
 
 app.use(authMiddleware);
 
-app.get("/api/visitor-access", anonymousAccessMiddleware, (req, res) => {
-  res.setHeader("Cache-Control", "no-store");
-  if (req.isAuthenticated?.()) {
-    res.json({ authenticated: true, expired: false });
-    return;
-  }
-  res.json({
-    authenticated: false,
-    startedAt: req.anonymousAccess?.startedAt ?? Date.now(),
-    expiresAt: req.anonymousAccess?.expiresAt ?? Date.now(),
-    expired: req.anonymousAccess?.expired ?? false,
-    limitDays: 5,
-  });
-});
-
-app.use("/api", anonymousAccessMiddleware, router);
+app.use("/api", router);
 
 const logUnhandledPabloError: ErrorRequestHandler = (error, req, _res, next) => {
   const path = req.originalUrl.split("?")[0];

@@ -6,7 +6,6 @@ import { OUTSIDE_WORLD_ENABLED } from './lib/outside-world';
 import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { resolveClassroomLiveAccess } from './routes/education';
-import { getAnonymousAccessCookieStatus } from './middlewares/anonymousAccess';
 
 // Per-realm population cap. Each realm runs the SAME game on its own always-on
 // server; the cap keeps a single instance healthy and hosting cost predictable.
@@ -1789,20 +1788,7 @@ export const getServerStatus = () => {
 };
 
 export const attachWorldServer = (httpServer: Server) => {
-  const wss = new WebSocketServer({
-    server: httpServer,
-    path: '/ws',
-    verifyClient: (info, done) => {
-      void resolveWorldUserId(info.req)
-        .then((userId) => {
-          const access = getAnonymousAccessCookieStatus(info.req.headers.cookie);
-          const allowed = Boolean(userId) || (access.valid && !access.expired);
-          if (allowed) done(true);
-          else done(false, 403, 'Sign in to continue using SALARYMAN');
-        })
-        .catch(() => done(false, 500, 'Unable to verify access'));
-    },
-  });
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   console.log(OUTSIDE_WORLD_ENABLED
     ? '[World] WebSocket server attached at /ws'
     : '[World] Exterior runtime locked; /ws rejects world sessions');
@@ -2020,15 +2006,6 @@ export const attachWorldServer = (httpServer: Server) => {
 
     void (async () => {
       try {
-        const userId = await resolveSessionUserId(req);
-        const access = getAnonymousAccessCookieStatus(req.headers.cookie);
-        if (!userId && (!access.valid || access.expired)) {
-          socket.end(
-            'HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\nSign in to continue using SALARYMAN.',
-          );
-          return;
-        }
-
         if (pathname.includes('/ws/meet')) {
           guestWss.handleUpgrade(req, socket as any, head, (ws) => {
             guestWss.emit('connection', ws, req);

@@ -91,13 +91,9 @@ export function notifyFiatChangedSoon(delayMs: number = PABLO_TAX_REFRESH_DELAY_
 const SESSION_EXPIRY_SKIP_PATHS =
   /\/(auth\/user|auth\/providers)(\/|$|\?)/;
 
-// Public / anonymous-allowed routes where a 401 from a background API call is
-// EXPECTED (the visitor simply isn't signed in) and must NOT hijack navigation
-// to the sign-in funnel. The root "/" is the public scroll cinematic landing
-// (ScrollLanding); /pablo is the sign-in funnel itself; /onboarding is the
-// post-sign-in onboarding desk. This mirrors the anonymous-allowed route set in
-// App.tsx — keep it in sync if more public routes are added. A 401 on any other
-// (genuinely protected) page still triggers the return-to-sign-in bounce.
+// Public routes where a 401 from optional/background API reads is expected and
+// must not hijack navigation. A 401 on other routes still triggers the
+// return-to-sign-in flow for business, paid, and persistence-gated features.
 const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/tower",
   "/desktop",
@@ -154,9 +150,8 @@ export function apiFetch(path: string, opts?: ApiFetchOptions): Promise<Response
       !SESSION_EXPIRY_SKIP_PATHS.test(path)
     ) {
       const currentPath = window.location.pathname;
-      // Don't redirect on public/anonymous routes (the root landing cinematic,
-      // the /pablo sign-in funnel, or the /onboarding desk) — a 401
-      // there is expected for a logged-out visitor and must not hijack nav.
+      // Don't redirect on routes where an anonymous 401 is expected; feature
+      // actions on those routes prompt for sign-in explicitly when needed.
       if (!isSessionExpiryPublicRoute(currentPath)) {
         _sessionExpiredRedirecting = true;
         const safePath = currentPath + window.location.search;

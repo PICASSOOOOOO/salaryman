@@ -377,7 +377,7 @@ function AppShell() {
   // Wait for auth resolution before mounting pages that may start private API
   // reads. This is only a loading barrier; once resolved, feature-level guards
   // decide whether a visitor needs to sign in.
-  const holdForAuth = isLoading && !tutorialDone;
+  const holdForAuth = isLoading && pathname !== "/" && pathname !== "/1999";
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!newUserBlocked) return;
