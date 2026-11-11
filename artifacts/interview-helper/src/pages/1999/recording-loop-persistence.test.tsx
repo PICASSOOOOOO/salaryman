@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   apiFetch: vi.fn(),
+  auth: { isAuthenticated: true, isLoading: false },
   music: {
     tracks: [] as any[],
     refresh: vi.fn(),
@@ -19,6 +20,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-client", () => ({ apiFetch: h.apiFetch }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => h.auth }));
 vi.mock("@/contexts/MusicPlayerContext", () => ({ useMusicPlayer: () => h.music }));
 vi.mock("@/components/Fm1EmulatorPanel", () => ({ default: () => null }));
 vi.mock("@/components/MinimoogEmulatorPanel", () => ({ default: () => null }));
@@ -206,6 +208,8 @@ function setValue(testId: string, value: string, eventName: "input" | "change" =
 }
 
 beforeEach(() => {
+  h.auth.isAuthenticated = true;
+  h.auth.isLoading = false;
   window.localStorage.removeItem("salaryman.1999-midi-input.v1");
   Object.defineProperty(navigator, "requestMIDIAccess", { configurable: true, value: undefined });
   currentProject = JSON.stringify(savedProject);
@@ -271,6 +275,18 @@ afterEach(() => {
 });
 
 describe("1999 recorded-loop persistence", () => {
+  it("lets guests use the workstation without loading or saving Vault data", async () => {
+    h.auth.isAuthenticated = false;
+    await mount();
+
+    expect(container.querySelector('[data-testid="page-1999"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="text-1999-brand"]')?.textContent).toBe("1999");
+    expect(container.querySelector('[data-testid="button-save-project"]')?.textContent).toContain("Sign in to save");
+    expect(container.querySelector('[data-testid="status-autosave"]')?.textContent).toContain("Guest");
+    expect(container.querySelector('[data-testid="empty-projects"]')?.textContent).toContain("SIGN IN TO OPEN");
+    expect(h.apiFetch).not.toHaveBeenCalled();
+  });
+
   it("overdubs without replacing the original, saves both takes, and reloads them in sync", async () => {
     await mount();
     click("row-track-trk-loop");

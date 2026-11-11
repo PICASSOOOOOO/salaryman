@@ -241,40 +241,11 @@ const FLOATING_BAR_ROUTES = [
 function AppShell() {
   useUndoShortcut();
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [anonymousAccessResolved, setAnonymousAccessResolved] = useState(false);
-  const [anonymousAccessExpired, setAnonymousAccessExpired] = useState(false);
   const onboardingResolved = useOnboardingResolved();
   useHeartbeat(isAuthenticated && onboardingResolved && !isLoading);
   usePageMeta();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (isAuthenticated) {
-      setAnonymousAccessExpired(false);
-      setAnonymousAccessResolved(true);
-      return;
-    }
-
-    let active = true;
-    setAnonymousAccessResolved(false);
-    apiFetch("/api/visitor-access", { credentials: "include" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Anonymous access status unavailable");
-        const status = await response.json() as { expired?: boolean };
-        if (!active) return;
-        setAnonymousAccessExpired(status.expired === true);
-        setAnonymousAccessResolved(true);
-      })
-      .catch(() => {
-        if (!active) return;
-        // The API middleware still enforces the limit. Keep the public entry
-        // usable during a temporary status-check outage.
-        setAnonymousAccessResolved(true);
-      });
-    return () => { active = false; };
-  }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -367,42 +338,10 @@ function AppShell() {
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  // GLOBAL GATE. Before a visitor passes security (signs in), the visible
-  // surface is Pablo's homepage, plus the /auth + /api machinery that performs
-  // the sign-in. Pablo remains the homepage after sign-in too; Tower entry is
-  // an explicit handoff from that surface.
-  // Typing or deep-linking ANY other URL (/game, /console, /business,
-  // /world, /profile, /legal, /alpha, …) silently bounces them back to the
-  // queue, so nothing behind the firewall is reachable by guessing a path.
-  //
-  // Once authenticated, the open Tower lobby and legal pages are available
-  // before any optional outside-world paperwork.
-  const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/pricing", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api", "/meet"];
-  // Onboarding is optional for basic job-seeking and browsing. Mutations and
-  // paid/managed capabilities enforce the server-side onboarding record.
-  // Powering on the landing cinematic's terminal sends visitors to /console
-   // so an anonymous visitor must be allowed to reach EXACTLY
-  // /console and see the console's own sign-in screen there — without being
-  // bounced back to the nebula front door. We allow only the exact path, never
-  // the /console/* subroutes (those tool deep-routes stay protected: guessing
-  // them while logged out still bounces to the door). The console sign-in
-  // screen passes returnTo="/console" to OAuth, so after signing in the visitor
-  // lands back on the console rather than the app base.
-  const ANON_ALLOWED_EXACT = [
-    "/console",
-    "/business/autopilot",
-    "/bots",
-    "/agents",
-    "/intel/agents",
-    "/landing",
-  ];
-  const matchesPrefix = (list: string[]) =>
-    list.some(p => pathname === p || pathname.startsWith(p + "/"));
-  const allowedForAnon = pathname === "/" || matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
-  // A newly authenticated account must complete the small browser onboarding
-  // form before entering workspace routes. Pablo and the billing/legal surfaces
-  // remain available so a user can recover their session or review access
-  // without being sent through a loop.
+  // Visitors can browse without signing in. Business onboarding and account,
+  // price, or persistence checks belong to the feature and its API.
+  // A signed-in visitor can return to the free 1999 workstation without being
+  // forced through unrelated business onboarding before saving a session.
   const allowedForAuthedNew =
     pathname === "/pablo" ||
     pathname === "/landing" ||
@@ -412,18 +351,17 @@ function AppShell() {
     pathname === "/pricing" ||
     pathname === "/sign-in" ||
     pathname === "/sign-up" ||
+    pathname === "/1999" ||
     pathname === "/legal" ||
     pathname.startsWith("/legal/");
   const tutorialDone = isTutorialDone();
-  const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;
   // Wait for auth to resolve before bouncing: isAuthenticated starts false on
   // cold load, so acting during isLoading would kick a signed-in-but-uncleared
   // user off a post-sign-in route before we know they're authed.
   // Also wait for the server onboarding check (authed users only): a returning,
   // already-onboarded user has no local salaryman_tutorial_done flag yet, so
-  // bouncing before hydrateOnboardingStatus() resolves would force them back
-  // through intake. Anonymous visitors don't run that check, so this never
-  // delays their bounce to /pablo.
+  // redirecting before hydrateOnboardingStatus() resolves would force them back
+  // through intake.
   const onboardingPending = isAuthenticated && !onboardingResolved;
   // Do not mount a protected game/office surface while the save-list check is
   // still deciding whether this browser is stale after a development reset.
@@ -435,47 +373,18 @@ function AppShell() {
   // after the callback even though the session is already valid.
   const holdForOnboarding =
     onboardingPending && isAuthenticated && !allowedForAuthedNew && !isConsoleTerminal;
-  const newUserBlocked = !isLoading && !onboardingPending && !tutorialDone && !isAllowedForNewUser;
-  // Close the hydration window: while auth is still resolving, hold any path an
-  // anonymous visitor may NOT see behind a loading screen instead of rendering
-  // it. This stops a logged-out deep link (/profile, /legal, …) from flashing
-  // the protected page before the bounce fires, without mis-kicking a signed-in
-  // user who is legitimately allowed to be there. Cleared users (tutorialDone)
-  // are never held.
-  const holdForAuth = isLoading && !tutorialDone && !allowedForAnon;
+  const newUserBlocked = isAuthenticated && !isLoading && !onboardingPending && !tutorialDone && !allowedForAuthedNew;
+  // Wait for auth resolution before mounting pages that may start private API
+  // reads. This is only a loading barrier; once resolved, feature-level guards
+  // decide whether a visitor needs to sign in.
+  const holdForAuth = isLoading && !tutorialDone;
   const [, navigate] = useLocation();
-  const anonymousExpiryExempt =
-    pathname === "/" ||
-    pathname === "/landing" ||
-    pathname === "/sign-in" ||
-    pathname === "/sign-up" ||
-    pathname === "/device-link" ||
-    pathname === "/legal" ||
-    pathname.startsWith("/legal/") ||
-    pathname === "/auth" ||
-    pathname.startsWith("/auth/");
-  const anonymousAccessPending =
-    !isAuthenticated && !isLoading && !anonymousAccessResolved && !anonymousExpiryExempt;
-  const anonymousAccessBlocked =
-    !isAuthenticated && !isLoading && anonymousAccessResolved && anonymousAccessExpired && !anonymousExpiryExempt;
-
-  useEffect(() => {
-    if (!anonymousAccessBlocked) return;
-    const requested = `${window.location.pathname}${window.location.search}`;
-    navigate(`/sign-in?returnTo=${encodeURIComponent(requested)}`, { replace: true });
-  }, [anonymousAccessBlocked, location, navigate]);
-
   useEffect(() => {
     if (!newUserBlocked) return;
     const requested = `${window.location.pathname}${window.location.search}`;
-    if (!isAuthenticated) {
-      const returnTo = requested === "/" ? "" : `?returnTo=${encodeURIComponent(requested)}`;
-      navigate(`/sign-in${returnTo}`, { replace: true });
-      return;
-    }
     const returnTo = requested === "/onboarding" ? "" : `?returnTo=${encodeURIComponent(requested)}`;
     navigate(`/onboarding${returnTo}`, { replace: true });
-  }, [newUserBlocked, isAuthenticated, location, navigate]);
+  }, [newUserBlocked, location, navigate]);
 
   // Server-authoritative onboarding skip: resolve the server state as soon as
   // Clerk reports a signed-in user. Background API work is kept below until
@@ -527,14 +436,14 @@ function AppShell() {
     };
   }, [isLightWorkspace]);
 
-  // Hold protected paths behind a loading screen until auth resolves (see
-  // holdForAuth above) so a logged-out deep link can never flash the page.
-  if (holdForAuth || holdForOnboarding || anonymousAccessPending) return <LoadingFallback />;
+  // Hold routes behind a loading screen until auth resolves so a page cannot
+  // start private API reads before its feature-level sign-in checks are ready.
+  if (holdForAuth || holdForOnboarding) return <LoadingFallback />;
   // Do not mount a protected route for even one frame while the effect above
   // updates browser history. Mounting it can start authenticated API requests;
   // their expected 401 would otherwise win the race and send the visitor to
   // the legacy Pablo sign-in surface instead of Tower reception.
-  if (newUserBlocked || anonymousAccessBlocked) return <LoadingFallback />;
+  if (newUserBlocked) return <LoadingFallback />;
 
   return (
     <>

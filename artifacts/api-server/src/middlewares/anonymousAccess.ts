@@ -116,13 +116,5 @@ export function anonymousAccessMiddleware(req: Request, res: Response, next: Nex
   }
 
   req.anonymousAccess = { startedAt, expiresAt, expired: now >= expiresAt };
-  if (req.anonymousAccess.expired && !alwaysAllowed) {
-    res.status(403).json({
-      error: "ANONYMOUS_ACCESS_EXPIRED",
-      message: "Sign in to continue using SALARYMAN.",
-      expiresAt: new Date(expiresAt).toISOString(),
-    });
-    return;
-  }
   next();
 }

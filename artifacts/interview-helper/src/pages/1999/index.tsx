@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileAudio, FileJson, Mic, Play, Plus, Radio, RefreshCw, Save, Square, Volume2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
 import MinimoogEmulatorPanel from "@/components/MinimoogEmulatorPanel";
@@ -47,7 +48,7 @@ type ProjectTrack = {
 };
 type Project = { schemaVersion: 1; name: string; bpm: number; key: ProjectKey; timeSignature: TimeSignature; tracks: ProjectTrack[]; emulatorState: EmulatorState };
 type VaultEntry = { id: number; title: string; content: string; entryType: string; tags: string[]; folder: string; updatedAt: string };
-type SaveState = "loading" | "saved" | "saving" | "unsaved" | "error" | "conflict";
+type SaveState = "loading" | "saved" | "saving" | "unsaved" | "guest" | "error" | "conflict";
 type MidiOutputPort = {
   id: string;
   name?: string;
@@ -522,6 +523,7 @@ async function renderWav(project: Project): Promise<Blob> {
 }
 
 export default function Salaryman1999() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { tracks: libraryTracks, refresh } = useMusicPlayer();
   const [project, setProject] = useState<Project>(freshProject);
   const [entries, setEntries] = useState<VaultEntry[]>([]);
@@ -603,17 +605,60 @@ export default function Salaryman1999() {
   }, [midiPadNotes, selectedMidiInputId]);
 
   const refreshEntries = useCallback(async () => {
+    if (!isAuthenticated) {
+      setEntries([]);
+      return;
+    }
     const response = await apiFetch("/api/vault/entries?folder=%2F1999");
     const data = await response.json().catch(() => ({})) as { entries?: VaultEntry[]; error?: string };
     if (!response.ok) throw new Error(data.error || `Project list unavailable (${response.status})`);
     setEntries(Array.isArray(data.entries) ? data.entries.filter(entry => entry.entryType === "1999_project" && !!parseProject(entry.content)) : []);
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     let mounted = true;
+    if (authLoading) return () => { mounted = false; };
     const load = async () => {
+      if (!isAuthenticated) {
+        setEntries([]);
+        setActiveId(null);
+        setUpdatedAt(null);
+        activeRef.current = { id: null, updatedAt: null };
+        const guestProject = freshProject();
+        skipDirtyRef.current = true;
+        projectRef.current = guestProject;
+        setProject(guestProject);
+        setSelectedTrackId(guestProject.tracks[0].id);
+        dirtyRef.current = false;
+        setConflict(false);
+        setLoadError("");
+        setSaveState("guest");
+        return;
+      }
       setSaveState("loading");
       try {
+        let guestDraft: Project | null = null;
+        try {
+          const draft = window.sessionStorage.getItem("salaryman.1999.pending-save.v1");
+          if (draft) {
+            guestDraft = parseProject(draft);
+            window.sessionStorage.removeItem("salaryman.1999.pending-save.v1");
+          }
+        } catch {
+          // Session storage can be unavailable in private browsing.
+        }
+        if (guestDraft) {
+          skipDirtyRef.current = true;
+          projectRef.current = guestDraft;
+          setProject(guestDraft);
+          setSelectedTrackId(guestDraft.tracks[0]?.id ?? "");
+          activeRef.current = { id: null, updatedAt: null };
+          setActiveId(null);
+          setUpdatedAt(null);
+          dirtyRef.current = true;
+          setSaveState("unsaved");
+          return;
+        }
         const response = await apiFetch("/api/vault/entries?folder=%2F1999");
         const data = await response.json().catch(() => ({})) as { entries?: VaultEntry[]; error?: string };
         if (!response.ok) throw new Error(data.error || `Project list unavailable (${response.status})`);
@@ -641,7 +686,7 @@ export default function Salaryman1999() {
     };
     void load();
     return () => { mounted = false; };
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   useEffect(() => {
     projectRef.current = project;
@@ -650,10 +695,29 @@ export default function Salaryman1999() {
       return;
     }
     dirtyRef.current = true;
-    if (!conflict && saveState !== "loading") setSaveState("unsaved");
-  }, [project]);
+    if (isAuthenticated) {
+      if (!conflict && saveState !== "loading") setSaveState("unsaved");
+    } else {
+      setSaveState("guest");
+    }
+  }, [isAuthenticated, project]);
+
+  const requestSignInToSave = useCallback((draft?: Project) => {
+    if (draft) {
+      try {
+        window.sessionStorage.setItem("salaryman.1999.pending-save.v1", JSON.stringify(draft));
+      } catch {
+        setLoadError("Allow session storage or export the project before signing in to save it.");
+      }
+    }
+    window.location.assign(`/sign-in?returnTo=${encodeURIComponent("/1999")}`);
+  }, []);
 
   const saveProject = useCallback(async (snapshot: Project, createAsNew = false): Promise<boolean> => {
+    if (!isAuthenticated) {
+      requestSignInToSave(snapshot);
+      return false;
+    }
     if (savingRef.current || (conflict && !createAsNew)) return false;
     savingRef.current = true;
     setSaveState("saving");
@@ -714,13 +778,13 @@ export default function Salaryman1999() {
       savingRef.current = false;
       if (saveAgain) window.setTimeout(() => { void saveProject(projectRef.current); }, 50);
     }
-  }, [conflict, refreshEntries]);
+  }, [conflict, isAuthenticated, refreshEntries, requestSignInToSave]);
 
   useEffect(() => {
-    if (!dirtyRef.current || conflict || saveState !== "unsaved") return;
+    if (!isAuthenticated || !dirtyRef.current || conflict || saveState !== "unsaved") return;
     const timer = window.setTimeout(() => { void saveProject(projectRef.current); }, 850);
     return () => window.clearTimeout(timer);
-  }, [project, conflict, saveState, saveProject]);
+  }, [isAuthenticated, project, conflict, saveState, saveProject]);
 
   useEffect(() => () => {
     if (recordingStartTimerRef.current !== null) window.clearTimeout(recordingStartTimerRef.current);
@@ -1035,6 +1099,7 @@ export default function Salaryman1999() {
     setMidiInputStatus("Restored default mapping: MIDI notes 36–51 to pads 01–16.");
   };
   const uploadAudioToLibrary = async (file: File, durationSec: number) => {
+    if (!isAuthenticated) throw new Error("Sign in to add audio to your SALARYMAN music library.");
     const request = await apiFetch("/api/storage/uploads/request-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1071,6 +1136,10 @@ export default function Salaryman1999() {
     return result.track.id;
   };
   const uploadSamplerSample = async (file: File) => {
+    if (!isAuthenticated) {
+      requestSignInToSave();
+      return;
+    }
     const trackId = selectedTrackId;
     const padIndex = selectedPadIndex;
     const track = projectRef.current.tracks.find(candidate => candidate.id === trackId);
@@ -1339,6 +1408,10 @@ export default function Salaryman1999() {
   }, [learningMidiPadIndex, midiConnected, midiPadNotes, selectedMidiInputId, triggerMidiSamplerPad]);
 
   const uploadEmulatorPatch = async (machine: EmulatorMachine, file: File) => {
+    if (!isAuthenticated) {
+      requestSignInToSave(projectRef.current);
+      throw new Error("Sign in to save emulator patches to your 1999 project.");
+    }
     if (file.size < 1 || file.size > 16 * 1024 * 1024) {
       throw new Error("The .fm1save file must be smaller than 16 MB.");
     }
@@ -1600,6 +1673,10 @@ export default function Salaryman1999() {
     finally { setWavBusy(false); }
   };
   const saveWavToLibrary = async () => {
+    if (!isAuthenticated) {
+      requestSignInToSave();
+      return;
+    }
     setVaultMixBusy(true);
     try {
       const blob = await renderWav(project);
@@ -1616,6 +1693,10 @@ export default function Salaryman1999() {
   };
 
   const startRecording = async () => {
+    if (!isAuthenticated) {
+      requestSignInToSave();
+      return;
+    }
     if (isLoopPreviewActive) {
       setRecordingLabel("Stop loop preview before recording.");
       return;
@@ -1782,7 +1863,7 @@ export default function Salaryman1999() {
 
   const stateLabel = saveState === "saved" ? "All changes saved" : saveState === "saving" ? "Saving…" :
     saveState === "loading" ? "Loading projects…" : saveState === "conflict" ? "Save conflict" :
-    saveState === "error" ? "Save error" : "Unsaved changes";
+    saveState === "error" ? "Save error" : saveState === "guest" ? "Guest · session only" : "Unsaved changes";
 
   return (
     <main className="salary-1999" data-testid="page-1999">
@@ -1794,10 +1875,10 @@ export default function Salaryman1999() {
         <section className="n-toolbar" aria-label="Project controls" data-testid="section-project-controls">
            <input className="n-project-name" aria-label="Project name" maxLength={80} data-testid="input-project-name" value={project.name} onChange={event => updateProject(current => ({ ...current, name: event.target.value }))} />
           <button className="n-btn" type="button" onClick={startNewProject} data-testid="button-new-project"><Plus size={14} /> New</button>
-          <button className="n-btn" type="button" onClick={() => void saveProject(projectRef.current)} disabled={saveState === "saving" || conflict} data-testid="button-save-project"><Save size={13} /> Save</button>
+          <button className="n-btn" type="button" onClick={() => void saveProject(projectRef.current)} disabled={saveState === "saving" || conflict || authLoading} data-testid="button-save-project"><Save size={13} /> {isAuthenticated ? "Save" : "Sign in to save"}</button>
           <button className="n-btn" type="button" onClick={exportProject} data-testid="button-export-project"><FileJson size={14} /> Project</button>
           <button className="n-btn" type="button" onClick={() => void exportWav()} disabled={wavBusy} data-testid="button-export-wav"><FileAudio size={14} /> {wavBusy ? "Rendering" : "WAV"}</button>
-           <button className="n-btn" type="button" onClick={() => void saveWavToLibrary()} disabled={vaultMixBusy} data-testid="button-save-mix-library"><Save size={13} /> {vaultMixBusy ? "Saving mix" : "Music library"}</button>
+           <button className="n-btn" type="button" onClick={() => void saveWavToLibrary()} disabled={vaultMixBusy || authLoading} data-testid="button-save-mix-library"><Save size={13} /> {vaultMixBusy ? "Saving mix" : isAuthenticated ? "Music library" : "Sign in to save mix"}</button>
           <div className="n-save-state" data-state={saveState} title={updatedAt ? `Last saved ${new Date(updatedAt).toLocaleString()}` : undefined} role="status" aria-live="polite" data-testid="status-autosave">{stateLabel}</div>
         </section>
 
@@ -1939,8 +2020,11 @@ export default function Salaryman1999() {
                         }}
                         data-testid="input-mpc-upload"
                       />
-                      <button className="n-btn n-mpc-upload" type="button" onClick={() => samplerFileInputRef.current?.click()} disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample || isDetectingRootNote} data-testid="button-mpc-upload">
-                        <Plus size={12} /> {isUploadingTake ? "Importing" : "Upload sample"}
+                      <button className="n-btn n-mpc-upload" type="button" onClick={() => {
+                        if (isAuthenticated) samplerFileInputRef.current?.click();
+                        else requestSignInToSave();
+                      }} disabled={isPlaying || isRecording || isUploadingTake || isChoppingSample || isDetectingRootNote || authLoading} data-testid="button-mpc-upload">
+                        <Plus size={12} /> {isUploadingTake ? "Importing" : isAuthenticated ? "Upload sample" : "Sign in to upload"}
                       </button>
                       {selectedSamplerPad?.audioTrackId && (
                         <>
@@ -2157,7 +2241,9 @@ export default function Salaryman1999() {
             <section className="n-panel" aria-label="Saved sessions" data-testid="section-project-library">
               <div className="n-panel-head"><p className="n-eyebrow">SESSIONS</p><button className="n-icon-btn" type="button" aria-label="Refresh project list" onClick={() => void refreshEntries().catch(error => setLoadError(error instanceof Error ? error.message : "Could not refresh projects."))} data-testid="button-refresh-projects"><RefreshCw size={13} /></button></div>
               <div className="n-library">
-                {saveState === "loading" && entries.length === 0
+                {!isAuthenticated && !authLoading
+                  ? <div className="n-empty" data-testid="empty-projects">SIGN IN TO OPEN SAVED SESSIONS</div>
+                  : saveState === "loading" && entries.length === 0
                   ? <div className="n-empty" role="status" data-testid="status-library-loading">Loading…</div>
                   : entries.length === 0
                     ? <div className="n-empty" data-testid="empty-projects">NO SAVED SESSIONS</div>

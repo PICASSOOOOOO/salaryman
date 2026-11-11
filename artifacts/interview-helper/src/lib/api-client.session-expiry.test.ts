@@ -87,6 +87,7 @@ describe("apiFetch session-expiry redirect", () => {
   it("does NOT redirect on a 401 while already on a public or auth route", async () => {
     for (const path of [
       "/pablo",
+      "/1999",
       "/onboarding",
       "/onboarding/legal",
       "/sms-opt-in",

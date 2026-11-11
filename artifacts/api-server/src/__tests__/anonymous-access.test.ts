@@ -39,8 +39,8 @@ function invokeMiddleware(path: string, cookieValue?: string) {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe("anonymous access window", () => {
-  it("keeps the first visit timestamp fixed and blocks at five days", () => {
+describe("anonymous access tracking", () => {
+  it("keeps the first visit timestamp fixed without expiring free access", () => {
     const startedAt = Date.UTC(2026, 0, 1);
     vi.spyOn(Date, "now").mockReturnValue(startedAt);
 
@@ -60,9 +60,9 @@ describe("anonymous access window", () => {
 
     vi.mocked(Date.now).mockReturnValue(startedAt + ANONYMOUS_ACCESS_MS);
     const expiredRequest = invokeMiddleware("/private", cookieValue);
-    expect(expiredRequest.responseState.statusCode).toBe(403);
-    expect(expiredRequest.responseState.body).toMatchObject({ error: "ANONYMOUS_ACCESS_EXPIRED" });
-    expect(expiredRequest.next).not.toHaveBeenCalled();
+    expect(expiredRequest.next).toHaveBeenCalledOnce();
+    expect(expiredRequest.responseState.statusCode).toBeUndefined();
+    expect(expiredRequest.req.anonymousAccess?.expired).toBe(true);
   });
 
   it("keeps the visitor status and legal paths available after expiry", () => {
