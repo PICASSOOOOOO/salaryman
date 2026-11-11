@@ -216,10 +216,28 @@ function LoadingFallback() {
   );
 }
 
-function FeatureAuthGate({ context, children }: { context: string; children: React.ReactNode }) {
+function FeatureAuthGate({ context, children, backHref }: {
+  context: string;
+  children: React.ReactNode;
+  backHref?: string;
+}) {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <LoadingFallback />;
-  if (!isAuthenticated) return <SignInPage context={context} />;
+  if (!isAuthenticated) {
+    return (
+      <>
+        {backHref && (
+          <Link
+            href={backHref}
+            className="fixed left-4 top-4 z-[100000] text-xs font-semibold tracking-wider text-black"
+          >
+            ← BACK
+          </Link>
+        )}
+        <SignInPage context={context} />
+      </>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -458,8 +476,16 @@ function AppShell() {
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
             <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
-            <Route path="/profile/admin/alpha" component={AlphaAdmin} />
-            <Route path="/profile/admin/art" component={ArtLibrary} />
+            <Route path="/profile/admin/alpha">{() => (
+              <FeatureAuthGate context="Sign in to access alpha program administration.">
+                <AlphaAdmin />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/profile/admin/art">{() => (
+              <FeatureAuthGate context="Sign in to access the admin art library.">
+                <ArtLibrary />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/alpha" component={AlphaApply} />
             <Route path="/desktop" component={DesktopDownload} />
             <Route path="/download">{() => <Redirect to="/desktop" />}</Route>
@@ -512,7 +538,11 @@ function AppShell() {
             }}</Route>
             <Route path="/mobile">{() => <MobileTerminal />}</Route>
             <Route path="/terminal">{() => <MobileTerminal physicalTerminal />}</Route>
-            <Route path="/device-link" component={DeviceLink} />
+            <Route path="/device-link">{() => (
+              <FeatureAuthGate context="Sign in to link and manage your devices." backHref="/">
+                <DeviceLink />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/theater" component={TheaterPage} />
             <Route path="/meet/new">{() => <MeetLaunchPage />}</Route>
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
@@ -527,7 +557,11 @@ function AppShell() {
             <Route path="/business/hiring" component={Hiring} />
             <Route path="/business/jobs" component={JobBoard} />
             <Route path="/business/job-command" component={JobCommandCenter} />
-            <Route path="/job-offers" component={JobOffers} />
+            <Route path="/job-offers">{() => (
+              <FeatureAuthGate context="Sign in to view and respond to your job offers.">
+                <JobOffers />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/business/interview" component={Console} />
              <Route path="/calendar">{() => <Redirect to="/business/calendar" />}</Route>
             <Route path="/business/calendar" component={Calendar} />
@@ -657,7 +691,11 @@ function AppShell() {
 
 
             {/* INSURANCE module */}
-            <Route path="/insurance" component={InsuranceHub} />
+            <Route path="/insurance">{() => (
+              <FeatureAuthGate context="Sign in to manage insurance clients, policies, and carrier connections.">
+                <InsuranceHub />
+              </FeatureAuthGate>
+            )}</Route>
 
             {/* Platform API keys, webhooks, endpoints, and connections are a feature. */}
             <Route path="/platform">{() => <PlatformAPI />}</Route>
