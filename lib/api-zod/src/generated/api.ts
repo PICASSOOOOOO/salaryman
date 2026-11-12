@@ -9,6 +9,14 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Check whether the current user completed browser onboarding
+ */
+export const GetBrowserOnboardingStatusResponse = zod.object({
+  "completed": zod.boolean()
+})
+
+
+/**
  * @summary Generate a reviewable project plan and prototype
  */
 export const GenerateWorkspaceProjectDraftParams = zod.object({

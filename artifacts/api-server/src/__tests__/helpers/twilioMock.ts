@@ -12,6 +12,8 @@ export const mockState = {
   createdStatus: "queued",
   conferenceFriendlyName: "",
   employeeCallSid: "",
+  accountStatus: "active",
+  accountFetchError: null as Error | null,
 };
 
 // Build a fake `twilio` module. `import twilio from "twilio"` resolves to the
@@ -104,8 +106,14 @@ export function makeTwilioMock() {
     status: "queued",
     to: opts.to ?? "+15551234567",
   }));
+  const accountFetch = vi.fn(async () => {
+    if (mockState.accountFetchError) throw mockState.accountFetchError;
+    return { status: mockState.accountStatus };
+  });
+  const accountsCallable: any = vi.fn(() => ({ fetch: accountFetch }));
 
   const client = {
+    api: { v2010: { accounts: accountsCallable } },
     calls: callsCallable,
     conferences: conferencesCallable,
     messages: { create: messagesCreate },
@@ -153,6 +161,7 @@ export function makeTwilioMock() {
     incomingRemove,
     incomingFetch,
     availablePhoneNumbers,
+    accountFetch,
   };
 
   return { default: twilioFn };

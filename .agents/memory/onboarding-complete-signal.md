@@ -3,12 +3,13 @@ name: Onboarding-complete signal & server-authoritative gating
 description: How to tell server-side whether a SALARYMAN user finished onboarding, and why per-command gates must not trust client flags.
 ---
 
-# "Has this user finished onboarding?" = world registry row
+# Keep game registration and browser intake signals separate
 
-The authoritative server-side signal that a user completed onboarding is a row in
-`worldBusinessesTable` keyed by `userId`. It's created at `POST /world/register`
-(the onboarding submit step). Mid-intake users (still in the Pablo Q&A flow) have
-**no** row yet, so they can be exempted from gameplay charges without a client flag.
+A world-registry row is the server-side signal for game registration and related
+gameplay charging rules. It does not, by itself, prove that the user completed
+the browser account intake required by USD-paid features. That gate requires the
+browser-onboarding marker plus valid contact email and phone data, checked by
+user ID.
 
 **Why:** the Pablo command route (`/chat/pablo/command`) is shared by guests
 (landing storyteller), the onboarding intake Q&A, AND the real Command Deck. An
@@ -16,7 +17,7 @@ earlier attempt exempted onboarding via a client-supplied `noCharge: true` body
 flag — that was a billing-bypass hole (any signed-in user could send it to skip the
 per-command ƒ fee).
 
-**How to apply:** gate per-command / per-action FIAT charges on
-`isGuest || isOwnerEmail || no worldBusinesses row` (all ride free); charge only
-fully-registered non-owner players. Never trust a client flag to waive a charge —
-derive exemption from server state.
+**How to apply:** use registry existence for game registration and per-command
+FIAT exemptions. Use the stricter browser-intake check for paid-feature access.
+Never treat local tutorial state or an unrelated game row as proof of browser
+onboarding; never trust a client flag to waive a charge.

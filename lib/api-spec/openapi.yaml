@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: onboarding
+    description: Authenticated browser onboarding status
   - name: phone
     description: Authenticated phone recording and archive operations
   - name: workspace
@@ -34,6 +36,24 @@ tags:
   - name: towerShop
     description: Server-authoritative Tower shop inventory
 paths:
+  /world/onboarding-status:
+    get:
+      operationId: getBrowserOnboardingStatus
+      tags: [onboarding]
+      summary: Check whether the current user completed browser onboarding
+      responses:
+        "200":
+          description: Authoritative onboarding completion status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrowserOnboardingStatusResponse"
+        "401":
+          description: Login required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /workspace/projects/{projectId}/generate:
     post:
       operationId: generateWorkspaceProjectDraft
@@ -1111,6 +1131,12 @@ paths:
           description: Insufficient storage stock or shelf capacity
 components:
   schemas:
+    BrowserOnboardingStatusResponse:
+      type: object
+      required: [completed]
+      properties:
+        completed:
+          type: boolean
     DesktopBuildingObjectActionInput:
       type: object
       required: [objectId, action]

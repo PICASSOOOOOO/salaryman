@@ -1048,7 +1048,10 @@ export default function Autopilot() {
         };
         if (body.onboardingRequired) {
           setError('Complete onboarding before using the Pablo Prime automation workspace.');
-          setErrorAction({ href: '/onboarding', label: 'OPEN ONBOARDING' });
+          setErrorAction({
+            href: '/onboarding?returnTo=%2Fbusiness%2Fautopilot',
+            label: 'OPEN ONBOARDING',
+          });
         } else if (body.feature === 'claw_bot' || body.paymentRequired) {
           setError('Pablo AI access is required to use automation.');
           setErrorAction({ href: '/pricing?view=prime', label: 'VIEW PABLO AI' });
@@ -1268,6 +1271,8 @@ export default function Autopilot() {
           {errorAction && (
             <a
               href={errorAction.href}
+              target="_top"
+              rel="noreferrer"
               className="ml-auto shrink-0 border border-amber-400/30 px-2 py-1 text-[9px] tracking-wider hover:bg-amber-400/10"
             >
               {errorAction.label}

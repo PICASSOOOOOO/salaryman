@@ -21,7 +21,7 @@
 - [Debt payment plans + credit lending](debt-payment-plans.md) — Banco Ombra: pay/payoff send client wallet, server rejects 402{required} after tickPlan late-fee bump; enroll does not deduct.
 - [SALARYMAN art pipeline](salaryman-art-pipeline.md) — Honor full prompts across all generation sites; Nano Banana Pro only supports landscape or portrait.
 - [Stripe feature-price reuse](stripe-price-reuse.md) — Live subscriptions reuse the first active price; archive it to apply catalog price changes.
-- [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.
+- [Onboarding-complete signal](onboarding-complete-signal.md) — game registration and browser intake use distinct server signals; never let local tutorial state bypass paid-feature onboarding.
 - [Onboarding-aware test fixtures](onboarding-test-fixtures.md) — Protected-route fixtures need the same completed-onboarding signal as real users.
 - [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
 - [Auth routing](newuser-funnel-gate.md) — public routes stay open; see [protected-route gating](public-route-auth-gating.md) and [preview OIDC](replit-auth-preview-origin.md).

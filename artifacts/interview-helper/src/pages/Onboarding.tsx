@@ -1,43 +1,81 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
-import { isTutorialDone, markTutorialDone } from '@/lib/tutorial-progress';
+import { markTutorialDone } from '@/lib/tutorial-progress';
 import { sanitizeReturnPath } from '@/lib/safe-path';
 import { QuickOnboarding } from '@/components/QuickOnboarding';
 import type { OnboardingAnswers } from '@/components/PabloOnboarding';
 
-export function getPostOnboardingDestination(
-  search = '',
-  workPath: OnboardingAnswers['bizPath'] = 'unemployed',
-): string {
+export function getPostOnboardingDestination(search = ''): string {
   const requested = sanitizeReturnPath(new URLSearchParams(search).get('returnTo'));
   if (requested && requested !== '/onboarding') return requested;
-  return workPath === 'business' ? '/business' : '/business/jobs';
+  return '/workspace';
 }
 
 function getPlayerName(user: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
   return [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || 'SALARYMAN';
 }
 
+type OnboardingCheck = 'checking' | 'complete' | 'incomplete' | 'error';
+
 export default function Onboarding() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
-  const alreadyComplete = isTutorialDone();
   const search = typeof window === 'undefined' ? '' : window.location.search;
   const charName = useMemo(() => getPlayerName(user), [user]);
+  const [onboardingCheck, setOnboardingCheck] = useState<OnboardingCheck>('checking');
+  const [checkAttempt, setCheckAttempt] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      navigate(`/sign-in?returnTo=${encodeURIComponent('/onboarding')}`, { replace: true });
+      navigate(`/sign-in?returnTo=${encodeURIComponent(`/onboarding${search}`)}`, { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate, search]);
 
   useEffect(() => {
-    if (isAuthenticated && !isLoading && alreadyComplete) {
-      navigate('/', { replace: true });
+    if (isLoading || !isAuthenticated) return;
+    let active = true;
+    setOnboardingCheck('checking');
+
+    const checkServerState = async () => {
+      try {
+        let response = await apiFetch('/api/world/onboarding-status', {
+          credentials: 'include',
+          skipSessionExpiryRedirect: true,
+        });
+        for (let attempt = 1; response.status === 401 && attempt < 4; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)));
+          response = await apiFetch('/api/world/onboarding-status', {
+            credentials: 'include',
+            skipSessionExpiryRedirect: true,
+          });
+        }
+        if (!response.ok) throw new Error('Could not verify onboarding status.');
+        const data = await response.json() as { completed?: unknown };
+        if (typeof data.completed !== 'boolean') throw new Error('Onboarding status was incomplete.');
+        if (!active) return;
+        if (data.completed) {
+          setOnboardingCheck('complete');
+        } else {
+          // Do not use the shared local tutorial marker here: it can reflect
+          // game onboarding, not completion of the browser account intake.
+          setOnboardingCheck('incomplete');
+        }
+      } catch {
+        if (active) setOnboardingCheck('error');
+      }
+    };
+
+    void checkServerState();
+    return () => { active = false; };
+  }, [checkAttempt, isAuthenticated, isLoading, user?.id]);
+
+  useEffect(() => {
+    if (onboardingCheck === 'complete') {
+      navigate(getPostOnboardingDestination(search), { replace: true });
     }
-  }, [alreadyComplete, isAuthenticated, isLoading, navigate]);
+  }, [navigate, onboardingCheck, search]);
 
   const completeOnboarding = async (answers: OnboardingAnswers) => {
     if (!isAuthenticated) throw new Error('Sign in before completing onboarding.');
@@ -86,10 +124,35 @@ export default function Onboarding() {
     }
 
     markTutorialDone();
-    navigate(getPostOnboardingDestination(search, answers.bizPath), { replace: true });
+    navigate(getPostOnboardingDestination(search), { replace: true });
   };
 
-  if (isLoading || !isAuthenticated || alreadyComplete) return null;
+  if (isLoading || !isAuthenticated || onboardingCheck === 'complete') return null;
+
+  if (onboardingCheck === 'checking' || onboardingCheck === 'error') {
+    return (
+      <main
+        style={{
+          minHeight: '100dvh',
+          display: 'grid',
+          placeItems: 'center',
+          background: '#FFFAF0',
+          color: '#111111',
+          padding: 24,
+          fontFamily: 'Inter, Arial, sans-serif',
+        }}
+      >
+        <div role={onboardingCheck === 'error' ? 'alert' : 'status'} style={{ textAlign: 'center' }}>
+          <p>{onboardingCheck === 'error' ? "We couldn't verify your setup." : 'Checking your setup…'}</p>
+          {onboardingCheck === 'error' && (
+            <button type="button" onClick={() => setCheckAttempt((attempt) => attempt + 1)}>
+              RETRY
+            </button>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main

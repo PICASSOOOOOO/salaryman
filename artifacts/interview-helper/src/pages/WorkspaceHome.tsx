@@ -270,7 +270,7 @@ export default function WorkspaceHome() {
         aria-label="Workspace widgets"
         style={{
           gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${gridRows}, minmax(24rem, 1fr))`,
         }}
       >
         {slots.map((path, index) => {

@@ -114,6 +114,8 @@ describe("The Office workspace", () => {
 
     expect(container.querySelectorAll(".workspace-slot")).toHaveLength(9);
     expect(container.querySelectorAll("iframe")).toHaveLength(9);
+    expect(container.querySelector(".workspace-grid")?.getAttribute("style"))
+      .toContain("repeat(3, minmax(24rem, 1fr))");
     paths.forEach((path, index) => expect(framePath(index + 1)).toBe(path));
 
     act(() => {

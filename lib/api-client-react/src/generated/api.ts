@@ -28,6 +28,7 @@ import type {
   AutopilotFollowUpSuggestionInput,
   AutopilotFollowUpSuggestionResponse,
   BeginDiscordLoginParams,
+  BrowserOnboardingStatusResponse,
   CompleteCrmGoogleSheetsParams,
   ConnectCrmGoogleSheets200,
   ConnectCrmGoogleSheetsParams,
@@ -122,6 +123,83 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetBrowserOnboardingStatusUrl = () => {
+
+
+
+
+  return `/api/world/onboarding-status`
+}
+
+/**
+ * @summary Check whether the current user completed browser onboarding
+ */
+export const getBrowserOnboardingStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<BrowserOnboardingStatusResponse> => {
+
+  return customFetch<BrowserOnboardingStatusResponse>(getGetBrowserOnboardingStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBrowserOnboardingStatusQueryKey = () => {
+    return [
+    `/api/world/onboarding-status`
+    ] as const;
+    }
+
+
+export const getGetBrowserOnboardingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBrowserOnboardingStatus>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBrowserOnboardingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBrowserOnboardingStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBrowserOnboardingStatus>>> = ({ signal }) => getBrowserOnboardingStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBrowserOnboardingStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBrowserOnboardingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBrowserOnboardingStatus>>>
+export type GetBrowserOnboardingStatusQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Check whether the current user completed browser onboarding
+ */
+
+export function useGetBrowserOnboardingStatus<TData = Awaited<ReturnType<typeof getBrowserOnboardingStatus>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBrowserOnboardingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBrowserOnboardingStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGenerateWorkspaceProjectDraftUrl = (projectId: number,) => {
 

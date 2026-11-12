@@ -80,6 +80,7 @@ async function checkEnv(results: CheckResult[]): Promise<boolean> {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const num = process.env.TWILIO_PHONE_NUMBER;
+  const invalidSid = Boolean(sid && !/^AC/i.test(sid.trim()));
   const missing = [
     !sid && "TWILIO_ACCOUNT_SID",
     !token && "TWILIO_AUTH_TOKEN",
@@ -88,18 +89,21 @@ async function checkEnv(results: CheckResult[]): Promise<boolean> {
     !process.env.TWILIO_API_KEY_SECRET && "TWILIO_API_KEY_SECRET",
     !process.env.TWILIO_TWIML_APP_SID && "TWILIO_TWIML_APP_SID",
   ].filter(Boolean);
-  if (missing.length) {
+  if (missing.length || invalidSid) {
     results.push({
       name: "Twilio credentials configured",
       status: "FAIL",
-      detail: `Missing env: ${missing.join(", ")}`,
+      detail: [
+        ...(missing.length ? [`Missing env: ${missing.join(", ")}`] : []),
+        ...(invalidSid ? ["TWILIO_ACCOUNT_SID must begin with AC."] : []),
+      ].join(" "),
     });
     return false;
   }
   results.push({
     name: "Twilio credentials configured",
     status: "PASS",
-    detail: `SID present, auth token present, number ${num}`,
+    detail: "Account SID, auth token, and phone number are present and the SID prefix is valid.",
   });
   return true;
 }

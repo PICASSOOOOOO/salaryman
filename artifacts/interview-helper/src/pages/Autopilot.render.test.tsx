@@ -229,7 +229,8 @@ describe("Autopilot dashboard renders saved config", () => {
 
     expect(container.textContent).toContain("Complete onboarding before using the Pablo Prime automation workspace");
     const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent?.includes("OPEN ONBOARDING"));
-    expect(link?.getAttribute("href")).toBe("/onboarding");
+    expect(link?.getAttribute("href")).toBe("/onboarding?returnTo=%2Fbusiness%2Fautopilot");
+    expect(link?.getAttribute("target")).toBe("_top");
     expect(container.textContent).not.toContain("VIEW PABLO AI");
   });
 

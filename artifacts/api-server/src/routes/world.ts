@@ -2,10 +2,12 @@ import { Router } from "express";
 import { createHash } from "node:crypto";
 import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
 import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, alphaApplicationsTable, verifiedPaidWagesTable, normalizeOrgName } from "@workspace/db";
+import { GetBrowserOnboardingStatusResponse } from "@workspace/api-zod";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
 import * as geoip from "geoip-lite";
 import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 import { isOwnerEmail } from "../lib/plan";
+import { getCompletedOnboarding } from "../middlewares/requireOnboarding";
 import { deriveConditionProfile, repairConditionScore } from "../lib/world-condition";
 
 const router = Router();
@@ -1019,6 +1021,15 @@ router.get("/world/business-profit-rate", async (req, res) => {
     console.error("[World] business-profit-rate error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+router.get("/world/onboarding-status", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated?.() || !req.user?.id) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const onboarding = await getCompletedOnboarding(String(req.user.id));
+  res.json(GetBrowserOnboardingStatusResponse.parse({ completed: Boolean(onboarding) }));
 });
 
 router.get("/world/my-business", async (req, res) => {

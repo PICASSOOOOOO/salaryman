@@ -216,7 +216,15 @@ export default function PhoneCommandCenter({ systemStatus }: { systemStatus: Pho
           }} />
           <span style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: slate(0.6), textTransform: 'uppercase', fontWeight: 600 }} title={systemStatus === 'online' ? deviceError || undefined : undefined}>
              {systemStatus !== 'online'
-               ? systemStatus === 'checking' ? 'CHECKING SERVICE' : systemStatus === 'no_subscription' ? 'NO PHONE ACCESS' : systemStatus === 'restricted' ? 'PHONE RESTRICTED' : 'PHONE UNAVAILABLE'
+               ? systemStatus === 'checking'
+                 ? 'CHECKING SERVICE'
+                 : systemStatus === 'no_subscription'
+                   ? 'NO PHONE ACCESS'
+                   : systemStatus === 'restricted'
+                     ? 'PHONE RESTRICTED'
+                     : systemStatus === 'onboarding_required'
+                       ? 'SETUP REQUIRED'
+                       : 'PHONE UNAVAILABLE'
                : deviceState === 'ready' ? 'CALLING READY' : deviceState === 'initializing' ? 'CONNECTING' : deviceState === 'error' ? 'CALLING ERROR' : 'STARTING'}
           </span>
         </div>

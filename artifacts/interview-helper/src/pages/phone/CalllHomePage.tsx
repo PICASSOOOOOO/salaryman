@@ -219,7 +219,15 @@ export default function CalllHomePage() {
   }, [ensureDeviceReady, hasPhoneAccess, planLoading, systemStatus]);
 
   const callingLabel = systemStatus !== 'online'
-    ? (systemStatus === 'checking' ? 'CHECKING' : systemStatus === 'no_subscription' ? 'NO ACCESS' : systemStatus === 'restricted' ? 'RESTRICTED' : 'UNAVAILABLE')
+    ? (systemStatus === 'checking'
+      ? 'CHECKING'
+      : systemStatus === 'no_subscription'
+        ? 'NO ACCESS'
+        : systemStatus === 'restricted'
+          ? 'RESTRICTED'
+          : systemStatus === 'onboarding_required'
+            ? 'SETUP REQUIRED'
+            : 'UNAVAILABLE')
     : deviceState === 'ready'
       ? 'CALLING READY'
       : deviceState === 'error'
@@ -342,6 +350,34 @@ export default function CalllHomePage() {
             >
               RETRY
             </button>
+          </div>
+        )}
+        {systemStatus === 'onboarding_required' && (
+          <div
+            role="alert"
+            style={{
+              margin: '8px 0',
+              padding: '10px 14px',
+              border: '1px solid rgba(15,15,15,0.22)',
+              borderRadius: 6,
+              background: '#fff',
+              color: '#111',
+              fontSize: '0.58rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <span>Complete account setup before using CALLL HOME.</span>
+            <a
+              href={`${BASE}onboarding?returnTo=%2Fphone`}
+              target="_top"
+              rel="noreferrer"
+              style={{ border: '1px solid #111', padding: '7px 10px', fontWeight: 700, whiteSpace: 'nowrap' }}
+            >
+              COMPLETE SETUP
+            </a>
           </div>
         )}
         {systemStatus === 'no_subscription' && (

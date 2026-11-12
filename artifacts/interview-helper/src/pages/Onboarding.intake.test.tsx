@@ -13,15 +13,14 @@ vi.mock("@/hooks/use-auth", () => ({
   }),
 }));
 const navigate = vi.fn();
-const isTutorialDone = vi.fn(() => false);
+const apiFetch = vi.fn();
 vi.mock("wouter", () => ({ useLocation: () => ["/onboarding", navigate] }));
+vi.mock("@/lib/api-client", () => ({ apiFetch: (...args: unknown[]) => apiFetch(...args) }));
 vi.mock("@/lib/tutorial-progress", () => ({
-  isTutorialDone: () => isTutorialDone(),
   markTutorialDone: vi.fn(),
   getSalarymanName: () => null,
   setSalarymanOfficeTier: vi.fn(),
 }));
-vi.mock("@/lib/onboarding-sync", () => ({ useOnboardingResolved: () => true }));
 vi.mock("@/components/QuickOnboarding", () => ({
   QuickOnboarding: () => <div data-testid="onboarding-intake" />,
 }));
@@ -42,49 +41,62 @@ import Onboarding, { getPostOnboardingDestination } from "./Onboarding";
 describe("Onboarding", () => {
   beforeEach(() => {
     navigate.mockReset();
-    isTutorialDone.mockReturnValue(false);
+    apiFetch.mockReset();
+    localStorage.clear();
+    apiFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ completed: false }),
+    });
     window.history.replaceState({}, "", "/onboarding");
   });
 
-  it("opens the registry intake immediately for a new authenticated arrival", async () => {
+  it("opens intake when the server says the account is new, even with a stale local flag", async () => {
+    localStorage.setItem("salaryman_tutorial_done", "1");
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
 
     await act(async () => {
       root.render(<Onboarding />);
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(container.querySelector('[data-testid="onboarding-intake"]')).not.toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(localStorage.getItem("salaryman_tutorial_done")).toBe("1");
     root.unmount();
     container.remove();
   });
 
-  it("defaults completed onboarding to the job board for job seekers", () => {
-    expect(getPostOnboardingDestination("")).toBe("/business/jobs");
-    expect(getPostOnboardingDestination("?returnTo=/onboarding")).toBe("/business/jobs");
-    expect(getPostOnboardingDestination("", "business")).toBe("/business");
+  it("returns a newly onboarded user to The Office by default", () => {
+    expect(getPostOnboardingDestination("")).toBe("/workspace");
+    expect(getPostOnboardingDestination("?returnTo=/onboarding")).toBe("/workspace");
   });
 
   it("preserves a safe sign-in destination while rejecting unsafe ones", () => {
     expect(getPostOnboardingDestination("?returnTo=%2Fdashboard%3Ftab%3Dtoday")).toBe("/dashboard?tab=today");
-    expect(getPostOnboardingDestination("?returnTo=https%3A%2F%2Fevil.example")).toBe("/business/jobs");
+    expect(getPostOnboardingDestination("?returnTo=https%3A%2F%2Fevil.example")).toBe("/workspace");
   });
 
-  it("continues to skip intake for a returning onboarded user", async () => {
-    isTutorialDone.mockReturnValue(true);
+  it("returns an already-onboarded user to the requested feature", async () => {
+    apiFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ completed: true }),
+    });
+    window.history.replaceState({}, "", "/onboarding?returnTo=%2Fbusiness%2Fautopilot");
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
 
     await act(async () => {
       root.render(<Onboarding />);
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(container.querySelector('[data-testid="onboarding-intake"]')).toBeNull();
-    expect(navigate).toHaveBeenCalledWith("/", { replace: true });
+    expect(navigate).toHaveBeenCalledWith("/business/autopilot", { replace: true });
     root.unmount();
     container.remove();
   });

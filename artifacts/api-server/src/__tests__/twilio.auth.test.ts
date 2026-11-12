@@ -17,6 +17,8 @@ import request from "supertest";
 import type { Express } from "express";
 import * as plan from "../lib/plan";
 import { buildApp, resetAuthState, authState, cleanupTestData } from "./helpers/twilioTestApp";
+import { mockState } from "./helpers/twilioMock";
+import { resetTwilioSystemStatusCache } from "../routes/twilio";
 
 let app: Express;
 
@@ -26,6 +28,9 @@ beforeAll(() => {
 beforeEach(() => {
   resetAuthState();
   vi.clearAllMocks();
+  mockState.accountStatus = "active";
+  mockState.accountFetchError = null;
+  resetTwilioSystemStatusCache();
 });
 afterAll(async () => {
   await cleanupTestData();
@@ -90,5 +95,30 @@ describe("phone auth gating", () => {
     const res = await request(app).get("/api/twilio/system-status").send();
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("online");
+  });
+
+  it("does not report online when Twilio rejects the account credentials", async () => {
+    authState.authed = true;
+    mockState.accountFetchError = Object.assign(new Error("provider rejected auth"), {
+      status: 401,
+      code: 20003,
+    });
+    const res = await request(app).get("/api/twilio/system-status").send();
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: "unavailable", code: "TWILIO_AUTH_REJECTED" });
+  });
+
+  it("rejects a malformed account SID without calling Twilio", async () => {
+    authState.authed = true;
+    const priorSid = process.env.TWILIO_ACCOUNT_SID;
+    process.env.TWILIO_ACCOUNT_SID = "not-a-twilio-sid";
+    try {
+      const res = await request(app).get("/api/twilio/system-status").send();
+      expect(res.status).toBe(503);
+      expect(res.body).toEqual({ status: "unconfigured", code: "TWILIO_ACCOUNT_SID_INVALID" });
+    } finally {
+      if (priorSid === undefined) delete process.env.TWILIO_ACCOUNT_SID;
+      else process.env.TWILIO_ACCOUNT_SID = priorSid;
+    }
   });
 });

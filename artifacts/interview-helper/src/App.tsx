@@ -9,6 +9,7 @@ import AdSenseBanner from "@/components/AdSenseBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileModuleNav } from "@/components/MobileBottomBar";
 import { installAppHistoryTracking } from "@/lib/app-navigation";
+import { requiresAppSignIn } from "@/lib/app-route-access";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
@@ -244,6 +245,38 @@ function FeatureAuthGate({ context, children, backHref }: {
   return <>{children}</>;
 }
 
+function FeatureRouteAccessFallback({
+  isLoading,
+  isEmbed,
+  returnTo,
+}: {
+  isLoading: boolean;
+  isEmbed: boolean;
+  returnTo: string;
+}) {
+  if (isLoading) return <LoadingFallback />;
+  if (!isEmbed) {
+    return <SignInPage context="Sign in or create an account to use this feature." returnTo={returnTo} />;
+  }
+  const href = `${basePath}/sign-in?returnTo=${encodeURIComponent(returnTo)}`;
+  return (
+    <main className="grid min-h-[70dvh] place-items-center bg-[#FFFAF0] p-4 text-center text-black">
+      <div>
+        <h1 className="text-sm font-bold tracking-widest">SIGN IN REQUIRED</h1>
+        <p className="my-3 text-xs text-black/60">Sign in or create an account to open this feature.</p>
+        <a
+          href={href}
+          target="_top"
+          rel="noreferrer"
+          className="inline-block border border-black bg-black px-5 py-3 text-xs font-bold tracking-widest text-white"
+        >
+          CONTINUE
+        </a>
+      </div>
+    </main>
+  );
+}
+
 const MemoHome = memo(Home as React.ComponentType);
 
 function HomeOrCover() {
@@ -368,6 +401,7 @@ function AppShell() {
   const isConsoleSubRoute = consoleSubRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
   const isConsole = isConsoleTerminal || pathname.startsWith("/console/");
   const isPrimarySurfaceActive = isHome || (isConsole && !isConsoleSubRoute);
+  const signInRequired = requiresAppSignIn(pathname);
 
   // /mobile is the business workspace, not a gameplay surface.
   const isGameRoute = false;
@@ -468,14 +502,21 @@ function AppShell() {
         </ErrorBoundary>
       )}
       {isConsoleTerminal && (
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback />}>
-            <Console />
-          </Suspense>
-        </ErrorBoundary>
+        signInRequired && (isLoading || !isAuthenticated)
+          ? <FeatureRouteAccessFallback isLoading={isLoading} isEmbed={isEmbed} returnTo={location} />
+          : (
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingFallback />}>
+                <Console />
+              </Suspense>
+            </ErrorBoundary>
+          )
       )}
       {/* Other routes — lazy-loaded */}
       {!isPrimarySurfaceActive && (
+        signInRequired && (isLoading || !isAuthenticated)
+          ? <FeatureRouteAccessFallback isLoading={isLoading} isEmbed={isEmbed} returnTo={location} />
+          : (
         <ErrorBoundary>
         <Suspense fallback={<LoadingFallback />}>
           <Switch>
@@ -789,6 +830,7 @@ function AppShell() {
           </Switch>
         </Suspense>
         </ErrorBoundary>
+          )
       )}
       {/* Legal links used to render as a fixed footer on every
           authenticated page; it was too small to be useful and partly
@@ -870,7 +912,7 @@ function ReplitAuthPage() {
             ? "Checking your session…"
             : isAuthenticated
               ? "Returning you to your destination…"
-              : "Continue to secure sign-in when you’re ready."}
+              : "Sign in or create an account to continue."}
         </p>
         {!isLoading && !isAuthenticated && (
           <button
@@ -879,7 +921,7 @@ function ReplitAuthPage() {
             data-testid="sign-in-continue"
             className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800"
           >
-            SIGN IN
+            CONTINUE
           </button>
         )}
         <noscript>

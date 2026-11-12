@@ -75,6 +75,18 @@ import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { getCallRecordingAccess } from "../lib/phone-recording-access";
 
 const router = Router();
+const TWILIO_STATUS_CACHE_MS = 15_000;
+const TWILIO_STATUS_TIMEOUT_MS = 5_000;
+type TwilioStatusResult = {
+  status: "online" | "unavailable";
+  code?: "TWILIO_AUTH_REJECTED" | "TWILIO_ACCOUNT_INACTIVE" | "TWILIO_STATUS_CHECK_FAILED";
+  checkedAt: number;
+};
+let twilioStatusCache: TwilioStatusResult | null = null;
+
+export function resetTwilioSystemStatusCache(): void {
+  twilioStatusCache = null;
+}
 
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
@@ -865,15 +877,54 @@ async function saveRecordingAnalysis(
   });
 }
 
-router.get("/twilio/system-status", requireAuth, requireFeature("phone_system"), async (_req, res) => {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+router.get("/twilio/system-status", requireAuth, requireFeature("phone_system"), async (req, res): Promise<void> => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
   if (!accountSid || !authToken || !phoneNumber) {
-    res.status(503).json({ status: "unconfigured", error: "Twilio credentials not configured. Contact admin." });
+    res.status(503).json({ status: "unconfigured", code: "TWILIO_NOT_CONFIGURED" });
     return;
   }
-  res.json({ status: "online" });
+  if (!/^AC/i.test(accountSid)) {
+    res.status(503).json({ status: "unconfigured", code: "TWILIO_ACCOUNT_SID_INVALID" });
+    return;
+  }
+
+  const now = Date.now();
+  if (twilioStatusCache && now - twilioStatusCache.checkedAt < TWILIO_STATUS_CACHE_MS) {
+    res.status(twilioStatusCache.status === "online" ? 200 : 503).json({
+      status: twilioStatusCache.status,
+      ...(twilioStatusCache.code ? { code: twilioStatusCache.code } : {}),
+    });
+    return;
+  }
+
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const accountPromise = twilio(accountSid, authToken).api.v2010.accounts(accountSid).fetch();
+    const account = await Promise.race([
+      accountPromise,
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error("TWILIO_STATUS_TIMEOUT")), TWILIO_STATUS_TIMEOUT_MS);
+      }),
+    ]);
+    if (String(account.status).toLowerCase() !== "active") {
+      twilioStatusCache = { status: "unavailable", code: "TWILIO_ACCOUNT_INACTIVE", checkedAt: now };
+      res.status(503).json({ status: "unavailable", code: "TWILIO_ACCOUNT_INACTIVE" });
+      return;
+    }
+    twilioStatusCache = { status: "online", checkedAt: now };
+    res.json({ status: "online" });
+  } catch (error) {
+    const providerError = error as { code?: string | number; status?: number };
+    const authRejected = providerError.status === 401 || String(providerError.code) === "20003";
+    const code = authRejected ? "TWILIO_AUTH_REJECTED" : "TWILIO_STATUS_CHECK_FAILED";
+    twilioStatusCache = { status: "unavailable", code, checkedAt: now };
+    req.log?.warn({ code }, "Twilio system status probe failed");
+    res.status(503).json({ status: "unavailable", code });
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 });
 
 router.get("/twilio/contacts", requireAuth, requireFeature("phone_system"), async (req, res) => {

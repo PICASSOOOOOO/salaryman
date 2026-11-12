@@ -3,6 +3,7 @@ export type PhoneSystemStatus =
   | 'online'
   | 'no_subscription'
   | 'restricted'
+  | 'onboarding_required'
   | 'unconfigured'
   | 'unavailable';
 
@@ -34,6 +35,9 @@ export function classifyPhoneSystemResponse(
   }
   if (httpStatus === 403) {
     return { status: 'no_subscription', retry: false };
+  }
+  if (httpStatus === 428 && body.onboardingRequired === true) {
+    return { status: 'onboarding_required', retry: false };
   }
   if (httpStatus === 503 && body.status === 'unconfigured') {
     return { status: 'unconfigured', retry: true };

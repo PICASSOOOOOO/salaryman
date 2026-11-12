@@ -15,6 +15,11 @@ describe('classifyPhoneSystemResponse', () => {
       .toEqual({ status: 'restricted', retry: false });
   });
 
+  it('routes paid-feature onboarding requirements to setup without retrying the phone service', () => {
+    expect(classifyPhoneSystemResponse(428, { onboardingRequired: true }))
+      .toEqual({ status: 'onboarding_required', retry: false });
+  });
+
   it('retries an explicit missing-configuration response', () => {
     expect(classifyPhoneSystemResponse(503, { status: 'unconfigured' }))
       .toEqual({ status: 'unconfigured', retry: true });
