@@ -8,9 +8,11 @@ at least 30 consecutive days without errors on major features before beta
 (November 25 through December 24 if the period is immediately before launch),
 and wants automation tested and used extensively.
 
-The alpha release counter should be shorter and advance on each publish. The
-exact display format and a durable publish-event source still need to be decided;
-the current git-commit-derived build number is not a publish counter.
+The alpha version should display only the major.minor number, such as `v24.3`;
+do not append an `a1` or Git commit-count suffix. Advance the existing minor
+number on each publish and roll over to the next major when the minor reaches
+its limit. The publish event still needs a durable source so increments do not
+repeat across fresh builds.
 
 Keep the game free and preserve the planned macOS, Windows, Linux, itch.io, and
 Twitch/watch paths.
@@ -26,6 +28,6 @@ catalog first.
 
 **How to apply:** Plan for a 30-day major-feature stability window before beta;
 define the major-feature inventory and error criteria before claiming it is
-complete. Increment a short alpha release counter only through a durable
-successful-publish signal. Treat catalog completion as a prerequisite for
-pledge-store offers and keep the base game free.
+complete. Show only the major.minor version and tie its rollover to successful
+publishes through a durable release signal. Treat catalog completion as a
+prerequisite for pledge-store offers and keep the base game free.
