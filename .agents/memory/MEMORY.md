@@ -128,7 +128,7 @@
 - [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Native releases](desktop-release-packaging.md) — build targets natively; see [capture](godot-movie-capture-paths.md), [package](desktop-game-capture.md), [heap](release-build-heap-cap.md).
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta starts December 25, 2026; require a 30-day major-feature stability window and defer pledge offers until the asset catalog is decided.
-- [Beta hosting capacity](beta-hosting-capacity.md) — deploy from GitHub to other server systems; prepare for at least 1,000 concurrent signed-in app users.
+- [Beta hosting capacity](beta-hosting-capacity.md) — deploy from GitHub to another host, support 1,000 concurrent users, and remind daily until the provider is chosen.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
 - [Replicant power lore](replicant-power-lore.md) — intrinsic power is replicant-only; unique recruit powers can be used by any player.
 - [Tower building vitality](tower-building-vitality.md) — Pablo Corp pays partner shop owners; owners pay employees and expand creatively over a five-real-time-year city/server plan.
