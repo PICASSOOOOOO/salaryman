@@ -18,6 +18,27 @@ and in-game mod station are **not implemented yet**.
 “Firmware” in this project means installable game-feature add-ons, such as 1999
 presets or custom industry content. It does not mean physical-device firmware.
 
+## In-world shops and browser settings
+
+The physical in-world entry points are the terminal/replicant repair shops,
+including COMPWORLD and the Android/replicant repair business. They provide the
+fictional storefront and repair-work context for modding; they are not the
+security boundary for account permissions or package approval.
+
+The working mod controls belong in distinct pages under browser Settings, not
+in a new top-level app area:
+
+- **Mod Library:** browse compatible packages and manage a user's installed
+  versions, updates, enable/disable state, and rollback.
+- **Creator Workbench:** manage a creator profile, package drafts, uploads,
+  target game versions, and review/publish status.
+- **Review tools:** restricted to authorized reviewers for package checks,
+  approvals, takedowns, and release history.
+
+These pages are planned, not implemented. The shop locations and the browser
+tools should share one package format, but the shop's in-world role must not
+grant browser or server privileges.
+
 ## Package contents
 
 A version 1 archive contains `mod.json` and only the files listed in its
@@ -55,6 +76,6 @@ testing, and any provider credentials or approvals they require.
 - Public GitHub source and local forks: available.
 - GPL-3.0-only source license: already present; the root README now agrees.
 - Version 1 manifest contract: documented here.
-- Package validation, upload quarantine, review tooling, catalog, installation,
-  rollback, and in-game station: not yet implemented.
+- Browser Settings pages, package validation, upload quarantine, review tooling,
+  catalog, installation, rollback, and in-game station: not yet implemented.
 - Nexus Mods/Vortex and mod.io adapters: not yet implemented.
