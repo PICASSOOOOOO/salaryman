@@ -3,6 +3,15 @@ name: GitHub workflow write scope
 description: GitHub connector limitation encountered when synchronizing source and CI workflow files.
 ---
 
+The user wants each completed workspace update synced to the connected GitHub
+repository.
+
+**Why:** the user asked for project updates to stay synchronized with GitHub.
+
+**How to apply:** include a GitHub sync in each completed change where the
+connection permits it. Verify the change first, never expose credentials, and
+handle protected workflow files through the required separate permission path.
+
 The regular GitHub connector may read and administer a repository yet reject
 tree entries under `.github/workflows` with 403/404 responses. Treat workflow
 files as a separately privileged write.
