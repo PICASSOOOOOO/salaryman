@@ -19,11 +19,17 @@ The first 1999 sampler/tape milestone keeps the eight-lane limit and current bra
 
 **How to apply:** keep project JSON compact by storing music-library IDs, and make WAV export include assigned pad patterns and recording layers. Clearly distinguish browser-supported upload codecs from later server-side conversion coverage.
 
-1999 is a free app within SALARYMAN. Keep it inside SALARYMAN; do not create a separate 1999 homepage or sales page. SALARYMAN's existing main homepage remains the only product homepage.
+1999 is free within SALARYMAN after sign-in or onboarding. Keep it inside SALARYMAN; do not create a separate 1999 homepage or sales page. SALARYMAN's existing main homepage remains the only product homepage.
 
-**Why:** the user explicitly clarified the product structure and that 1999 is free, not a standalone product to sell.
+**Why:** the user explicitly clarified the product structure and that browser 1999 is free after sign-in or onboarding, not a separate paid SALARYMAN product.
 
-**How to apply:** treat 1999 as an in-app creative workstation. Do not add standalone marketing, pricing, or sales surfaces for it.
+**How to apply:** treat browser 1999 as a free in-app creative workstation. Do not add standalone marketing, pricing, or sales surfaces for it; the standalone VST3 is a separate use target, not a SALARYMAN paywall.
+
+The game version must include one very expensive, placeable 1999 terminal workstation for player-owned spaces, offices, apartments, and studios. It must open an in-game beat-making and recording station, not only send the player to the browser.
+
+**Why:** the user requested a high-cost furniture item that lets players make beats and use a complete recording station inside their game spaces.
+
+**How to apply:** connect the furniture purchase/placement flow to a playable in-game recording interface and shared 1999 project/preset concepts; preserve the high cost and avoid replacing it with a generic free terminal.
 
 Keep 1999 interfaces stripped and tool-focused: show controls, short labels, status, and required source/license attribution without explanatory copy.
 
