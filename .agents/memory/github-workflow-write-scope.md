@@ -34,3 +34,15 @@ commits, while sequential Contents API writes succeeded.
 
 **How to apply:** Prefer the configured GitHub connection's Contents API for
 source updates, one file at a time. Never expose or store credential values.
+
+Before syncing, compare the local and remote branch histories. If they have no
+common base, ordinary fast-forward pushes and pull requests cannot carry the
+workspace tree into the current default branch safely.
+
+**Why:** This project's Replit and GitHub `main` branches were found to have
+unrelated histories and thousands of differing files.
+
+**How to apply:** Never replace the remote default branch without explicit user
+approval. If the user approves replacement, first create and verify a backup
+branch at the current remote head, then use a force-with-lease push so newer
+remote commits cannot be overwritten silently.
