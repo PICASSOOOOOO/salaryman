@@ -323,6 +323,13 @@ function keySemitone(key: ProjectKey): number {
   return projectKeys.indexOf(key);
 }
 
+function normalizeStepVelocity(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  // Early 1999 sessions used 1 as a binary "on" value. Preserve their former
+  // default playback level while retaining real velocity values in newer files.
+  return value === 1 ? 100 : Math.max(1, Math.min(127, Math.round(value)));
+}
+
 function scaleFrequencyForMachine(machineId: MachineId, stepIndex: number, key: ProjectKey): number {
   const majorScale = [0, 2, 4, 5, 7, 9, 11];
   const baseMidi = Math.round(69 + 12 * Math.log2(baseFrequencyForMachine(machineId) / 440));
@@ -333,7 +340,7 @@ function scaleFrequencyForMachine(machineId: MachineId, stepIndex: number, key: 
   return 440 * Math.pow(2, (rootMidi + majorScale[stepIndex % majorScale.length] - 69) / 12);
 }
 
-function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, stepIndex: number, atTime: number, key: ProjectKey) {
+function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, stepIndex: number, atTime: number, key: ProjectKey, velocity = 100) {
   const wave: Record<MachineId, OscillatorType> = {
     op1: "triangle",
     sp404mkii: "square",
@@ -355,7 +362,7 @@ function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, step
   filter.Q.setValueAtTime(0.8, atTime);
   const decaySeconds = Math.max(0.08, Math.min(0.8, track.soundState.decayMs / 1000));
   gain.gain.setValueAtTime(0.0001, atTime);
-  gain.gain.linearRampToValueAtTime(Math.max(0.0001, (track.volume / 100) * 0.18), atTime + 0.008);
+  gain.gain.linearRampToValueAtTime(Math.max(0.0001, (track.volume / 100) * (velocity / 100) * 0.18), atTime + 0.008);
   gain.gain.exponentialRampToValueAtTime(0.0001, atTime + decaySeconds);
   oscillator.connect(filter);
   filter.connect(gain);
@@ -416,10 +423,11 @@ function scheduleMidiNote(
   context: AudioContext,
   atTime: number,
   key: ProjectKey,
+  stepVelocity = 100,
 ) {
   const channel = trackIndex % 16;
   const note = Math.max(0, Math.min(127, Math.round(69 + 12 * Math.log2(scaleFrequencyForMachine(track.machineId, stepIndex, key) / 440))));
-  const velocity = Math.max(1, Math.min(127, Math.round(track.volume * 1.27)));
+  const velocity = Math.max(1, Math.min(127, Math.round(track.volume * stepVelocity / 100)));
   const timestamp = performance.now() + Math.max(0, (atTime - context.currentTime) * 1000);
   output.send([0x90 + channel, note, velocity], timestamp);
   output.send([0x80 + channel, note, 0], timestamp + Math.max(80, Math.min(800, track.soundState.decayMs)));
@@ -501,13 +509,15 @@ async function renderWav(project: Project): Promise<Blob> {
           const pad = track.samplerPads?.[padIndex];
           const buffer = pad?.audioTrackId === null ? undefined : clipBuffers.get(pad?.audioTrackId ?? -1);
           if (!pad || !buffer) return;
-          steps.forEach((active, stepIndex) => {
-            if (active) scheduleSamplerPad(context, track, pad, buffer, stepTime(stepIndex), project.key);
+          steps.forEach((stepValue, stepIndex) => {
+            const velocity = normalizeStepVelocity(stepValue);
+            if (velocity) scheduleSamplerPad(context, track, pad, buffer, stepTime(stepIndex), project.key, velocity);
           });
         });
       } else {
-        track.steps.forEach((active, stepIndex) => {
-          if (active) scheduleSynthVoice(context, track, stepIndex, stepTime(stepIndex), project.key);
+        track.steps.forEach((stepValue, stepIndex) => {
+          const velocity = normalizeStepVelocity(stepValue);
+          if (velocity) scheduleSynthVoice(context, track, stepIndex, stepTime(stepIndex), project.key, velocity);
         });
       }
     }
@@ -536,6 +546,7 @@ export default function Salaryman1999() {
   const [loadError, setLoadError] = useState("");
   const [conflict, setConflict] = useState(false);
   const [selectedTrackId, setSelectedTrackId] = useState("trk-1");
+  const [stepVelocity, setStepVelocity] = useState(100);
   const [isRecording, setIsRecording] = useState(false);
   const [isUploadingTake, setIsUploadingTake] = useState(false);
   const [loopBars, setLoopBars] = useState<1 | 2 | 4>(1);
@@ -1580,7 +1591,7 @@ export default function Salaryman1999() {
             if (track.muted || track.kind !== "instrument") return;
             if (usesSamplerPads(track.machineId)) {
               (track.padPatterns ?? []).forEach((pattern, padIndex) => {
-                const velocity = pattern[stepIndex];
+                const velocity = normalizeStepVelocity(pattern[stepIndex]);
                 const pad = track.samplerPads?.[padIndex];
                 const buffer = pad?.audioTrackId === null ? undefined : clipBufferCacheRef.current.get(pad?.audioTrackId ?? -1);
                 if (velocity && pad && buffer) {
@@ -1595,11 +1606,12 @@ export default function Salaryman1999() {
               });
               return;
             }
-            if (track.steps[stepIndex]) {
-              scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current, snapshot.key);
+            const stepVelocity = normalizeStepVelocity(track.steps[stepIndex]);
+            if (stepVelocity) {
+              scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current, snapshot.key, stepVelocity);
               if (midiOutput) {
                 try {
-                  scheduleMidiNote(midiOutput, track, trackIndex, stepIndex, context, nextStepTimeRef.current, snapshot.key);
+                  scheduleMidiNote(midiOutput, track, trackIndex, stepIndex, context, nextStepTimeRef.current, snapshot.key, stepVelocity);
                 } catch (error) {
                   if (!midiErrorRef.current) {
                     midiErrorRef.current = true;
@@ -2106,6 +2118,9 @@ export default function Salaryman1999() {
                   <label className="n-bpm">KEY <select aria-label="Project key" value={project.key} onChange={event => updateProject(current => ({ ...current, key: event.target.value as ProjectKey }))} data-testid="select-project-key">
                     {projectKeys.map(key => <option key={key} value={key}>{key}</option>)}
                   </select></label>
+                  <label className="n-bpm">VEL <select aria-label="New step velocity" value={stepVelocity} onChange={event => setStepVelocity(Number(event.target.value))} data-testid="select-step-velocity">
+                    {[50, 75, 100, 127].map(value => <option key={value} value={value}>{value}</option>)}
+                  </select></label>
                   <label className="n-bpm">METER <select aria-label="Time signature" value={project.timeSignature} disabled={isRecording} onChange={event => updateProject(current => ({ ...current, timeSignature: event.target.value as TimeSignature }))} data-testid="select-time-signature">
                     {timeSignatures.map(meter => <option key={meter} value={meter}>{meter}</option>)}
                   </select></label>
@@ -2146,15 +2161,18 @@ export default function Salaryman1999() {
                         </div>
                       ) : (
                         <div className="n-steps" role="group" aria-label={`${track.name} steps`}>
-                  {(usesSamplerPads(track.machineId) ? track.padPatterns?.[selectedPadIndex] ?? track.steps : track.steps).map((step, stepIndex) => <button
+                          {(usesSamplerPads(track.machineId) ? track.padPatterns?.[selectedPadIndex] ?? track.steps : track.steps).map((step, stepIndex) => {
+                            const velocity = normalizeStepVelocity(step);
+                            return <button
                             type="button" key={stepIndex} className={`n-step${step ? " is-on" : ""}${playhead === stepIndex && isPlaying ? " is-playhead" : ""}`}
-                            aria-label={`${track.name}, step ${stepIndex + 1}, ${step ? "on" : "off"}`}
+                            aria-label={`${track.name}, step ${stepIndex + 1}, ${step ? `on, velocity ${velocity}` : "off"}`}
                             aria-pressed={!!step} data-testid={`button-step-${track.id}-${stepIndex + 1}`}
+                            style={{ opacity: step ? 0.45 + 0.55 * velocity / 127 : 1 }}
                             onClick={event => {
                               event.stopPropagation();
                               setSelectedTrackId(track.id);
                               updateTrack(track.id, current => {
-                                const togglePattern = (pattern: number[]) => pattern.map((value, i) => i === stepIndex ? value ? 0 : 100 : value);
+                                const togglePattern = (pattern: number[]) => pattern.map((value, i) => i === stepIndex ? value ? 0 : stepVelocity : value);
                                 if (usesSamplerPads(current.machineId)) {
                                   const patterns = current.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0));
                                   return { ...current, padPatterns: patterns.map((pattern, index) => index === selectedPadIndex ? togglePattern(pattern) : pattern) };
@@ -2162,7 +2180,8 @@ export default function Salaryman1999() {
                                 return { ...current, steps: togglePattern(current.steps) };
                               });
                             }}
-                          />)}
+                          />;
+                          })}
                         </div>
                       )}
                       <div className="n-track-actions">
