@@ -12,4 +12,5 @@ export const readVersion: () => string = versionUtils.readVersion;
 export const parseVersion: (raw: string) => { major: number; minor: number; suffix: string } | null = versionUtils.parseVersion;
 export const formatVersion: (parsed: { major: number; minor: number; suffix: string }) => string = versionUtils.formatVersion;
 export const getFormattedVersion: () => string = versionUtils.getFormattedVersion;
+export const getNextVersion: (raw: string) => string = versionUtils.getNextVersion;
 export const bumpVersion: () => string = versionUtils.bumpVersion;

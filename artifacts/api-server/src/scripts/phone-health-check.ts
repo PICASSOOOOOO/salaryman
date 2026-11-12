@@ -442,6 +442,24 @@ async function sendReport(subject: string, html: string, text: string): Promise<
 }
 
 async function main() {
+  if (process.argv.includes("--beta-host-reminder")) {
+    if (process.env.BETA_HOSTING_PROVIDER?.trim()) {
+      console.log("[beta-host-reminder] Hosting provider is selected; reminder stopped.");
+      return;
+    }
+    const sent = await sendReport(
+      "[SALARYMAN] Beta hosting decision reminder",
+      `<div style="font-family:system-ui,Segoe UI,Arial,sans-serif;">
+        <h2 style="margin:0 0 8px;">Choose the beta hosting provider</h2>
+        <p>SALARYMAN beta is planned for December 25, 2026. The runtime host is still undecided.</p>
+        <p>GitHub is the source and deployment trigger; choose a runtime platform for the API, database, realtime services, and the 1,000-concurrent-user target.</p>
+      </div>`,
+      "Daily reminder: choose SALARYMAN's beta hosting provider. Beta is planned for December 25, 2026. GitHub is the source/deployment trigger, not the runtime host. The selected platform must support the API, database, realtime services, and the 1,000-concurrent-user target.",
+    );
+    if (!sent) throw new Error("Beta hosting reminder email could not be delivered");
+    return;
+  }
+
   const results: CheckResult[] = [];
 
   const hasEnv = await checkEnv(results);

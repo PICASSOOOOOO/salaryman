@@ -19,30 +19,14 @@ function parseVersion(raw) {
   return { major: parseInt(match[1], 10), minor: parseInt(match[2], 10), suffix: match[3] };
 }
 
-function formatVersion(parsed, build) {
-  const base = `v.${parsed.major}.${parsed.minor}${parsed.suffix}`;
-  return build ? `${base}.${build}` : base;
+function formatVersion(parsed) {
+  return `${parsed.major}.${parsed.minor}${parsed.suffix}`;
 }
 
-function getBuildNumber() {
-  try {
-    const { execSync } = require("child_process");
-    const count = execSync("git rev-list --count HEAD", { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
-    const n = parseInt(count, 10);
-    if (!isNaN(n) && n > 0) return String(n);
-  } catch {}
-  return String(Math.floor(Date.now() / 1000));
-}
-
-// Derive the displayed version from the git commit count so it
-// bumps automatically on every publish/commit, even when the
-// committed VERSION file hasn't changed (each deploy starts from
-// a fresh checkout, so a write-back bump never persists).
 function getFormattedVersion() {
   const raw = readVersion();
   const parsed = parseVersion(raw);
-  const build = getBuildNumber();
-  return parsed ? formatVersion(parsed, build) : `v.${raw}.${build}`;
+  return parsed ? formatVersion(parsed) : raw;
 }
 
 function readChangelog() {
@@ -121,8 +105,7 @@ function getChangelogSummary(sinceCommitHash) {
 function addChangelogEntry(versionRaw) {
   const changelog = readChangelog();
   const parsed = parseVersion(versionRaw);
-  const build = getBuildNumber();
-  const versionStr = parsed ? formatVersion(parsed, build) : `v.${versionRaw}.${build}`;
+  const versionStr = parsed ? formatVersion(parsed) : versionRaw;
 
   if (changelog.some((e) => e.version === versionStr)) {
     return;
@@ -141,16 +124,29 @@ function addChangelogEntry(versionRaw) {
   try { writeFileSync(CHANGELOG_MIRROR, json, "utf-8"); } catch {}
 }
 
-function bumpVersion() {
-  const raw = readVersion();
+function getNextVersion(raw) {
   const parsed = parseVersion(raw);
   if (!parsed) return raw;
   parsed.minor += 1;
   if (parsed.minor >= 10) { parsed.minor = 0; parsed.major += 1; }
-  const next = `${parsed.major}.${parsed.minor}${parsed.suffix}`;
+  return `${parsed.major}.${parsed.minor}${parsed.suffix}`;
+}
+
+function bumpVersion() {
+  const raw = readVersion();
+  const next = getNextVersion(raw);
+  if (next === raw) return raw;
   writeFileSync(VERSION_FILE, `${next}\n`, "utf-8");
   addChangelogEntry(next);
   return next;
 }
 
-module.exports = { readVersion, parseVersion, formatVersion, getFormattedVersion, bumpVersion, readChangelog };
+module.exports = {
+  readVersion,
+  parseVersion,
+  formatVersion,
+  getFormattedVersion,
+  getNextVersion,
+  bumpVersion,
+  readChangelog,
+};

@@ -4,12 +4,37 @@ import path from "node:path";
 
 const PHONE_HEALTH_INTERVAL_MS = 19 * 60 * 1000;
 const FIRST_CHECK_DELAY_MS = 60 * 1000;
+const BETA_HOSTING_REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const BETA_HOSTING_REMINDER_HOUR = 9;
+const BETA_HOSTING_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
-function runPhoneHealthCheck(healthCheckPath: string): Promise<void> {
+export function millisecondsUntilNextDaNangReminder(now = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BETA_HOSTING_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (type: string) => Number(parts.find((item) => item.type === type)?.value ?? 0);
+  const currentSeconds =
+    part("hour") * 60 * 60 +
+    part("minute") * 60 +
+    part("second") +
+    now.getMilliseconds() / 1000;
+  const targetSeconds = BETA_HOSTING_REMINDER_HOUR * 60 * 60;
+  const secondsUntil =
+    currentSeconds < targetSeconds
+      ? targetSeconds - currentSeconds
+      : targetSeconds + 24 * 60 * 60 - currentSeconds;
+  return Math.round(secondsUntil * 1000);
+}
+
+function runPhoneHealthScript(healthCheckPath: string, args: string[] = []): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
-      [healthCheckPath],
+      [healthCheckPath, ...args],
       {
         cwd: path.dirname(healthCheckPath),
         env: {
@@ -38,13 +63,23 @@ function runPhoneHealthCheck(healthCheckPath: string): Promise<void> {
   });
 }
 
+function runPhoneHealthCheck(healthCheckPath: string): Promise<void> {
+  return runPhoneHealthScript(healthCheckPath);
+}
+
+function runBetaHostingReminder(healthCheckPath: string): Promise<void> {
+  return runPhoneHealthScript(healthCheckPath, ["--beta-host-reminder"]);
+}
+
 /**
  * Run the existing live Twilio health check from the always-on production API
  * process. Replit Scheduled Deployments have an hourly minimum, so this timer
- * provides the requested 19-minute cadence while the VM is running.
+ * provides the 19-minute check cadence while the VM is running. The beta-host
+ * decision reminder is a separate daily email at 9:00 AM Da Nang time.
  */
 export function startPhoneHealthScheduler(
   runCheckImpl: (apiRoot: string) => Promise<void> = runPhoneHealthCheck,
+  runReminderImpl: (apiRoot: string) => Promise<void> = runBetaHostingReminder,
 ): void {
   if (process.env.NODE_ENV !== "production") return;
 
@@ -97,4 +132,38 @@ export function startPhoneHealthScheduler(
   }, FIRST_CHECK_DELAY_MS);
   firstCheck.unref();
   console.log("[Phone Health Scheduler] Twilio checks scheduled every 19 minutes");
+
+  let reminderRunning = false;
+  const runReminder = () => {
+    if (process.env.BETA_HOSTING_PROVIDER?.trim()) {
+      console.log("[Beta Host Reminder] Stopped: hosting provider is selected");
+      return;
+    }
+    if (reminderRunning) {
+      console.warn("[Beta Host Reminder] Previous reminder is still running; skipping this tick");
+      return;
+    }
+
+    reminderRunning = true;
+    console.log("[Beta Host Reminder] Sending daily beta-host reminder");
+    void runReminderImpl(checkTarget).then(
+      () => {
+        reminderRunning = false;
+        console.log("[Beta Host Reminder] Reminder sent");
+      },
+      (error) => {
+        reminderRunning = false;
+        console.error("[Beta Host Reminder] Reminder failed:", error);
+      },
+    );
+  };
+
+  const reminderDelay = millisecondsUntilNextDaNangReminder();
+  const firstReminder = setTimeout(() => {
+    runReminder();
+    const interval = setInterval(runReminder, BETA_HOSTING_REMINDER_INTERVAL_MS);
+    interval.unref();
+  }, reminderDelay);
+  firstReminder.unref();
+  console.log("[Beta Host Reminder] Scheduled daily for 9:00 AM Da Nang time while host is undecided");
 }

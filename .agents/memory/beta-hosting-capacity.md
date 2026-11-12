@@ -8,8 +8,8 @@ than host it on Replit. GitHub is the source for deployment, not the hosting
 platform. The destination system has not yet been selected.
 
 The user has not chosen the beta hosting provider and wants a daily reminder
-about this decision using the same reminder method as the SMS-verification
-reminder. Stop the reminders when the provider is chosen.
+through the same phone-health email channel at 9:00 AM Da Nang time
+(Asia/Ho_Chi_Minh). Stop reminders when the provider is chosen.
 
 The app must be prepared to support at least 1,000 concurrent signed-in users.
 This is an application capacity target, not a count of organization members or a
@@ -36,5 +36,5 @@ Require a container startup smoke test in addition to image construction; pass
 the eagerly imported AI provider settings even when the smoke test uses dummy
 values and exercises only health/static routes.
 
-For beta-host selection, repeat a daily reminder through the user's existing
-SMS-verification reminder path; stop once they choose the provider.
+For beta-host selection, send one daily reminder through the phone-health email
+channel at 9:00 AM Asia/Ho_Chi_Minh; stop once they choose the provider.
