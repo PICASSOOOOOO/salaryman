@@ -1,0 +1,149 @@
+name: Build and publish native desktop clients
+
+on:
+  workflow_dispatch:
+    inputs:
+      itch_target:
+        description: "Optional itch.io target in account/project format"
+        required: false
+        type: string
+        default: ""
+      platforms:
+        description: "Native platforms to build"
+        required: false
+        type: choice
+        options:
+          - macos-windows
+          - all
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix: >-
+        ${{ fromJSON(
+          inputs.platforms == 'all'
+          && '{"include":[{"os":"macos-14","artifact":"salaryman-office-macos","smoke":"salaryman-office-macos-*/pygame/SALARYMAN Office.app/Contents/MacOS/SALARYMAN Office"},{"os":"windows-latest","artifact":"salaryman-office-windows","smoke":"salaryman-office-windows-*/pygame/SALARYMAN Office.exe"},{"os":"ubuntu-24.04","artifact":"salaryman-office-linux","smoke":"salaryman-office-linux-*/pygame/SALARYMAN Office"}]}'
+          || '{"include":[{"os":"macos-14","artifact":"salaryman-office-macos","smoke":"salaryman-office-macos-*/pygame/SALARYMAN Office.app/Contents/MacOS/SALARYMAN Office"},{"os":"windows-latest","artifact":"salaryman-office-windows","smoke":"salaryman-office-windows-*/pygame/SALARYMAN Office.exe"}]}'
+        ) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install native build dependencies
+        run: python -m pip install -e ".[desktop-build]"
+
+      - name: Install Godot shared libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2t64 libdbus-1-3 libfontconfig1 libpulse0 \
+            libx11-6 libxcursor1 libxinerama1 libxi6 libxkbcommon0 libxrandr2
+
+      - name: Build native client
+        run: python scripts/build_desktop.py
+
+      - name: Smoke-test packaged client
+        shell: bash
+        run: >-
+          python -c "import glob,subprocess,sys;
+          matches=glob.glob('build/release/${{ matrix.smoke }}');
+          sys.exit(subprocess.run([matches[0], '--headless', '--paired-smoke', '--frames', '1800'],
+           timeout=300, check=True).returncode)"
+
+      - name: Upload native archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/releases/*
+          if-no-files-found: error
+
+  publish-itch:
+    name: Publish selected native builds to itch.io
+    if: ${{ inputs.itch_target != '' }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Validate itch.io target and publishing secret
+        shell: bash
+        env:
+          ITCH_TARGET: ${{ inputs.itch_target }}
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          if [[ -z "$BUTLER_API_KEY" ]]; then
+            echo "Add BUTLER_API_KEY as a GitHub Actions secret before publishing to itch.io." >&2
+            exit 1
+          fi
+          if [[ ! "$ITCH_TARGET" =~ ^[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*$ ]]; then
+            echo "Use an itch.io target in account/project format, in lowercase." >&2
+            exit 1
+          fi
+
+      - name: Download macOS build
+        uses: actions/download-artifact@v4
+        with:
+          name: salaryman-office-macos
+          path: artifacts/macos
+
+      - name: Download Windows build
+        uses: actions/download-artifact@v4
+        with:
+          name: salaryman-office-windows
+          path: artifacts/windows
+
+      - name: Download Linux build
+        if: ${{ inputs.platforms == 'all' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: salaryman-office-linux
+          path: artifacts/linux
+
+      - name: Prepare platform packages
+        shell: bash
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          set -euo pipefail
+          mkdir -p packages/macos packages/windows
+          mac_archive="$(find artifacts/macos -maxdepth 1 -type f -name '*macos*.zip' -print -quit)"
+          windows_archive="$(find artifacts/windows -maxdepth 1 -type f -name '*windows*.zip' -print -quit)"
+          test -n "$mac_archive" || { echo "macOS archive is missing" >&2; exit 1; }
+          test -n "$windows_archive" || { echo "Windows archive is missing" >&2; exit 1; }
+          unzip -q "$mac_archive" -d packages/macos
+          unzip -q "$windows_archive" -d packages/windows
+          if [[ "$PLATFORMS" == "all" ]]; then
+            mkdir -p packages/linux
+            linux_archive="$(find artifacts/linux -maxdepth 1 -type f -name '*linux*.tar.gz' -print -quit)"
+            test -n "$linux_archive" || { echo "Linux archive is missing" >&2; exit 1; }
+            tar -xzf "$linux_archive" -C packages/linux
+          fi
+
+      - name: Install itch.io Butler
+        uses: remarkablegames/setup-butler@v3
+
+      - name: Publish platform channels
+        shell: bash
+        env:
+          ITCH_TARGET: ${{ inputs.itch_target }}
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          set -euo pipefail
+          butler push packages/macos "$ITCH_TARGET:osx" --userversion "$GITHUB_RUN_NUMBER"
+          butler push packages/windows "$ITCH_TARGET:windows" --userversion "$GITHUB_RUN_NUMBER"
+          if [[ "$PLATFORMS" == "all" ]]; then
+            butler push packages/linux "$ITCH_TARGET:linux" --userversion "$GITHUB_RUN_NUMBER"
+          fi

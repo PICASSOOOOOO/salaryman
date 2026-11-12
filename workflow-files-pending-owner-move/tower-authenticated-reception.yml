@@ -1,0 +1,66 @@
+name: Tower authenticated reception
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tower-authenticated-reception
+  cancel-in-progress: false
+
+jobs:
+  tower-handoff:
+    name: Check disposable Clerk Tower handoff
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: tower-e2e
+    env:
+      TOWER_E2E_EMAIL: ${{ secrets.TOWER_E2E_EMAIL }}
+      TOWER_E2E_PASSWORD: ${{ secrets.TOWER_E2E_PASSWORD }}
+      TOWER_E2E_BASE_URL: ${{ vars.TOWER_E2E_BASE_URL }}
+
+    steps:
+      - name: Check protected test configuration
+        shell: bash
+        run: |
+          if [[ -z "$TOWER_E2E_EMAIL" || -z "$TOWER_E2E_PASSWORD" ]]; then
+            echo "::error::Configure TOWER_E2E_EMAIL and TOWER_E2E_PASSWORD in the protected tower-e2e environment."
+            exit 1
+          fi
+          if [[ -z "$TOWER_E2E_BASE_URL" ]]; then
+            echo "::error::Configure TOWER_E2E_BASE_URL in the tower-e2e environment for the controlled target."
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter @workspace/interview-helper exec playwright install --with-deps chromium
+
+      - name: Run real Clerk Tower handoff
+        run: >-
+          pnpm --filter @workspace/interview-helper exec playwright test
+          e2e/tower.authenticated-reception.spec.ts
+          --config playwright.config.ts
+          --project chromium
+          --grep "real signed-in user"
