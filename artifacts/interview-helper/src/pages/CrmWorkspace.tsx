@@ -406,12 +406,12 @@ export default function CrmWorkspace() {
   if (!isAuthenticated) return <SignInPage context="Sign in to access the CRM workspace." />;
 
   return (
-    <div className="flex min-h-[calc(100dvh-48px)] flex-col bg-[#FAFAF7] text-black font-sans text-sm">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-black">
-        <div className="flex items-center gap-4">
+    <div className="flex min-h-[calc(100dvh-48px)] flex-col overflow-x-hidden bg-[#FAFAF7] text-black font-sans text-sm">
+      <header className="flex flex-col gap-3 border-b border-black px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="min-w-0">
           <h1 className="font-bold uppercase text-xs tracking-widest">SALARYMAN / CRM Workspace</h1>
         </div>
-        <div className="flex items-center gap-4 text-[10px] font-bold">
+        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold sm:justify-end">
           <Link href="/business/contacts?new=1" className="flex items-center gap-1 border border-black px-2 py-1">
             <UserRound size={12} /> Add person
           </Link>
@@ -427,7 +427,7 @@ export default function CrmWorkspace() {
         </div>
       </header>
 
-      <section className="grid grid-cols-4 border-b border-black bg-white">
+      <section className="grid grid-cols-2 border-b border-black bg-white md:grid-cols-4">
         <div className="p-3 border-r border-black flex flex-col">
           <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Leads</span>
           <strong className="text-xl font-mono leading-none">{metric(['leads', 'leadCount', 'totalLeads'], leads.length)}</strong>
@@ -446,8 +446,8 @@ export default function CrmWorkspace() {
         </div>
       </section>
 
-      <div className="flex items-center justify-between px-4 py-2 border-b border-black bg-[#FAFAF7]">
-        <div className="flex items-center gap-2 w-[400px] relative">
+      <div className="flex flex-col gap-2 border-b border-black bg-[#FAFAF7] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="relative flex w-full min-w-0 items-center gap-2 sm:max-w-[400px]">
           <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-black/50" />
           <input
             className="w-full pl-7 pr-7 py-1.5 text-xs font-bold border border-black focus:outline-none focus:ring-1 focus:ring-black bg-white uppercase placeholder:text-black/30"
@@ -461,16 +461,16 @@ export default function CrmWorkspace() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <button
             onClick={() => setViewMode('overview')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase border border-black transition-colors ${viewMode === 'overview' ? 'bg-black text-[#00ff41]' : 'bg-white hover:bg-black/5'}`}
+            className={`flex flex-1 items-center justify-center gap-1.5 border border-black px-3 py-1 text-[10px] font-bold uppercase transition-colors sm:flex-none ${viewMode === 'overview' ? 'bg-black text-[#00ff41]' : 'bg-white hover:bg-black/5'}`}
           >
             <LayoutDashboard size={12} /> Overview
           </button>
           <button
             onClick={() => setViewMode('pipeline')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase border border-black transition-colors ${viewMode === 'pipeline' ? 'bg-black text-[#00ff41]' : 'bg-white hover:bg-black/5'}`}
+            className={`flex flex-1 items-center justify-center gap-1.5 border border-black px-3 py-1 text-[10px] font-bold uppercase transition-colors sm:flex-none ${viewMode === 'pipeline' ? 'bg-black text-[#00ff41]' : 'bg-white hover:bg-black/5'}`}
           >
             <Columns3 size={12} /> Pipeline
           </button>
@@ -478,12 +478,12 @@ export default function CrmWorkspace() {
       </div>
 
       {errors.length > 0 && (
-        <div className="px-4 py-2 bg-black text-[#00ff41] flex items-center justify-between border-b border-black text-xs font-mono">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={14} />
-            <span>{allRequestsFailed ? 'DATA UNAVAILABLE:' : 'PARTIAL ERROR:'} {errors.join(' · ')}</span>
+        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-black bg-black px-3 py-2 font-mono text-xs text-[#00ff41] sm:px-4">
+          <div className="flex min-w-0 flex-1 items-start gap-2 break-words">
+            <AlertTriangle size={14} className="shrink-0" />
+            <span className="min-w-0 break-words">{allRequestsFailed ? 'DATA UNAVAILABLE:' : 'PARTIAL ERROR:'} {errors.join(' · ')}</span>
           </div>
-          <button onClick={() => void loadWorkspace()} className="flex items-center gap-1 uppercase font-bold hover:text-white">
+          <button onClick={() => void loadWorkspace()} className="flex shrink-0 items-center gap-1 uppercase font-bold hover:text-white">
             <RefreshCw size={12} /> RETRY
           </button>
         </div>
@@ -496,10 +496,10 @@ export default function CrmWorkspace() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden border-r border-black bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+          <div className="flex min-h-[280px] min-w-0 flex-1 flex-col overflow-hidden border-b border-black bg-white lg:min-h-0 lg:border-b-0 lg:border-r">
             {viewMode === 'pipeline' ? (
-              <div className="flex-1 overflow-x-auto bg-black/5 p-4 flex gap-4">
+              <div className="flex min-w-0 flex-1 gap-4 overflow-x-auto bg-black/5 p-3 sm:p-4">
                 {PIPELINE_STAGES.map(stage => {
                   const stageDeals = filteredDeals.filter(d => stringValue(d.stage, 'Lead') === stage);
                   return (
@@ -530,10 +530,10 @@ export default function CrmWorkspace() {
               </div>
             ) : (
               <div className="flex-1 flex flex-col bg-white">
-                <div className="grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_120px] gap-4 px-4 py-2 border-b border-black bg-black/5 text-[9px] font-bold uppercase tracking-widest text-black/50">
+                <div className="grid grid-cols-[56px_minmax(0,1fr)_72px] gap-2 border-b border-black bg-black/5 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-black/50 sm:grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_120px] sm:gap-4 sm:px-4">
                   <span>Type</span>
                   <span>Name</span>
-                  <span>Context</span>
+                  <span className="hidden sm:block">Context</span>
                   <span className="text-right">Meta</span>
                 </div>
                 <div className="flex-1 overflow-y-auto">
@@ -545,15 +545,15 @@ export default function CrmWorkspace() {
                         <button
                           key={`${record.kind}-${record.id}`}
                           onClick={() => setSelected({ kind: record.kind, id: record.id })}
-                          className={`w-full text-left grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_120px] gap-4 px-4 py-3 border-b border-black/10 text-xs items-center transition-colors ${selectedRecord?.kind === record.kind && selectedRecord.id === record.id ? 'bg-black text-[#00ff41]' : 'hover:bg-black/5'}`}
+                          className={`grid w-full min-w-0 grid-cols-[56px_minmax(0,1fr)_72px] items-center gap-2 border-b border-black/10 px-3 py-3 text-left text-xs transition-colors sm:grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_120px] sm:gap-4 sm:px-4 ${selectedRecord?.kind === record.kind && selectedRecord.id === record.id ? 'bg-black text-[#00ff41]' : 'hover:bg-black/5'}`}
                         >
                           <div className="uppercase font-bold text-[9px] tracking-widest flex items-center gap-1.5 opacity-80">
                             {record.kind === 'lead' ? <UserRound size={10} /> : record.kind === 'contact' ? <Building2 size={10} /> : <CircleDollarSign size={10} />}
                             {record.kind}
                           </div>
                           <div className="font-bold truncate text-[11px] uppercase">{record.name}</div>
-                          <div className={`truncate text-[10px] ${selectedRecord?.kind === record.kind && selectedRecord.id === record.id ? 'text-[#00ff41]/70' : 'text-black/60'}`}>{record.subtitle}</div>
-                          <div className="text-right font-mono text-[10px]">
+                          <div className={`hidden min-w-0 truncate text-[10px] sm:block ${selectedRecord?.kind === record.kind && selectedRecord.id === record.id ? 'text-[#00ff41]/70' : 'text-black/60'}`}>{record.subtitle}</div>
+                          <div className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right font-mono text-[9px] sm:text-[10px]">
                             {record.kind === 'deal' && formatCurrency((record.raw as DealRecord).value)}
                             {record.kind === 'lead' && <span className="bg-black/10 px-1 py-0.5">{stringValue((record.raw as LeadRecord).status, 'NEW').toUpperCase()}</span>}
                           </div>
@@ -571,7 +571,7 @@ export default function CrmWorkspace() {
             )}
           </div>
 
-          <div className="w-[360px] flex flex-col bg-[#FAFAF7] shrink-0 overflow-hidden">
+          <div className="flex max-h-[52vh] min-h-[240px] w-full flex-col overflow-y-auto border-t border-black bg-[#FAFAF7] lg:max-h-none lg:min-h-0 lg:w-[360px] lg:shrink-0 lg:overflow-hidden lg:border-l lg:border-t-0">
             {selectedRecord && (
               <ContextPanel
                 record={selectedRecord}
