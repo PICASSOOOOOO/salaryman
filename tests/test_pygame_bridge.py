@@ -201,6 +201,42 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertFalse(no_link.ok)
         self.assertIn("LINK A GAME ACCOUNT", no_link.message)
 
+    def test_1999_terminal_placement_queues_a_server_authoritative_action(self):
+        command = {
+            "type": "command",
+            "version": PROTOCOL_VERSION,
+            "name": "place_1999_terminal",
+            "payload": {},
+        }
+        calls = []
+        building_sync = SimpleNamespace(
+            queue_physics_action=lambda object_id, action: calls.append((object_id, action)) or True
+        )
+
+        self.assertTrue(validate_command(command)[0])
+        result = apply_command(command, self.state, self.scene, building_sync)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(calls, [("1999-terminal", "place")])
+
+    def test_placed_1999_terminal_appears_only_in_its_saved_office(self):
+        self.scene.current_room = "executive"
+        self.scene.set_building_object_states({
+            "1:1999-terminal": {
+                "cleanliness": 80,
+                "condition": 85,
+                "floorNumber": 1,
+                "room": "executive",
+                "physicsX": 6_000,
+                "physicsY": 8_000,
+            },
+        })
+
+        terminal = self.scene.objects.get("1999-terminal")
+        self.assertIsNotNone(terminal)
+        self.assertEqual(terminal.kind, "music_workstation")
+        self.assertEqual(terminal.position, (6_000, 8_000))
+
     def test_desk_telephone_opens_phone_page_and_enforces_proximity(self):
         telephone = self.scene.objects.get("lobby-reception-desk-phone")
         self.assertIsNotNone(telephone)

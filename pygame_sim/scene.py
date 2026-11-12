@@ -469,11 +469,43 @@ class TowerScene:
                     value = state.get(key)
                     if isinstance(value, int) and not isinstance(value, bool):
                         saved[key] = value
+                room = state.get("room")
+                if isinstance(room, str):
+                    saved["room"] = room
+                floor_number = state.get("floorNumber")
+                if isinstance(floor_number, int) and not isinstance(floor_number, bool):
+                    saved["floorNumber"] = floor_number
                 burning = state.get("burning")
                 if isinstance(burning, bool):
                     saved["burning"] = burning
                 normalized[object_id] = saved
         self.building_object_states = normalized
+        terminal_state = normalized.get(f"{self.current_floor}:1999-terminal")
+        if (
+            terminal_state is not None
+            and terminal_state.get("room") == self.current_room
+            and terminal_state.get("floorNumber") == self.current_floor
+        ):
+            terminal = OfficeObject(
+                "1999-terminal",
+                "music_workstation",
+                "1999 WORKSTATION",
+                self.current_room,
+                (
+                    int(terminal_state.get("physicsX", 0)),
+                    int(terminal_state.get("physicsY", 0)),
+                ),
+                "OPEN THE 1999 MUSIC WORKSTATION",
+                solid_half_extents=(300, 220),
+            )
+            existing_index = next(
+                (index for index, item in enumerate(self.objects.objects) if item.id == terminal.id),
+                None,
+            )
+            if existing_index is None:
+                self.objects.add(terminal, scale_legacy_coordinates=False)
+            else:
+                self.objects.objects[existing_index] = terminal
         for index, item in enumerate(self.objects.objects):
             saved = normalized.get(f"{self.current_floor}:{item.id}")
             if not saved:

@@ -15,6 +15,49 @@ export type BuildingObjectDefinition = {
   y: number;
 };
 
+export const NINETEEN_NINETY_NINE_TERMINAL_ID = "1999-terminal";
+const PLAYER_OFFICE_ROOMS: Readonly<Record<string, Position>> = {
+  executive: { x: 6_200, y: 8_200 },
+  public: { x: 19_200, y: 8_200 },
+  office_03: { x: 6_200, y: 22_200 },
+  office_04: { x: 19_200, y: 22_200 },
+  executive_suite: { x: 1_250, y: 5_500 },
+};
+
+export function canPlace1999TerminalInSpace(
+  space: { orgId: number | null; ownerUserId: string | null },
+  userId: string,
+  organizationManager: boolean,
+): boolean {
+  return space.orgId === null
+    ? space.ownerUserId === userId
+    : organizationManager;
+}
+
+export function terminalPlacementOwnerKey(
+  space: { orgId: number | null },
+  userId: string,
+): string {
+  return space.orgId === null ? `user:${userId}` : `org:${space.orgId}`;
+}
+
+export function playerPlaceableObjectForRoom(room: string): BuildingObjectDefinition | null {
+  const position = PLAYER_OFFICE_ROOMS[room];
+  if (!position) return null;
+  return {
+    id: NINETEEN_NINETY_NINE_TERMINAL_ID,
+    room,
+    label: "1999 Workstation Terminal",
+    material: "electronics",
+    movable: true,
+    rotatable: true,
+    destructible: false,
+    burnable: false,
+    x: position.x,
+    y: position.y,
+  };
+}
+
 export const BUILDING_MAINTAINABLE_OBJECTS: readonly BuildingObjectDefinition[] = [
   { id: "lobby-reception-desk", room: "lobby", label: "Reception desk", material: "wood", movable: true, rotatable: true, destructible: true, burnable: true, x: 49_978_250, y: 49_999_600 },
   { id: "lobby-atm", room: "lobby", label: "Lobby ATM", material: "steel", movable: true, rotatable: true, destructible: true, burnable: false, x: 49_976_750, y: 50_000_800 },
@@ -151,7 +194,8 @@ export function buildingObjectsForRoom(room: string): readonly BuildingObjectDef
 }
 
 export function buildingObject(room: string, objectId: string): BuildingObjectDefinition | null {
-  return BUILDING_MAINTAINABLE_OBJECTS.find((object) => object.room === room && object.id === objectId) ?? null;
+  return BUILDING_MAINTAINABLE_OBJECTS.find((object) => object.room === room && object.id === objectId)
+    ?? (objectId === NINETEEN_NINETY_NINE_TERMINAL_ID ? playerPlaceableObjectForRoom(room) : null);
 }
 
 function pointIsWalkable(room: string, point: Position): boolean {

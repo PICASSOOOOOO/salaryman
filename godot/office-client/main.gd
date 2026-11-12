@@ -12,6 +12,7 @@ const OfficeProp = preload("res://office_prop.gd")
 const ArcadeProp = preload("res://office_arcade_prop.gd")
 const ServiceProp = preload("res://office_service_prop.gd")
 const TowerExteriorWorld = preload("res://exterior_world.gd")
+const NineteenNinetyNineStation = preload("res://nineteen_ninety_nine_station.gd")
 const HOST := "127.0.0.1"
 const PORT := 4242
 const WORLD_SCALE := 0.01
@@ -78,6 +79,7 @@ var mission_label: Label
 var notice_label: Label
 var controls_label: Label
 var interaction_button: Button
+var nineteen_ninety_nine_station: Control
 var tower_advice_panel: ColorRect
 var tower_advice_body: Label
 var camera_target := Vector3.ZERO
@@ -2348,6 +2350,10 @@ func _build_interface() -> void:
 	native_app_footer.add_theme_color_override("font_color", Color("#f8b957"))
 	native_app_panel.add_child(native_app_footer)
 
+	nineteen_ninety_nine_station = NineteenNinetyNineStation.new()
+	nineteen_ninety_nine_station.visible = false
+	interface_root.add_child(nineteen_ninety_nine_station)
+
 	elevator_floor_panel = ColorRect.new()
 	elevator_floor_panel.name = "ElevatorFloorPicker"
 	elevator_floor_panel.color = Color("#020905")
@@ -3036,6 +3042,19 @@ collision_extents: Array = [],
 		return _build_floor_sign(position, object_id)
 	if kind == "crt_terminal":
 		return _build_crt_terminal(position, object_id)
+	if kind == "music_workstation":
+		var terminal := _build_1999_workstation(position, object_id)
+		var badge := Label3D.new()
+		badge.name = object_id + "-badge"
+		badge.text = "1999"
+		badge.font_size = 22
+		badge.pixel_size = 0.004
+		badge.position = Vector3(0.0, 2.38, 0.16)
+		badge.modulate = Color("#8cffac")
+		badge.outline_size = 6
+		badge.outline_modulate = Color("#07130a")
+		terminal.add_child(badge)
+		return terminal
 	if kind == "arcade":
 		var arcade := ArcadeProp.create(object_id, label)
 		arcade.position = position
@@ -3763,6 +3782,97 @@ func _build_crt_terminal(position: Vector3, object_id: String) -> MeshInstance3D
 	return body
 
 
+func _build_1999_workstation(position: Vector3, object_id: String) -> Node3D:
+	var case_material := _material(Color("#111817"), 0.3, false, 0.48)
+	var screen_material := _material(Color("#020805"), 0.12, false, 0.0, Color("#174a25"))
+	var signal_material := _material(Color("#58dc79"), 0.28, false, 0.0, Color("#58dc79"))
+	var pad_material := _material(Color("#252c29"), 0.36, false, 0.2)
+	var root := Node3D.new()
+	root.name = object_id
+	root.position = position
+	dynamic_root.add_child(root)
+	_add_box_to_dynamic(
+		object_id + "-console",
+		position + Vector3(0.0, 0.54, 0.12),
+		Vector3(2.32, 0.42, 1.24),
+		case_material,
+		root,
+	)
+	_add_box_to_dynamic(
+		object_id + "-main-display-case",
+		position + Vector3(0.0, 1.58, -0.08),
+		Vector3(1.42, 1.42, 0.3),
+		case_material,
+		root,
+	)
+	_add_box_to_dynamic(
+		object_id + "-main-display",
+		position + Vector3(0.0, 1.60, 0.078),
+		Vector3(1.22, 1.12, 0.018),
+		screen_material,
+		root,
+	)
+	_add_box_to_dynamic(
+		object_id + "-left-display-case",
+		position + Vector3(-0.82, 1.39, -0.04),
+		Vector3(0.58, 0.91, 0.24),
+		case_material,
+		root,
+	)
+	_add_box_to_dynamic(
+		object_id + "-left-display",
+		position + Vector3(-0.82, 1.40, 0.084),
+		Vector3(0.46, 0.70, 0.018),
+		screen_material,
+		root,
+	)
+	_add_box_to_dynamic(
+		object_id + "-right-display-case",
+		position + Vector3(0.82, 1.39, -0.04),
+		Vector3(0.58, 0.91, 0.24),
+		case_material,
+		root,
+	)
+	_add_box_to_dynamic(
+		object_id + "-right-display",
+		position + Vector3(0.82, 1.40, 0.084),
+		Vector3(0.46, 0.70, 0.018),
+		screen_material,
+		root,
+	)
+	_add_crt_scanlines(object_id + "-main-scanline", position + Vector3(0.0, 1.60, 0.078), 1.18, 1.08, position.z + 0.089, 18, root)
+	_add_crt_scanlines(object_id + "-left-scanline", position + Vector3(-0.82, 1.40, 0.084), 0.44, 0.68, position.z + 0.095, 10, root)
+	_add_crt_scanlines(object_id + "-right-scanline", position + Vector3(0.82, 1.40, 0.084), 0.44, 0.68, position.z + 0.095, 10, root)
+	for bar_index in range(4):
+		var bar_height := 0.08 + float((bar_index * 7 + 3) % 6) * 0.055
+		_add_box_to_dynamic(
+			object_id + "-display-meter-%d" % bar_index,
+			position + Vector3(-0.42 + bar_index * 0.085, 1.30 + bar_height / 2.0, 0.091),
+			Vector3(0.035, bar_height, 0.008),
+			signal_material,
+			root,
+		)
+	for pad_y in range(4):
+		for pad_x in range(4):
+			var pad_index := pad_y * 4 + pad_x
+			_add_box_to_dynamic(
+				object_id + "-pad-%02d" % (pad_index + 1),
+				position + Vector3(-0.31 + pad_x * 0.18, 0.77, 0.43 + pad_y * 0.16),
+				Vector3(0.13, 0.055, 0.12),
+				signal_material if pad_index in [0, 3, 8, 12] else pad_material,
+				root,
+			)
+	for strip_index in range(3):
+		_add_box_to_dynamic(
+			object_id + "-control-strip-%d" % strip_index,
+			position + Vector3(0.68 + strip_index * 0.14, 0.78, 0.34),
+			Vector3(0.085, 0.075, 0.22),
+			signal_material if strip_index == 1 else case_material,
+			root,
+		)
+	return root
+
+
 func _build_tv(position: Vector3, object_id: String) -> MeshInstance3D:
 	var shell := _add_box_to_dynamic(
 		object_id,
@@ -3830,6 +3940,7 @@ func _add_crt_scanlines(
 	screen_height: float,
 	front_z: float,
 	line_count: int,
+	parent: Node3D = null,
 ) -> void:
 	for index in range(line_count):
 		var line_y := screen_center.y - screen_height / 2.0 \
@@ -3839,6 +3950,7 @@ func _add_crt_scanlines(
 			Vector3(screen_center.x, line_y, front_z),
 			Vector3(screen_width, 0.0035, 0.003),
 			materials["crt_scanline"],
+			parent,
 		)
 
 
@@ -4097,16 +4209,25 @@ func _build_elevator_visual(position: Vector3, object_id: String, service: bool 
 	return elevator_door
 
 
-func _add_box_to_dynamic(node_name: String, position: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
+func _add_box_to_dynamic(
+	node_name: String,
+	position: Vector3,
+	size: Vector3,
+	material: Material,
+	parent: Node3D = null,
+) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	mesh.material = material
 	var instance := MeshInstance3D.new()
 	instance.name = node_name
 	instance.mesh = mesh
-	instance.position = position
+	instance.position = parent.to_local(position) if parent != null else position
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	dynamic_root.add_child(instance)
+	if parent != null:
+		parent.add_child(instance)
+	else:
+		dynamic_root.add_child(instance)
 	return instance
 
 
@@ -4436,7 +4557,19 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	if native_app_panel == null:
 		return
 	var page := _active_page_name()
-	native_app_panel.visible = not page.is_empty()
+	var active_object_id := str(office.get("activeObjectId", ""))
+	var opening_1999_terminal := page == "music_studio" and active_object_id == "1999-terminal"
+	var location := "FLOOR %02d  /  %s" % [
+		int(scene_data.get("floor", 1)),
+		str(scene_data.get("room", "UNKNOWN")).replace("_", " ").to_upper(),
+	]
+	if nineteen_ninety_nine_station != null:
+		nineteen_ninety_nine_station.set_station_open(opening_1999_terminal, location)
+	native_app_panel.visible = not page.is_empty() and not opening_1999_terminal
+	if opening_1999_terminal:
+		last_native_app_page = page
+		_sync_native_app_actions("", "")
+		return
 	if page.is_empty():
 		last_native_app_page = ""
 		native_typewriter_page = ""
@@ -4466,10 +4599,6 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 	var page_source_value: Variant = office.get("pageSource")
 	var page_source := "" if page_source_value == null else str(page_source_value)
 	var workers: Array = office.get("workers", [])
-	var location := "FLOOR %02d  /  %s" % [
-		int(scene_data.get("floor", 1)),
-		str(scene_data.get("room", "UNKNOWN")).replace("_", " ").to_upper(),
-	]
 	match page:
 		"shop_freight_dock":
 			native_app_title.text = "B1 SHOP FREIGHT DOCK"
@@ -4830,6 +4959,10 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 				bool(office.get("musicEnabled", false)),
 			)
 			native_app_footer.text = "O / 4 TO TOGGLE MUSIC  ·  ESC / B TO CLOSE"
+		"music_studio":
+			native_app_title.text = "MUSIC STUDIO"
+			native_app_body.text = "NO 1999 TERMINAL\nBUY AND PLACE ONE IN YOUR OFFICE."
+			native_app_footer.text = "T PLACES A PURCHASED TERMINAL  ·  ESC CLOSE"
 		"utility_work":
 			native_app_title.text = "TOWER INFRASTRUCTURE / REPAIR ROUTES"
 			native_app_body.add_theme_font_size_override("font_size", 12)
@@ -5130,8 +5263,6 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 				labels = ["1 > PHONE CENTER", "2 > COMMS"]
 		"reception":
 			labels = ["1 > JOBS", "2 > CONTRACTS", "3 > REALTY"]
-		"music_studio":
-			labels = ["1 > OPEN SHARED 1999 WORKSPACE"]
 		"competition":
 			labels = ["1 > RUMOR", "2 > SUPPRESS", "3 > BRIBE", "4 > SABOTAGE", "5 > FIRE", "6 > ROBBERY", "7 > EXTORT", "8 > FIGHT"]
 		"systems":
@@ -5298,7 +5429,10 @@ func _on_native_app_action_pressed(page: String, choice: Variant) -> void:
 		"reception":
 			_send_command("reception_choice", {"choice": choice})
 		"music_studio":
-			_send_command("music_studio_choice", {"choice": choice})
+			if choice == 1:
+				nineteen_ninety_nine_station.toggle_play()
+			elif choice == 2:
+				nineteen_ninety_nine_station.toggle_record()
 		"systems":
 			_send_command("terminal_choice", {"choice": choice})
 		"competition":
@@ -5329,7 +5463,7 @@ static func terminal_choice_for_key(keycode: int) -> int:
 
 
 static func settings_menu_text(location: String, music_enabled: bool) -> String:
-	return "%s\n\nCONTROLS\nWASD / ARROWS or left stick / D-pad — move\nA / Cross — interact · X / Square — jump\nB / Circle or Start — menu / back\nLB / L1 — sprint · RB / R1 — fight\nY / Triangle — repair · L3 — sweep\n\nDISPLAY\nHUD fits the window; minimum 1180 × 720.\n\nMUSIC %s · O / 4 to toggle" % [
+	return "%s\n\nCONTROLS\nWASD / ARROWS or left stick / D-pad — move\nA / Cross — interact · X / Square — jump\nB / Circle or Start — menu / back\nLB / L1 — sprint · RB / R1 — fight\nY / Triangle — repair · L3 — sweep\nT — place a purchased 1999 terminal in your office\n\nDISPLAY\nHUD fits the window; minimum 1180 × 720.\n\nMUSIC %s · O / 4 to toggle" % [
 		location,
 		"ON" if music_enabled else "OFF",
 	]
@@ -5473,8 +5607,19 @@ func _input(event: InputEvent) -> void:
 						_send_command("buy_vending", {"item_id": str(item_value.get("id", ""))})
 			elif active_page == "reception" and event.keycode in [KEY_1, KEY_2, KEY_3]:
 				_send_command("reception_choice", {"choice": event.keycode - KEY_0})
-			elif active_page == "music_studio" and event.keycode == KEY_1:
-				_send_command("music_studio_choice", {"choice": 1})
+			elif active_page == "music_studio" \
+				and str(snapshot.get("office", {}).get("activeObjectId", "")) == "1999-terminal":
+				match event.keycode:
+					KEY_1:
+						nineteen_ninety_nine_station.toggle_play()
+					KEY_2:
+						nineteen_ninety_nine_station.toggle_record()
+					KEY_3:
+						nineteen_ninety_nine_station.save_project_dialog()
+					KEY_4:
+						nineteen_ninety_nine_station.load_project_dialog()
+					KEY_5:
+						nineteen_ninety_nine_station.export_take_dialog()
 			elif active_page == "pest_jobs" and event.keycode in [KEY_1, KEY_2]:
 				var job_id := "pest_w2" if event.keycode == KEY_1 else "pest_1099"
 				_send_command("start_pest_job", {"job_id": job_id})
@@ -5542,6 +5687,8 @@ func _input(event: InputEvent) -> void:
 				_send_command("object_physics", {"action": "ignite"})
 			KEY_H:
 				_send_command("object_physics", {"action": "extinguish"})
+			KEY_T:
+				_send_command("place_1999_terminal")
 			KEY_F:
 				if str(snapshot.get("scene", {}).get("room", "")).begins_with("basement_b"):
 					_send_command("open_melee_menu")

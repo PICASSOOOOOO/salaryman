@@ -2242,14 +2242,9 @@ class SolarPunkRenderer:
                 (85, 103, 94),
             )
         elif state.active_page == "music_studio":
-            button(
-                "music:open",
-                "OPEN SHARED 1999 WORKSPACE",
-                pygame.Rect(panel.x + 26, content_y, panel.width - 52, 56),
-            )
             self.text(
-                "Dedicated 1999 sampler, tape, and sequencing terminal. Open the shared browser workspace to edit sessions and audio in your SALARYMAN Vault.",
-                (panel.x + 28, content_y + 82),
+                "1999 WORKSTATION ACCESS\n\nBuy the terminal from the Tower furniture store, then place it in your office.\n\nThe terminal opens the 16-step sequencer, tape recorder, WAV export, and schemaVersion 1 project files.",
+                (panel.x + 28, content_y + 10),
                 self.font_sm,
                 (85, 103, 94),
             )

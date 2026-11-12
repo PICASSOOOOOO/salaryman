@@ -49,6 +49,9 @@ public:
   void setStep(int track, int step, bool enabled);
   juce::String machineForTrack(int track) const;
   void setMachineForTrack(int track, const juce::String& machineId);
+  bool isRecordingTrack(int track) const {
+    return track >= 0 && track < trackCount && trackKinds_[static_cast<size_t>(track)].load() != 0;
+  }
   bool isSequencerPlaying() const { return sequencerPlaying_.load(); }
   void setSequencerPlaying(bool playing) { sequencerPlaying_.store(playing); }
   int currentStep() const { return currentStep_.load(); }
@@ -74,9 +77,11 @@ private:
 
   std::array<std::array<std::atomic<int>, stepCount>, trackCount> steps_ {};
   std::array<std::atomic<int>, trackCount> machines_ {};
+  std::array<std::atomic<int>, trackCount> trackKinds_ {};
   std::array<Voice, trackCount> voices_ {};
   std::atomic<bool> sequencerPlaying_ { false };
   std::atomic<int> currentStep_ { 0 };
+  juce::String projectTemplateJson_;
   int currentProgram_ = 0;
   double sampleRate_ = 44100.0;
   double samplesUntilStep_ = 0.0;

@@ -32,6 +32,7 @@ ObjectKind = Literal[
     "telephone",
     "pay_phone",
     "crt_terminal",
+    "music_workstation",
     "tv",
     "atm",
     "vending_machine",
@@ -170,6 +171,7 @@ class OfficeObject:
             "door": (0, 0),
             "telephone": (0, 0),
             "crt_terminal": (0, 0),
+            "music_workstation": (300, 220),
             "desk_lamp": (0, 0),
             "receptionist": (0, 0),
             "floor_sign": (0, 0),
@@ -463,6 +465,19 @@ class OfficeObjectRegistry:
                 source="SYSTEMS TERMINAL",
                 source_object_id=item.id,
             )
+            return InteractionResult(True, "SYSTEMS TERMINAL / FULL WORKSPACE", route="systems-terminal")
+
+        if item.kind == "music_workstation":
+            scene.focus_on_interaction(item)
+            state.open_page(
+                "music_studio",
+                from_object=True,
+                source="1999 WORKSTATION",
+                source_object_id=item.id,
+            )
+            message = "1999 MUSIC WORKSTATION"
+            state.notice = message
+            return InteractionResult(True, message, route="1999-station")
 
         if item.id == "tower-ghost":
             scene.focus_on_interaction(item)

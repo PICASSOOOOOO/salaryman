@@ -35,4 +35,18 @@ describe("autonomous Tower shop catalogs", () => {
     expect(terminals?.itemIds).toEqual([]);
     expect(terminals?.quoteCategories).toContain("Work terminals and repairs");
   });
+
+  it("sells the placeable 1999 workstation through the furniture store", () => {
+    const stock = TOWER_BUSINESS_STOCK_LINES.find(
+      (line) => line.sellerBusinessKey === "furniture-store" && line.itemIds.includes("furn_1999_terminal"),
+    );
+    const item = findCatalogItem("furn_1999_terminal");
+
+    expect(stock?.priceSource).toBe("catalog_item");
+    expect(item).toMatchObject({
+      type: "furniture",
+      equipSlot: null,
+      priceFiat: 1_999_999,
+    });
+  });
 });

@@ -78,6 +78,7 @@ COMMANDS = {
     "reception_choice",
     "phone_choice",
     "music_studio_choice",
+    "place_1999_terminal",
     "toggle_business_stock",
     "toggle_drawer",
     "close_page",
@@ -168,6 +169,9 @@ def validate_command(command: object) -> tuple[bool, str]:
         object_id = payload.get("object_id")
         if object_id is not None and (not isinstance(object_id, str) or len(object_id) > 80):
             return False, "OBJECT ID NOT VALID"
+    elif name == "place_1999_terminal":
+        if payload:
+            return False, "1999 PLACEMENT DOES NOT ACCEPT EXTRA OPTIONS"
     elif name == "select_room":
         room = payload.get("room")
         if not isinstance(room, str) or room not in ALLOWED_ROOMS:
@@ -830,6 +834,16 @@ def _apply_command(
             return CommandResult(False, "OBJECT PHYSICS SYNC UNAVAILABLE")
         state.notice = f"{action.upper()} REQUESTED / {nearby.label}"
         return CommandResult(True, state.notice)
+    if name == "place_1999_terminal":
+        if not scene.is_playable_floor(scene.current_floor):
+            return CommandResult(False, "1999 TERMINAL PLACEMENT IS UNAVAILABLE ON THIS FLOOR")
+        if state.active_page is not None:
+            return CommandResult(False, "CLOSE THE CURRENT PAGE BEFORE PLACING THE 1999 TERMINAL")
+        if building_sync is None or not building_sync.queue_physics_action("1999-terminal", "place"):
+            return CommandResult(False, "BUY A TERMINAL AND RETURN TO YOUR OFFICE")
+        scene.set_player_action("maintenance", duration=1.0)
+        state.notice = "1999 TERMINAL PLACEMENT REQUESTED"
+        return CommandResult(True, state.notice)
     if name == "select_room":
         state.close_page()
         if not scene.select_room(payload["room"]):
@@ -1185,17 +1199,7 @@ def _apply_command(
             or nearby.id != studio.id
         ):
             return CommandResult(False, "RETURN TO THE MUSIC STUDIO WORKSTATION")
-        link = getattr(building_sync, "link", None)
-        if link is None:
-            return CommandResult(False, "LINK A GAME ACCOUNT TO OPEN 1999")
-        try:
-            opened = webbrowser.open(f"{link.server_url.rstrip('/')}/1999")
-        except Exception:
-            opened = False
-        if not opened:
-            return CommandResult(False, "COULD NOT OPEN THE 1999 WORKSPACE")
-        state.close_page()
-        state.notice = "OPENING 1999 PRODUCTION WORKSPACE"
+        state.notice = "1999 IN-GAME STATION READY"
         return CommandResult(True, state.notice)
     if name == "terminal_choice":
         if state.active_page != "systems":

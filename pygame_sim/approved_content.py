@@ -58,6 +58,7 @@ APPROVED_INTERACTIVE_OBJECT_KINDS = frozenset(
         "telephone",
         "pay_phone",
         "crt_terminal",
+        "music_workstation",
         "atm",
         "vending_machine",
         "elevator",

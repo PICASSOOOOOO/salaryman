@@ -82,7 +82,7 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   juce::ScopedNoDenormals noDenormals;
   for (const auto metadata : midi) {
     const auto message = metadata.getMessage();
-    if (message.isNoteOn())
+    if (message.isNoteOn() && trackKinds_[0].load() == 0)
       triggerVoice(1, message.getVelocity(), message.getNoteNumber());
   }
   buffer.clear();
@@ -115,6 +115,8 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
       if (samplesUntilStep_ <= 0.0) {
         const auto step = currentStep_.load();
         for (int track = 0; track < trackCount; ++track) {
+          if (trackKinds_[static_cast<size_t>(track)].load() != 0)
+            continue;
           const auto velocity = steps_[static_cast<size_t>(track)][static_cast<size_t>(step)].load();
           if (velocity > 0)
             triggerVoice(track, velocity);
@@ -207,6 +209,8 @@ bool Salaryman1999AudioProcessor::stepIsOn(int track, int step) const {
 void Salaryman1999AudioProcessor::setStep(int track, int step, bool enabled) {
   if (track < 0 || track >= trackCount || step < 0 || step >= stepCount)
     return;
+  if (trackKinds_[static_cast<size_t>(track)].load() != 0)
+    return;
   steps_[static_cast<size_t>(track)][static_cast<size_t>(step)].store(enabled ? 100 : 0);
 }
 
@@ -222,6 +226,8 @@ juce::String Salaryman1999AudioProcessor::machineForTrack(int track) const {
 void Salaryman1999AudioProcessor::setMachineForTrack(int track, const juce::String& machineId) {
   if (track < 0 || track >= trackCount)
     return;
+  if (trackKinds_[static_cast<size_t>(track)].load() != 0)
+    return;
   const auto choice = choiceFromMachineId(machineId);
   machines_[static_cast<size_t>(track)].store(choice);
   if (auto* parameter = parameters.getParameter("machine" + juce::String(track + 1)))
@@ -229,39 +235,60 @@ void Salaryman1999AudioProcessor::setMachineForTrack(int track, const juce::Stri
 }
 
 juce::String Salaryman1999AudioProcessor::exportProjectJson() const {
-  auto root = new juce::DynamicObject();
+  auto rootValue = projectTemplateJson_.isNotEmpty()
+    ? juce::JSON::parse(projectTemplateJson_)
+    : juce::var();
+  auto* root = rootValue.getDynamicObject();
+  if (root == nullptr) {
+    rootValue = juce::var(new juce::DynamicObject());
+    root = rootValue.getDynamicObject();
+  }
   root->setProperty("schemaVersion", 1);
-  root->setProperty("name", "1999 session");
+  if (root->getProperty("name").toString().trim().isEmpty())
+    root->setProperty("name", "1999 session");
   root->setProperty("bpm", static_cast<int>(readParam(const_cast<juce::AudioProcessorValueTreeState&>(parameters), "bpm", 92.0f)));
-  root->setProperty("key", "C");
-  root->setProperty("timeSignature", "4/4");
+  if (root->getProperty("key").toString().isEmpty())
+    root->setProperty("key", "C");
+  if (root->getProperty("timeSignature").toString().isEmpty())
+    root->setProperty("timeSignature", "4/4");
 
+  const auto existingTracks = root->getProperty("tracks");
+  const auto* existingTrackArray = existingTracks.getArray();
   auto tracks = juce::Array<juce::var>();
   for (int track = 0; track < trackCount; ++track) {
-    auto item = new juce::DynamicObject();
-    item->setProperty("id", "trk-" + juce::String(track + 1));
-    item->setProperty("name", defaultTrackNames[static_cast<size_t>(track)]);
-    item->setProperty("kind", "instrument");
-    item->setProperty("machineId", machineForTrack(track));
-    auto pattern = juce::Array<juce::var>();
-    for (int step = 0; step < stepCount; ++step)
-      pattern.add(steps_[static_cast<size_t>(track)][static_cast<size_t>(step)].load());
-    item->setProperty("steps", pattern);
-    item->setProperty("audioTrackId", juce::var());
-    item->setProperty("muted", false);
-    item->setProperty("volume", 72);
-    auto soundState = new juce::DynamicObject();
-    soundState->setProperty("tone", 68);
-    soundState->setProperty("decayMs", 260);
-    item->setProperty("soundState", juce::var(soundState));
+    auto* item = existingTrackArray != nullptr && track < existingTrackArray->size()
+      ? existingTrackArray->getReference(track).getDynamicObject()
+      : nullptr;
+    if (item == nullptr) {
+      item = new juce::DynamicObject();
+      item->setProperty("id", "trk-" + juce::String(track + 1));
+      item->setProperty("name", defaultTrackNames[static_cast<size_t>(track)]);
+      item->setProperty("kind", "instrument");
+      item->setProperty("audioTrackId", juce::var());
+      item->setProperty("muted", false);
+      item->setProperty("volume", 72);
+      auto soundState = new juce::DynamicObject();
+      soundState->setProperty("tone", 68);
+      soundState->setProperty("decayMs", 260);
+      item->setProperty("soundState", juce::var(soundState));
+    }
+    if (item->getProperty("kind").toString() != "recording") {
+      item->setProperty("machineId", machineForTrack(track));
+      auto pattern = juce::Array<juce::var>();
+      for (int step = 0; step < stepCount; ++step)
+        pattern.add(steps_[static_cast<size_t>(track)][static_cast<size_t>(step)].load());
+      item->setProperty("steps", pattern);
+    }
     tracks.add(juce::var(item));
   }
   root->setProperty("tracks", tracks);
 
-  auto emulator = new juce::DynamicObject();
-  emulator->setProperty("firmwareIds", juce::var(new juce::DynamicObject()));
-  emulator->setProperty("patchSaves", juce::var(new juce::DynamicObject()));
-  root->setProperty("emulatorState", juce::var(emulator));
+  if (root->getProperty("emulatorState").getDynamicObject() == nullptr) {
+    auto emulator = new juce::DynamicObject();
+    emulator->setProperty("firmwareIds", juce::var(new juce::DynamicObject()));
+    emulator->setProperty("patchSaves", juce::var(new juce::DynamicObject()));
+    root->setProperty("emulatorState", juce::var(emulator));
+  }
 
   auto fx = new juce::DynamicObject();
   fx->setProperty("enabled", readParam(const_cast<juce::AudioProcessorValueTreeState&>(parameters), "fxEnabled") > 0.5f);
@@ -280,7 +307,7 @@ juce::String Salaryman1999AudioProcessor::exportProjectJson() const {
   fx->setProperty("bassFrequency", static_cast<int>(readParam(const_cast<juce::AudioProcessorValueTreeState&>(parameters), "bassFrequency", 120.0f)));
   fx->setProperty("stereoMode", readParam(const_cast<juce::AudioProcessorValueTreeState&>(parameters), "mono") > 0.5f ? "mono" : "stereo");
   root->setProperty("lofiFx", juce::var(fx));
-  return juce::JSON::toString(juce::var(root), true);
+  return juce::JSON::toString(rootValue, true);
 }
 
 bool Salaryman1999AudioProcessor::importProjectJson(const juce::String& json) {
@@ -290,40 +317,63 @@ bool Salaryman1999AudioProcessor::importProjectJson(const juce::String& json) {
   auto* root = parsed.getDynamicObject();
   if (root == nullptr || static_cast<int>(root->getProperty("schemaVersion")) != 1)
     return false;
+  const auto projectName = root->getProperty("name").toString().trim();
   const auto bpm = static_cast<int>(root->getProperty("bpm"));
   const auto trackList = root->getProperty("tracks");
-  if (bpm < 40 || bpm > 240 || !trackList.isArray() || trackList.getArray()->size() > trackCount)
+  if (projectName.isEmpty() || projectName.length() > 80 || bpm < 40 || bpm > 240
+      || !trackList.isArray() || trackList.getArray()->size() > trackCount)
     return false;
 
-  auto* bpmParameter = parameters.getParameter("bpm");
-  if (bpmParameter != nullptr)
-    bpmParameter->setValueNotifyingHost(bpmParameter->convertTo0to1(static_cast<float>(bpm)));
-
-  for (int track = 0; track < trackCount; ++track)
-    for (int step = 0; step < stepCount; ++step)
-      setStep(track, step, false);
+  std::array<std::array<int, stepCount>, trackCount> importedSteps {};
+  std::array<int, trackCount> importedMachines {};
+  std::array<int, trackCount> importedKinds {};
 
   const auto& rows = *trackList.getArray();
   for (int track = 0; track < rows.size(); ++track) {
     auto* item = rows[track].getDynamicObject();
     if (item == nullptr)
       return false;
-    const auto machineId = item->getProperty("machineId").toString();
-    if (machineIndexFor(machineId) < 0)
+    const auto kind = item->getProperty("kind").toString();
+    if (kind != "instrument" && kind != "recording")
       return false;
-    setMachineForTrack(track, machineId);
+    importedKinds[static_cast<size_t>(track)] = kind == "recording" ? 1 : 0;
+    const auto machineId = item->getProperty("machineId").toString();
+    const auto machineIndex = machineIndexFor(machineId);
+    if (machineIndex < 0)
+      return false;
+    importedMachines[static_cast<size_t>(track)] = machineIndex;
     const auto pattern = item->getProperty("steps");
     if (!pattern.isArray() || pattern.getArray()->size() != stepCount)
       return false;
     for (int step = 0; step < stepCount; ++step) {
-      const auto velocity = static_cast<int>(pattern.getArray()->getReference(step));
+      const auto velocityValue = pattern.getArray()->getReference(step);
+      if (!velocityValue.isInt() && !velocityValue.isInt64())
+        return false;
+      const auto velocity = static_cast<int>(velocityValue);
       if (velocity < 0 || velocity > 127)
         return false;
-      setStep(track, step, velocity > 0);
+      importedSteps[static_cast<size_t>(track)][static_cast<size_t>(step)] = velocity;
     }
   }
 
-  auto* fx = root->getProperty("lofiFx").getDynamicObject();
+  const auto fxValue = root->getProperty("lofiFx");
+  auto* fx = fxValue.getDynamicObject();
+  if (!fxValue.isVoid() && fx == nullptr)
+    return false;
+
+  auto* bpmParameter = parameters.getParameter("bpm");
+  if (bpmParameter != nullptr)
+    bpmParameter->setValueNotifyingHost(bpmParameter->convertTo0to1(static_cast<float>(bpm)));
+  for (int track = 0; track < trackCount; ++track) {
+    trackKinds_[static_cast<size_t>(track)].store(
+      track < rows.size() ? importedKinds[static_cast<size_t>(track)] : 0);
+    for (int step = 0; step < stepCount; ++step)
+      steps_[static_cast<size_t>(track)][static_cast<size_t>(step)].store(
+        importedSteps[static_cast<size_t>(track)][static_cast<size_t>(step)]);
+    if (track < rows.size())
+      setMachineForTrack(track, machineIds[static_cast<size_t>(importedMachines[static_cast<size_t>(track)])]);
+  }
+
   if (fx != nullptr) {
     const auto setFloat = [this, fx](const char* property, const char* id, float minimum, float maximum) {
       if (auto* parameter = parameters.getParameter(id)) {
@@ -351,6 +401,7 @@ bool Salaryman1999AudioProcessor::importProjectJson(const juce::String& json) {
     if (auto* parameter = parameters.getParameter("mono"))
       parameter->setValueNotifyingHost(fx->getProperty("stereoMode").toString() == "mono" ? 1.0f : 0.0f);
   }
+  projectTemplateJson_ = json;
   return true;
 }
 
@@ -389,8 +440,9 @@ void Salaryman1999AudioProcessor::triggerVoice(int track, int velocity, int midi
   auto& voice = voices_[static_cast<size_t>(track)];
   voice = {};
   voice.active = true;
+  voice.envelope = 1.0f;
   voice.velocity = juce::jlimit(1, 127, velocity) / 127.0f;
-  voice.machine = machines_[static_cast<size_t>(track)].load();
+  voice.machine = machineIndexFor(machineForTrack(track));
   const auto note = midiNote >= 0 ? midiNote : 36 + (track * 5) + currentStep_.load() % 12;
   voice.frequency = 440.0 * std::pow(2.0, (note - 69) / 12.0);
   if (voice.machine == 2)
@@ -415,7 +467,7 @@ float Salaryman1999AudioProcessor::renderVoice(Voice& voice, double sampleRate) 
   if (voice.phase > 2.0 * juce::MathConstants<double>::pi)
     voice.phase -= 2.0 * juce::MathConstants<double>::pi;
   const auto decay = voice.machine == 2 ? 0.9992f : 0.99985f;
-  voice.envelope = voice.envelope == 0.0f ? 1.0f : voice.envelope * decay;
+  voice.envelope *= decay;
   if (voice.envelope < 0.0001f)
     voice.active = false;
   return output;

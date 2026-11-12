@@ -67,6 +67,7 @@ OBJECT_MATERIALS: dict[ObjectKind, MaterialKind] = {
     "telephone": "electronics",
     "pay_phone": "steel",
     "crt_terminal": "electronics",
+    "music_workstation": "electronics",
     "tv": "electronics",
     "atm": "steel",
     "vending_machine": "steel",
@@ -131,19 +132,20 @@ _STANDABLE_KINDS = frozenset({
     "chapel_altar", "reading_table",
 })
 _FUEL_CAPACITY_LITERS = {"delivery_truck": 120, "forklift": 25}
-_NON_DAMAGEABLE_KINDS = frozenset({"receptionist", "microphone_stand"})
+_NON_DAMAGEABLE_KINDS = frozenset({"receptionist", "microphone_stand", "music_workstation"})
 
 
 def interaction_profile_for(kind: ObjectKind) -> InteractionProfile:
     material = OBJECT_MATERIALS[kind]
     fixed = kind in _FIXED_KINDS
-    living_actor = kind in _NON_DAMAGEABLE_KINDS
+    living_actor = kind == "receptionist"
+    non_damageable = kind in _NON_DAMAGEABLE_KINDS
     return InteractionProfile(
         material=material,
         movable=not fixed and not living_actor,
         rotatable=kind == "door" or (not fixed and not living_actor),
         sittable=kind in _SITTABLE_KINDS,
         standable=kind in _STANDABLE_KINDS,
-        destructible=not living_actor,
+        destructible=not non_damageable,
         fuel_capacity_liters=_FUEL_CAPACITY_LITERS.get(kind, 0),
     )

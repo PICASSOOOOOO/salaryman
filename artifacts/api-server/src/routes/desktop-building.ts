@@ -11,6 +11,7 @@ import {
   orgDoorLocksTable,
   orgMembersTable,
   organizationsTable,
+  playerInventoryTable,
   shadowTowerFloorsTable,
   shadowTowerOfficeUnitsTable,
   towerStaffAssignmentsTable,
@@ -44,14 +45,18 @@ import {
   BUILDING_MAINTAINABLE_OBJECTS,
   BUILDING_OBJECT_DEFAULTS,
   BUILDING_PRESENCE_MAX_AGE_MS,
+  canPlace1999TerminalInSpace,
   PLAYABLE_TOWER_FLOORS,
   buildingObject,
   buildingObjectsForRoom,
   catalogRoomForPresence,
+  NINETEEN_NINETY_NINE_TERMINAL_ID,
   isNearTowerElevator,
   isNearTowerServiceElevator,
   isNearTowerStairwell,
   isWalkableBuildingPosition,
+  playerPlaceableObjectForRoom,
+  terminalPlacementOwnerKey,
   validateBuildingPresence,
 } from "../lib/desktop-building-objects";
 import { hasTowerStaffAssignment, TOWER_STAFF_ROLES } from "../lib/tower-staff-access";
@@ -1004,7 +1009,16 @@ router.get("/desktop-building/objects", async (req, res): Promise<void> => {
       res.status(scope.status).json({ error: scope.error });
       return;
     }
-    const objects = buildingObjectsForRoom(scope.value.room);
+    const baseObjects = buildingObjectsForRoom(scope.value.room);
+    const terminal = playerPlaceableObjectForRoom(scope.value.room);
+    const [placedTerminal] = terminal ? await db.select({ id: desktopBuildingObjectStatesTable.id })
+      .from(desktopBuildingObjectStatesTable)
+      .where(and(
+        eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
+        eq(desktopBuildingObjectStatesTable.objectId, NINETEEN_NINETY_NINE_TERMINAL_ID),
+      ))
+      .limit(1) : [];
+    const objects = placedTerminal && terminal ? [...baseObjects, terminal] : baseObjects;
     if (objects.length === 0) {
       if (scope.value.room === "executive_suite") {
         res.json({
@@ -1089,7 +1103,8 @@ router.post("/desktop-building/objects/physics-action", async (req, res): Promis
   const objectId = req.body?.objectId;
   const action = req.body?.action;
   if (typeof objectId !== "string" || objectId.length < 1 || objectId.length > 80
-    || !["move", "rotate", "damage", "ignite", "extinguish"].includes(action)) {
+    || !["move", "rotate", "damage", "ignite", "extinguish", "place"].includes(action)
+    || (action === "place" && objectId !== NINETEEN_NINETY_NINE_TERMINAL_ID)) {
     res.status(400).json({ error: "Provide an objectId and supported physics action" });
     return;
   }
@@ -1103,6 +1118,122 @@ router.post("/desktop-building/objects/physics-action", async (req, res): Promis
     if (!object) {
       res.status(404).json({ error: "Object is not registered in the current room" });
       return;
+    }
+    if (action === "place") {
+      const organizationManager = scope.value.orgId !== null
+        && (await canDoInOrg(link.userId, scope.value.orgId, "org.settings")).allowed;
+      if (!canPlace1999TerminalInSpace(scope.value, link.userId, organizationManager)) {
+        res.status(403).json({ error: "The 1999 terminal can only be placed in your own office" });
+        return;
+      }
+      const placementOwnerKey = terminalPlacementOwnerKey(scope.value, link.userId);
+      const existingOwnerCondition = scope.value.orgId === null
+        ? eq(desktopBuildingObjectStatesTable.ownerUserId, link.userId)
+        : eq(desktopBuildingObjectStatesTable.orgId, scope.value.orgId);
+      let placementResult;
+      try {
+        placementResult = await db.transaction(async (tx) => {
+          await tx.execute(sql`select pg_advisory_xact_lock(
+            hashtext(${placementOwnerKey}), hashtext(${NINETEEN_NINETY_NINE_TERMINAL_ID})
+          )`);
+          const [existing] = await tx.select({ id: desktopBuildingObjectStatesTable.id })
+            .from(desktopBuildingObjectStatesTable)
+            .where(and(
+              existingOwnerCondition,
+              eq(desktopBuildingObjectStatesTable.objectId, NINETEEN_NINETY_NINE_TERMINAL_ID),
+            ))
+            .limit(1);
+          if (existing) return { error: "A 1999 terminal is already placed in this space", status: 409 as const };
+
+          const [inventory] = await tx.select().from(playerInventoryTable).where(and(
+            eq(playerInventoryTable.userId, link.userId),
+            eq(playerInventoryTable.itemId, "furn_1999_terminal"),
+            sql`${playerInventoryTable.quantity} > 0`,
+          )).for("update").limit(1);
+          if (!inventory) {
+            return { error: "Buy the 1999 workstation terminal from the furniture store first", status: 409 as const };
+          }
+
+          const roomObjects = buildingObjectsForRoom(scope.value.room);
+          const savedObjects = await tx.select().from(desktopBuildingObjectStatesTable).where(and(
+            eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
+            eq(desktopBuildingObjectStatesTable.room, scope.value.room),
+          ));
+          const candidates = [
+            { x: scope.value.presence.x + 750, y: scope.value.presence.y },
+            { x: scope.value.presence.x - 750, y: scope.value.presence.y },
+            { x: scope.value.presence.x, y: scope.value.presence.y + 750 },
+            { x: scope.value.presence.x, y: scope.value.presence.y - 750 },
+          ];
+          const target = candidates.find((candidate) =>
+            isWalkableBuildingPosition(scope.value.room, candidate)
+            && !roomObjects.some((candidateObject) => {
+              const saved = savedObjects.find((entry) => entry.objectId === candidateObject.id);
+              const x = saved?.physicsX ?? candidateObject.x;
+              const y = saved?.physicsY ?? candidateObject.y;
+              return Math.hypot(candidate.x - x, candidate.y - y) < 650;
+            })
+            && !savedObjects.some((saved) => {
+              const other = roomObjects.find((candidateObject) => candidateObject.id === saved.objectId);
+              return !other && saved.physicsX !== null && saved.physicsY !== null
+                && Math.hypot(candidate.x - saved.physicsX, candidate.y - saved.physicsY) < 650;
+            }),
+          );
+          if (!target) return { error: "There is no clear space nearby for the 1999 terminal", status: 409 as const };
+
+          if (inventory.quantity <= 1) {
+            await tx.delete(playerInventoryTable).where(eq(playerInventoryTable.id, inventory.id));
+          } else {
+            await tx.update(playerInventoryTable).set({
+              quantity: sql`${playerInventoryTable.quantity} - 1`,
+            }).where(eq(playerInventoryTable.id, inventory.id));
+          }
+          const now = new Date();
+          const [created] = await tx.insert(desktopBuildingObjectStatesTable).values({
+            scopeKey: scope.value.scopeKey,
+            city: scope.value.presence.city,
+            floorNumber: scope.value.presence.floorNumber,
+            room: object.room,
+            objectId: object.id,
+            orgId: scope.value.orgId,
+            ownerUserId: scope.value.ownerUserId,
+            updatedByUserId: link.userId,
+            physicsX: target.x,
+            physicsY: target.y,
+            lastCleanedAt: now,
+            lastMaintainedAt: now,
+          }).onConflictDoNothing({
+            target: [desktopBuildingObjectStatesTable.scopeKey, desktopBuildingObjectStatesTable.objectId],
+          }).returning();
+          if (!created) throw new Error("1999_TERMINAL_ALREADY_PLACED");
+          return { state: serializeBuildingObject(object, scope.value.presence.floorNumber, created) };
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === "1999_TERMINAL_ALREADY_PLACED") {
+          res.status(409).json({ error: "A 1999 terminal is already placed in this office" });
+          return;
+        }
+        throw error;
+      }
+      if ("error" in placementResult) {
+        res.status(placementResult.status).json({ error: placementResult.error });
+        return;
+      }
+      res.json(placementResult);
+      return;
+    }
+    if (object.id === NINETEEN_NINETY_NINE_TERMINAL_ID) {
+      const [placedTerminal] = await db.select({ id: desktopBuildingObjectStatesTable.id })
+        .from(desktopBuildingObjectStatesTable)
+        .where(and(
+          eq(desktopBuildingObjectStatesTable.scopeKey, scope.value.scopeKey),
+          eq(desktopBuildingObjectStatesTable.objectId, NINETEEN_NINETY_NINE_TERMINAL_ID),
+        ))
+        .limit(1);
+      if (!placedTerminal) {
+        res.status(404).json({ error: "Place a 1999 terminal before changing its position" });
+        return;
+      }
     }
     const actionResult = await db.transaction(async (tx) => {
       const now = new Date();

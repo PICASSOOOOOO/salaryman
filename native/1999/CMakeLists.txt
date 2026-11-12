@@ -31,6 +31,8 @@ juce_add_plugin(SALARYMAN1999
   COPY_PLUGIN_AFTER_BUILD FALSE
 )
 
+juce_generate_juce_header(SALARYMAN1999)
+
 target_sources(SALARYMAN1999 PRIVATE
   src/PluginProcessor.cpp
   src/PluginEditor.cpp
@@ -47,6 +49,18 @@ target_link_libraries(SALARYMAN1999 PRIVATE
   juce::juce_dsp
   PUBLIC
   juce::juce_recommended_config_flags
-  juce::juce_recommended_lto_flags
   juce::juce_recommended_warning_flags
 )
+
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(1999_native_smoke tests/NativeSmoke.cpp)
+  target_compile_features(1999_native_smoke PRIVATE cxx_std_17)
+  target_include_directories(1999_native_smoke PRIVATE
+    src
+    "${CMAKE_CURRENT_BINARY_DIR}/SALARYMAN1999_artefacts/JuceLibraryCode"
+    "${juce_SOURCE_DIR}/modules"
+  )
+  target_link_libraries(1999_native_smoke PRIVATE SALARYMAN1999)
+  add_test(NAME 1999_native_smoke COMMAND 1999_native_smoke)
+endif()

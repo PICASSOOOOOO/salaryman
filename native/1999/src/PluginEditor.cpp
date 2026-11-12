@@ -24,7 +24,7 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
   setResizable(true, true);
   setResizeLimits(900, 620, 1500, 980);
   playButton.setClickingTogglesState(true);
-  playButton.setColour(juce::TextButton::buttonColourId, panel);
+  playButton.setColour(juce::TextButton::buttonColourId, juce::Colour(panel));
   playButton.onClick = [this] {
     const auto playing = playButton.getToggleState();
     processor_.setSequencerPlaying(playing);
@@ -33,7 +33,7 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
   addAndMakeVisible(playButton);
 
   for (auto* button : { &exportButton, &importButton }) {
-    button->setColour(juce::TextButton::buttonColourId, panel);
+    button->setColour(juce::TextButton::buttonColourId, juce::Colour(panel));
     addAndMakeVisible(*button);
   }
   exportButton.onClick = [this] { exportProject(); };
@@ -47,7 +47,7 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
   for (int track = 0; track < Salaryman1999AudioProcessor::trackCount; ++track) {
     auto& label = trackLabels_[static_cast<size_t>(track)];
     label.setText(Salaryman1999AudioProcessor::defaultTrackNames[static_cast<size_t>(track)], juce::dontSendNotification);
-    label.setColour(juce::Label::textColourId, cream);
+    label.setColour(juce::Label::textColourId, juce::Colour(cream));
     label.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
     addAndMakeVisible(label);
 
@@ -68,8 +68,8 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
       auto button = std::make_unique<juce::TextButton>(juce::String(step + 1));
       button->setClickingTogglesState(true);
       button->setToggleState(processor_.stepIsOn(track, step), juce::dontSendNotification);
-      button->setColour(juce::TextButton::buttonColourId, panel);
-      button->setColour(juce::TextButton::buttonOnColourId, dimGreen);
+      button->setColour(juce::TextButton::buttonColourId, juce::Colour(panel));
+      button->setColour(juce::TextButton::buttonOnColourId, juce::Colour(dimGreen));
       button->onClick = [this, track, step, raw = button.get()] {
         processor_.setStep(track, step, raw->getToggleState());
       };
@@ -86,16 +86,16 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
   for (const auto& [labelText, parameterId] : specs) {
     auto label = std::make_unique<juce::Label>();
     label->setText(labelText, juce::dontSendNotification);
-    label->setColour(juce::Label::textColourId, green);
+    label->setColour(juce::Label::textColourId, juce::Colour(green));
     label->setFont(juce::Font(juce::FontOptions(11.0f, juce::Font::bold)));
     addAndMakeVisible(*label);
     sliderLabels_.push_back(std::move(label));
 
     auto slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow);
-    slider->setColour(juce::Slider::rotarySliderFillColourId, green);
-    slider->setColour(juce::Slider::thumbColourId, cream);
-    slider->setColour(juce::Slider::textBoxTextColourId, cream);
-    slider->setColour(juce::Slider::textBoxOutlineColourId, dimGreen);
+    slider->setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(green));
+    slider->setColour(juce::Slider::thumbColourId, juce::Colour(cream));
+    slider->setColour(juce::Slider::textBoxTextColourId, juce::Colour(cream));
+    slider->setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(dimGreen));
     addAndMakeVisible(*slider);
     attachments_.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
       processor_.parameters, parameterId, *slider));
@@ -169,8 +169,15 @@ void Salaryman1999AudioProcessorEditor::resized() {
 void Salaryman1999AudioProcessorEditor::timerCallback() {
   const auto activeStep = processor_.isSequencerPlaying() ? processor_.currentStep() : -1;
   for (int track = 0; track < Salaryman1999AudioProcessor::trackCount; ++track) {
+    const auto recordingTrack = processor_.isRecordingTrack(track);
+    trackLabels_[static_cast<size_t>(track)].setText(
+      recordingTrack ? "REC " + juce::String(track + 1)
+                     : Salaryman1999AudioProcessor::defaultTrackNames[static_cast<size_t>(track)],
+      juce::dontSendNotification);
+    machineBoxes_[static_cast<size_t>(track)].setEnabled(!recordingTrack);
     for (int step = 0; step < Salaryman1999AudioProcessor::stepCount; ++step) {
       auto* button = stepButtons_[static_cast<size_t>(track)][static_cast<size_t>(step)].get();
+      button->setEnabled(!recordingTrack);
       button->setToggleState(processor_.stepIsOn(track, step), juce::dontSendNotification);
       button->setColour(juce::TextButton::textColourOffId,
         step == activeStep ? juce::Colour(0xfff6f5e8) : juce::Colour(green));

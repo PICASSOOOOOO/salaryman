@@ -207,6 +207,7 @@ export const ITEM_CATALOG: CatalogItem[] = [
   fiatOnly({ id: "furn_couch", type: "furniture", name: "Leather Couch", blurb: "Close deals in comfort.", techTier: 1, rarity: "common", equipSlot: null, stats: {}, priceFiat: 8000, icon: "🛋️" }),
   fiatOnly({ id: "furn_boardroom", type: "furniture", name: "Glass Boardroom Table", blurb: "Power radiates from it.", techTier: 2, rarity: "expensive", equipSlot: null, stats: {}, priceFiat: 26000, icon: "🪟" }),
   fiatOnly({ id: "furn_server_rack", type: "furniture", name: "Private Server Rack", blurb: "Your own metal.", techTier: 3, rarity: "rare", equipSlot: null, stats: {}, priceFiat: 75000, icon: "🖥️" }),
+  fiatOnly({ id: "furn_1999_terminal", type: "furniture", name: "1999 Workstation Terminal", blurb: "A placeable 16-step music workstation with a tape recorder.", techTier: 5, rarity: "legendary", equipSlot: null, stats: {}, priceFiat: 1999999, icon: "🎛️" }),
 
   // ─── DECOR (placed — not equippable; flex) ───────────────────────────────
   fiatOnly({ id: "decor_neon", type: "decor", name: "Neon Sign Pack", blurb: "Light up your HQ.", techTier: 1, rarity: "common", equipSlot: null, stats: {}, priceFiat: 4500, icon: "🌃" }),

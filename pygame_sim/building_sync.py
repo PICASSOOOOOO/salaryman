@@ -295,7 +295,7 @@ class DesktopBuildingSync:
         return True
 
     def queue_physics_action(self, object_id: str, action: str) -> bool:
-        if self.link is None or action not in {"move", "rotate", "damage", "ignite", "extinguish"} or not object_id:
+        if self.link is None or action not in {"move", "rotate", "damage", "ignite", "extinguish", "place"} or not object_id:
             return False
         if self._active_action is not None or not self._actions.empty():
             return False
