@@ -22,6 +22,36 @@ describe("1999 project data validation", () => {
     expect(parseNineteenNinetyNineProject(JSON.stringify(validProject))).toEqual(validProject);
   });
 
+  it("preserves valid shared master-effect settings and rejects invalid ranges", () => {
+    const lofiFx = {
+      enabled: true,
+      input: 100,
+      output: 100,
+      mix: 72,
+      filter: 45,
+      bits: 12,
+      rate: 24_000,
+      drive: 18,
+      alias: 40,
+      noise: 8,
+      drunk: 5,
+      character: 20,
+      bassBoost: true,
+      bassFrequency: 120,
+      stereoMode: "stereo",
+    };
+    expect(parseNineteenNinetyNineProject(JSON.stringify({ ...validProject, lofiFx })))
+      .toMatchObject({ lofiFx });
+    expect(parseNineteenNinetyNineProject(JSON.stringify({
+      ...validProject,
+      lofiFx: { ...lofiFx, bits: 10 },
+    }))).toBeNull();
+    expect(parseNineteenNinetyNineProject(JSON.stringify({
+      ...validProject,
+      lofiFx: { ...lofiFx, rate: 120 },
+    }))).toBeNull();
+  });
+
   it("rejects malformed JSON, unsupported machines, and invalid tempo", () => {
     expect(parseNineteenNinetyNineProject("{")).toBeNull();
     expect(parseNineteenNinetyNineProject(JSON.stringify({

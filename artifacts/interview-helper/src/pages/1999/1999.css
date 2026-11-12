@@ -181,6 +181,26 @@
 .n-tape-reel { width: 8px; height: 8px; border: 1px solid currentColor; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .4); }
 .n-tape-label { overflow: hidden; font: 6px var(--font-mono, monospace); letter-spacing: .04em; text-overflow: ellipsis; white-space: nowrap; }
 .n-tape-splice { height: 5px; border-right: 1px solid currentColor; border-left: 1px solid currentColor; opacity: .65; }
+.n-lofi-panel summary { display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 0 11px; cursor: pointer; list-style: none; }
+.n-lofi-panel summary::-webkit-details-marker { display: none; }
+.n-lofi-panel summary::after { content: "+"; color: var(--n-muted); font: 11px var(--font-mono, monospace); }
+.n-lofi-panel details[open] summary::after { content: "−"; color: var(--n-acid); }
+.n-lofi-panel details[open] summary { border-bottom: 1px solid var(--n-line); }
+.n-lofi-state { color: var(--n-muted); font: 8px var(--font-mono, monospace); letter-spacing: .08em; }
+.n-lofi-state.is-on { color: var(--n-acid); }
+.n-lofi-body { display: grid; gap: 10px; }
+.n-lofi-topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.n-lofi-enable { display: inline-flex; align-items: center; gap: 6px; color: var(--n-muted); font: 700 8px var(--font-mono, monospace); letter-spacing: .08em; }
+.n-lofi-enable input { margin: 0; accent-color: var(--n-acid); }
+.n-lofi-preset, .n-lofi-mode { display: inline-flex; align-items: center; gap: 6px; color: var(--n-muted); font: 700 8px var(--font-mono, monospace); letter-spacing: .06em; }
+.n-lofi-preset select, .n-lofi-mode select, .n-lofi-control select { min-height: 28px; padding: 0 6px; border: 1px solid var(--n-line); border-radius: 0; background: #111618; color: var(--n-ink); font: 8px var(--font-mono, monospace); }
+.n-lofi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.n-lofi-control { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 6px; color: var(--n-muted); font: 700 7px var(--font-mono, monospace); letter-spacing: .06em; }
+.n-lofi-control output { color: var(--n-ink); font: 8px var(--font-mono, monospace); text-align: right; }
+.n-lofi-control input[type="range"] { width: 100%; min-width: 0; grid-column: 1 / -1; margin: 2px 0; accent-color: var(--n-acid); }
+.n-lofi-control select { width: 100%; grid-column: 1 / -1; }
+.n-lofi-bottom { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 8px 12px; padding-top: 8px; border-top: 1px solid var(--n-line); }
+.n-lofi-bottom .n-lofi-mode { grid-column: 1 / -1; justify-content: space-between; }
 
 @media (max-width: 980px) {
   .n-workspace { grid-template-columns: minmax(0, 1fr) minmax(340px, 400px); }

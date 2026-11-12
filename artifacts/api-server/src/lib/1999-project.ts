@@ -22,6 +22,23 @@ export type NineteenNinetyNineProject = {
       sizeBytes: number;
     }>>;
   };
+  lofiFx?: {
+    enabled: boolean;
+    input: number;
+    output: number;
+    mix: number;
+    filter: number;
+    bits: 4 | 8 | 12 | 16;
+    rate: number;
+    drive: number;
+    alias: number;
+    noise: number;
+    drunk: number;
+    character: number;
+    bassBoost: boolean;
+    bassFrequency: number;
+    stereoMode: "mono" | "stereo";
+  };
   tracks: Array<{
     id: string;
     name: string;
@@ -43,6 +60,20 @@ export type NineteenNinetyNineProject = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isLofiFxSettings(value: unknown): value is NonNullable<NineteenNinetyNineProject["lofiFx"]> {
+  if (!isRecord(value)) return false;
+  const percentValues = [value.mix, value.filter, value.drive, value.alias, value.noise, value.drunk, value.character];
+  return typeof value.enabled === "boolean"
+    && Number.isInteger(value.input) && Number(value.input) >= 0 && Number(value.input) <= 150
+    && Number.isInteger(value.output) && Number(value.output) >= 0 && Number(value.output) <= 150
+    && percentValues.every(item => Number.isInteger(item) && Number(item) >= 0 && Number(item) <= 100)
+    && [4, 8, 12, 16].includes(Number(value.bits))
+    && Number.isInteger(value.rate) && Number(value.rate) >= 4_000 && Number(value.rate) <= 48_000
+    && typeof value.bassBoost === "boolean"
+    && Number.isInteger(value.bassFrequency) && Number(value.bassFrequency) >= 20 && Number(value.bassFrequency) <= 500
+    && (value.stereoMode === "mono" || value.stereoMode === "stereo");
 }
 
 function isProjectTrack(value: unknown): value is NineteenNinetyNineProject["tracks"][number] {
@@ -136,6 +167,7 @@ export function parseNineteenNinetyNineProject(content: unknown) {
       || Number(parsed.bpm) > 240
       || !Array.isArray(parsed.tracks)
       || parsed.tracks.length > 8
+      || (parsed.lofiFx !== undefined && !isLofiFxSettings(parsed.lofiFx))
       || (parsed.emulatorState !== undefined && !isEmulatorState(parsed.emulatorState))
       || !parsed.tracks.every(isProjectTrack)) {
       return null;

@@ -6,6 +6,8 @@ import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import Fm1EmulatorPanel, { type EmulatorPatchSave } from "@/components/Fm1EmulatorPanel";
 import MinimoogEmulatorPanel from "@/components/MinimoogEmulatorPanel";
 import { createRegionSlices, detectRootNote, findTransientSlices, noteNameForMidi } from "./sampler-chops";
+import LofiFxPanel from "./LofiFxPanel";
+import { DEFAULT_LOFI_FX, isLofiFxSettings, type LofiFxSettings } from "./lofi-fx";
 import "./1999.css";
 import "./EmulatorPanels.css";
 
@@ -46,7 +48,7 @@ type ProjectTrack = {
   samplerPads?: SamplerPad[];
   padPatterns?: number[][];
 };
-type Project = { schemaVersion: 1; name: string; bpm: number; key: ProjectKey; timeSignature: TimeSignature; tracks: ProjectTrack[]; emulatorState: EmulatorState };
+type Project = { schemaVersion: 1; name: string; bpm: number; key: ProjectKey; timeSignature: TimeSignature; tracks: ProjectTrack[]; emulatorState: EmulatorState; lofiFx: LofiFxSettings };
 type VaultEntry = { id: number; title: string; content: string; entryType: string; tags: string[]; folder: string; updatedAt: string };
 type SaveState = "loading" | "saved" | "saving" | "unsaved" | "guest" | "error" | "conflict";
 type MidiOutputPort = {
@@ -134,6 +136,7 @@ const freshProject = (): Project => ({
   key: "C",
   timeSignature: "4/4",
   emulatorState: { firmwareIds: {}, patchSaves: {} },
+  lofiFx: { ...DEFAULT_LOFI_FX },
   tracks: [
     { id: "trk-1", name: "Pulse", kind: "instrument", machineId: "op1", steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 72, soundState: { tone: 72, decayMs: 240 } },
     { id: "trk-2", name: "Low end", kind: "instrument", machineId: "fm1", steps: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], audioTrackId: null, muted: false, volume: 66, soundState: { tone: 48, decayMs: 420 } },
@@ -210,6 +213,7 @@ function parseProject(content: string): Project | null {
       || !Number.isInteger(candidate.bpm) || Number(candidate.bpm) < 40 || Number(candidate.bpm) > 240
       || (candidate.key !== undefined && !projectKeys.includes(candidate.key))
       || (candidate.timeSignature !== undefined && !timeSignatures.includes(candidate.timeSignature))
+      || (candidate.lofiFx !== undefined && !isLofiFxSettings(candidate.lofiFx))
       || !Array.isArray(candidate.tracks) || candidate.tracks.length > 8) return null;
     const validTracks = candidate.tracks.every((track) => {
       if (!track || typeof track !== "object") return false;
@@ -265,6 +269,7 @@ function parseProject(content: string): Project | null {
       timeSignature: candidate.timeSignature ?? "4/4",
       tracks,
       emulatorState: candidate.emulatorState ?? { firmwareIds: {}, patchSaves: {} },
+      lofiFx: candidate.lofiFx ?? { ...DEFAULT_LOFI_FX },
     };
   } catch { return null; }
 }
@@ -340,7 +345,15 @@ function scaleFrequencyForMachine(machineId: MachineId, stepIndex: number, key: 
   return 440 * Math.pow(2, (rootMidi + majorScale[stepIndex % majorScale.length] - 69) / 12);
 }
 
-function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, stepIndex: number, atTime: number, key: ProjectKey, velocity = 100) {
+function scheduleSynthVoice(
+  context: BaseAudioContext,
+  track: ProjectTrack,
+  stepIndex: number,
+  atTime: number,
+  key: ProjectKey,
+  velocity = 100,
+  output: AudioNode = context.destination,
+) {
   const wave: Record<MachineId, OscillatorType> = {
     op1: "triangle",
     sp404mkii: "square",
@@ -366,7 +379,7 @@ function scheduleSynthVoice(context: BaseAudioContext, track: ProjectTrack, step
   gain.gain.exponentialRampToValueAtTime(0.0001, atTime + decaySeconds);
   oscillator.connect(filter);
   filter.connect(gain);
-  gain.connect(context.destination);
+  gain.connect(output);
   oscillator.start(atTime);
   oscillator.stop(atTime + decaySeconds + 0.03);
 }
@@ -379,6 +392,7 @@ function scheduleSamplerPad(
   atTime: number,
   key: ProjectKey,
   velocity = 127,
+  destination: AudioNode = context.destination,
 ) {
   const startSec = Math.min(buffer.duration, Math.max(0, pad.startSec));
   const requestedEnd = pad.endSec > startSec ? pad.endSec : buffer.duration;
@@ -410,7 +424,7 @@ function scheduleSamplerPad(
     delay.connect(wet);
     wet.connect(output);
   }
-  output.connect(context.destination);
+  output.connect(destination);
   source.start(atTime, startSec, endSec - startSec);
   return source;
 }
@@ -431,6 +445,45 @@ function scheduleMidiNote(
   const timestamp = performance.now() + Math.max(0, (atTime - context.currentTime) * 1000);
   output.send([0x90 + channel, note, velocity], timestamp);
   output.send([0x80 + channel, note, 0], timestamp + Math.max(80, Math.min(800, track.soundState.decayMs)));
+}
+
+type MasterLofiBus = { input: AudioNode; processor: AudioWorkletNode | null };
+const lofiWorkletModules = new WeakMap<BaseAudioContext, Promise<void>>();
+const lofiWorkletNodes = new WeakMap<BaseAudioContext, AudioWorkletNode>();
+
+async function getMasterLofiBus(context: BaseAudioContext, settings: LofiFxSettings): Promise<MasterLofiBus> {
+  if (!settings.enabled) return { input: context.destination, processor: null };
+  if (!context.audioWorklet || typeof AudioWorkletNode === "undefined") {
+    throw new Error("Master lo-fi effects require a browser with AudioWorklet support.");
+  }
+  let processor = lofiWorkletNodes.get(context);
+  if (!processor) {
+    let modulePromise = lofiWorkletModules.get(context);
+    if (!modulePromise) {
+      const moduleUrl = new URL(`${import.meta.env.BASE_URL}1999-lofi-processor.js`, window.location.href);
+      modulePromise = context.audioWorklet.addModule(moduleUrl.href);
+      lofiWorkletModules.set(context, modulePromise);
+    }
+    try {
+      await modulePromise;
+    } catch (error) {
+      lofiWorkletModules.delete(context);
+      throw new Error(error instanceof Error ? `Master lo-fi processor failed to load: ${error.message}` : "Master lo-fi processor failed to load.");
+    }
+    const channelCount = Math.max(1, Math.min(2, context.destination.channelCount || 2));
+    processor = new AudioWorkletNode(context, "salaryman-1999-lofi", {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [channelCount],
+      channelCount,
+      channelCountMode: "explicit",
+      processorOptions: { params: settings },
+    });
+    processor.connect(context.destination);
+    lofiWorkletNodes.set(context, processor);
+  }
+  processor.port.postMessage({ type: "params", params: settings });
+  return { input: processor, processor };
 }
 
 function sendMidiAllNotesOff(output: MidiOutputPort) {
@@ -484,12 +537,13 @@ async function renderWav(project: Project): Promise<Blob> {
   const samplerTail = Math.max(0, ...samplerDurations);
   const seconds = Math.min(90, Math.max(loopSeconds + samplerTail, ...clipDurationsAtSessionTempo));
   const context = new OfflineAudioContext(1, Math.ceil(seconds * sampleRate), sampleRate);
+  const masterLofi = await getMasterLofiBus(context, project.lofiFx);
   project.tracks.forEach(track => {
     if (track.muted) return;
     if (track.kind === "recording" && track.audioTrackId !== null) {
       const gain = context.createGain();
       gain.gain.value = track.volume / 100;
-      gain.connect(context.destination);
+      gain.connect(masterLofi.input);
       recordingAudioTrackIds(track).forEach(audioTrackId => {
         const audio = clipBuffers.get(audioTrackId);
         if (!audio) return;
@@ -511,13 +565,13 @@ async function renderWav(project: Project): Promise<Blob> {
           if (!pad || !buffer) return;
           steps.forEach((stepValue, stepIndex) => {
             const velocity = normalizeStepVelocity(stepValue);
-            if (velocity) scheduleSamplerPad(context, track, pad, buffer, stepTime(stepIndex), project.key, velocity);
+            if (velocity) scheduleSamplerPad(context, track, pad, buffer, stepTime(stepIndex), project.key, velocity, masterLofi.input);
           });
         });
       } else {
         track.steps.forEach((stepValue, stepIndex) => {
           const velocity = normalizeStepVelocity(stepValue);
-          if (velocity) scheduleSynthVoice(context, track, stepIndex, stepTime(stepIndex), project.key, velocity);
+          if (velocity) scheduleSynthVoice(context, track, stepIndex, stepTime(stepIndex), project.key, velocity, masterLofi.input);
         });
       }
     }
@@ -588,6 +642,7 @@ export default function Salaryman1999() {
   const recordingStartTimerRef = useRef<number | null>(null);
   const recordingStopTimerRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const masterLofiProcessorRef = useRef<AudioWorkletNode | null>(null);
   const clipBufferCacheRef = useRef<Map<number, AudioBuffer>>(new Map());
   const playbackSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const playbackSourcesByTrackRef = useRef<Map<string, AudioBufferSourceNode[]>>(new Map());
@@ -715,6 +770,10 @@ export default function Salaryman1999() {
       setSaveState("guest");
     }
   }, [isAuthenticated, project]);
+
+  useEffect(() => {
+    masterLofiProcessorRef.current?.port.postMessage({ type: "params", params: project.lofiFx });
+  }, [project.lofiFx]);
 
   const requestSignInToSave = useCallback((draft?: Project) => {
     if (draft) {
@@ -990,6 +1049,8 @@ export default function Salaryman1999() {
       const context = audioContextRef.current ?? new AudioContextClass();
       audioContextRef.current = context;
       await context.resume();
+      const masterLofi = await getMasterLofiBus(context, projectRef.current.lofiFx);
+      masterLofiProcessorRef.current = masterLofi.processor;
       const audioTrackIds = recordingAudioTrackIds(track);
       if (!audioTrackIds.length) throw new Error("This loop has no audio takes to preview.");
       const buffers = await Promise.all(audioTrackIds.map(async audioTrackId => {
@@ -1005,7 +1066,7 @@ export default function Salaryman1999() {
 
       const gain = context.createGain();
       gain.gain.value = track.muted ? 0 : track.volume / 100;
-      gain.connect(context.destination);
+      gain.connect(masterLofi.input);
       let remaining = buffers.length;
       const sources = buffers.map(buffer => {
         const source = context.createBufferSource();
@@ -1325,7 +1386,9 @@ export default function Salaryman1999() {
       await context.resume();
       const buffer = await loadAudioBuffer(context, pad.audioTrackId, clipBufferCacheRef.current);
       if (generation !== samplerPreviewGenerationRef.current) return;
-      const source = scheduleSamplerPad(context, track, pad, buffer, context.currentTime + 0.02, projectRef.current.key);
+      const masterLofi = await getMasterLofiBus(context, projectRef.current.lofiFx);
+      masterLofiProcessorRef.current = masterLofi.processor;
+      const source = scheduleSamplerPad(context, track, pad, buffer, context.currentTime + 0.02, projectRef.current.key, 127, masterLofi.input);
       if (!source) return;
       source.onended = () => {
         if (generation !== samplerPreviewGenerationRef.current) return;
@@ -1370,6 +1433,8 @@ export default function Salaryman1999() {
       const currentTrack = projectRef.current.tracks.find(candidate => candidate.id === track.id);
       const currentPad = currentTrack?.samplerPads?.[padIndex];
       if (!currentTrack || !usesSamplerPads(currentTrack.machineId) || currentPad?.audioTrackId !== pad.audioTrackId) return;
+      const masterLofi = await getMasterLofiBus(context, projectRef.current.lofiFx);
+      masterLofiProcessorRef.current = masterLofi.processor;
       const source = scheduleSamplerPad(
         context,
         currentTrack,
@@ -1378,6 +1443,7 @@ export default function Salaryman1999() {
         context.currentTime + 0.01,
         projectRef.current.key,
         velocity,
+        masterLofi.input,
       );
       if (!source) {
         setMidiInputStatus(`PAD ${String(padIndex + 1).padStart(2, "0")} has an invalid sample trim.`);
@@ -1551,6 +1617,8 @@ export default function Salaryman1999() {
       for (const audioTrackId of new Set([...recordingAudioIds, ...samplerAudioIds])) {
         await loadAudioBuffer(context, audioTrackId, clipBufferCacheRef.current);
       }
+      const masterLofi = await getMasterLofiBus(context, projectRef.current.lofiFx);
+      masterLofiProcessorRef.current = masterLofi.processor;
       const startsAt = context.currentTime + 0.04;
       playbackSourcesRef.current = [];
       playbackSourcesByTrackRef.current.clear();
@@ -1560,7 +1628,7 @@ export default function Salaryman1999() {
         if (!audioTrackIds.length) return;
         const gain = context.createGain();
         gain.gain.value = track.muted ? 0 : track.volume / 100;
-        gain.connect(context.destination);
+        gain.connect(masterLofi.input);
         const trackSources: AudioBufferSourceNode[] = [];
         audioTrackIds.forEach(audioTrackId => {
           const audio = clipBufferCacheRef.current.get(audioTrackId);
@@ -1595,7 +1663,7 @@ export default function Salaryman1999() {
                 const pad = track.samplerPads?.[padIndex];
                 const buffer = pad?.audioTrackId === null ? undefined : clipBufferCacheRef.current.get(pad?.audioTrackId ?? -1);
                 if (velocity && pad && buffer) {
-                  const source = scheduleSamplerPad(context, track, pad, buffer, nextStepTimeRef.current, snapshot.key, velocity);
+                  const source = scheduleSamplerPad(context, track, pad, buffer, nextStepTimeRef.current, snapshot.key, velocity, masterLofi.input);
                   if (source) {
                     source.onended = () => {
                       playbackSourcesRef.current = playbackSourcesRef.current.filter(item => item !== source);
@@ -1608,7 +1676,7 @@ export default function Salaryman1999() {
             }
             const stepVelocity = normalizeStepVelocity(track.steps[stepIndex]);
             if (stepVelocity) {
-              scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current, snapshot.key, stepVelocity);
+              scheduleSynthVoice(context, track, stepIndex, nextStepTimeRef.current, snapshot.key, stepVelocity, masterLofi.input);
               if (midiOutput) {
                 try {
                   scheduleMidiNote(midiOutput, track, trackIndex, stepIndex, context, nextStepTimeRef.current, snapshot.key, stepVelocity);
@@ -2220,6 +2288,12 @@ export default function Salaryman1999() {
                 </div>
               ) : <div className="n-empty">NO TRACK SELECTED</div>}
             </section>
+
+            <LofiFxPanel
+              value={project.lofiFx}
+              disabled={wavBusy || vaultMixBusy}
+              onChange={lofiFx => updateProject(current => ({ ...current, lofiFx }))}
+            />
 
             <section className="n-panel" aria-label="MIDI output" data-testid="section-midi-output">
               <div className="n-panel-head"><p className="n-eyebrow">MIDI OUT</p><span className="n-subtle">VST3</span></div>

@@ -69,10 +69,21 @@ const audioSources: any[] = [];
 const audioGains: any[] = [];
 const offlineSources: any[] = [];
 const offlineGains: any[] = [];
+const lofiWorkletNodes: any[] = [];
+const lofiWorkletModuleUrls: string[] = [];
+
+class FakeAudioWorkletNode {
+  readonly port = { postMessage: vi.fn() };
+  readonly connect = vi.fn();
+  constructor(readonly context: any, readonly processorName: string, readonly options: any) {
+    lofiWorkletNodes.push(this);
+  }
+}
 
 class FakeAudioContext {
   currentTime = 0;
-  destination = {};
+  destination = { channelCount: 2 };
+  audioWorklet = { addModule: vi.fn(async (url: string) => { lofiWorkletModuleUrls.push(url); }) };
   async resume() {}
   async close() {}
   async decodeAudioData() { return { duration: 1 } as AudioBuffer; }
@@ -117,7 +128,8 @@ class FakeAudioContext {
 }
 
 class FakeOfflineAudioContext {
-  destination = {};
+  destination = { channelCount: 1 };
+  audioWorklet = { addModule: vi.fn(async (url: string) => { lofiWorkletModuleUrls.push(url); }) };
   constructor(_channels: number, private readonly length: number, _sampleRate: number) {}
   createBufferSource() {
     const playbackRate = {
@@ -222,6 +234,8 @@ beforeEach(() => {
   audioGains.length = 0;
   offlineSources.length = 0;
   offlineGains.length = 0;
+  lofiWorkletNodes.length = 0;
+  lofiWorkletModuleUrls.length = 0;
   h.music.tracks = [
     { id: 501, title: "1999 take", artist: "SALARYMAN 1999", mimeType: "audio/webm", durationSec: 5, objectPath: "/objects/test/501" },
     { id: 502, title: "Overdub one", artist: "SALARYMAN 1999", mimeType: "audio/webm", durationSec: 5, objectPath: "/objects/test/502" },
@@ -266,6 +280,7 @@ beforeEach(() => {
   });
   vi.stubGlobal("AudioContext", FakeAudioContext);
   vi.stubGlobal("OfflineAudioContext", FakeOfflineAudioContext);
+  vi.stubGlobal("AudioWorkletNode", FakeAudioWorkletNode);
   vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
   vi.stubGlobal("confirm", vi.fn(() => true));
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
@@ -629,6 +644,39 @@ describe("1999 recorded-loop persistence", () => {
     const exportedPadSources = offlineSources.filter(source => source.start.mock.calls.some((args: number[]) => args.length === 3));
     expect(exportedPadSources.length).toBeGreaterThan(0);
     expect(exportedPadSources[0].playbackRate.value).toBeCloseTo(3);
+  });
+
+  it("persists one shared lo-fi master effect and routes playback and WAV through it", async () => {
+    await mount();
+    click("summary-lofi-fx");
+    setValue("select-lofi-preset", "dust", "change");
+    await flush();
+    await act(async () => {
+      (container.querySelector('[data-testid="button-save-project"]') as HTMLButtonElement).click();
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+
+    const put = h.apiFetch.mock.calls.find(([path, init]) => path === "/api/vault/entries/77" && init?.method === "PUT");
+    expect(put).toBeDefined();
+    const saved = JSON.parse(JSON.parse(String(put![1].body)).content);
+    expect(saved.lofiFx).toMatchObject({ enabled: true, mix: 78, bits: 12, rate: 24_000, noise: 8 });
+
+    click("button-toggle-playback");
+    await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 35)); });
+    await flush();
+    const liveProcessor = lofiWorkletNodes[0];
+    expect(liveProcessor.processorName).toBe("salaryman-1999-lofi");
+    expect(liveProcessor.options.processorOptions.params).toMatchObject({ enabled: true, bits: 12, rate: 24_000 });
+    expect(audioGains.some(gain => gain.connect.mock.calls.some(([target]: [unknown]) => target === liveProcessor))).toBe(true);
+    expect(lofiWorkletModuleUrls[0]).toContain("1999-lofi-processor.js");
+    click("button-toggle-playback");
+
+    click("button-export-wav");
+    await flush();
+    expect(lofiWorkletNodes).toHaveLength(2);
+    expect(lofiWorkletNodes[1].context).toBeInstanceOf(FakeOfflineAudioContext);
+    expect(lofiWorkletNodes[1].options.processorOptions.params).toMatchObject({ enabled: true, bits: 12, rate: 24_000 });
+    expect(lofiWorkletNodes[1].connect).toHaveBeenCalledWith(lofiWorkletNodes[1].context.destination);
   });
 
   it("keeps legacy active sampler steps at their previous default velocity", async () => {
