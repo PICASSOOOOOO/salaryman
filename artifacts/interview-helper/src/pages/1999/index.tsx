@@ -86,6 +86,9 @@ const machines: { id: MachineId; name: string; descriptor: string }[] = [
   { id: "smk37", name: "SMK37", descriptor: "Keyboard sketch lane" },
   { id: "minimoog", name: "Minimoog Model D", descriptor: "Three-oscillator analog-style synth" },
 ];
+function usesSamplerPads(machineId: MachineId | undefined): boolean {
+  return machineId === "mpc_sample" || machineId === "sp404mkii";
+}
 const projectKeys: ProjectKey[] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const timeSignatures: TimeSignature[] = ["3/4", "4/4", "6/8"];
 const MIDI_INPUT_SETTINGS_KEY = "salaryman.1999-midi-input.v1";
@@ -250,7 +253,7 @@ function parseProject(content: string): Project | null {
       return {
         ...item,
         soundState: item.soundState ?? defaultSoundState(item.machineId),
-        ...(item.machineId === "mpc_sample" ? {
+        ...(usesSamplerPads(item.machineId) ? {
           samplerPads: item.samplerPads ?? createEmptySamplerPads(),
           padPatterns: item.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0)),
         } : {}),
@@ -308,7 +311,7 @@ function safeFilename(value: string) {
 }
 
 function baseFrequencyForMachine(machineId: MachineId) {
-  return machineId === "mpc_sample" ? 82
+  return machineId === "mpc_sample" || machineId === "sp404mkii" ? 82
     : machineId === "fm1" ? 110
       : machineId === "minimoog" ? 130.81
       : machineId === "korg_m1" ? 261.63
@@ -441,7 +444,7 @@ async function renderWav(project: Project): Promise<Blob> {
       if (track.muted) continue;
       const ids = track.kind === "recording"
         ? recordingAudioTrackIds(track)
-        : track.machineId === "mpc_sample"
+        : usesSamplerPads(track.machineId)
           ? (track.samplerPads ?? []).flatMap(pad => pad.audioTrackId === null ? [] : [pad.audioTrackId])
           : [];
       for (const audioTrackId of ids) {
@@ -461,7 +464,7 @@ async function renderWav(project: Project): Promise<Blob> {
     })
   ));
   const samplerDurations = project.tracks.flatMap(track => (
-    track.muted || track.machineId !== "mpc_sample" ? [] : (track.samplerPads ?? []).flatMap(pad => {
+    track.muted || !usesSamplerPads(track.machineId) ? [] : (track.samplerPads ?? []).flatMap(pad => {
       if (pad.audioTrackId === null) return [];
       const audio = clipBuffers.get(pad.audioTrackId);
       if (!audio) return [];
@@ -493,7 +496,7 @@ async function renderWav(project: Project): Promise<Blob> {
     }
     for (let bar = 0; bar < 4; bar += 1) {
       const stepTime = (stepIndex: number) => (60 / project.bpm) * beatsPerBar(project.timeSignature) * (bar + stepIndex / 16);
-      if (track.machineId === "mpc_sample") {
+      if (usesSamplerPads(track.machineId)) {
         (track.padPatterns ?? []).forEach((steps, padIndex) => {
           const pad = track.samplerPads?.[padIndex];
           const buffer = pad?.audioTrackId === null ? undefined : clipBuffers.get(pad?.audioTrackId ?? -1);
@@ -828,7 +831,7 @@ export default function Salaryman1999() {
 
   const selectedTrack = useMemo(() => project.tracks.find(track => track.id === selectedTrackId) ?? project.tracks[0], [project.tracks, selectedTrackId]);
   const isLoopPreviewActive = previewLoadingTrackId !== null || previewingTrackId !== null || samplerPreviewPadIndex !== null;
-  const selectedSamplerPad = selectedTrack?.machineId === "mpc_sample"
+  const selectedSamplerPad = usesSamplerPads(selectedTrack?.machineId)
     ? selectedTrack.samplerPads?.[selectedPadIndex]
     : undefined;
   const availableSamplerSamples = useMemo(() => libraryTracks.filter(track => (
@@ -837,7 +840,7 @@ export default function Salaryman1999() {
   )), [libraryTracks]);
   const selectedSamplerSample = availableSamplerSamples.find(sample => sample.id === selectedSamplerPad?.audioTrackId);
   const emptySamplerPadIndices = useMemo(() => {
-    if (selectedTrack?.machineId !== "mpc_sample") return [];
+    if (!usesSamplerPads(selectedTrack?.machineId)) return [];
     return (selectedTrack.samplerPads ?? createEmptySamplerPads()).flatMap((pad, index) => {
       const hasPattern = (selectedTrack.padPatterns?.[index] ?? []).some(Boolean);
       return index !== selectedPadIndex && pad.audioTrackId === null && !hasPattern ? [index] : [];
@@ -845,7 +848,7 @@ export default function Salaryman1999() {
   }, [selectedPadIndex, selectedTrack]);
   const selectedLoopBars = selectedTrack?.kind === "recording" ? selectedTrack.loopBars : undefined;
   const captureBarsForSelection = selectedLoopBars ?? loopBars;
-  const selectedMachineSteps = selectedTrack?.machineId === "mpc_sample"
+  const selectedMachineSteps = usesSamplerPads(selectedTrack?.machineId)
     ? selectedTrack.padPatterns?.[selectedPadIndex] ?? selectedTrack.steps
     : selectedTrack?.steps ?? [];
   useEffect(() => {
@@ -1143,7 +1146,7 @@ export default function Salaryman1999() {
     const trackId = selectedTrackId;
     const padIndex = selectedPadIndex;
     const track = projectRef.current.tracks.find(candidate => candidate.id === trackId);
-    if (!file || track?.machineId !== "mpc_sample") return;
+    if (!file || !usesSamplerPads(track?.machineId)) return;
     if (file.size < 1 || file.size > 100 * 1024 * 1024) {
       setLoadError("Choose an audio file smaller than 100 MB.");
       return;
@@ -1176,8 +1179,8 @@ export default function Salaryman1999() {
     const trackId = selectedTrackId;
     const padIndex = selectedPadIndex;
     const track = projectRef.current.tracks.find(candidate => candidate.id === trackId);
-    const sourcePad = track?.machineId === "mpc_sample" ? track.samplerPads?.[padIndex] : undefined;
-    if (!track || track.machineId !== "mpc_sample" || !sourcePad?.audioTrackId) return;
+    const sourcePad = usesSamplerPads(track?.machineId) ? track?.samplerPads?.[padIndex] : undefined;
+    if (!track || !usesSamplerPads(track.machineId) || !sourcePad?.audioTrackId) return;
 
     const freeIndices = (track.samplerPads ?? createEmptySamplerPads()).flatMap((pad, index) => (
       index !== padIndex && pad.audioTrackId === null && !(track.padPatterns?.[index] ?? []).some(Boolean) ? [index] : []
@@ -1211,7 +1214,7 @@ export default function Salaryman1999() {
       if (slices.length < 2) throw new Error("No clear transients found. Try Regions mode or lower sensitivity.");
 
       const latestTrack = projectRef.current.tracks.find(candidate => candidate.id === trackId);
-      const latestSource = latestTrack?.machineId === "mpc_sample" ? latestTrack.samplerPads?.[padIndex] : undefined;
+      const latestSource = usesSamplerPads(latestTrack?.machineId) ? latestTrack?.samplerPads?.[padIndex] : undefined;
       if (latestSource?.audioTrackId !== sourcePad.audioTrackId) {
         throw new Error("The selected sample changed. Select it again and retry.");
       }
@@ -1227,7 +1230,7 @@ export default function Salaryman1999() {
       )) return;
 
       updateTrack(trackId, current => {
-        if (current.machineId !== "mpc_sample" || current.samplerPads?.[padIndex]?.audioTrackId !== sourcePad.audioTrackId) return current;
+        if (!usesSamplerPads(current.machineId) || current.samplerPads?.[padIndex]?.audioTrackId !== sourcePad.audioTrackId) return current;
         const pads = current.samplerPads ?? createEmptySamplerPads();
         return {
           ...current,
@@ -1255,8 +1258,8 @@ export default function Salaryman1999() {
     const trackId = selectedTrackId;
     const padIndex = selectedPadIndex;
     const track = projectRef.current.tracks.find(candidate => candidate.id === trackId);
-    const sourcePad = track?.machineId === "mpc_sample" ? track.samplerPads?.[padIndex] : undefined;
-    if (!track || track.machineId !== "mpc_sample" || !sourcePad?.audioTrackId) return;
+    const sourcePad = usesSamplerPads(track?.machineId) ? track?.samplerPads?.[padIndex] : undefined;
+    if (!track || !usesSamplerPads(track.machineId) || !sourcePad?.audioTrackId) return;
 
     setIsDetectingRootNote(true);
     setRootNoteStatus("ANALYZING");
@@ -1280,7 +1283,7 @@ export default function Salaryman1999() {
         return;
       }
       const currentTrack = projectRef.current.tracks.find(candidate => candidate.id === trackId);
-      const currentPad = currentTrack?.machineId === "mpc_sample" ? currentTrack.samplerPads?.[padIndex] : undefined;
+      const currentPad = usesSamplerPads(currentTrack?.machineId) ? currentTrack?.samplerPads?.[padIndex] : undefined;
       if (currentPad?.audioTrackId !== sourcePad.audioTrackId) {
         throw new Error("The selected sample changed. Select it again and retry.");
       }
@@ -1297,7 +1300,7 @@ export default function Salaryman1999() {
   const previewSamplerPad = async (padIndex: number) => {
     const track = projectRef.current.tracks.find(candidate => candidate.id === selectedTrackId);
     setSelectedPadIndex(padIndex);
-    if (playingRef.current || isRecording || isUploadingTake || track?.machineId !== "mpc_sample") return;
+    if (!track || playingRef.current || isRecording || isUploadingTake || !usesSamplerPads(track.machineId)) return;
     stopLoopPreview();
     const generation = samplerPreviewGenerationRef.current;
     const pad = track.samplerPads?.[padIndex];
@@ -1328,8 +1331,8 @@ export default function Salaryman1999() {
   };
   const triggerMidiSamplerPad = useCallback(async (padIndex: number, velocity: number) => {
     const track = projectRef.current.tracks.find(candidate => candidate.id === selectedTrackId);
-    if (track?.kind !== "instrument" || track.machineId !== "mpc_sample") {
-      setMidiInputStatus("Select an MPC Sample lane to use MIDI pad input.");
+    if (track?.kind !== "instrument" || !usesSamplerPads(track.machineId)) {
+      setMidiInputStatus("Select an MPC Sample or SP-404MKII lane to use MIDI pad input.");
       return;
     }
     if (isRecording || isUploadingTake) {
@@ -1355,7 +1358,7 @@ export default function Salaryman1999() {
       const buffer = await loadAudioBuffer(context, pad.audioTrackId, clipBufferCacheRef.current);
       const currentTrack = projectRef.current.tracks.find(candidate => candidate.id === track.id);
       const currentPad = currentTrack?.samplerPads?.[padIndex];
-      if (!currentTrack || currentTrack.machineId !== "mpc_sample" || currentPad?.audioTrackId !== pad.audioTrackId) return;
+      if (!currentTrack || !usesSamplerPads(currentTrack.machineId) || currentPad?.audioTrackId !== pad.audioTrackId) return;
       const source = scheduleSamplerPad(
         context,
         currentTrack,
@@ -1530,7 +1533,7 @@ export default function Salaryman1999() {
       const recordingTracks = snapshot.tracks.filter(track => track.kind === "recording" && track.audioTrackId !== null);
       const recordingAudioIds = new Set(recordingTracks.flatMap(recordingAudioTrackIds));
       const samplerAudioIds = new Set(snapshot.tracks.flatMap(track => (
-        track.machineId === "mpc_sample"
+        usesSamplerPads(track.machineId)
           ? (track.samplerPads ?? []).flatMap(pad => pad.audioTrackId === null ? [] : [pad.audioTrackId])
           : []
       )));
@@ -1575,7 +1578,7 @@ export default function Salaryman1999() {
           const midiOutput = midiAccessRef.current?.outputs.get(selectedMidiOutputRef.current);
           snapshot.tracks.forEach((track, trackIndex) => {
             if (track.muted || track.kind !== "instrument") return;
-            if (track.machineId === "mpc_sample") {
+            if (usesSamplerPads(track.machineId)) {
               (track.padPatterns ?? []).forEach((pattern, padIndex) => {
                 const velocity = pattern[stepIndex];
                 const pad = track.samplerPads?.[padIndex];
@@ -1911,7 +1914,7 @@ export default function Salaryman1999() {
                     updateTrack(selectedTrack.id, track => ({
                       ...track,
                       machineId,
-                      ...(machineId === "mpc_sample" ? {
+                      ...(usesSamplerPads(machineId) ? {
                         samplerPads: track.samplerPads ?? createEmptySamplerPads(),
                         padPatterns: track.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0)),
                       } : {}),
@@ -1964,9 +1967,17 @@ export default function Salaryman1999() {
                   <div className="n-knob-row"><label htmlFor="track-tone">TONE</label><span className="n-knob-val">{selectedTrack.soundState.tone}</span><input id="track-tone" type="range" min="0" max="100" value={selectedTrack.soundState.tone} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, tone: Number(event.target.value) } }))} data-testid="input-track-tone" /></div>
                   <div className="n-knob-row"><label htmlFor="track-decay">DECAY</label><span className="n-knob-val">{selectedTrack.soundState.decayMs} ms</span><input id="track-decay" type="range" min="80" max="800" step="10" value={selectedTrack.soundState.decayMs} onChange={event => updateTrack(selectedTrack.id, track => ({ ...track, soundState: { ...track.soundState, decayMs: Number(event.target.value) } }))} data-testid="input-track-decay" /></div>
                 </div>
-                {selectedTrack.machineId === "mpc_sample" && (
-                  <div className="n-mpc-sampler" data-testid="panel-mpc-sampler">
-                    <div className="n-mpc-pad-grid" role="group" aria-label="MPC sample pads">
+                {usesSamplerPads(selectedTrack.machineId) && (
+                  <div
+                    className="n-mpc-sampler"
+                    data-testid={selectedTrack.machineId === "mpc_sample" ? "panel-mpc-sampler" : "panel-sp404-sampler"}
+                    aria-label={`${selectedTrack.machineId === "mpc_sample" ? "MPC Sample" : "SP-404MKII"} sampler`}
+                  >
+                    <div
+                      className="n-mpc-pad-grid"
+                      role="group"
+                      aria-label={`${selectedTrack.machineId === "mpc_sample" ? "MPC Sample" : "SP-404MKII"} sample pads`}
+                    >
                       {(selectedTrack.samplerPads ?? createEmptySamplerPads()).map((pad, padIndex) => {
                         const sampleTitle = availableSamplerSamples.find(sample => sample.id === pad.audioTrackId)?.title
                           ?? (pad.audioTrackId === null ? "EMPTY" : `SAMPLE ${pad.audioTrackId}`);
@@ -2135,7 +2146,7 @@ export default function Salaryman1999() {
                         </div>
                       ) : (
                         <div className="n-steps" role="group" aria-label={`${track.name} steps`}>
-                          {(track.machineId === "mpc_sample" ? track.padPatterns?.[selectedPadIndex] ?? track.steps : track.steps).map((step, stepIndex) => <button
+                  {(usesSamplerPads(track.machineId) ? track.padPatterns?.[selectedPadIndex] ?? track.steps : track.steps).map((step, stepIndex) => <button
                             type="button" key={stepIndex} className={`n-step${step ? " is-on" : ""}${playhead === stepIndex && isPlaying ? " is-playhead" : ""}`}
                             aria-label={`${track.name}, step ${stepIndex + 1}, ${step ? "on" : "off"}`}
                             aria-pressed={!!step} data-testid={`button-step-${track.id}-${stepIndex + 1}`}
@@ -2144,7 +2155,7 @@ export default function Salaryman1999() {
                               setSelectedTrackId(track.id);
                               updateTrack(track.id, current => {
                                 const togglePattern = (pattern: number[]) => pattern.map((value, i) => i === stepIndex ? value ? 0 : 100 : value);
-                                if (current.machineId === "mpc_sample") {
+                                if (usesSamplerPads(current.machineId)) {
                                   const patterns = current.padPatterns ?? Array.from({ length: 16 }, () => Array(16).fill(0));
                                   return { ...current, padPatterns: patterns.map((pattern, index) => index === selectedPadIndex ? togglePattern(pattern) : pattern) };
                                 }
@@ -2205,7 +2216,7 @@ export default function Salaryman1999() {
             </section>
 
             <section className="n-panel" aria-label="MIDI sampler input" data-testid="section-midi-input">
-              <div className="n-panel-head"><p className="n-eyebrow">MIDI IN</p><span className="n-subtle">MPC PADS</span></div>
+                <div className="n-panel-head"><p className="n-eyebrow">MIDI IN</p><span className="n-subtle">MPC / SP-404 PADS</span></div>
               <div className="n-machine-body n-midi-controls">
                 <label className="n-screen-reader" htmlFor="midi-input-select">MIDI input device</label>
                 <select id="midi-input-select" className="n-machine-select" value={selectedMidiInputId} onChange={event => chooseMidiInput(event.target.value)} disabled={!midiConnected || midiInputs.length === 0} data-testid="select-midi-input">
@@ -2226,7 +2237,7 @@ export default function Salaryman1999() {
                         setMidiInputStatus(`Press a pad to map PAD ${String(selectedPadIndex + 1).padStart(2, "0")}.`);
                       }
                     }}
-                    disabled={!midiConnected || !selectedMidiInputId || selectedTrack?.machineId !== "mpc_sample"}
+                    disabled={!midiConnected || !selectedMidiInputId || !usesSamplerPads(selectedTrack?.machineId)}
                     data-testid="button-learn-midi-pad"
                   >
                     {learningMidiPadIndex === selectedPadIndex ? "Listening…" : `Learn pad ${String(selectedPadIndex + 1).padStart(2, "0")}`}

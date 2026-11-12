@@ -627,6 +627,51 @@ describe("1999 recorded-loop persistence", () => {
     expect(exportedPadSources[0].playbackRate.value).toBeCloseTo(3);
   });
 
+  it("migrates SP-404 lanes into the shared sampler and sequences uploaded audio", async () => {
+    const sp404Project = {
+      ...savedProject,
+      tracks: [
+        { ...savedProject.tracks[0], machineId: "sp404mkii" as const },
+        savedProject.tracks[1],
+      ],
+    };
+    currentProject = JSON.stringify(sp404Project);
+    await mount();
+    click("row-track-trk-main");
+
+    expect(container.querySelector('[data-testid="panel-sp404-sampler"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-testid^="button-mpc-pad-"]')).toHaveLength(16);
+
+    const file = new File(["SP-404 sample"], "sp404.wav", { type: "audio/wav" });
+    const uploadInput = container.querySelector('[data-testid="input-mpc-upload"]') as HTMLInputElement;
+    Object.defineProperty(uploadInput, "files", { configurable: true, value: [file] });
+    act(() => uploadInput.dispatchEvent(new Event("change", { bubbles: true })));
+    await flush();
+    expect(h.apiFetch).toHaveBeenCalledWith("/api/music/tracks", expect.objectContaining({ method: "POST" }));
+
+    click("button-step-trk-main-1");
+    await act(async () => {
+      (container.querySelector('[data-testid="button-save-project"]') as HTMLButtonElement).click();
+      for (let i = 0; i < 8; i += 1) await Promise.resolve();
+    });
+    const put = h.apiFetch.mock.calls.find(([path, init]) => path === "/api/vault/entries/77" && init?.method === "PUT");
+    expect(put).toBeDefined();
+    const saved = JSON.parse(JSON.parse(String(put![1].body)).content);
+    expect(saved.tracks[0].machineId).toBe("sp404mkii");
+    expect(saved.tracks[0].samplerPads[0].audioTrackId).toBe(502);
+    expect(saved.tracks[0].padPatterns[0][0]).toBe(100);
+
+    click("button-toggle-playback");
+    await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 35)); });
+    await flush();
+    expect(audioSources.some(source => source.start.mock.calls.some((args: number[]) => args.length === 3))).toBe(true);
+    click("button-toggle-playback");
+    offlineSources.length = 0;
+    click("button-export-wav");
+    await flush();
+    expect(offlineSources.some(source => source.start.mock.calls.some((args: number[]) => args.length === 3))).toBe(true);
+  });
+
   it("chops a library sample into unused pads and saves shared audio references", async () => {
     const pads = Array.from({ length: 16 }, (_, index) => ({
       audioTrackId: null,
