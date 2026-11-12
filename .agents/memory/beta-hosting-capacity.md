@@ -15,9 +15,9 @@ Each city is its own server.
 
 **Why:** the user clarified the city-to-server boundary.
 
-**Why:** The user says the alpha has gone well, expects beta by January 2027, and
-clarified that the 1,000-user minimum means people must be able to sign in and
-use the app concurrently, not that they are literal organization members.
+**Why:** The user set the first beta day as December 25, 2026, and clarified that
+the 1,000-user minimum means people must be able to sign in and use the app
+concurrently, not that they are literal organization members.
 
 **How to apply:** Evaluate deployment and scaling work against a minimum of
 1,000 concurrent authenticated app users across sign-in, sessions, API, database,

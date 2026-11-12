@@ -127,7 +127,7 @@
 - [Room privacy gameplay](room-privacy-gameplay.md) — camera incidents route to understaffed security/collections; privacy and evidence rules still apply.
 - [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Native releases](desktop-release-packaging.md) — build targets natively; see [capture](godot-movie-capture-paths.md), [package](desktop-game-capture.md), [heap](release-build-heap-cap.md).
-- [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta target is January 2027; defer pledge offers until the asset catalog is decided and keep the base game free.
+- [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta starts December 25, 2026; require a 30-day major-feature stability window and defer pledge offers until the asset catalog is decided.
 - [Beta hosting capacity](beta-hosting-capacity.md) — deploy from GitHub to other server systems; prepare for at least 1,000 concurrent signed-in app users.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
 - [Replicant power lore](replicant-power-lore.md) — intrinsic power is replicant-only; unique recruit powers can be used by any player.
