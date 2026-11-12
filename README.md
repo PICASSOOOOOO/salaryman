@@ -49,4 +49,14 @@ The app reads its credentials from environment variables (managed as Secrets on 
 
 ## License
 
-Proprietary — © Picasso.ai. All rights reserved.
+SALARYMAN source code is licensed under **GPL-3.0-only**; see [`LICENSE`](LICENSE)
+and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Art, audio, video,
+fonts, and other bundled media may have separate rights. Check the notice beside
+each asset before redistributing it; a public source repository does not by
+itself grant rights to every media file.
+
+## Contributing
+
+SALARYMAN is developed in public. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+build, test, asset-attribution, and mod-package guidance. The initial mod
+package contract is documented in [`docs/modding/`](docs/modding/README.md).

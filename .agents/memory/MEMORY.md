@@ -143,3 +143,4 @@
 - [Unified standalone 1999 VST3](ableton-plugin-scope.md) — Build one full-workstation plugin here for external hosts; browser access remains free after SALARYMAN sign-in/onboarding.
 - [SampQOL reference boundary](1999-sampqol-reference.md) — adapt documented sampler workflows independently; do not bundle or redistribute the MPC firmware mod.
 - [1999 + creative stations](1999-machine-ecosystem.md) — free browser workstation plus one very expensive, placeable in-game recording terminal.
+- [SALARYMAN community mods](salaryman-mod-platform.md) — “firmware” means installable game-feature add-ons; personal code rewrites belong in local source forks.
