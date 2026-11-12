@@ -48,14 +48,12 @@ describe("consolidated workspace navigation", () => {
     }
   });
 
-  it("merges the repeated contact destinations under one CONTACTS entry with context", () => {
-    const contacts = WORKSPACE_MENU_SECTIONS.flatMap((section) => section.entries)
-      .find((entry) => entry.id === "contacts");
-    expect(contacts?.path).toBe("/contacts");
-    expect(contacts?.children?.map(({ path, label, hint }) => ({ path, label, hint }))).toEqual([
-      { path: "/business/contacts", label: "CONTACTS", hint: "BUSINESS" },
-      { path: "/phone/contacts", label: "CONTACTS", hint: "CALLL HOME" },
-    ]);
+  it("groups leads and lead capture inside CRM instead of separate top-level destinations", () => {
+    const section = WORKSPACE_MENU_SECTIONS.find(({ id }) => id === "crm");
+    const crm = section?.entries[0];
+    expect(crm?.path).toBe("/business/crm");
+    expect(crm?.children?.map(({ label }) => label)).toEqual(["LEADS", "LEAD CAPTURE", "DEALS"]);
+    expect(WORKSPACE_MENU_SECTIONS.flatMap((group) => group.entries).some(({ id }) => ["contacts", "leads"].includes(id))).toBe(false);
   });
 
   it("filters BROWSE like the other destinations", () => {
@@ -92,26 +90,30 @@ describe("consolidated workspace navigation", () => {
     expect(filterWorkspaceMenuEntry(parent, "account", true)?.children).toContainEqual(staffOnlyChild);
   });
 
-  it("keeps the lab name 1999 and merges both automation names onto one route", () => {
-    const entries = WORKSPACE_MENU_SECTIONS.flatMap((section) => section.entries);
-    const creative = entries
-      .find((entry) => entry.id === "creative");
-    expect(creative?.children?.find((entry) => entry.id === "lab")?.label).toBe("1999");
-    expect(creative?.path).toBe("/creative");
-    expect(creative?.children?.some((entry) => entry.id === "humbird")).toBe(false);
-    expect(entries.find((entry) => entry.id === "hummingbird")?.path).toBe("/hummingbird");
+  it("places requested tools in their intended groups", () => {
+    const sections = new Map(WORKSPACE_MENU_SECTIONS.map(({ id, entries }) => [id, flatten(entries)]));
+    const creative = sections.get("creative")?.find((entry) => entry.id === "creative");
+    const lab = creative?.children?.find((entry) => entry.id === "lab");
+    expect(lab?.label).toBe("1999");
+    expect(lab?.children?.map((entry) => entry.label)).toContain("STEM PLAYER");
+    expect(sections.get("tools")?.find((entry) => entry.id === "hummingbird")?.path).toBe("/hummingbird");
 
-    const marketing = entries.find((entry) => entry.id === "marketing");
-    expect(marketing?.children?.some((entry) => entry.path === "/marketing/campaigns")).toBe(true);
-    const office = entries.find((entry) => entry.id === "office");
+    const marketing = sections.get("marketing")?.find((entry) => entry.id === "marketing");
+    expect(marketing?.children?.map((entry) => entry.path)).toEqual(expect.arrayContaining([
+      "/marketing/campaigns",
+      "/creative/brand",
+      "/intel/reports",
+    ]));
+    const account = sections.get("account");
+    expect(account?.some((entry) => entry.path === "/platform")).toBe(true);
+    expect(sections.get("creative")?.some((entry) => entry.label === "MEETING ROOM")).toBe(true);
+    expect(sections.get("creative")?.some((entry) => entry.label === "CAD & BLUEPRINT READER")).toBe(true);
+
+    const office = sections.get("workspace")?.find((entry) => entry.id === "office");
     expect(office?.children?.some((entry) => entry.path === "/pledge")).toBe(true);
-    expect(entries.find((entry) => entry.id === "settings")?.children?.some((entry) => entry.path === "/pledge") ?? false).toBe(false);
-
     const automation = menuDestinations.filter((entry) => entry.path === "/business/autopilot");
     expect(automation).toHaveLength(1);
-    expect(automation[0]).toMatchObject({
-      label: "PABLO AI AUTOMATION",
-      hint: "PABLO PRIME AUTOMATION",
-    });
+    expect(automation[0]).toMatchObject({ label: "PABLO PRIME", hint: "AUTOMATION WORKSPACE" });
+    expect(automation[0].children?.some((entry) => entry.label === "AI AGENTS" && entry.path === "/pablo/deck")).toBe(true);
   });
 });

@@ -1396,13 +1396,13 @@ class PygameBridgeTests(unittest.TestCase):
         self.assertEqual(self.state.active_page, "bank")
 
         self.state.open_page("systems", from_object=True, source="SYSTEMS TERMINAL")
-        command["payload"]["choice"] = 9
+        command["payload"]["choice"] = 8
         result = apply_command(command, self.state, self.scene)
         self.assertTrue(result.ok)
-        self.assertIsNone(self.state.active_page)
-        self.assertFalse(apply_command(command, self.state, self.scene).ok)
+        self.assertEqual(self.state.active_page, "phone")
+        self.assertIsNone(self.state.active_object_id)
 
-    def test_systems_terminal_choice_8_opens_browser_meeting_launcher(self):
+    def test_systems_terminal_choice_9_opens_browser_meeting_launcher(self):
         self.state.open_page(
             "systems",
             from_object=True,
@@ -1414,7 +1414,7 @@ class PygameBridgeTests(unittest.TestCase):
             "version": PROTOCOL_VERSION,
             "id": "terminal-meeting",
             "name": "terminal_choice",
-            "payload": {"choice": 8},
+            "payload": {"choice": 9},
         }
         building_sync = SimpleNamespace(
             link=SimpleNamespace(server_url="https://salaryman.example/")

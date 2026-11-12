@@ -32,7 +32,7 @@ describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
     expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "comms", "office"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
-      "bots", "org", "business", "contacts", "leads",
+      "workspace", "notepad", "calculator", "bots", "crm", "org", "business",
       "creative", "marketing", "settings", "platform", "profile", "admin",
     ]);
   });
@@ -55,11 +55,11 @@ describe("shared app navigation", () => {
     expect(shouldShowModuleSubnav("business", 0, "/business")).toBe(false);
   });
 
-  it("keeps signed-out entry and authenticated office fallbacks distinct", () => {
+  it("keeps the public homepage and authenticated Office defaults distinct", () => {
     expect(getAppHomePath(false)).toBe("/");
-    expect(getAppHomePath(true)).toBe("/office");
+    expect(getAppHomePath(true)).toBe("/workspace");
     expect(getAppBackPath(false)).toBe("/");
-    expect(getAppBackPath(true)).toBe("/office");
+    expect(getAppBackPath(true)).toBe("/workspace");
   });
 });
 

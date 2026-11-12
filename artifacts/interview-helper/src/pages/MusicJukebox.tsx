@@ -294,11 +294,10 @@ export default function MusicJukebox() {
             </p>
           </div>
 
-          {/* Load from Media Library — pulls any audio file that's already in
-              the user's media library / vault and registers it as a track. */}
+          {/* Load from Data Vault — pulls an audio file already in the user's vault. */}
           <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
             <h2 className="text-[10px] font-mono tracking-[0.25em] text-emerald-300 mb-2 flex items-center gap-1.5">
-              <FolderOpen className="w-3 h-3" /> MEDIA LIBRARY
+              <FolderOpen className="w-3 h-3" /> DATA VAULT
             </h2>
             {!libOpen ? (
               <button

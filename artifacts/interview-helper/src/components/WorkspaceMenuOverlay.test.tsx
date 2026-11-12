@@ -94,7 +94,7 @@ describe("WorkspaceMenuOverlay", () => {
     expect(document.activeElement).toBe(opener);
   });
 
-  it("opens the active nested destination so its location is visible", () => {
+  it("shows nested destinations directly without expandable dropdown controls", () => {
     renderMenu({ pathname: "/business/invoices" });
     const invoice = Array.from(document.querySelectorAll<HTMLButtonElement>(".workspace-menu-link"))
       .find((button) => button.textContent?.includes("INVOICES"));
@@ -102,5 +102,6 @@ describe("WorkspaceMenuOverlay", () => {
     expect(invoice).toBeDefined();
     expect(invoice?.getAttribute("aria-current")).toBe("page");
     expect(invoice?.closest(".workspace-menu-children")).not.toBeNull();
+    expect(document.querySelector(".workspace-menu-expand")).toBeNull();
   });
 });

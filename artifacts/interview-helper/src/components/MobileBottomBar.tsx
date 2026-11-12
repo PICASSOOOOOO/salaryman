@@ -18,6 +18,7 @@ import {
   shouldShowModuleSubnav,
 } from '@/lib/app-navigation';
 import { getBoomerAppLabel } from '@/lib/vocabulary';
+import { requestWorkspaceFeatureAssignment } from '@/lib/workspace-events';
 import { WorkspaceMenuOverlay } from './WorkspaceMenuOverlay';
 
 export function MobileModuleNav() {
@@ -29,9 +30,13 @@ export function MobileModuleNav() {
   const backPendingRef = useRef(false);
   const closeMenu = useCallback(() => setDropdownOpen(false), []);
   const navigateMenu = useCallback((path: string) => {
-    navigate(path);
+    if (location.split('?')[0] === '/workspace' && path !== '/workspace') {
+      requestWorkspaceFeatureAssignment(path);
+    } else {
+      navigate(path);
+    }
     setDropdownOpen(false);
-  }, [navigate]);
+  }, [location, navigate]);
   const signOutFromMenu = useCallback(() => {
     void logout();
     setDropdownOpen(false);

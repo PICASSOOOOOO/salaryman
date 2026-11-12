@@ -85,9 +85,7 @@ const QUICK_ACCESS = [
   { path: '/business/team', label: 'EMPLOYEES', icon: Users },
   { path: '/business/tasks', label: 'TASKS', icon: ClipboardList },
   { path: '/business/jobs', label: 'JOBS', icon: Briefcase },
-  { path: '/marketing/leads', label: 'LEADS', icon: Target },
-  { path: '/business/contacts', label: 'DATA', icon: LayoutDashboard },
-  { path: '/business/autopilot', label: 'PABLO AI AUTOMATION', icon: Bot },
+  { path: '/business/crm', label: 'CRM', icon: LayoutDashboard },
   { path: '/phone', label: 'CALLL HOME', icon: PhoneCall },
   { path: '/comms', label: 'COMMS', icon: MessageSquare },
   { path: '/cyber-deck', label: 'CYBER DECK', icon: Shield },
@@ -98,7 +96,6 @@ const SECTIONS = [
     title: 'PEOPLE & OPERATIONS',
     items: [
       { path: '/business/team', label: 'TEAM DIRECTORY', boomer: 'TEAM DIRECTORY', icon: Users },
-      { path: '/business/contacts', label: 'CONTACTS', boomer: 'CONTACTS', icon: Users },
       { path: '/business/services', label: 'SERVICES BOARD', boomer: 'SERVICES BOARD', icon: Briefcase },
       { path: '/business/jobs', label: 'JOB BOARD', boomer: 'JOB BOARD & HIRING', icon: Briefcase },
       { path: '/business/interview', label: 'INTERVIEW OFFICE', boomer: 'INTERVIEW OFFICE', icon: Code2 },
@@ -115,11 +112,10 @@ const SECTIONS = [
   {
     title: 'SALES & REVENUE',
     items: [
-      { path: '/business/crm', label: 'CRM WORKSPACE', boomer: 'CRM WORKSPACE', icon: LayoutDashboard },
+      { path: '/business/crm', label: 'CRM', boomer: 'CRM', icon: LayoutDashboard },
       { path: '/business/deals', label: 'DEALS', boomer: 'DEALS', icon: TrendingUp },
       { path: '/business/invoices', label: 'INVOICES', boomer: 'INVOICES', icon: FileText },
       { path: '/business/estimates', label: 'ESTIMATES', boomer: 'ESTIMATES & QUOTES', icon: FileText },
-      { path: '/marketing/leads', label: 'LEADS', boomer: 'LEAD DATABASE', icon: Target },
     ],
   },
   {

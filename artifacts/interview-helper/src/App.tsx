@@ -92,6 +92,9 @@ const CyberDeck = lazy(() => import("@/pages/CyberDeck"));
 
 const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const WorkspaceHome = lazy(() => import("@/pages/WorkspaceHome"));
+const WorkspaceNotepad = lazy(() => import("@/pages/WorkspaceNotepad"));
+const WorkspaceCalculator = lazy(() => import("@/pages/WorkspaceCalculator"));
 const Goals = lazy(() => import("@/pages/Goals"));
 const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
 const JobCommandCenter = lazy(() => import("@/pages/JobCommandCenter"));
@@ -246,10 +249,12 @@ const MemoConsole = memo(Console as React.ComponentType);
 
 function HomeOrCover() {
   const [location] = useLocation();
+  const { isAuthenticated } = useAuth();
   // This component is kept-alive (always mounted, just hidden via display:none
   // on non-home routes). Guard on the actual path so the homepage surface does
   // not interfere with deep routes (e.g. /my-office).
   if (location.split("?")[0] !== "/") return null;
+  if (isAuthenticated) return <Redirect to="/workspace" />;
   // The homepage is the browser product index. Pablo's full nebula/chat
   // experience remains a dedicated destination at /pablo.
   return <ProfessionalHome />;
@@ -330,6 +335,7 @@ function AppShell() {
   const isPabloRoute = pathname === "/pablo";
   const isOfficeMonitorRoute = pathname === "/my-office/monitor";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+  const isEmbed = isEmbedMode();
   // The browser product has one visual contract: cream/white surfaces and
   // black ink. The downloadable game owns the cyberpunk palette.
   const isLightWorkspace = true;
@@ -337,13 +343,11 @@ function AppShell() {
   // off / so the homepage does not render two navigation systems.
   // Pablo is immersive, but it still uses the same frozen app chrome as every
   // other browser surface. The terminal owns the space between those bars.
-  const showNavBar = (!isFullscreenRoute || isPabloRoute) && !hideNavBar && !isRootRoute && !isAuthRoute;
+  const showNavBar = (!isFullscreenRoute || isPabloRoute) && !hideNavBar && !isRootRoute && !isAuthRoute && !isEmbed;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
   // (alpha banner, audio control, toaster) so the iframe reads as one clean
   // feed instead of a miniature copy of the whole app.
-  const isEmbed = isEmbedMode();
-
   const isHome = pathname === "/";
   const consoleSubRoutes = ["/console/agents", "/console/video", "/console/vault", "/console/scraper"];
   const isConsoleTerminal = pathname === "/console";
@@ -362,7 +366,7 @@ function AppShell() {
   const isPhoneRoute = pathname === "/phone" || pathname.startsWith("/phone/");
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
-    FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+    !isEmbed && FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   // Server-authoritative onboarding skip: resolve the server state as soon as
   // Clerk reports a signed-in user. Background API work is kept below until
   // this handshake completes.
@@ -557,7 +561,7 @@ function AppShell() {
             <Route path="/marketplace" component={Marketplace} />
             <Route path="/business/services" component={BusinessServices} />
             <Route path="/business/contacts" component={ContactCollector} />
-            <Route path="/contacts" component={ContactCollector} />
+            <Route path="/contacts">{() => <Redirect to="/business/crm" />}</Route>
             <Route path="/business/hiring" component={Hiring} />
             <Route path="/business/jobs" component={JobBoard} />
             <Route path="/business/job-command" component={JobCommandCenter} />
@@ -596,6 +600,7 @@ function AppShell() {
             {/* CREATIVE module */}
             <Route path="/1999" component={NineteenNinetyNine} />
             <Route path="/creative/1999">{() => <Redirect to="/1999" />}</Route>
+            <Route path="/1999/stems" component={StemStudio} />
             <Route path="/creative/darkroom" component={DarkRoom} />
             <Route path="/creative/scene">{() => <SceneComposer />}</Route>
             <Route path="/creative/studio">{() => <Redirect to="/creative/design" />}</Route>
@@ -615,7 +620,7 @@ function AppShell() {
             <Route path="/comms" component={Comms} />
             <Route path="/cyber-deck" component={CyberDeck} />
             <Route path="/social/colleagues">{() => <Redirect to="/comms" />}</Route>
-            <Route path="/creative/stems" component={StemStudio} />
+            <Route path="/creative/stems">{() => <Redirect to="/1999/stems" />}</Route>
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />
             <Route path="/creative/classroom" component={Classroom} />
@@ -630,7 +635,7 @@ function AppShell() {
             <Route path="/marketing/campaigns" component={Campaigns} />
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />
-            <Route path="/leads" component={LeadsPage} />
+            <Route path="/leads">{() => <Redirect to="/marketing/leads" />}</Route>
             <Route path="/marketing/social" component={SocialMediaManager} />
             <Route path="/marketing/command">{() => (
               <FeatureAuthGate context="Sign in to connect and manage social accounts.">
@@ -673,6 +678,17 @@ function AppShell() {
             <Route path="/intel/reports" component={Reporting} />
             <Route path="/intel/dashboard" component={Dashboard} />
             <Route path="/intel/goals" component={Goals} />
+            <Route path="/workspace">{() => (
+              <FeatureAuthGate context="Sign in to open The Office." backHref="/">
+                <WorkspaceHome />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/workspace/notepad">{() => (
+              <FeatureAuthGate context="Sign in to access your workspace notes.">
+                <WorkspaceNotepad />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/workspace/calculator" component={WorkspaceCalculator} />
             <Route path="/my-apps/:appSlug" component={MyApps} />
             <Route path="/my-apps" component={MyApps} />
             <Route path="/business/accounts" component={OrgAccounts} />

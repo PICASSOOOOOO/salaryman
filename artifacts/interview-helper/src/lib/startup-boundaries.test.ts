@@ -34,7 +34,8 @@ describe("frontend startup boundaries", () => {
     expect(twilio).not.toMatch(/^import \\{ Device, Call \\}/m);
     expect(music).toContain('await import("@/lib/audioConvert")');
     expect(music).not.toMatch(/^import .*audioConvert/m);
-    expect(chat).toContain('import("@/components/ChatPanel")');
+    expect(chat).not.toContain('import("@/components/ChatPanel")');
+    expect(chat).toContain('navigate("/comms")');
   });
 
   it("keeps unfinished gameplay media off the public landing page", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, LogOut, Search, X } from "lucide-react";
+import { LogOut, Search, X } from "lucide-react";
 import { MiniNebula } from "./MiniNebula";
 import {
   WORKSPACE_MENU_BROWSE,
@@ -21,32 +21,26 @@ type WorkspaceMenuOverlayProps = {
 };
 
 function isEntryActive(pathname: string, path: string): boolean {
+  if (path === "/business" && [
+    "/business/crm",
+    "/business/contacts",
+    "/business/deals",
+    "/business/autopilot",
+  ].includes(pathname)) return false;
+  if (path === "/creative" && pathname === "/creative/brand") return false;
+  if (path === "/marketing" && pathname === "/marketing/leads") return false;
   return pathname === path || pathname.startsWith(`${path}/`);
-}
-
-function hasActiveDescendant(pathname: string, entry: WorkspaceMenuEntry): boolean {
-  return entry.children?.some((child) =>
-    isEntryActive(pathname, child.path) || hasActiveDescendant(pathname, child),
-  ) ?? false;
 }
 
 function Destination({
   entry,
   pathname,
   onNavigate,
-  searching,
 }: {
   entry: WorkspaceMenuEntry;
   pathname: string;
   onNavigate: (path: string) => void;
-  searching: boolean;
 }) {
-  const activeChild = hasActiveDescendant(pathname, entry);
-  const [expanded, setExpanded] = useState(activeChild);
-  useEffect(() => {
-    if (activeChild) setExpanded(true);
-  }, [activeChild]);
-
   const Icon = entry.icon;
   const active = isEntryActive(pathname, entry.path);
 
@@ -65,19 +59,8 @@ function Destination({
             {entry.hint && <span className="workspace-menu-link-hint">{entry.hint}</span>}
           </span>
         </button>
-        {entry.children?.length && !searching ? (
-          <button
-            type="button"
-            className="workspace-menu-expand"
-            aria-label={`${expanded ? "Hide" : "Show"} ${entry.label} destinations`}
-            aria-expanded={expanded}
-            onClick={() => setExpanded((value) => !value)}
-          >
-            <ChevronDown className={expanded ? "is-expanded" : ""} aria-hidden="true" />
-          </button>
-        ) : null}
       </div>
-      {(expanded || searching) && entry.children?.length ? (
+      {entry.children?.length ? (
         <div className="workspace-menu-children">
           {entry.children.map((child) => (
             <Destination
@@ -85,7 +68,6 @@ function Destination({
               entry={child}
               pathname={pathname}
               onNavigate={onNavigate}
-              searching={searching}
             />
           ))}
         </div>
@@ -194,7 +176,7 @@ export function WorkspaceMenuOverlay({
         onPointerDown={(event) => event.stopPropagation()}
       >
         <div className="workspace-menu-header">
-          <span id="workspace-menu-title" className="workspace-menu-title">WORKSPACE</span>
+          <span id="workspace-menu-title" className="workspace-menu-title">THE OFFICE</span>
           <label className="workspace-menu-search">
             <Search aria-hidden="true" />
             <input
@@ -240,7 +222,6 @@ export function WorkspaceMenuOverlay({
                     entry={entry}
                     pathname={pathname}
                     onNavigate={onNavigate}
-                    searching={Boolean(normalizedQuery)}
                   />
                 ))}
               </div>

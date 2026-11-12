@@ -6,7 +6,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import {
   Upload, Trash2, Download, Play, Pause, Image, Music, Video,
-  FolderOpen, Grid3X3, List, Search, X, Loader2, Eye, Send, Users,
+  FileText, Grid3X3, List, Search, X, Loader2, Eye, Send, Users,
 } from 'lucide-react';
 
 interface Contact {
@@ -142,7 +142,7 @@ interface MediaFile {
   createdAt: string;
 }
 
-type FilterType = 'all' | 'audio' | 'image' | 'video';
+type FilterType = 'all' | 'audio' | 'image' | 'video' | 'files';
 type ViewMode = 'grid' | 'list';
 
 function formatBytes(bytes: number | null) {
@@ -152,12 +152,12 @@ function formatBytes(bytes: number | null) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getMediaType(mime: string | null): 'audio' | 'image' | 'video' | 'other' {
-  if (!mime) return 'other';
+function getMediaType(mime: string | null): 'audio' | 'image' | 'video' | 'files' {
+  if (!mime) return 'files';
   if (mime.startsWith('audio/')) return 'audio';
   if (mime.startsWith('image/')) return 'image';
   if (mime.startsWith('video/')) return 'video';
-  return 'other';
+  return 'files';
 }
 
 function MediaIcon({ mime, size = 20 }: { mime: string | null; size?: number }) {
@@ -165,7 +165,7 @@ function MediaIcon({ mime, size = 20 }: { mime: string | null; size?: number }) 
   if (type === 'audio') return <Music size={size} />;
   if (type === 'image') return <Image size={size} />;
   if (type === 'video') return <Video size={size} />;
-  return <FolderOpen size={size} />;
+  return <FileText size={size} />;
 }
 
 function AudioPreview({ src }: { src: string }) {
@@ -213,11 +213,7 @@ export default function MediaLibrary() {
       if (r.ok) {
         const data = await r.json();
         const items: MediaFile[] = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-        const mediaOnly = items.filter(f => {
-          const t = getMediaType(f.mimeType);
-          return t === 'audio' || t === 'image' || t === 'video';
-        });
-        setFiles(mediaOnly);
+        setFiles(items);
       }
     } catch (err) {
       console.error('[MediaLibrary] loadFiles failed', err);
@@ -281,7 +277,7 @@ export default function MediaLibrary() {
   });
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access media library.' : 'Salaryman credentials required. VAULT-X access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access your data vault.' : 'Salaryman credentials required. Data Vault access locked.'} />;
   }
 
   return (
@@ -290,10 +286,10 @@ export default function MediaLibrary() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "var(--font-sans)" }}>
-              {boomerMode ? 'MEDIA LIBRARY' : 'VAULT-X'}
+              DATA VAULT
             </h1>
             <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase">
-              {boomerMode ? 'MANAGE YOUR MEDIA FILES' : 'CLASSIFIED ASSET STORAGE'}
+              ALL FILES — MEDIA, DOCUMENTS, AND OTHER DATA
             </p>
           </div>
           <div className="flex gap-2 sm:ml-auto flex-wrap">
@@ -309,7 +305,7 @@ export default function MediaLibrary() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept="audio/*,image/*,video/*"
+              accept="*/*"
               onChange={handleUpload}
               className="hidden"
             />
@@ -318,7 +314,7 @@ export default function MediaLibrary() {
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="flex gap-1 bg-[#0d100d] border border-cyan-500/15 rounded p-0.5">
-            {([['all', 'ALL'], ['audio', 'AUDIO'], ['image', 'IMAGES'], ['video', 'VIDEO']] as [FilterType, string][]).map(([key, label]) => (
+            {([['all', 'ALL'], ['audio', 'AUDIO'], ['image', 'IMAGES'], ['video', 'VIDEO'], ['files', 'FILES']] as [FilterType, string][]).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
@@ -378,7 +374,7 @@ export default function MediaLibrary() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-cyan-400/20 text-sm tracking-wider">
-            {files.length === 0 ? 'NO MEDIA FILES — UPLOAD TO GET STARTED' : 'NO MATCHING FILES'}
+            {files.length === 0 ? 'NO FILES — UPLOAD TO GET STARTED' : 'NO MATCHING FILES'}
           </div>
         ) : view === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

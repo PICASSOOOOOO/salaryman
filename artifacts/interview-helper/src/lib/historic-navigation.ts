@@ -110,9 +110,9 @@ export const HISTORIC_MODULES: HistoricModule[] = [
     subs: [
       { id: 'reports', path: '/intel/reports', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
       { id: 'dashboard', path: '/intel/dashboard', boomerLabel: 'DASHBOARD', codename: 'CMD DECK', icon: LayoutDashboard },
-      { id: 'agents', path: '/intel/agents', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
+      { id: 'agents', path: '/pablo/deck', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'goals', path: '/intel/goals', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
-      { id: 'seo', path: '/intel/seo', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
+      { id: 'seo', path: '/marketing/seo', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
     ],
   },
   {

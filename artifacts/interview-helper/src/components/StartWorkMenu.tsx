@@ -1,8 +1,9 @@
-import { ChevronDown, LogIn, Menu, X } from "lucide-react";
+import { LogIn, Menu, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlan } from "@/hooks/use-plan";
+import { requestWorkspaceFeatureAssignment } from "@/lib/workspace-events";
 import "./AppHeader.css";
 import { WorkspaceMenuOverlay } from "./WorkspaceMenuOverlay";
 
@@ -14,9 +15,15 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const go = useCallback((path: string) => {
-    if (!previewMode) navigate(path);
+    if (!previewMode) {
+      if (location.split("?")[0] === "/workspace" && path !== "/workspace") {
+        requestWorkspaceFeatureAssignment(path);
+      } else {
+        navigate(path);
+      }
+    }
     setMenuOpen(false);
-  }, [previewMode, navigate]);
+  }, [location, previewMode, navigate]);
   const signOut = useCallback(() => {
     if (!previewMode) void logout();
     setMenuOpen(false);
@@ -35,7 +42,6 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
         >
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
            <span>START WORK</span>
-          <ChevronDown className={`transition-transform ${menuOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
       ) : (
         <Link

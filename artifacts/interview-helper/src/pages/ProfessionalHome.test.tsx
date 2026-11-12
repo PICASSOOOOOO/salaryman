@@ -64,7 +64,7 @@ describe("ProfessionalHome header", () => {
     expect(startWorkButton.getAttribute("aria-controls")).toBe("workspace-navigation-menu");
     expect(document.body.querySelector("#workspace-navigation-menu")).not.toBeNull();
     expect(document.body.textContent).toContain("PABLO AI");
-    expect(document.body.textContent).toContain("CHAT");
+    expect(document.body.textContent).toContain("COMMS");
     expect(document.body.textContent).toContain("PABLO PRIME AUTOMATION");
     expect(document.body.textContent).toContain("CALLL HOME");
     expect(document.body.textContent).toContain("SALARYMAN OS");

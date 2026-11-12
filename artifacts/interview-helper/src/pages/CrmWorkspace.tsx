@@ -413,10 +413,10 @@ export default function CrmWorkspace() {
         </div>
         <div className="flex items-center gap-4 text-[10px] font-bold">
           <Link href="/business/contacts?new=1" className="flex items-center gap-1 border border-black px-2 py-1">
-            <UserRound size={12} /> Add client
+            <UserRound size={12} /> Add person
           </Link>
           <Link href="/business/contacts" className="flex items-center gap-1 px-2 py-1">
-            Contacts
+            Lead capture
           </Link>
           <Link href="/marketing/leads" className="flex items-center gap-1 uppercase hover:text-[#00ff41] hover:bg-black px-2 py-1 transition-colors">
             <Users size={12} /> Leads <ArrowUpRight size={10} />
@@ -429,11 +429,11 @@ export default function CrmWorkspace() {
 
       <section className="grid grid-cols-4 border-b border-black bg-white">
         <div className="p-3 border-r border-black flex flex-col">
-          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Leads (Workspace)</span>
+          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Leads</span>
           <strong className="text-xl font-mono leading-none">{metric(['leads', 'leadCount', 'totalLeads'], leads.length)}</strong>
         </div>
         <div className="p-3 border-r border-black flex flex-col">
-          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">Known Contacts</span>
+          <span className="text-[9px] uppercase text-black/50 font-bold mb-1 tracking-widest">People in CRM</span>
           <strong className="text-xl font-mono leading-none">{metric(['contacts', 'contactCount', 'totalContacts'], contacts.length)}</strong>
         </div>
         <div className="p-3 border-r border-black flex flex-col">

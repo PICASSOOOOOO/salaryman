@@ -3,6 +3,7 @@ import {
   Briefcase,
   Building2,
   Layers,
+  LayoutDashboard,
   Megaphone,
   MessageSquare,
   Network,
@@ -11,8 +12,8 @@ import {
   ShieldCheck,
   Terminal,
   User,
-  Contact,
-  ListChecks,
+  Calculator,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,11 +36,13 @@ export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "bots", path: "/business/autopilot", label: "PABLO AI AUTOMATION", boomerLabel: "PABLO AI AUTOMATION", icon: Bot },
+  { id: "workspace", path: "/workspace", label: "THE OFFICE", boomerLabel: "THE OFFICE", icon: LayoutDashboard, authOnly: true },
+  { id: "notepad", path: "/workspace/notepad", label: "NOTES", boomerLabel: "NOTES", icon: FileText, authOnly: true },
+  { id: "calculator", path: "/workspace/calculator", label: "CALCULATOR", boomerLabel: "CALCULATOR", icon: Calculator, authOnly: true },
+  { id: "bots", path: "/business/autopilot", label: "PABLO PRIME", boomerLabel: "PABLO PRIME", icon: Bot, authOnly: true },
+  { id: "crm", path: "/business/crm", label: "CRM", boomerLabel: "CRM", icon: Briefcase, authOnly: true },
   { id: "org", path: "/organizations", label: "ORG", boomerLabel: "ORGANIZATION", icon: Network, authOnly: true },
   { id: "business", path: "/business", label: "BUSINESS", boomerLabel: "BUSINESS", icon: Briefcase, authOnly: true },
-  { id: "contacts", path: "/contacts", label: "CONTACTS", boomerLabel: "CONTACTS", icon: Contact, authOnly: true },
-  { id: "leads", path: "/leads", label: "LEADS", boomerLabel: "LEADS", icon: ListChecks, authOnly: true },
   { id: "creative", path: "/creative", label: "CREATIVE", boomerLabel: "CREATIVE", icon: Layers },
   { id: "marketing", path: "/marketing", label: "MARKETING", boomerLabel: "MARKETING", icon: Megaphone },
   { id: "settings", path: "/settings", label: "SETTINGS", boomerLabel: "SETTINGS", icon: Settings, authOnly: true },
@@ -50,18 +53,23 @@ export const MORE_NAV_ITEMS: AppNavItem[] = [
 
 export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean {
   switch (item.id) {
+    case "workspace":
+      return pathname === "/workspace" || pathname.startsWith("/workspace/");
     case "pablo":
       return pathname === "/pablo" || pathname.startsWith("/pablo/") || pathname === "/terminal";
     case "office":
       return pathname === "/desktop" || pathname === "/office" || pathname === "/my-office" || pathname.startsWith("/office/") || pathname.startsWith("/tower") || pathname.startsWith("/game");
     case "bots":
-      return pathname === "/business/autopilot";
+      return pathname === "/business/autopilot" || pathname === "/pablo/deck";
+    case "crm":
+      return pathname === "/business/crm" || pathname.startsWith("/business/crm/") ||
+        pathname === "/marketing/leads" || pathname.startsWith("/marketing/leads/") ||
+        pathname === "/business/contacts" || pathname === "/business/deals";
+    case "creative":
+      return pathname === "/creative" || pathname.startsWith("/creative/") ||
+        pathname === "/1999" || pathname.startsWith("/1999/");
     case "phone":
       return pathname === "/phone" || pathname.startsWith("/phone/");
-    case "contacts":
-      return pathname === "/contacts" || pathname.startsWith("/contacts/") || pathname === "/business/crm" || pathname.startsWith("/business/crm/");
-    case "leads":
-      return pathname === "/leads" || pathname.startsWith("/leads/") || pathname === "/marketing/leads" || pathname.startsWith("/marketing/leads/");
     case "comms":
       return pathname === "/comms" || pathname.startsWith("/comms/");
     case "org":
@@ -114,11 +122,11 @@ export function canGoBackInApp(): boolean {
 }
 
 export function getAppHomePath(isAuthenticated: boolean): string {
-  return isAuthenticated ? "/office" : "/";
+  return isAuthenticated ? "/workspace" : "/";
 }
 
 export function getAppBackPath(isAuthenticated: boolean): string {
-  return isAuthenticated ? "/office" : "/";
+  return isAuthenticated ? "/workspace" : "/";
 }
 
 export function rememberAppReturnPath(path: string): void {
@@ -176,10 +184,14 @@ export function shouldShowModuleSubnav(moduleId: string | undefined, itemCount: 
   const isStandaloneMajorFeature =
     pathname === "/business/crm" ||
     pathname.startsWith("/business/crm/") ||
+    pathname === "/business/contacts" ||
+    pathname === "/business/deals" ||
     pathname === "/contacts" ||
     pathname.startsWith("/contacts/") ||
     pathname === "/leads" ||
     pathname.startsWith("/leads/") ||
+    pathname === "/marketing/leads" ||
+    pathname.startsWith("/marketing/leads/") ||
     pathname === "/organizations" ||
     pathname.startsWith("/organizations/") ||
     pathname === "/comms" ||

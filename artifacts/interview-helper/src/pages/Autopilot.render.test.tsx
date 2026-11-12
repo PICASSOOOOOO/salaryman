@@ -192,9 +192,9 @@ afterEach(() => {
 });
 
 describe("Autopilot dashboard renders saved config", () => {
-  it("identifies the dashboard as PABLO AI AUTOMATION", async () => {
+  it("identifies the dashboard as Pablo Prime's automation workspace", async () => {
     await mount();
-    expect(container.textContent).toContain("PABLO AI AUTOMATION");
+    expect(container.textContent).toContain("PABLO PRIME / AUTOMATION WORKSPACE");
   });
 
   it("routes a missing Pablo AI entitlement to pricing instead of mislabeling it as a role error", async () => {
@@ -227,7 +227,7 @@ describe("Autopilot dashboard renders saved config", () => {
 
     await mount();
 
-    expect(container.textContent).toContain("Complete onboarding before using Pablo AI automation");
+    expect(container.textContent).toContain("Complete onboarding before using the Pablo Prime automation workspace");
     const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent?.includes("OPEN ONBOARDING"));
     expect(link?.getAttribute("href")).toBe("/onboarding");
     expect(container.textContent).not.toContain("VIEW PABLO AI");

@@ -3,8 +3,8 @@ name: Terminal COMMS widget
 description: The approved placement, styling, and Pablo presence behavior for browser COMMS.
 ---
 
-COMMS belongs as a floating widget while the user is in the terminal workspace. Its browser styling follows the cream/black website rather than the old dark-green terminal theme. When its live socket is connected, show Pablo as working; when disconnected, show COMMS offline.
+COMMS is a selectable feature in THE OFFICE widget system and remains available as a full browser page; do not restore the global bottom dock. Browser COMMS follows the cream/black website. In the downloadable game, communication entry points stay inside native phone and terminal interfaces with game artwork. When its live socket is connected, show Pablo as working; when disconnected, show COMMS offline.
 
-**Why:** The user explicitly asked to restore COMMS as the workspace widget it was before and to make Pablo visibly online/working whenever COMMS is up.
+**Why:** The user asked to move COMMS into the Office widgets and remove the separate desktop popup while keeping browser and game interfaces distinct.
 
-**How to apply:** Mount the existing deferred COMMS/chat implementation on the terminal rather than creating another chat system. Derive the status from the actual socket connection, not a hardcoded online state.
+**How to apply:** Keep menu navigation to the full COMMS page and embed that existing feature when selected as a widget. Do not create another chat system or a global dock. Derive status from the live socket connection, not a hardcoded online state.

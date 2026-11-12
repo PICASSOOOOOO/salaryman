@@ -30,6 +30,9 @@ export type PageEntry = {
 // likely to type for a given page. Kept small and high-signal.
 const ALIASES: Record<string, string[]> = {
   "/": ["pablo", "home", "assistant", "ai", "start", "front door"],
+  "/workspace": ["workspace", "widgets", "personal workspace"],
+  "/workspace/notepad": ["notes", "notepad", "quick notes"],
+  "/workspace/calculator": ["calculator", "calculations"],
   "/phone": ["phone", "calll home", "phone system", "calls"],
   "/phone/dialer": ["dialer", "phone dialer", "crm dialer", "outbound calls", "call a lead"],
   "/phone/contacts": ["phone contacts", "call contacts"],
@@ -65,7 +68,8 @@ const ALIASES: Record<string, string[]> = {
   "/business/profit-loss": ["profit and loss", "p&l", "pnl", "income statement"],
   "/business/marketplace": ["business marketplace", "buy a business", "sell business"],
   "/marketplace": ["marketplace", "cross-city exchange", "buy items", "sell items", "properties", "vehicles"],
-  "/business/autopilot": ["pablo automation", "automation", "autopilot", "automated workflows"],
+  "/business/autopilot": ["pablo prime", "automation workspace", "pablo automation", "autopilot", "automated workflows"],
+  "/business/crm": ["crm", "lead management", "customer management", "contacts", "clients", "partners", "customers"],
   "/business/contacts": ["contacts", "address book", "people"],
   "/business/services": ["services board", "gigs", "bounties", "debt bounty", "vehicle rental", "escort", "player services"],
   "/business/tasks": ["tasks", "task board", "todo", "to do"],
@@ -92,9 +96,10 @@ const ALIASES: Record<string, string[]> = {
   "/creative/brand": ["brand kit", "branding", "logo"],
   "/creative/writer": ["writer", "hemingway", "writing", "copywriting"],
   "/creative/video": ["video", "video studio", "video maker"],
-  "/creative/media": ["media library", "media", "assets"],
-  "/creative/schematic": ["blueprint", "schematic", "cad", "decoder"],
-  "/creative/classroom": ["classroom", "conference", "education", "lessons", "academy", "live session", "video call", "meeting"],
+  "/creative/media": ["data vault", "files", "documents", "assets"],
+  "/creative/schematic": ["cad and blueprint reader", "blueprint", "schematic", "cad", "technical drawings"],
+  "/creative/classroom": ["meeting room", "conference room", "video meetings", "classes", "classroom", "live session", "video call"],
+  "/1999/stems": ["stem player", "audio stems", "stems"],
   "/console": ["console", "terminal", "cipher"],
   "/console/video": ["video intel", "video analyzer"],
   "/console/vault": ["vault", "knowledge vault", "notes"],
@@ -113,6 +118,10 @@ const ALIASES: Record<string, string[]> = {
   "/pricing": ["pricing", "upgrade", "plans", "subscribe", "prime"],
   "/alpha": ["tester program", "alpha", "apply"],
   "/legal": ["legal", "terms", "privacy", "policies"],
+};
+
+const GROUP_OVERRIDES: Record<string, string> = {
+  "/creative/brand": "Marketing",
 };
 
 // Curated standalone pages that aren't module subs but are real navigable
@@ -136,6 +145,10 @@ const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
   { path: "/phone/call-center", label: "Outbound Call Center", group: "Phone" },
   { path: "/phone/sms", label: "Phone SMS", group: "Phone" },
   { path: "/my-office", label: "My Office", group: "Office" },
+  { path: "/workspace", label: "The Office", group: "The Office" },
+  { path: "/workspace/notepad", label: "Notes", group: "The Office" },
+  { path: "/workspace/calculator", label: "Calculator", group: "The Office" },
+  { path: "/hummingbird", label: "Hummingbird", group: "Tools" },
   { path: "/marketplace", label: "Marketplace", group: "World" },
   { path: "/office", label: "The Office (Live View)", group: "Office" },
   { path: "/comms", label: "Payphone", group: "Payphone" },
@@ -194,7 +207,7 @@ export function buildPageCatalog(): PageEntry[] {
   const addModule = (m: Module) => {
     const groupLabel = friendly(m.label);
     for (const sub of m.subs) {
-      add(sub.path, friendly(sub.boomerLabel || sub.label), groupLabel);
+      add(sub.path, friendly(sub.boomerLabel || sub.label), GROUP_OVERRIDES[sub.path] ?? groupLabel);
     }
     // Some modules (e.g. Pablo) have no subs — index the module itself.
     if (m.subs.length === 0) add(m.path, groupLabel, groupLabel);

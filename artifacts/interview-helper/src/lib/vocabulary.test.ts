@@ -15,7 +15,7 @@ describe("browser vocabulary policy", () => {
 
   it("normalizes shared app navigation labels", () => {
     expect(getBoomerAppLabel("org", "ORG")).toBe("ORGANIZATION");
-    expect(getBoomerAppLabel("creative", "CREATIVE")).toBe("CREATIVE STUDIO");
+    expect(getBoomerAppLabel("creative", "CREATIVE")).toBe("CREATIVE");
     expect(getBoomerAppLabel("unknown", "Fallback")).toBe("Fallback");
   });
 

@@ -1047,7 +1047,7 @@ export default function Autopilot() {
           paymentRequired?: boolean;
         };
         if (body.onboardingRequired) {
-          setError('Complete onboarding before using Pablo AI automation.');
+          setError('Complete onboarding before using the Pablo Prime automation workspace.');
           setErrorAction({ href: '/onboarding', label: 'OPEN ONBOARDING' });
         } else if (body.feature === 'claw_bot' || body.paymentRequired) {
           setError('Pablo AI access is required to use automation.');
@@ -1246,7 +1246,7 @@ export default function Autopilot() {
       <div className="flex items-center justify-between mb-5 gap-3">
         <div>
           <h1 className="font-mono text-base tracking-widest flex items-center gap-2">
-            <Sparkles className="w-5 h-5" /> PABLO AI AUTOMATION
+            <Sparkles className="w-5 h-5" /> PABLO PRIME / AUTOMATION WORKSPACE
           </h1>
           <p className="font-sans text-xs text-cyan-500/40 mt-1 max-w-2xl">
             Paid Prime starts only the four established workflows. Creative Work and Market Research stay off until the organization owner enables them.

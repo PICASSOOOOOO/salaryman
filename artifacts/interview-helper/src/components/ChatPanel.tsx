@@ -426,7 +426,7 @@ function AttachPicker({
         )}
         {!loading && items.length === 0 && (
           <div style={{ textAlign: "center", color: CRT(0.3), fontSize: "0.58rem", fontFamily: fontFor(boomer), padding: "20px 0" }}>
-            NO FILES HERE — UPLOAD IN MEDIA LIBRARY FIRST
+            NO FILES HERE — UPLOAD IN DATA VAULT FIRST
           </div>
         )}
         {items.map(item => (

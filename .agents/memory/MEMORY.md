@@ -111,10 +111,10 @@
 - [Business data platform](business-data-platform.md) — Store canonical business data in Postgres and binary files in App Storage.
 - [Contract delivery paper trail](contract-delivery-paper-trail.md) — Keep provider sending user-initiated; record email/provider references without claiming an API is connected.
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
-- [Browser API and game scope](browser-game-scope.md) — `/desktop` is the only browser companion; macOS/Windows/Linux builds use native game UI and keep paid gates.
+- [Browser API and game scope](browser-game-scope.md) — Keep the public homepage intact, send signed-in users to THE OFFICE, and open game tools through native furniture and terminals.
 - [GitHub workflow and file writes](github-workflow-write-scope.md) — use sequential Contents API PUTs for source sync; workflow YAML needs separate permissions, and Git Data POSTs may 500.
 - [Browser navigation](canonical-browser-navigation.md) — boxed header, minimal mobile chrome; see [responsive](responsive-navigation-chrome.md) and [menu deduplication](shared-menu-route-dedupe.md).
-- [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is a cream/black floating terminal widget; its live socket drives Pablo working/offline status.
+- [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is an Office feature/page, not a global dock; derive Pablo's working/offline state from the live socket.
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
 - [Drizzle array filters](drizzle-array-filters.md) — interpolated JavaScript arrays become SQL tuples; use parameterized `IN` lists for dynamic membership.

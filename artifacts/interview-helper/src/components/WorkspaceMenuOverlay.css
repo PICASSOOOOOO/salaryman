@@ -230,14 +230,11 @@
 }
 
 .workspace-menu-link:hover,
-.workspace-menu-link:focus-visible,
-.workspace-menu-expand:hover,
-.workspace-menu-expand:focus-visible {
+.workspace-menu-link:focus-visible {
   background: #EEE8DC;
 }
 
-.workspace-menu-link:focus-visible,
-.workspace-menu-expand:focus-visible {
+.workspace-menu-link:focus-visible {
   outline: 2px solid #0B6B3A;
   outline-offset: -2px;
 }
@@ -271,26 +268,6 @@
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.workspace-menu-expand {
-  display: inline-flex;
-  width: 2rem;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border-left: 1px solid #E7E0D5;
-  color: #6C665C;
-}
-
-.workspace-menu-expand svg {
-  width: 0.95rem;
-  height: 0.95rem;
-  transition: transform 120ms ease;
-}
-
-.workspace-menu-expand svg.is-expanded {
-  transform: rotate(180deg);
 }
 
 .workspace-menu-children {
@@ -420,7 +397,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .workspace-menu-feature,
-  .workspace-menu-expand svg {
+  .workspace-menu-link {
     transition: none;
   }
 }

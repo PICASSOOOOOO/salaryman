@@ -1,11 +1,21 @@
-import { Globe, Grid2X2, Music2, ShoppingBag } from "lucide-react";
+import {
+  Bot,
+  Brain,
+  Globe,
+  Grid2X2,
+  LayoutDashboard,
+  Music2,
+  Ruler,
+  ShoppingBag,
+  Target,
+} from "lucide-react";
 import {
   MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
   type AppNavItem,
 } from "./app-navigation";
-import { HISTORIC_MODULES, type HistoricModule, type HistoricSubItem } from "./historic-navigation";
-import { getBoomerAppLabel, getBoomerModuleLabel } from "./vocabulary";
+import { HISTORIC_MODULES, type HistoricModule } from "./historic-navigation";
+import { getBoomerAppLabel } from "./vocabulary";
 import { MODULES } from "./modules";
 
 export type WorkspaceMenuEntry = {
@@ -78,20 +88,6 @@ function historicSubEntry(sub: {
   };
 }
 
-function historicModuleEntry(
-  id: string,
-  options: { children?: WorkspaceMenuEntry[]; hint?: string } = {},
-): WorkspaceMenuEntry {
-  const module = historicModule(id);
-  return {
-    id: module.id,
-    path: module.defaultPath,
-    label: getBoomerModuleLabel(module.id, module.label),
-    icon: module.icon,
-    ...options,
-  };
-}
-
 const businessModule = historicModule("business");
 const creativeModule = MODULES.find((module) => module.id === "creative");
 const marketingModule = MODULES.find((module) => module.id === "marketing");
@@ -102,44 +98,87 @@ const phoneModule = historicModule("phone");
 if (!creativeModule || !marketingModule || !officeModule) {
   throw new Error("A workspace menu module is missing");
 }
-const businessContacts = businessModule.subs.find((sub) => sub.id === "contacts");
-const phoneContacts = phoneModule.subs.find((sub) => sub.id === "contacts");
-if (!businessContacts || !phoneContacts) {
-  throw new Error("The shared CONTACTS menu requires the business and phone contact destinations");
-}
 
 export const WORKSPACE_MENU_FEATURED = {
   ...appEntry("pablo"),
-  hint: "CHAT + AUTOMATION",
+  hint: "CONVERSATIONAL ASSISTANT",
 };
 
-const contactsEntry = appEntry("contacts", {
-  hint: "WORKSPACE",
+const entryFromModule = (
+  module: { subs: Array<Parameters<typeof historicSubEntry>[0]> },
+  id: string,
+  overrides: Partial<WorkspaceMenuEntry> = {},
+): WorkspaceMenuEntry => {
+  const sub = module.subs.find((candidate) => candidate.id === id);
+  if (!sub) throw new Error(`Missing navigation destination: ${id}`);
+  return { ...historicSubEntry(sub), ...overrides };
+};
+
+const stemPlayer = entryFromModule(creativeModule, "stems", {
+  label: "STEM PLAYER",
+  hint: "1999",
+});
+const creative1999 = entryFromModule(creativeModule, "lab", {
+  label: "1999",
+  children: [stemPlayer],
+});
+const dataVault = entryFromModule(creativeModule, "media", {
+  label: "DATA VAULT",
+  hint: "ALL FILE TYPES",
   children: [
-    { ...historicSubEntry(businessContacts), hint: "BUSINESS" },
-    { ...historicSubEntry(phoneContacts), hint: "CALLL HOME" },
+    { id: "knowledge-vault", path: "/console/vault", label: "KNOWLEDGE VAULT", icon: Brain, hint: "SAVED NOTES & RESEARCH" },
   ],
 });
 
 export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
   {
     id: "workspace",
-    label: "WORKSPACE",
+    label: "THE OFFICE",
     entries: [
-      appEntry("phone", {
-        children: phoneModule.subs
-          .filter((sub) => sub.id !== "contacts")
-          .map(historicSubEntry),
-      }),
-      { id: "hummingbird", path: "/hummingbird", label: "HUMMINGBIRD", icon: Music2 },
-      appEntry("comms"),
-      appEntry("office", {
+      appEntry("workspace", { label: "THE OFFICE" }),
+      appEntry("notepad"),
+      appEntry("calculator"),
+      appEntry("bots", {
+        label: "PABLO PRIME",
+        hint: "AUTOMATION WORKSPACE",
         children: [
-          ...officeModule.subs.filter((sub) => sub.id !== "office-business").map(historicSubEntry),
+          { id: "ai-agents", path: "/pablo/deck", label: "AI AGENTS", icon: Bot },
+        ],
+      }),
+      appEntry("comms", { hint: "MESSAGING" }),
+      appEntry("office", {
+        hint: "OFFICE & OPERATIONS",
+        children: [
+          ...officeModule.subs
+            .filter((sub) => sub.id !== "office-business")
+            .map(historicSubEntry),
           { id: "pledge-store", path: "/pledge", label: "PLEDGE STORE", icon: ShoppingBag },
         ],
       }),
+      appEntry("phone", {
+        children: phoneModule.subs
+          .filter((sub) => sub.path !== phoneModule.path)
+          .map(historicSubEntry),
+      }),
       { id: "apps", path: "/my-apps", label: "MY APPS", icon: Grid2X2 },
+      { id: "project-dashboard", path: "/intel/dashboard", label: "PROJECTS", icon: LayoutDashboard, hint: "PROJECTS & KNOWLEDGE" },
+    ],
+  },
+  {
+    id: "crm",
+    label: "CRM",
+    entries: [
+      appEntry("crm", {
+        hint: "CUSTOMER & LEAD MANAGEMENT",
+        children: [
+          { id: "leads", path: "/marketing/leads", label: "LEADS", icon: Target },
+          entryFromModule(businessModule, "contacts", {
+            label: "LEAD CAPTURE",
+            hint: "CONTACT IMPORT & FOLLOW-UP",
+          }),
+          entryFromModule(businessModule, "deals", { label: "DEALS" }),
+        ],
+      }),
     ],
   },
   {
@@ -148,40 +187,68 @@ export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
     entries: [
       appEntry("business", {
         children: businessModule.subs
-          .filter((sub) => sub.id !== "contacts")
+          .filter((sub) => !["contacts", "deals", "autopilot"].includes(sub.id) && sub.path !== businessModule.defaultPath)
           .map(historicSubEntry),
       }),
       appEntry("org"),
-      contactsEntry,
-      appEntry("leads"),
-      appEntry("bots", { hint: "PABLO PRIME AUTOMATION" }),
-       appEntry("marketing", {
-         children: marketingModule.subs.map(historicSubEntry),
-       }),
+    ],
+  },
+  {
+    id: "marketing",
+    label: "MARKETING",
+    entries: [
+      appEntry("marketing", {
+        children: [
+          ...marketingModule.subs
+            .filter((sub) => sub.id !== "leads")
+            .map(historicSubEntry),
+        ],
+      }),
+    ],
+  },
+  {
+    id: "creative",
+    label: "CREATIVE",
+    entries: [
+      appEntry("creative", {
+        children: [
+          creative1999,
+          ...creativeModule.subs
+            .filter((sub) => !["lab", "stems", "brand", "classroom", "media", "schematic"].includes(sub.id))
+            .map((sub) => historicSubEntry(sub)),
+          dataVault,
+          entryFromModule(creativeModule, "schematic", {
+            label: "CAD & BLUEPRINT READER",
+            icon: Ruler,
+            hint: "READ TECHNICAL DRAWINGS",
+          }),
+          entryFromModule(creativeModule, "classroom", {
+            label: "MEETING ROOM",
+            hint: "VIDEO MEETINGS & CLASSES",
+          }),
+        ],
+      }),
     ],
   },
   {
     id: "tools",
     label: "TOOLS",
     entries: [
-      appEntry("creative", {
-        children: creativeModule.subs.map(historicSubEntry),
-      }),
-      historicModuleEntry("console", {
+      { id: "hummingbird", path: "/hummingbird", label: "HUMMINGBIRD", icon: Music2, hint: "MUSIC PLAYER" },
+      {
+        id: "terminal",
+        path: consoleModule.defaultPath,
+        label: "CONSOLE",
+        icon: consoleModule.icon,
         hint: consoleModule.subs.map((sub) => sub.boomerLabel || sub.codename).join(" · "),
-      }),
-      historicModuleEntry("intel", {
-        children: intelModule.subs
-          .filter((sub) => sub.path !== intelModule.defaultPath)
-          .map(historicSubEntry),
-      }),
-      appEntry("platform"),
+      },
     ],
   },
   {
     id: "account",
     label: "ACCOUNT",
     entries: [
+      appEntry("platform"),
       appEntry("settings"),
       appEntry("profile"),
       appEntry("admin"),

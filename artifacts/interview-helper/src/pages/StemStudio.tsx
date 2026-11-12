@@ -1192,7 +1192,7 @@ export default function StemStudio() {
                       <button
                         onClick={e => { e.stopPropagation(); saveToLibrary(stem.id); }}
                         disabled={savingId === stem.id}
-                        title="Save to Media Library"
+                        title="Save to Data Vault"
                         style={{
                           ...VT, fontSize: 10, padding: '2px 8px',
                           border: `1px solid ${savingId === stem.id ? OC : '#44ff88'}`,
@@ -1413,7 +1413,7 @@ export default function StemStudio() {
                       <button
                         onClick={() => saveToLibrary(stem.id)}
                         disabled={savingId === stem.id}
-                        title="Save to Media Library"
+                        title="Save to Data Vault"
                         style={{
                           ...VT, fontSize: 10, padding: '2px 8px',
                           border: `1px solid ${savingId === stem.id ? OC : '#44ff88'}`,

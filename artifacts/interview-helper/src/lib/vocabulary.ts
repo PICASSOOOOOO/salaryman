@@ -27,7 +27,7 @@ const APP_LABELS: Record<string, string> = {
   phone: "CALLL HOME",
   comms: "COMMS",
   office: "SALARYMAN OS",
-  bots: "PABLO AI AUTOMATION",
+  bots: "PABLO PRIME",
   org: "ORGANIZATION",
   business: "BUSINESS",
   contacts: "CONTACTS",

@@ -1206,9 +1206,6 @@ def _apply_command(
             return CommandResult(False, "SYSTEMS TERMINAL NOT ACTIVE")
         choice = payload["choice"]
         if choice == 9:
-            state.close_page()
-            return CommandResult(True, "SYSTEMS TERMINAL CLOSED")
-        if choice == 8:
             link = getattr(building_sync, "link", None)
             if link is None:
                 return CommandResult(False, "LINK A GAME ACCOUNT TO OPEN VIDEO MEETINGS")
@@ -1236,7 +1233,7 @@ def _apply_command(
             page,
             from_object=True,
             source=source,
-            source_object_id=state.active_object_id,
+            source_object_id=state.active_object_id if choice != 8 else None,
         ):
             return CommandResult(False, "TERMINAL OPTION UNAVAILABLE")
         if choice == 7 and building_sync is not None:

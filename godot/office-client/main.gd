@@ -4556,6 +4556,9 @@ func _nearby_maintenance_status(scene_data: Dictionary) -> Dictionary:
 func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> void:
 	if native_app_panel == null:
 		return
+	native_app_action_grid.position = Vector2(28, 220)
+	native_app_action_grid.size = Vector2(524, 76)
+	native_app_action_grid.columns = 4
 	var page := _active_page_name()
 	var active_object_id := str(office.get("activeObjectId", ""))
 	var opening_1999_terminal := page == "music_studio" and active_object_id == "1999-terminal"
@@ -4788,13 +4791,15 @@ func _update_native_app_panel(office: Dictionary, scene_data: Dictionary) -> voi
 			native_app_footer.text = "1 OPEN SHARED 1999 WORKSPACE  ·  ESC CLOSE"
 		"systems":
 			native_app_title.text = "SALARYMAN OS  /  SYSTEMS TERMINAL"
-			native_app_body.size.y = 132
-			native_app_body.text = "CONNECTED GAME MODULES\n%s  /  TEAM %d  /  FIAT ƒ%.2f" % [
+			native_app_body.size.y = 34
+			native_app_action_grid.position = Vector2(28, 122)
+			native_app_action_grid.size = Vector2(524, 174)
+			native_app_body.text = "%s  ·  %d STAFF  ·  FIAT ƒ%.2f" % [
 				location,
 				workers.size(),
 				float(office.get("funds", 0.0)),
 			]
-			native_app_footer.text = "1–7 OPEN MODULES  ·  8 VIDEO MEETING  ·  9 OR ESC CLOSE"
+			native_app_footer.text = "1–9 OPEN GAME WIDGETS  ·  ESC CLOSE"
 		"economy":
 			native_app_title.text = "BANCO OMBRA"
 			native_app_body.text = "%s\nGAME FIAT  ƒ%.2f\n\nThis is the Tower game wallet view. No transfer or payout is initiated from this screen." % [
@@ -5266,10 +5271,7 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 		"competition":
 			labels = ["1 > RUMOR", "2 > SUPPRESS", "3 > BRIBE", "4 > SABOTAGE", "5 > FIRE", "6 > ROBBERY", "7 > EXTORT", "8 > FIGHT"]
 		"systems":
-			labels = [
-				"1 > JOBS", "2 > BOOKS", "3 > CONTACTS", "4 > MARKETING",
-				"5 > DARKROOM", "6 > INTEL", "7 > BANK", "8 > PHONE",
-			]
+			labels = terminal_widget_labels()
 	if action_choices.is_empty():
 		for index in labels.size():
 			action_choices.append(index + 1)
@@ -5281,7 +5283,7 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 		child.queue_free()
 	native_app_action_grid.visible = not labels.is_empty()
 	if page == "systems":
-		native_app_action_grid.columns = 4
+		native_app_action_grid.columns = 3
 	elif page == "competition":
 		native_app_action_grid.columns = 4
 	elif page == "reception":
@@ -5291,7 +5293,7 @@ func _sync_native_app_actions(page: String, page_source: String) -> void:
 	for index in labels.size():
 		var button := Button.new()
 		button.text = labels[index]
-		button.custom_minimum_size = Vector2(120, 34)
+		button.custom_minimum_size = Vector2(164, 46) if page == "systems" else Vector2(120, 34)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_ALL
 		_style_feature_command_button(button)
@@ -5460,6 +5462,20 @@ static func terminal_choice_for_key(keycode: int) -> int:
 		KEY_9:
 			return 9
 	return 0
+
+
+static func terminal_widget_labels() -> Array[String]:
+	return [
+		"1 > JOBS",
+		"2 > BOOKS",
+		"3 > CONTACTS",
+		"4 > MARKETING",
+		"5 > DARKROOM",
+		"6 > INTEL",
+		"7 > BANK",
+		"8 > PHONE CENTER",
+		"9 > VIDEO MEETING",
+	]
 
 
 static func settings_menu_text(location: String, music_enabled: bool) -> String:
