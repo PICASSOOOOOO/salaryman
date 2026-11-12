@@ -191,23 +191,18 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
     expect(qs("canonical-pablo-nebula")).not.toBeNull();
   });
 
-  it("routes the header chat action into COMMS", async () => {
+  it("keeps the mode toggle without restoring a separate COMMS shortcut", async () => {
     await mount();
 
     const modeToggle = qs("pablo-mode-toggle") as HTMLButtonElement;
     const chatButton = qs("pablo-ai-choice") as HTMLButtonElement;
     expect(modeToggle).not.toBeNull();
-    expect(chatButton).not.toBeNull();
+    expect(chatButton).toBeNull();
 
     await act(async () => {
       modeToggle.click();
     });
     expect(qs("pablo-text-input")).toBeNull();
-
-    await act(async () => {
-      chatButton.click();
-    });
-    expect(window.location.pathname).toBe("/comms");
   });
 
   it("greets a returning visitor on mount WITHOUT opening the auth-choice modal", async () => {

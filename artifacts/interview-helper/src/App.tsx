@@ -27,11 +27,11 @@ import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
 import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 import { SignInPage } from "@/components/SignInPrompt";
-import Console from "@/pages/Console";
 import { PHONE_ROUTE_TO_TAB } from "@/pages/phone/CalllHomeContext";
 
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
+const Console = lazy(() => import("@/pages/Console"));
 const loadPabloTerminal = () => import("@/pages/PabloTerminal");
 const PabloTerminal = lazy(loadPabloTerminal);
 const PabloCreate = lazy(() => import("@/pages/PabloCreate"));
@@ -245,7 +245,6 @@ function FeatureAuthGate({ context, children, backHref }: {
 }
 
 const MemoHome = memo(Home as React.ComponentType);
-const MemoConsole = memo(Console as React.ComponentType);
 
 function HomeOrCover() {
   const [location] = useLocation();
@@ -303,10 +302,25 @@ function AppShell() {
 
   const pathname = location.split("?")[0];
   useEffect(() => {
-    // Keep Pablo out of the initial homepage bundle, but warm its route chunk
-    // after the landing surface has painted so opening it does not feel slow.
+    // Warm Pablo's optional route only when the browser is idle and the
+    // connection is suitable. Avoid spending mobile data on users who may
+    // never open it, especially on data-saver and slower networks.
     if (pathname !== "/") return;
-    const timer = window.setTimeout(() => { void loadPabloTerminal(); }, 250);
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    if (connection?.saveData || (connection?.effectiveType && connection.effectiveType !== "4g")) return;
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(() => { void loadPabloTerminal(); }, { timeout: 2500 });
+      return () => idleWindow.cancelIdleCallback?.(handle);
+    }
+
+    const timer = window.setTimeout(() => { void loadPabloTerminal(); }, 1500);
     return () => window.clearTimeout(timer);
   }, [pathname]);
   // ── Route-change audio backstop ────────────────────────────────────────────
@@ -456,7 +470,7 @@ function AppShell() {
       {isConsoleTerminal && (
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback />}>
-            <MemoConsole />
+            <Console />
           </Suspense>
         </ErrorBoundary>
       )}

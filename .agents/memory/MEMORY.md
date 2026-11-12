@@ -5,6 +5,7 @@
 - [Browser onboarding work paths](browser-onboarding-work-path.md) — web onboarding offers real business or “LOOKING FOR WORK”; fictional business/immigration stays in the downloadable game.
 - [Site-wide popup boundary](site-wide-popup-boundary.md) — keep alerts opt-in; offer COMMS as a page and user-opened desktop dock, with badges and intentional dialogs preserved.
 - [Phone tests](phone-system-daily-test.md) — mocked/live coverage, browser bridge, and toll-free retry; see [harness](twilio-phone-tests.md).
+- [Ten-minute feature checks](ten-minute-feature-checks.md) — test supported features and interactions for regressions and collisions every ten minutes.
 - [Shared demo phone number](shared-demo-phone-number.md) — the shared SALARYMAN number is for tester/admin checks and tightly limited demos to new users.
 - [Composite workspace-library declarations](composite-workspace-library-builds.md) — consumers may read stale emitted types; rebuild composite libraries after adding exports or schemas.
 - [DB migration mechanism](db-migration-mechanism.md) — inspect dev drift, keep changes additive, use Publish for prod; model composite FK targets as explicit unique constraints.

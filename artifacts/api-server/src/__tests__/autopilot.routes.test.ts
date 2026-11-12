@@ -97,7 +97,10 @@ describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
     expect(res.body.config.cadenceMinutes).toBe(60);
     expect(res.body.config.maxActionsPerTick).toBe(10);
     expect(res.body.config.budgetCapCents).toBe(100000);
-    expect(res.body.config.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(res.body.config.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"], generateImages: false,
+    });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
 
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored?.enabled).toBe(false);
@@ -105,7 +108,10 @@ describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
     expect(stored?.cadenceMinutes).toBe(60);
     expect(stored?.maxActionsPerTick).toBe(10);
     expect(stored?.budgetCapCents).toBe(100000);
-    expect(stored?.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 
   it("a save that omits enabled leaves the stored on/off state unchanged", async () => {
@@ -181,13 +187,15 @@ describe("PUT /api/autopilot/:domain — marketing pref sanitization", () => {
     const prefs = res.body.config.prefs;
     expect(prefs.platforms).toEqual(["twitter", "linkedin"]);
     expect(prefs.tone).toBe(AUTOPILOT_DEFAULT_MARKETING_TONE);
+    expect(prefs.generateImages).toBe(false);
+    expect(prefs).not.toHaveProperty("imageGenerationApprovedBy");
     expect(prefs.topics[0]).toBe("Summer sale");
     expect(prefs.topics).toHaveLength(AUTOPILOT_MAX_MARKETING_TOPICS);
     expect(prefs.topics.every((t: string) => t.length > 0 && t.length <= AUTOPILOT_MAX_MARKETING_TOPIC_LEN)).toBe(true);
 
     // What landed in the database matches the sanitized response, not the raw body.
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual(prefs);
+    expect(stored?.prefs).toEqual({ ...prefs, imageGenerationApprovedBy: null });
   });
 
   it("keeps a valid allow-list, tone and topics intact", async () => {
@@ -204,9 +212,14 @@ describe("PUT /api/autopilot/:domain — marketing pref sanitization", () => {
       platforms: ["bluesky", "linkedin"],
       tone: "playful",
       topics: ["Launch"],
+      generateImages: false,
     });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual({ platforms: ["bluesky", "linkedin"], tone: "playful", topics: ["Launch"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["bluesky", "linkedin"], tone: "playful", topics: ["Launch"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 });
 
@@ -231,9 +244,14 @@ describe("PUT /api/autopilot/:domain — partial merge over stored prefs", () =>
       platforms: ["twitter", "instagram"],
       tone: "witty",
       topics: ["Hiring", "Product"],
+      generateImages: false,
     });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual({ platforms: ["twitter", "instagram"], tone: "witty", topics: ["Hiring", "Product"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["twitter", "instagram"], tone: "witty", topics: ["Hiring", "Product"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 
   it("a platforms-only update preserves the previously-saved tone and topics", async () => {
@@ -254,7 +272,9 @@ describe("PUT /api/autopilot/:domain — partial merge over stored prefs", () =>
       platforms: ["linkedin", "bluesky"],
       tone: "playful",
       topics: ["Sale"],
+      generateImages: false,
     });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
   });
 });
 
@@ -394,14 +414,20 @@ describe("PUT /api/autopilot/:domain — scheduling caps clamping", () => {
     expect(res.body.config.cadenceMinutes).toBe(60);
     expect(res.body.config.maxActionsPerTick).toBe(25);
     expect(res.body.config.budgetCapCents).toBe(500000);
-    expect(res.body.config.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(res.body.config.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"], generateImages: false,
+    });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
 
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored?.enabled).toBe(true);
     expect(stored?.cadenceMinutes).toBe(60);
     expect(stored?.maxActionsPerTick).toBe(25);
     expect(stored?.budgetCapCents).toBe(500000);
-    expect(stored?.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 });
 
@@ -476,9 +502,15 @@ describe("PUT /api/autopilot/:domain — permission gating (autopilot.manage)", 
       .send({ prefs: { platforms: ["linkedin"], tone: "professional", topics: ["Update"] } });
 
     expect(res.status).toBe(200);
-    expect(res.body.config.prefs).toEqual({ platforms: ["linkedin"], tone: "professional", topics: ["Update"] });
+    expect(res.body.config.prefs).toEqual({
+      platforms: ["linkedin"], tone: "professional", topics: ["Update"], generateImages: false,
+    });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual({ platforms: ["linkedin"], tone: "professional", topics: ["Update"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["linkedin"], tone: "professional", topics: ["Update"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 
   it("requires finance.manage for accounting changes but lets an autopilot manager pause the workflow", async () => {

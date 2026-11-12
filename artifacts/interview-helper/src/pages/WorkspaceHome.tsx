@@ -62,23 +62,38 @@ function storageKey(userId?: string | null) {
   return `salaryman-workspace-slots:${userId || "browser"}`;
 }
 
+function isSlotArray(value: unknown): value is Slot[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= SLOT_LIMIT &&
+    value.every((slot) => slot === null || typeof slot === "string")
+  );
+}
+
 function loadSlots(key: string): Slot[] {
   try {
     const saved = window.localStorage.getItem(key);
     if (saved) {
       const parsed: unknown = JSON.parse(saved);
-      if (
-        Array.isArray(parsed) &&
-        parsed.length > 0 &&
-        parsed.length <= SLOT_LIMIT &&
-        parsed.every((value) => value === null || typeof value === "string")
-      ) {
+      let slots: unknown = parsed;
+      let legacyArray = Array.isArray(parsed);
+      if (!legacyArray && parsed && typeof parsed === "object") {
+        const stored = parsed as { version?: unknown; slots?: unknown };
+        if (stored.version === 2) {
+          slots = stored.slots;
+          legacyArray = false;
+        }
+      }
+      if (isSlotArray(slots)) {
         // The shipped nine-tool arrangement was never user-customized. Start
-        // those accounts with the new intentional blank canvas instead.
-        if (parsed.length === SLOT_LIMIT && DEFAULT_PATHS.every((path, index) => parsed[index] === path)) {
+        // old array-format accounts with the new intentional blank canvas.
+        // Versioned saves can represent a user who intentionally picked the
+        // same arrangement, so do not migrate those back to blank.
+        if (legacyArray && slots.length === SLOT_LIMIT && DEFAULT_PATHS.every((path, index) => slots[index] === path)) {
           return [null];
         }
-        return parsed as Slot[];
+        return slots;
       }
     }
   } catch {
@@ -121,7 +136,7 @@ export default function WorkspaceHome() {
   useEffect(() => {
     if (readyKey !== key) return;
     try {
-      window.localStorage.setItem(key, JSON.stringify(slots));
+      window.localStorage.setItem(key, JSON.stringify({ version: 2, slots }));
     } catch {
       // The workspace remains usable for this session if storage is blocked.
     }

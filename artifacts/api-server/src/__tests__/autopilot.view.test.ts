@@ -65,7 +65,8 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
       expect(domain.cadenceMinutes).toBeNull();
       expect(domain.maxActionsPerTick).toBeNull();
       expect(domain.budgetCapCents).toBeNull();
-      expect(domain.prefs).toEqual({});
+      expect(domain.prefs).toEqual(domain.domain === "marketing" ? { generateImages: false } : {});
+      expect(domain.prefs).not.toHaveProperty("imageGenerationApprovedBy");
       expect(domain.lastRunAt).toBeNull();
       expect(domain.updatedBy).toBeNull();
     }
@@ -97,7 +98,10 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
     expect(marketing.cadenceMinutes).toBe(60);
     expect(marketing.maxActionsPerTick).toBe(10);
     expect(marketing.budgetCapCents).toBe(100000);
-    expect(marketing.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(marketing.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"], generateImages: false,
+    });
+    expect(marketing.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     expect(marketing.updatedBy).toBe(owner.id);
 
     // All other domains remain at their OFF defaults.

@@ -35,13 +35,12 @@ describe("canonical Pixel Agents marketplace surface", () => {
   });
 
   it("keeps /pricing public and returns buyers to the storefront after sign-in", () => {
-    const anonymousRoutes = app.slice(
-      app.indexOf("const ANON_ALLOWED_PREFIXES"),
-      app.indexOf("const ANON_ALLOWED_EXACT"),
-    );
-    expect(anonymousRoutes).toContain('"/pricing"');
-    expect(app).toContain('pathname === "/pricing"');
-    expect(app).toContain('<Route path="/pricing" component={PledgeStoreRoute} />');
+    const pricingRoute = '<Route path="/pricing" component={PledgeStoreRoute} />';
+    const pricingRouteAt = app.indexOf(pricingRoute);
+    expect(pricingRouteAt).toBeGreaterThan(-1);
+    expect(app.slice(pricingRouteAt - 220, pricingRouteAt)).not.toContain("FeatureAuthGate");
+    expect(app).toContain("function PledgeStoreRoute()");
+    expect(app).toContain("return <PledgeStore />;");
     expect(pledge).toContain('login(`${window.location.pathname}${window.location.search}`)');
   });
 });

@@ -22,14 +22,18 @@ describe("frontend startup boundaries", () => {
     expect(main).toContain("new MutationObserver(removeReplitInjectedUi)");
   });
 
-  it("keeps heavy optional modules on demand while warming Pablo after first paint", () => {
+  it("warms optional Pablo only when idle on a fast, non-data-saver connection", () => {
     const app = source("App.tsx");
     const twilio = source("contexts/TwilioDeviceContext.tsx");
     const music = source("contexts/MusicPlayerContext.tsx");
     const chat = source("components/DeferredChatPanel.tsx");
 
+    expect(app).toContain('const Console = lazy(() => import("@/pages/Console"));');
+    expect(app).not.toContain('import Console from "@/pages/Console";');
     expect(app).toContain('const PabloTerminal = lazy(loadPabloTerminal);');
-    expect(app).toContain("void loadPabloTerminal()");
+    expect(app).toContain("requestIdleCallback");
+    expect(app).toContain("connection?.saveData");
+    expect(app).toContain('connection.effectiveType !== "4g"');
     expect(twilio).toContain("await import('@twilio/voice-sdk')");
     expect(twilio).not.toMatch(/^import \\{ Device, Call \\}/m);
     expect(music).toContain('await import("@/lib/audioConvert")');
