@@ -4,6 +4,7 @@ import { AddressInfo } from "net";
 import { randomUUID } from "crypto";
 import { WebSocket } from "ws";
 import { attachWorldServer } from "../worldServer";
+import { OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
 
 // These tests verify that proximity_chat dialog bubbles are scoped to the
 // sender's building interior.  A player chatting inside 'theater' must NOT
@@ -155,7 +156,9 @@ async function waitForPlayerId(
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-describe("interior chat isolation — proximity_chat scoped by interiorBid", () => {
+describe.skipIf(!OUTSIDE_WORLD_ENABLED)(
+  "interior chat isolation — proximity_chat scoped by interiorBid",
+  () => {
   it("proximity_chat from a theater player is received by a co-occupant in the same building", async () => {
     const nameA = `ICIT_A_${randomUUID().slice(0, 6)}`.toUpperCase();
     const nameB = `ICIT_B_${randomUUID().slice(0, 6)}`.toUpperCase();
@@ -232,6 +235,27 @@ describe("interior chat isolation — proximity_chat scoped by interiorBid", () 
     expect(wasAbsent).toBe(true);
   });
 
+  it("nearby voice peers are announced only inside the same building interior", async () => {
+    const nameA = `VOICE_A_${randomUUID().slice(0, 6)}`.toUpperCase();
+    const nameB = `VOICE_B_${randomUUID().slice(0, 6)}`.toUpperCase();
+    const nameC = `VOICE_C_${randomUUID().slice(0, 6)}`.toUpperCase();
+    const sockA = await BufferedSocket.connect(nameA, TEST_CITY, port);
+    const sockB = await BufferedSocket.connect(nameB, TEST_CITY, port);
+    const sockC = await BufferedSocket.connect(nameC, TEST_CITY, port);
+    const playerAId = await waitForPlayerId(sockB, nameA);
+
+    sockA.send({ type: "move", x: 300, y: 400, interiorBid: "office-a" });
+    sockB.send({ type: "move", x: 310, y: 400, interiorBid: "office-a" });
+    sockC.send({ type: "move", x: 315, y: 400, interiorBid: "office-b" });
+    await new Promise((r) => setTimeout(r, 80));
+
+    const sameInterior = sockB.next((msg) => msg.type === "voice_peer_joined" && msg.id === playerAId, 4000);
+    const otherInterior = sockC.absent((msg) => msg.type === "voice_peer_joined" && msg.id === playerAId, 600);
+    sockA.send({ type: "voice_join" });
+    expect((await sameInterior).id).toBe(playerAId);
+    expect(await otherInterior).toBe(true);
+  });
+
   it("proximity_chat from an open-world player (no interiorBid) reaches all city players", async () => {
     const nameF = `ICIT_F_${randomUUID().slice(0, 6)}`.toUpperCase();
     const nameG = `ICIT_G_${randomUUID().slice(0, 6)}`.toUpperCase();
@@ -257,5 +281,6 @@ describe("interior chat isolation — proximity_chat scoped by interiorBid", () 
     const bubble = await bubblePromise;
     expect(bubble.type).toBe("proximity_chat");
     expect(bubble.id).toBe(playerFId);
-  });
-});
+    });
+  },
+);

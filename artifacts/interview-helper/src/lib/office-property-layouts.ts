@@ -68,6 +68,7 @@ export function officePropertyLayoutFromPlan(
   propertyKey = `${plan.city}:${plan.floorNumber}`,
   tenants: readonly ShadowTowerCommercialTenant[] = [],
   lockOfficeEntrances = true,
+  openUnitNumbers: readonly number[] = [],
 ): OfficePropertyLayout {
   const projectedPlan = withShadowTowerTenantFitout(plan, tenants.map((tenant) => tenant.businessKey));
   const objects = projectedPlan.objects;
@@ -92,8 +93,10 @@ export function officePropertyLayoutFromPlan(
      doorSide: object.door?.side ?? "bottom",
      doorAt: object.door?.at,
      doorSpan: object.door?.span ?? 2,
-     locked: lockOfficeEntrances && object.door != null,
+      locked: lockOfficeEntrances && object.door != null
+        && !(object.kind === "office_unit" && openUnitNumbers.includes(unitNumber)),
      access: object.door?.access,
+      privacy: object.kind === "office_unit" || object.kind === "executive_room" ? "private" : "public",
     accent: object.kind === "office_unit" ? tenant?.business.color ?? ["#38bdf8", "#a78bfa", "#fbbf24", "#34d399"][unitNumber - 1] : undefined,
   };
   });
@@ -130,9 +133,9 @@ export function officePropertyLayoutFromPlan(
     footprint: { w: object.footprint.cols, d: object.footprint.rows }, glyph: glyphFor(object.kind),
   };
    }).concat(
-     rooms.filter((room) => room.locked).map((room) => ({
+     rooms.filter((room) => room.id.startsWith("office-address-")).map((room) => ({
        id: `${room.id}-door`,
-       label: `${room.label ?? "OFFICE"} · LOCKED`,
+        label: `${room.label ?? "OFFICE"} · ${room.locked ? "LOCKED" : "SUITE DOOR"}`,
        col: room.doorSide === "left" ? room.x : room.doorSide === "right" ? room.x + room.w - 1 : room.doorAt ?? room.x + Math.floor(room.w / 2),
        row: room.doorSide === "top" ? room.y : room.doorSide === "bottom" ? room.y + room.h - 1 : room.doorAt ?? room.y + Math.floor(room.h / 2),
        radius: 30,
@@ -260,15 +263,29 @@ export function findOfficeRoute(layout: OfficePropertyLayout, from: OfficeTile, 
  */
 export function routeOfficePath(layout: OfficePropertyLayout, path: readonly OfficeTile[]): OfficeTile[] {
   if (path.length < 2) return path.slice();
+  const blocked = getOfficeBlockedTiles(layout);
   const clamp = (point: OfficeTile): OfficeTile => ({
     col: Math.max(0, Math.min(layout.cols - 1, Math.floor(point.col))),
     row: Math.max(0, Math.min(layout.rows - 1, Math.floor(point.row))),
   });
-  const start = clamp(path[0]);
+  const nearestWalkable = (point: OfficeTile): OfficeTile => {
+    if (!blocked.has(`${point.col},${point.row}`)) return point;
+    for (let radius = 1; radius < Math.max(layout.cols, layout.rows); radius += 1) {
+      for (let col = point.col - radius; col <= point.col + radius; col += 1) {
+        for (let row = point.row - radius; row <= point.row + radius; row += 1) {
+          if (col < 0 || row < 0 || col >= layout.cols || row >= layout.rows) continue;
+          if (Math.abs(col - point.col) + Math.abs(row - point.row) > radius) continue;
+          if (!blocked.has(`${col},${row}`)) return { col, row };
+        }
+      }
+    }
+    return point;
+  };
+  const start = nearestWalkable(clamp(path[0]));
   const routed: OfficeTile[] = [{ col: start.col, row: start.row }];
   let current = start;
   for (const waypoint of path.slice(1)) {
-    const target = clamp(waypoint);
+    const target = nearestWalkable(clamp(waypoint));
     const segment = findOfficeRoute(layout, current, target);
     for (const tile of segment) {
       const previous = routed[routed.length - 1];

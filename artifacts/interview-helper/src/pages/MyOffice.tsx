@@ -630,6 +630,17 @@ export default function MyOffice() {
       <nav className="flex items-center gap-2 overflow-x-auto scrollbar-hide font-mono text-[11px] uppercase tracking-widest">
         <Link href="/pablo" className="shrink-0 whitespace-nowrap rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300 hover:bg-white/[0.07]">« PABLO</Link>
         <Link href="/office" className="shrink-0 whitespace-nowrap rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/20">Enter Office ▸</Link>
+        <button
+          onClick={() => {
+            const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+            window.open(`${base}/my-office/monitor`, "_blank", "noopener,noreferrer");
+          }}
+          data-testid="button-open-office-monitor"
+          className="shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded-md border border-black/15 bg-[#fffefa] px-3 py-1.5 text-zinc-800 hover:bg-white"
+          aria-label="Open office monitor in a separate window"
+        >
+          <ExternalLink size={12} /> Office Monitor
+        </button>
         <button onClick={toggleDual}
           className={`ml-auto shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded-md border px-3 py-1.5 transition-colors ${
             dualView ? 'border-sky-500/40 bg-sky-500/15 text-sky-300' : 'border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.07]'

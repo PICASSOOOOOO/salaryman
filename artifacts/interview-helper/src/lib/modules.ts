@@ -38,9 +38,7 @@ export const MODULES: Module[] = [
     codename: 'PABLO',
     icon: Terminal,
     defaultPath: '/pablo',
-    subs: [
-      { id: 'pablo-deck', path: '/pablo/deck', label: 'PABLO DECK', boomerLabel: 'PABLO DECK', codename: 'DECK-X', icon: Layers },
-    ],
+    subs: [],
   },
   {
     id: 'office',
@@ -84,14 +82,27 @@ export const MODULES: Module[] = [
   },
   {
     id: 'bots',
-    path: '/bots',
-    label: 'AGENTS',
-    codename: 'PIXEL AGENTS',
+    path: '/business/autopilot',
+    label: 'PABLO PRIME',
+    codename: 'PABLO PRIME',
     icon: Bot,
-    defaultPath: '/bots',
+    defaultPath: '/business/autopilot',
     subs: [
-      { id: 'my-bots', path: '/bots', label: 'AGENT COMMAND CENTER', boomerLabel: 'MY AGENTS', codename: 'AGENT OPS', icon: Bot },
-      { id: 'templates', path: '/bots/templates', label: 'TEMPLATES', boomerLabel: 'CLAUDE TEMPLATES', codename: 'CCT', icon: BookOpen },
+      { id: 'autopilot', path: '/business/autopilot', label: 'AUTOMATION WORKSPACE', boomerLabel: 'AUTOMATION WORKSPACE', codename: 'PABLO-OPS', icon: Activity },
+      { id: 'pablo-deck', path: '/pablo/deck', label: 'AI AGENTS', boomerLabel: 'AI AGENTS', codename: 'AGENT-DECK', icon: Layers },
+    ],
+  },
+  {
+    id: 'crm',
+    path: '/business/crm',
+    label: 'CRM',
+    codename: 'CRM',
+    icon: Users,
+    defaultPath: '/business/crm',
+    subs: [
+      { id: 'crm-leads', path: '/marketing/leads', label: 'LEADS', boomerLabel: 'LEADS', codename: 'LEAD-DATABASE', icon: Target },
+      { id: 'crm-lead-capture', path: '/business/contacts', label: 'LEAD CAPTURE', boomerLabel: 'LEAD CAPTURE', codename: 'CONTACT-IMPORT', icon: Users },
+      { id: 'crm-deals', path: '/business/deals', label: 'DEALS', boomerLabel: 'DEALS', codename: 'PIPELINE-X', icon: TrendingUp },
     ],
   },
   {
@@ -119,8 +130,6 @@ export const MODULES: Module[] = [
       { id: 'office', path: '/office', label: 'OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
       { id: 'marketplace', path: '/business/marketplace', label: 'MARKETPLACE', boomerLabel: 'BUSINESS MARKETPLACE', codename: 'BIZ-MART', icon: Store },
       { id: 'team', path: '/business/team', label: 'TEAM', boomerLabel: 'TEAM DIRECTORY', codename: 'ROSTER-X', icon: Users },
-      { id: 'autopilot', path: '/business/autopilot', label: 'AUTOPILOT', boomerLabel: 'AGENT AUTOPILOT', codename: 'AUTO-PILOT', icon: Activity },
-      { id: 'contacts', path: '/business/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'RECALL-6', icon: Users },
       { id: 'hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
       { id: 'resume', path: '/business/resume', label: 'RESUME', boomerLabel: 'RESUME BUILDER', codename: 'CV-FORGE', icon: FileText },
       { id: 'job-command', path: '/business/job-command', label: 'JOB CENTER', boomerLabel: 'JOB COMMAND CENTER', codename: 'JCC', icon: Crosshair },
@@ -141,11 +150,6 @@ export const MODULES: Module[] = [
       { id: 'balance-sheet', path: '/business/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
       { id: 'accounting', path: '/business/accounting', label: 'ACCOUNTING', boomerLabel: 'ACCOUNTING & LEDGERS', codename: 'GL-CORE', icon: BookOpen },
       { id: 'taxes', path: '/business/taxes', label: 'TAXES', boomerLabel: 'TAX ESTIMATOR', codename: 'TAX-1040', icon: Landmark },
-      // INTEL folded into BUSINESS — these keep their /intel/* routes/pages but
-      // now live as sub-tabs of BUSINESS instead of a standalone top-level nav.
-      { id: 'reports', path: '/intel/reports', label: 'REPORTS', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
-      { id: 'dashboard', path: '/intel/dashboard', label: 'DASHBOARD', boomerLabel: 'DASHBOARD', codename: 'CMD DECK', icon: LayoutDashboard },
-      { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
     ],
   },
   {
@@ -154,22 +158,21 @@ export const MODULES: Module[] = [
     label: 'CREATIVE',
     codename: 'FORGE MATRIX',
     icon: Layers,
-    defaultPath: '/creative/music',
+    defaultPath: '/creative/design',
     subs: [
       // AUDIO group (left)
-      { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
-      { id: 'humbird', path: '/creative/music', label: 'HUMMING BIRD', boomerLabel: 'HUMMING BIRD', codename: 'HUMMING BIRD', icon: Music2 },
-      { id: 'stems', path: '/creative/stems', label: 'STEMS', boomerLabel: 'STEM PLAYER', codename: 'STEM-X', icon: Music2 },
+      { id: 'lab', path: '/1999', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
+      { id: 'stems', path: '/1999/stems', label: 'STEM PLAYER', boomerLabel: 'STEM PLAYER', codename: 'STEM-X', icon: Music2 },
       // WRITING (middle)
       { id: 'writer', path: '/creative/writer', label: 'HEMINGWAY', boomerLabel: 'HEMINGWAY', codename: 'HEMINGWAY', icon: PenTool },
       // PHOTOS / VISUAL group (right)
       { id: 'darkroom', path: '/creative/darkroom', label: 'DARK ROOM', boomerLabel: 'DARK ROOM', codename: 'DARK ROOM', icon: Clapperboard },
       { id: 'design', path: '/creative/design', label: 'DESIGN STUDIO', boomerLabel: 'DESIGN STUDIO', codename: 'DESIGN-FORGE', icon: Palette },
       { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
-      { id: 'media', path: '/creative/media', label: 'MEDIA', boomerLabel: 'MEDIA LIBRARY', codename: 'VAULT-X', icon: FolderOpen },
-      { id: 'schematic', path: '/creative/schematic', label: 'BLUEPRINT', boomerLabel: 'BLUEPRINT DECODER', codename: 'DRAFT-X', icon: Ruler },
+      { id: 'media', path: '/creative/media', label: 'DATA VAULT', boomerLabel: 'DATA VAULT', codename: 'VAULT-X', icon: FolderOpen },
+      { id: 'schematic', path: '/creative/schematic', label: 'CAD & BLUEPRINT READER', boomerLabel: 'CAD & BLUEPRINT READER', codename: 'DRAFT-X', icon: Ruler },
       // EDUCATION
-      { id: 'classroom', path: '/creative/classroom', label: 'CLASSROOM', boomerLabel: 'CLASSROOM', codename: 'ACADEMY', icon: GraduationCap },
+      { id: 'classroom', path: '/creative/classroom', label: 'MEETING ROOM', boomerLabel: 'MEETING ROOM', codename: 'ACADEMY', icon: GraduationCap },
     ],
   },
   {
@@ -184,7 +187,9 @@ export const MODULES: Module[] = [
       { id: 'ads', path: '/marketing/ads', label: 'AD BOTS', boomerLabel: 'AD BOTS', codename: 'SIGNAL-AD', icon: Bot },
       { id: 'social', path: '/marketing/social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', codename: 'SIGNAL-7', icon: Share2 },
       { id: 'seo', path: '/marketing/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
-      { id: 'leads', path: '/marketing/leads', label: 'LEADS', boomerLabel: 'LEAD DATABASE', codename: 'PROSPECT-9', icon: Target },
+      { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
+      { id: 'reports', path: '/intel/reports', label: 'REPORTS', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
+      { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
     ],
   },
   {
@@ -237,7 +242,7 @@ export const PROFILE_MODULES: SubItem[] = [
   { id: 'profile-account', path: '/profile', label: 'PROFILE', boomerLabel: 'MY PROFILE', codename: 'IDENTITY', icon: User },
   { id: 'profile-settings', path: '/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'CONTROL', icon: Settings },
   { id: 'profile-admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', codename: 'COMMAND', icon: ShieldCheck },
-  { id: 'profile-platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', codename: 'NEXUS-API', icon: Network },
+  { id: 'profile-platform', path: '/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', codename: 'NEXUS-API', icon: Network },
   { id: 'profile-moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', codename: 'WATCHTOWER', icon: Eye },
 ];
 
@@ -253,34 +258,45 @@ export const ADMIN_SUBS: SubItem[] = [
 ];
 
 export const SETTINGS_MODULES: SubItem[] = [
-  { id: 'plat-overview', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM', codename: 'NEXUS-API', icon: Network },
-  { id: 'plat-keys', path: '/profile/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
-  { id: 'plat-webhooks', path: '/profile/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
-  { id: 'plat-endpoints', path: '/profile/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
-  { id: 'plat-apps', path: '/profile/platform?tab=apps', label: 'APPS', boomerLabel: 'CONNECTED APPS', codename: 'APPS', icon: Globe },
+  { id: 'plat-overview', path: '/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM', codename: 'NEXUS-API', icon: Network },
+  { id: 'plat-keys', path: '/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
+  { id: 'plat-webhooks', path: '/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
+  { id: 'plat-endpoints', path: '/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
+  { id: 'plat-apps', path: '/platform?tab=apps', label: 'APPS', boomerLabel: 'APPS', codename: 'APPS', icon: Globe },
 ];
 
 export function getModuleForPath(pathname: string): Module | null {
-  if (pathname === '/pablo') return MODULES[0];
-  // Pablo module: deck lives under PABLO
-  if (pathname === '/pablo/deck') return MODULES[0];
-  // Office module: floor, my-office, game sub-pages
-  if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return MODULES[1];
+  const module = (id: string) => MODULES.find((candidate) => candidate.id === id) ?? null;
+
+  if (pathname === '/hummingbird' || pathname.startsWith('/workspace')) return null;
+  if (pathname === '/pablo/deck') return module('bots');
+  if (pathname === '/pablo') return module('pablo');
+  if (pathname === '/1999' || pathname.startsWith('/1999/')) return module('creative');
+
+  // Office floor and in-game management routes share the Office section.
+  if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return module('office');
   if (pathname === '/game/economy' || pathname === '/game/bank' ||
-      pathname === '/game/character' || pathname === '/game/settings') return MODULES[1];
-  if (pathname.startsWith('/phone')) return MODULES[2];
-  if (pathname.startsWith('/bots') || pathname === '/agents' || pathname === '/console/agents') return MODULES[3];
-  if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[4];
-  if (pathname.startsWith('/business')) return MODULES[5];
-  if (pathname.startsWith('/insurance')) return MODULES[5];
-  if (pathname.startsWith('/intel')) return MODULES[5];
-  if (pathname.startsWith('/creative')) return MODULES[6];
-  if (pathname.startsWith('/marketing')) return MODULES[7];
-  if (pathname.startsWith('/armory')) return MODULES[8];
-  if (pathname === '/org' || pathname.startsWith('/org/')) return MODULES[9];
-  if (pathname === '/marketplace') return MODULES[10];
-  if (pathname.startsWith('/profile')) return null;
-  if (pathname.startsWith('/admin')) return null;
-  if (pathname.startsWith('/platform')) return null;
+      pathname === '/game/character' || pathname === '/game/settings') return module('office');
+  if (pathname.startsWith('/phone')) return module('phone');
+
+  if (pathname === '/business/autopilot' || pathname.startsWith('/bots') ||
+      pathname === '/agents' || pathname === '/console/agents') return module('bots');
+
+  // Lead and deal routes are part of CRM even where legacy URLs remain.
+  if (pathname === '/business/crm' || pathname.startsWith('/business/crm/') ||
+      pathname === '/business/contacts' || pathname === '/business/deals' ||
+      pathname === '/contacts' || pathname === '/leads' ||
+      pathname === '/marketing/leads' || pathname.startsWith('/marketing/leads/')) return module('crm');
+
+  if (pathname === '/console' || pathname.startsWith('/console/')) return module('console');
+  if (pathname.startsWith('/business') || pathname.startsWith('/insurance')) return module('business');
+  if (pathname === '/intel/reports' || pathname === '/intel/goals' || pathname.startsWith('/intel/seo')) return module('marketing');
+  if (pathname === '/intel/dashboard') return null;
+  if (pathname.startsWith('/creative/brand')) return module('marketing');
+  if (pathname.startsWith('/creative')) return module('creative');
+  if (pathname.startsWith('/marketing')) return module('marketing');
+  if (pathname.startsWith('/armory')) return module('armory');
+  if (pathname === '/org' || pathname.startsWith('/org/')) return module('org');
+  if (pathname === '/marketplace') return module('marketplace');
   return null;
 }

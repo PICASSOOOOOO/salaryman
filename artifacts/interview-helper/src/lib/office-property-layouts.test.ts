@@ -34,17 +34,24 @@ describe("Shadow Tower office projection", () => {
     }
   });
 
-  it("keeps the elevator in a dedicated perimeter hall and gives suites password doors", () => {
+  it("keeps the elevator hall in the shared circulation core and gives suites password doors", () => {
     const plan = getShadowTowerPlan("minx_city", 17, "company", [], 4);
     const hall = plan.objects.find((object) => object.kind === "elevator_hall")!;
     const elevator = plan.objects.find((object) => object.kind === "elevator")!;
     const suites = plan.objects.filter((object) => object.kind === "office_unit");
-    expect(hall.footprint).toMatchObject({ x: 0, y: 0, cols: 4 });
-    expect(elevator.footprint.x).toBe(0);
+    expect(hall.footprint).toMatchObject({ x: 0, y: 8, cols: 5, rows: 8 });
+    expect(elevator.footprint.x).toBe(1);
     expect(suites).toHaveLength(4);
-    expect(suites.every((suite) => suite.footprint.y === 0 && suite.door?.access === "password")).toBe(true);
-    expect(suites.every((suite) => suite.door?.side === "bottom")).toBe(true);
-    expect(new Set(suites.map((suite) => suite.footprint.x))).toHaveProperty("size", 4);
+    expect(suites.every((suite) => suite.door?.access === "password")).toBe(true);
+    expect(suites.slice(0, 2).every((suite) => suite.door?.side === "bottom")).toBe(true);
+    expect(suites.slice(2).every((suite) => suite.door?.side === "top")).toBe(true);
+    expect(new Set(suites.map((suite) => suite.footprint.x))).toHaveProperty("size", 2);
+  });
+
+  it("marks private suites for discovery fog while leaving shared circulation public", () => {
+    const layout = officePropertyLayoutFromPlan(getShadowTowerPlan("minx_city", 17, "company", [], 4));
+    expect(layout.rooms.filter((room) => room.id.startsWith("office-address-")).every((room) => room.privacy === "private")).toBe(true);
+    expect(layout.rooms.find((room) => room.id === "elevator-hall")?.privacy).toBe("public");
   });
 
   it("blocks a locked suite doorway until the server-backed room access is granted", () => {

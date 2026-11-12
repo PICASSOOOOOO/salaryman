@@ -1,7 +1,20 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { build as esbuild } from "esbuild";
-import { rm, readFile } from "fs/promises";
+import {
+  cpSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readlinkSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+} from "node:fs";
+import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "module";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,9 +57,40 @@ const allowlist = [
   "zod-validation-error",
 ];
 
+function rebaseStagedModuleLinks(
+  destination: string,
+  stagedNodeModules: string,
+): void {
+  const visit = (directory: string) => {
+    for (const entry of readdirSync(directory)) {
+      const entryPath = path.join(directory, entry);
+      const stat = lstatSync(entryPath);
+      if (stat.isSymbolicLink()) {
+        const target = readlinkSync(entryPath);
+        if (
+          path.isAbsolute(target) &&
+          (target === stagedNodeModules ||
+            target.startsWith(`${stagedNodeModules}${path.sep}`))
+        ) {
+          const relocatedTarget = path.join(
+            destination,
+            path.relative(stagedNodeModules, target),
+          );
+          unlinkSync(entryPath);
+          symlinkSync(relocatedTarget, entryPath);
+        }
+      } else if (stat.isDirectory()) {
+        visit(entryPath);
+      }
+    }
+  };
+
+  visit(destination);
+}
+
 async function buildAll() {
   const distDir = path.resolve(__dirname, "dist");
-  await rm(distDir, { recursive: true, force: true });
+  rmSync(distDir, { recursive: true, force: true });
 
   const versionStamp = getFormattedVersion();
   console.log(`building server... version: ${versionStamp}`);
@@ -76,6 +120,39 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  // The production phone-health scheduler must not depend on tsx at runtime.
+  // Bundle the TypeScript check to CommonJS and resolve its remaining
+  // production dependencies from the staged runtime node_modules directory.
+  await esbuild({
+    entryPoints: [path.resolve(__dirname, "src/scripts/phone-health-check.ts")],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: path.resolve(distDir, "phone-health-check.cjs"),
+    external: externals,
+    logLevel: "info",
+  });
+
+  // Keep the published image lean: the workspace root node_modules includes
+  // every artifact and development tool. Stage only this API's production
+  // dependency tree, then copy it under dist so it can be selectively retained.
+  const workspaceRoot = path.resolve(__dirname, "../..");
+  const stagedPackage = mkdtempSync(path.join(tmpdir(), "salaryman-api-prod-"));
+  try {
+    execFileSync(
+      "pnpm",
+      ["--filter", "@workspace/api-server", "deploy", "--prod", "--legacy", stagedPackage],
+      { cwd: workspaceRoot, stdio: "inherit" },
+    );
+    const runtimeModules = path.join(distDir, "runtime", "node_modules");
+    mkdirSync(path.dirname(runtimeModules), { recursive: true });
+    const stagedNodeModules = path.join(stagedPackage, "node_modules");
+    cpSync(stagedNodeModules, runtimeModules, { recursive: true });
+    rebaseStagedModuleLinks(runtimeModules, stagedNodeModules);
+  } finally {
+    rmSync(stagedPackage, { recursive: true, force: true });
+  }
 }
 
 buildAll().catch((err) => {

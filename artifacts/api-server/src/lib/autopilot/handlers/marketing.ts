@@ -1,28 +1,27 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, inArray } from "drizzle-orm";
 import {
   db,
-  socialPostsTable,
   socialConnectionsTable,
   organizationsTable,
+  autopilotActivityLogTable,
 } from "@workspace/db";
 import {
   generateSocialCopy,
+  createSocialPost,
   publishSocialPost,
   getBridgedSocialPlatforms,
   isSocialPlatform,
   type SocialPlatform,
 } from "../../social-service";
-import { getBrandKit, buildBrandContext } from "../../studio-gen";
-import { readMarketingPrefs, resolveMarketingTargets } from "../marketing-prefs";
+import type { GptImageSize } from "@workspace/integrations-openai-ai-server/image";
+import { ObjectStorageService } from "../../objectStorage";
+import { getBrandKit, buildBrandContext, generateStudioImage, applyTaste, saveImageToStorage } from "../../studio-gen";
+import { chargeMarketingImageCredit } from "../guardrails";
+import { isMarketingImageGenerationApproved, readMarketingPrefs, resolveMarketingTargets } from "../marketing-prefs";
 import type { AutopilotContext, AutopilotHandler } from "../types";
-import { creditOrgAccount } from "../../../routes/org-accounts";
-
-// Flat engagement revenue credited to org checking per published post (ƒ).
-// Represents estimated campaign reach / lead-gen value attributed to the bot.
-const BOT_POST_REVENUE_FIAT = 100;
 
 // ─── Marketing autopilot handler ─────────────────────────────────────────────
-// The assigned bot drafts a social post and publishes it on the org's cadence,
+// Pablo Prime drafts a social post and publishes it on the org's cadence,
 // using the SAME services the manual Marketing Command Center screens call
 // (generateSocialCopy → create draft → publishSocialPost). It never forks the
 // logic or bypasses the PRIME gate:
@@ -40,6 +39,12 @@ const BOT_POST_REVENUE_FIAT = 100;
 // a small evergreen rotation so the feed shows activity and nudges the user to
 // connect a platform (parity with the manual simulated path).
 const DEFAULT_PLATFORMS: SocialPlatform[] = ["twitter", "linkedin", "instagram"];
+const IMAGE_SIZES: Partial<Record<SocialPlatform, GptImageSize>> = {
+  facebook: "1536x1024",
+  instagram: "1024x1024",
+  threads: "1024x1024",
+};
+const VIDEO_ONLY_PLATFORMS: SocialPlatform[] = ["tiktok", "youtube"];
 
 // Evergreen marketing angles the bot rotates through so successive posts vary.
 const MARKETING_ANGLES = [
@@ -64,12 +69,16 @@ async function getConnectedPlatforms(ownerId: string): Promise<SocialPlatform[]>
   return rows.map((r) => r.provider).filter(isSocialPlatform);
 }
 
-/** How many social posts this owner already has — used to rotate deterministically. */
-async function countOwnerPosts(ownerId: string): Promise<number> {
+/** Count prior attempts so skipped media-first posts still rotate to another platform. */
+async function countCampaignAttempts(orgId: number): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)` })
-    .from(socialPostsTable)
-    .where(eq(socialPostsTable.userId, ownerId));
+    .from(autopilotActivityLogTable)
+    .where(and(
+      eq(autopilotActivityLogTable.orgId, orgId),
+      eq(autopilotActivityLogTable.domain, "marketing"),
+      inArray(autopilotActivityLogTable.action, ["draft_post", "media_required_skip"]),
+    ));
   return Number(row?.n ?? 0);
 }
 
@@ -106,7 +115,6 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
   // Content generation is paid AI behind the PRIME-gated /social/generate route.
   // Enforce the SAME gates the manual path does before spending anything.
   if (!(await ctx.ensureEntitlement())) return;
-  if (!(await ctx.ensureCredit())) return;
 
   // Owner-tunable marketing preferences (allowed platforms, tone, topics). An
   // org that never set any gets the same evergreen behavior as before.
@@ -121,8 +129,29 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
   ]);
   const connected = Array.from(new Set([...marketingConnected, ...bridgedConnected]));
   const targets = resolveMarketingTargets(connected, allowed, DEFAULT_PLATFORMS);
-  const rotation = await countOwnerPosts(ctx.ownerId);
+  const rotation = await countCampaignAttempts(ctx.orgId);
   const platform = targets[rotation % targets.length];
+  const imageGenerationEnabled = isMarketingImageGenerationApproved(prefs, ctx.ownerId);
+  if (VIDEO_ONLY_PLATFORMS.includes(platform)) {
+    await ctx.log({
+      action: "media_required_skip",
+      summary: `Skipped ${platform}: a campaign video must be attached before it can publish.`,
+      outcome: "noop",
+      detail: { platform, requiredMedia: "video" },
+    });
+    return;
+  }
+  if (platform === "instagram" && !imageGenerationEnabled) {
+    await ctx.log({
+      action: "media_required_skip",
+      summary: "Skipped Instagram: enable owner-approved image generation or attach an image before publishing.",
+      outcome: "noop",
+      detail: { platform, requiredMedia: "image" },
+    });
+    return;
+  }
+  if (!(await ctx.ensureCredit())) return;
+
   const angle = chooseAngle(prefs.topics, rotation);
 
   // Ground the copy in the owner's brand kit + org name, same as the ad studio.
@@ -157,23 +186,68 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
     return;
   }
 
+  const mediaUrls: string[] = [];
+  const imageSize = IMAGE_SIZES[platform];
+  if (imageGenerationEnabled && imageSize) {
+    const credit = await chargeMarketingImageCredit(ctx.ownerId, ctx.ownerEmail);
+    if (!credit.allowed) {
+      await ctx.log({
+        action: "image_generation_blocked",
+        summary: "Skipped campaign image generation because the owner's image credit check did not pass.",
+        outcome: "blocked",
+        detail: { platform, reason: credit.reason ?? "unknown" },
+      });
+    } else {
+      try {
+        const imagePrompt = applyTaste(
+          `Create one polished social campaign image for ${orgName}. Base the visual on this approved post copy: ${content.slice(0, 900)}. ${buildBrandContext(kit)} Create an original composition that supports the message. Do not include text, lettering, watermarks, or logos.`,
+        );
+        const image = await generateStudioImage(imagePrompt, imageSize);
+        const saved = await saveImageToStorage(
+          ctx.ownerId,
+          image,
+          `autopilot-${platform}-${Date.now()}.png`,
+          "marketing-autopilot",
+        );
+        if (saved) {
+          const publicUrl = await new ObjectStorageService().signDownloadURL(saved.objectPath, 86_400);
+          mediaUrls.push(publicUrl);
+        }
+      } catch (error) {
+        await ctx.log({
+          action: "image_generation_failed",
+          summary: `Could not prepare the ${platform} campaign image; no image was attached.`,
+          outcome: "error",
+          detail: { platform, error: error instanceof Error ? error.message : "unknown" },
+        });
+      }
+    }
+  }
+
+  if (platform === "instagram" && mediaUrls.length === 0) {
+    await ctx.log({
+      action: "media_required_skip",
+      summary: "Skipped Instagram because a publishable image was not available.",
+      outcome: "noop",
+      detail: { platform, requiredMedia: "image" },
+    });
+    return;
+  }
+
   // Create the draft via the same table the manual "create post" screen writes,
   // so it appears in the human's posts list for review/edit/takeover.
-  const [draft] = await db
-    .insert(socialPostsTable)
-    .values({
-      userId: ctx.ownerId,
-      platform,
-      content,
-      hashtags,
-      status: "draft",
-      aiGenerated: "yes",
-    })
-    .returning();
+  const draft = await createSocialPost(ctx.ownerId, {
+    platform,
+    content,
+    hashtags,
+    mediaUrls,
+    status: "draft",
+    aiGenerated: "yes",
+  });
 
   await ctx.log({
     action: "draft_post",
-    summary: `${ctx.bot.name} drafted a ${platform} post for ${orgName}.`,
+    summary: `${ctx.assistantName} drafted a ${platform} post for ${orgName}.`,
     outcome: "success",
     detail: { postId: draft.id, platform },
   });
@@ -185,6 +259,7 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
     email: ctx.ownerEmail,
     postId: draft.id,
     orgId: ctx.orgId,
+    liveOnly: true,
   });
 
   if (!result.ok) {
@@ -207,20 +282,10 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
   } else {
     await ctx.log({
       action: "publish_live",
-      summary: `${ctx.bot.name} published a ${platform} post live for ${orgName}.`,
+      summary: `${ctx.assistantName} published a ${platform} post live for ${orgName}.`,
       outcome: "success",
       detail: { postId: draft.id, platform, simulated: false, url: result.url ?? null },
     });
   }
 
-  // Shadow-credit org checking: bot-attributed campaign engagement revenue.
-  // Fire-and-forget — never block the publish outcome.
-  creditOrgAccount(
-    ctx.orgId,
-    "checking",
-    BOT_POST_REVENUE_FIAT,
-    `${ctx.bot.name} ${platform} campaign — engagement revenue`,
-    "bot",
-    ctx.ownerId,
-  ).catch(() => {/* non-critical */});
 };

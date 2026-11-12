@@ -5,9 +5,20 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 // orchestration (gating → draft → publish → log) without real AI/provider calls.
 // generateSocialCopy + publishSocialPost are stubbed; isSocialPlatform (used to
 // read connected platforms) is kept real via importActual.
-const { generateSocialCopyMock, publishSocialPostMock } = vi.hoisted(() => ({
+const {
+  generateSocialCopyMock,
+  publishSocialPostMock,
+  creditOrgAccountMock,
+  generateStudioImageMock,
+  saveImageToStorageMock,
+  chargeMarketingImageCreditMock,
+} = vi.hoisted(() => ({
   generateSocialCopyMock: vi.fn(),
   publishSocialPostMock: vi.fn(),
+  creditOrgAccountMock: vi.fn(async () => {}),
+  generateStudioImageMock: vi.fn(async () => Buffer.from("image")),
+  saveImageToStorageMock: vi.fn(async () => ({ fileId: 10, objectPath: "/objects/campaign-image" })),
+  chargeMarketingImageCreditMock: vi.fn(async () => ({ allowed: true })),
 }));
 
 vi.mock("../lib/social-service", async (importActual) => ({
@@ -19,6 +30,21 @@ vi.mock("../lib/social-service", async (importActual) => ({
 vi.mock("../lib/studio-gen", () => ({
   getBrandKit: vi.fn(async () => null),
   buildBrandContext: vi.fn(() => ""),
+  generateStudioImage: generateStudioImageMock,
+  applyTaste: vi.fn((prompt: string) => prompt),
+  saveImageToStorage: saveImageToStorageMock,
+}));
+vi.mock("../lib/objectStorage", () => ({
+  ObjectStorageService: class {
+    signDownloadURL = vi.fn(async () => "https://storage.example.test/campaign-image");
+  },
+}));
+vi.mock("../lib/autopilot/guardrails", async (importActual) => ({
+  ...(await importActual<typeof import("../lib/autopilot/guardrails")>()),
+  chargeMarketingImageCredit: chargeMarketingImageCreditMock,
+}));
+vi.mock("../routes/org-accounts", () => ({
+  creditOrgAccount: creditOrgAccountMock,
 }));
 
 import { randomUUID } from "crypto";
@@ -26,6 +52,7 @@ import { eq } from "drizzle-orm";
 import {
   db,
   socialPostsTable,
+  socialConnectionsTable,
   platformConnectedAppsTable,
   organizationsTable,
   usersTable,
@@ -55,7 +82,7 @@ function makeCtx(overrides: Partial<AutopilotContext> = {}): {
     orgId,
     domain: "marketing",
     config: {} as never,
-    bot: { name: "Pablo" } as never,
+    assistantName: "Pablo Prime",
     ownerId: OWNER_ID,
     ownerEmail: "owner@test",
     maxActions: 5,
@@ -100,11 +127,13 @@ beforeEach(async () => {
     needsConnection: "twitter",
   });
   await db.delete(socialPostsTable).where(eq(socialPostsTable.userId, OWNER_ID));
+  await db.delete(socialConnectionsTable).where(eq(socialConnectionsTable.userId, OWNER_ID));
   await db.delete(platformConnectedAppsTable).where(eq(platformConnectedAppsTable.orgId, String(orgId)));
 });
 
 afterAll(async () => {
   await db.delete(socialPostsTable).where(eq(socialPostsTable.userId, OWNER_ID));
+  await db.delete(socialConnectionsTable).where(eq(socialConnectionsTable.userId, OWNER_ID));
   await db.delete(platformConnectedAppsTable).where(eq(platformConnectedAppsTable.orgId, String(orgId)));
   await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
   await db.delete(usersTable).where(eq(usersTable.id, OWNER_ID));
@@ -163,6 +192,7 @@ describe("marketingAutopilotHandler — drafting + publishing", () => {
 
     // Both the draft and the (simulated) publish are recorded to the activity log.
     expect(logActions(log)).toEqual(["draft_post", "publish_simulated"]);
+    expect(creditOrgAccountMock).not.toHaveBeenCalled();
   });
 
   it("drafts an AI post and logs a LIVE publish when PRIME + connected", async () => {
@@ -179,6 +209,47 @@ describe("marketingAutopilotHandler — drafting + publishing", () => {
     expect(logActions(log)).toEqual(["draft_post", "publish_live"]);
     const liveLog = log.mock.calls.find((c) => (c[0] as { action: string }).action === "publish_live");
     expect((liveLog?.[0] as { outcome: string }).outcome).toBe("success");
+    expect(creditOrgAccountMock).not.toHaveBeenCalled();
+  });
+
+  it("generates and attaches an image only after current-owner approval and battery charge", async () => {
+    await db.insert(socialConnectionsTable).values({
+      userId: OWNER_ID,
+      provider: "facebook",
+      status: "connected",
+      credentials: { accessToken: "test-token", pageId: "page-test" },
+    });
+    const { ctx } = makeCtx({
+      config: {
+        prefs: { generateImages: true, imageGenerationApprovedBy: OWNER_ID },
+      } as never,
+    });
+
+    await marketingAutopilotHandler(ctx);
+
+    expect(chargeMarketingImageCreditMock).toHaveBeenCalledWith(OWNER_ID, "owner@test");
+    expect(generateStudioImageMock).toHaveBeenCalledTimes(1);
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.userId, OWNER_ID));
+    expect(post.mediaUrls).toEqual(["https://storage.example.test/campaign-image"]);
+  });
+
+  it("does not generate or charge for an image without current-owner approval", async () => {
+    await db.insert(socialConnectionsTable).values({
+      userId: OWNER_ID,
+      provider: "facebook",
+      status: "connected",
+      credentials: { accessToken: "test-token", pageId: "page-test" },
+    });
+    const { ctx } = makeCtx({
+      config: { prefs: { generateImages: true, imageGenerationApprovedBy: "former-owner" } } as never,
+    });
+
+    await marketingAutopilotHandler(ctx);
+
+    expect(chargeMarketingImageCreditMock).not.toHaveBeenCalled();
+    expect(generateStudioImageMock).not.toHaveBeenCalled();
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.userId, OWNER_ID));
+    expect(post.mediaUrls).toEqual([]);
   });
 
   it("selects a platform configured only through Platform Connections", async () => {

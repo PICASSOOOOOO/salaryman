@@ -1,5 +1,13 @@
 {pkgs}: {
   deps = [
+    pkgs.libjack2
+    pkgs.libGL
+    pkgs.xorg.libXinerama
+    pkgs.pkg-config
+    pkgs.ninja
+    pkgs.cmake
+    pkgs.blender
+    pkgs.xorg.libXcursor
     pkgs.godot_4
     pkgs.xorg.libxshmfence
     pkgs.xorg.libXtst

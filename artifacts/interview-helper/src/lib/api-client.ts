@@ -91,24 +91,20 @@ export function notifyFiatChangedSoon(delayMs: number = PABLO_TAX_REFRESH_DELAY_
 const SESSION_EXPIRY_SKIP_PATHS =
   /\/(auth\/user|auth\/providers)(\/|$|\?)/;
 
-// Public / anonymous-allowed routes where a 401 from a background API call is
-// EXPECTED (the visitor simply isn't signed in) and must NOT hijack navigation
-// to the sign-in funnel. The root "/" is the public scroll cinematic landing
-// (ScrollLanding); /pablo is the sign-in funnel itself; /immigration is the
-// post-sign-in intake desk. This mirrors the anonymous-allowed route set in
-// App.tsx — keep it in sync if more public routes are added. A 401 on any other
-// (genuinely protected) page still triggers the return-to-sign-in bounce.
+// Public routes that remain browseable without an account. A rejected write
+// here is handled by the feature itself rather than by a global route change.
+// This includes public chat, the guest workstation, and guest meetings.
 const SESSION_EXPIRY_PUBLIC_ROUTES = [
   "/tower",
   "/desktop",
   "/phone",
   "/pablo",
-  "/immigration",
+  "/onboarding",
   "/device-link",
   "/sms-opt-in",
-  // Auth routes are deliberately anonymous. Background metadata requests may
-  // still return 401 while Clerk is loading; redirecting those responses to
-  // Pablo unmounts the Clerk form before a visitor can sign in or sign up.
+  "/1999",
+  "/meet",
+  // Keep auth forms mounted if an action unexpectedly returns 401.
   "/sign-in",
   "/sign-up",
 ];
@@ -121,35 +117,52 @@ function isSessionExpiryPublicRoute(currentPath: string): boolean {
   );
 }
 
-export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
+export type ApiFetchOptions = RequestInit & {
+  /**
+   * Auth/bootstrap reads can briefly receive a 401 while Clerk's browser
+   * session is becoming available to the API. Those reads should retry or
+   * resolve their own state instead of redirecting the whole app mid-login.
+   */
+  skipSessionExpiryRedirect?: boolean;
+  /**
+   * Opt in to a sign-in redirect for a specific request. By default, only
+   * rejected writes redirect; a background read must not gate free browsing.
+   */
+  redirectOnUnauthorized?: boolean;
+};
+
+export function apiFetch(path: string, opts?: ApiFetchOptions): Promise<Response> {
   const fullPath = path.startsWith('/api/')
     ? `${BASE}${path.slice(1)}`
     : path.startsWith('api/')
     ? `${BASE}${path}`
     : path;
-  const method = (opts?.method ?? 'GET').toUpperCase();
+  const { skipSessionExpiryRedirect, redirectOnUnauthorized, ...requestInit } = opts ?? {};
+  const method = (requestInit.method ?? 'GET').toUpperCase();
   const isMutating = method !== 'GET' && method !== 'HEAD';
-  const p = fetch(fullPath, { ...opts, credentials: 'include' });
+  const shouldRedirectOnUnauthorized = redirectOnUnauthorized ?? isMutating;
+  const p = fetch(fullPath, { ...requestInit, credentials: 'include' });
 
-  // Session-expiry redirect: when any API call comes back 401 it means the
-  // session has lapsed. Bounce the user to /pablo?returnTo=<current-path> so
-  // that after sign-in they land back exactly where they were.
+  // A rejected background read is not consent to sign in. Writes default to a
+  // sign-in redirect because they represent a user-initiated save/action; read
+  // requests can opt in when the specific feature requires an account.
   p.then((r) => {
     if (
       r.status === 401 &&
       !_sessionExpiredRedirecting &&
+      shouldRedirectOnUnauthorized &&
+      !skipSessionExpiryRedirect &&
       typeof window !== "undefined" &&
       !SESSION_EXPIRY_SKIP_PATHS.test(path)
     ) {
       const currentPath = window.location.pathname;
-      // Don't redirect on public/anonymous routes (the root landing cinematic,
-      // the /pablo sign-in funnel, or the /immigration intake desk) — a 401
-      // there is expected for a logged-out visitor and must not hijack nav.
+      // Don't redirect on routes where an anonymous 401 is expected; feature
+      // actions on those routes prompt for sign-in explicitly when needed.
       if (!isSessionExpiryPublicRoute(currentPath)) {
         _sessionExpiredRedirecting = true;
         const safePath = currentPath + window.location.search;
         const returnTo = encodeURIComponent(safePath);
-        window.location.replace(`/pablo?returnTo=${returnTo}`);
+        window.location.replace(`${BASE}sign-in?returnTo=${returnTo}`);
       }
     }
   }).catch(() => {});

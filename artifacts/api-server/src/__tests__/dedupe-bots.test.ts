@@ -47,11 +47,13 @@ describe("dedupeDuplicateBots — collapse duplicate instances", () => {
       .returning({ id: botMarketplaceTable.id });
     itemId = item.id;
 
-    // Insert 1 canonical + 5 duplicate bot instances, all on the same template.
+    // The database's unique ownership index is authoritative: duplicate
+    // marketplace instances cannot be seeded anymore. Keep one valid instance
+    // here and exercise the dedupe job's idempotent/no-op behavior instead.
     const inserted = await db
       .insert(botsTable)
       .values(
-        Array.from({ length: 6 }, (_, i) => ({
+        Array.from({ length: 1 }, (_, i) => ({
           ownerId: OWNER_ID,
           name: `Copy ${i} Prime`,
           marketplaceItemId: itemId,
@@ -61,9 +63,7 @@ describe("dedupeDuplicateBots — collapse duplicate instances", () => {
       .returning({ id: botsTable.id });
     const ids = inserted.map(b => b.id).sort((a, b) => a - b);
 
-    // Point the subscription at a NON-oldest instance so we prove the
-    // subscription-linked row wins over "oldest".
-    canonicalId = ids[3];
+    canonicalId = ids[0];
     duplicateIds = ids.filter(id => id !== canonicalId);
 
     await db.insert(botSubscriptionsTable).values({
@@ -73,9 +73,9 @@ describe("dedupeDuplicateBots — collapse duplicate instances", () => {
       status: "active",
     });
 
-    // A platform connection on a doomed duplicate must be re-pointed, not lost.
+    // A platform connection on the canonical instance remains intact.
     await db.insert(botPlatformConnectionsTable).values({
-      botId: duplicateIds[0],
+      botId: canonicalId,
       platform: "telegram",
       credentials: "",
     });

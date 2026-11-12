@@ -1,18 +1,19 @@
 import {
+  Bot,
   Briefcase,
   Building2,
   Layers,
+  LayoutDashboard,
   Megaphone,
   MessageSquare,
   Network,
   Phone,
-  ShoppingBag,
   Settings,
   ShieldCheck,
   Terminal,
   User,
-  Contact,
-  ListChecks,
+  Calculator,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -20,65 +21,72 @@ export type AppNavItem = {
   id: string;
   path: string;
   label: string;
+  boomerLabel?: string;
   icon: LucideIcon;
   authOnly?: boolean;
   staffOnly?: boolean;
-  accent?: "emerald";
+  accent?: "emerald" | "green";
 };
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
-  { id: "pablo", path: "/pablo", label: "PABLO PRIME", icon: Terminal },
-  { id: "phone", path: "/phone", label: "CALLL HOME", icon: Phone, authOnly: true },
-  { id: "contacts", path: "/contacts", label: "CONTACTS", icon: Contact, authOnly: true },
-  { id: "leads", path: "/leads", label: "LEADS", icon: ListChecks, authOnly: true },
-  { id: "comms", path: "/comms", label: "COMMS", icon: MessageSquare, authOnly: true },
-  { id: "org", path: "/organizations", label: "ORGANIZATIONS", icon: Network, authOnly: true },
-  { id: "office", path: "/office", label: "OFFICE", icon: Building2, authOnly: true, accent: "emerald" },
+  { id: "pablo", path: "/pablo", label: "PABLO AI", boomerLabel: "PABLO AI", icon: Terminal },
+  { id: "phone", path: "/phone", label: "CALLL HOME", boomerLabel: "CALLL HOME", icon: Phone },
+  { id: "comms", path: "/comms", label: "COMMS", boomerLabel: "MESSAGES", icon: MessageSquare, authOnly: true },
+  { id: "office", path: "/desktop", label: "SALARYMAN OS", boomerLabel: "SALARYMAN OS", icon: Building2, accent: "green" },
 ];
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
-  { id: "business", path: "/business", label: "BUSINESS", icon: Briefcase },
-  { id: "creative", path: "/creative/music", label: "CREATIVE", icon: Layers },
-  { id: "marketing", path: "/marketing", label: "MARKETING", icon: Megaphone },
-  { id: "pledge", path: "/pledge", label: "PLEDGE STORE", icon: ShoppingBag },
-  { id: "feedback", path: "/feedback", label: "FEEDBACK", icon: MessageSquare },
-  { id: "settings", path: "/settings", label: "SETTINGS", icon: Settings, authOnly: true },
-  { id: "profile", path: "/profile", label: "PROFILE", icon: User, authOnly: true },
-  { id: "admin", path: "/profile/admin", label: "ADMIN", icon: ShieldCheck, authOnly: true, staffOnly: true },
+  { id: "workspace", path: "/workspace", label: "THE OFFICE", boomerLabel: "THE OFFICE", icon: LayoutDashboard, authOnly: true },
+  { id: "notepad", path: "/workspace/notepad", label: "NOTES", boomerLabel: "NOTES", icon: FileText, authOnly: true },
+  { id: "calculator", path: "/workspace/calculator", label: "CALCULATOR", boomerLabel: "CALCULATOR", icon: Calculator, authOnly: true },
+  { id: "bots", path: "/business/autopilot", label: "PABLO PRIME", boomerLabel: "PABLO PRIME", icon: Bot, authOnly: true },
+  { id: "crm", path: "/business/crm", label: "CRM", boomerLabel: "CRM", icon: Briefcase, authOnly: true },
+  { id: "org", path: "/organizations", label: "ORG", boomerLabel: "ORGANIZATION", icon: Network, authOnly: true },
+  { id: "business", path: "/business", label: "BUSINESS", boomerLabel: "BUSINESS", icon: Briefcase, authOnly: true },
+  { id: "creative", path: "/creative", label: "CREATIVE", boomerLabel: "CREATIVE", icon: Layers },
+  { id: "marketing", path: "/marketing", label: "MARKETING", boomerLabel: "MARKETING", icon: Megaphone },
+  { id: "settings", path: "/settings", label: "SETTINGS", boomerLabel: "SETTINGS", icon: Settings, authOnly: true },
+  { id: "platform", path: "/platform", label: "PLATFORM API", boomerLabel: "PLATFORM API", icon: Network, authOnly: true },
+  { id: "profile", path: "/profile", label: "PROFILE", boomerLabel: "PROFILE", icon: User, authOnly: true },
+  { id: "admin", path: "/profile/admin", label: "ADMIN", boomerLabel: "ADMIN", icon: ShieldCheck, authOnly: true, staffOnly: true },
 ];
 
 export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean {
   switch (item.id) {
+    case "workspace":
+      return pathname === "/workspace" || pathname.startsWith("/workspace/");
     case "pablo":
       return pathname === "/pablo" || pathname.startsWith("/pablo/") || pathname === "/terminal";
     case "office":
-      return pathname === "/office" || pathname === "/my-office" ||
-        pathname.startsWith("/office/");
+      return pathname === "/desktop" || pathname === "/office" || pathname === "/my-office" || pathname.startsWith("/office/") || pathname.startsWith("/tower") || pathname.startsWith("/game");
+    case "bots":
+      return pathname === "/business/autopilot" || pathname === "/pablo/deck";
+    case "crm":
+      return pathname === "/business/crm" || pathname.startsWith("/business/crm/") ||
+        pathname === "/marketing/leads" || pathname.startsWith("/marketing/leads/") ||
+        pathname === "/business/contacts" || pathname === "/business/deals";
+    case "creative":
+      return pathname === "/creative" || pathname.startsWith("/creative/") ||
+        pathname === "/1999" || pathname.startsWith("/1999/");
     case "phone":
       return pathname === "/phone" || pathname.startsWith("/phone/");
-    case "contacts":
-      return pathname === "/contacts" || pathname.startsWith("/contacts/") ||
-        pathname === "/business/crm" || pathname.startsWith("/business/crm/");
-    case "leads":
-      return pathname === "/leads" || pathname.startsWith("/leads/") ||
-        pathname === "/marketing/leads" || pathname.startsWith("/marketing/leads/");
     case "comms":
       return pathname === "/comms" || pathname.startsWith("/comms/");
     case "org":
-      return pathname === "/organizations" || pathname.startsWith("/organizations/") ||
-        pathname === "/org" || pathname.startsWith("/org/");
+      return pathname === "/organizations" || pathname.startsWith("/organizations/") || pathname === "/org" || pathname.startsWith("/org/");
     case "settings":
       return pathname.startsWith("/settings");
     case "admin":
-      return pathname.startsWith("/profile/admin") ||
-        pathname.startsWith("/profile/moderator");
+      return pathname.startsWith("/profile/admin") || pathname.startsWith("/profile/moderator");
     case "profile":
-      return (pathname === "/profile" || pathname.startsWith("/profile/")) &&
-        !pathname.startsWith("/profile/admin") &&
-        !pathname.startsWith("/profile/moderator");
+      return (pathname === "/profile" || pathname.startsWith("/profile/")) && !pathname.startsWith("/profile/admin") && !pathname.startsWith("/profile/moderator");
     default:
       return pathname === `/${item.id}` || pathname.startsWith(`/${item.id}/`);
   }
+}
+
+export function shouldShowGlobalSignIn(pathname: string, isAuthenticated: boolean): boolean {
+  return !isAuthenticated && pathname !== "/pablo";
 }
 
 export const APP_HISTORY_DEPTH_KEY = "__salarymanDepth";
@@ -114,11 +122,11 @@ export function canGoBackInApp(): boolean {
 }
 
 export function getAppHomePath(isAuthenticated: boolean): string {
-  return isAuthenticated ? "/office" : "/";
+  return isAuthenticated ? "/workspace" : "/";
 }
 
 export function getAppBackPath(isAuthenticated: boolean): string {
-  return isAuthenticated ? "/office" : "/pablo";
+  return isAuthenticated ? "/workspace" : "/";
 }
 
 export function rememberAppReturnPath(path: string): void {
@@ -176,10 +184,14 @@ export function shouldShowModuleSubnav(moduleId: string | undefined, itemCount: 
   const isStandaloneMajorFeature =
     pathname === "/business/crm" ||
     pathname.startsWith("/business/crm/") ||
+    pathname === "/business/contacts" ||
+    pathname === "/business/deals" ||
     pathname === "/contacts" ||
     pathname.startsWith("/contacts/") ||
     pathname === "/leads" ||
     pathname.startsWith("/leads/") ||
+    pathname === "/marketing/leads" ||
+    pathname.startsWith("/marketing/leads/") ||
     pathname === "/organizations" ||
     pathname.startsWith("/organizations/") ||
     pathname === "/comms" ||

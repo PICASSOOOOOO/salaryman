@@ -10,6 +10,12 @@ import {
 } from '@/lib/office-property-layouts';
 import { sfxStep } from '@/soundEngine';
 import { useLowGfx } from '@/lib/lowGfx';
+import { getTowerRoutineState } from '@/lib/tower-life';
+import {
+  isPlayerInsideOfficeRoom, loadOfficeRoomSnapshots, resolveOfficeRoomVisibility,
+  saveOfficeRoomSnapshots, snapshotOfficeRoom, type OfficeRoomVisibility,
+  type OfficeRoomSnapshot,
+} from '@/lib/office-room-privacy';
 
 /**
  * IsoOffice — an ISOMETRIC ("almost 3D") render of THE OFFICE, matching the
@@ -71,6 +77,8 @@ export interface OfficeAmbientOccupant {
   workLabel?: string;
   /** Workspace-relative public art path, resolved against the artifact base URL. */
   artSrc?: string;
+  /** Optional Tower shift schedule; omitted for ordinary office visitors. */
+  routine?: Parameters<typeof getTowerRoutineState>[0];
 }
 // `colCount` / `rowCount` cap how many desk columns/rows are generated so the
 // furnished desk count scales with the owned property tier (capsule → suite).
@@ -100,6 +108,8 @@ function capsuleSpots(shift: number, count?: number): { col: number }[] {
 export interface IsoOfficeProps {
   /** Authoritative property geometry. Disables legacy generated floor geometry. */
   layout: OfficePropertyLayout;
+  /** Per-player/per-property scope for last-known private-room snapshots. */
+  privacyScope?: string;
   scale?: number;
   bullpen?: boolean;
   activeBots?: PixelOfficeBot[];
@@ -176,6 +186,7 @@ function botColor(id: number, l = 55): string {
 
 export function IsoOffice({
   layout,
+  privacyScope = layout.propertyKey,
   scale = 3,
   bullpen = false,
   activeBots = [],
@@ -364,6 +375,8 @@ export function IsoOffice({
   const seatedRef = useRef(seatedBots);
   const sleepingRef = useRef(sleepingBots);
   const roomsRef = useRef(rooms);
+  const roomSnapshotsRef = useRef<Record<string, OfficeRoomSnapshot>>({});
+  const insidePrivateRoomsRef = useRef<Set<string>>(new Set());
   const appearanceRef = useRef(appearance);
   const costumeRef = useRef(costumeColor);
   const bullpenDesksRef = useRef(bullpenDesks);
@@ -413,6 +426,10 @@ export function IsoOffice({
   useEffect(() => { seatedRef.current = seatedBots; }, [seatedBots]);
   useEffect(() => { sleepingRef.current = sleepingBots; }, [sleepingBots]);
   useEffect(() => { roomsRef.current = rooms; }, [rooms]);
+  useEffect(() => {
+    roomSnapshotsRef.current = loadOfficeRoomSnapshots(privacyScope);
+    insidePrivateRoomsRef.current = new Set();
+  }, [privacyScope]);
   useEffect(() => { appearanceRef.current = appearance; }, [appearance]);
   useEffect(() => { costumeRef.current = costumeColor; }, [costumeColor]);
   useEffect(() => { bullpenDesksRef.current = bullpenDesks; }, [bullpenDesks]);
@@ -673,6 +690,22 @@ export function IsoOffice({
       ctx.imageSmoothingEnabled = false;
 
       const P = (tx: number, ty: number) => proj(tx, ty, T, off);
+      const playerTile = playable ? { col: fxRef.current / TILE, row: fyRef.current / TILE } : null;
+      const roomVisibility: Record<string, OfficeRoomVisibility> = {};
+      const insidePrivateRooms = new Set<string>();
+      for (const room of roomsRef.current) {
+        const inside = room.privacy === 'private' && !!playerTile
+          && isPlayerInsideOfficeRoom(room, playerTile.col, playerTile.row);
+        if (inside) {
+          insidePrivateRooms.add(room.id);
+          if (!insidePrivateRoomsRef.current.has(room.id)) {
+            roomSnapshotsRef.current[room.id] = snapshotOfficeRoom(room);
+            saveOfficeRoomSnapshots(privacyScope, roomSnapshotsRef.current);
+          }
+        }
+        roomVisibility[room.id] = resolveOfficeRoomVisibility(room, playerTile, roomSnapshotsRef.current);
+      }
+      insidePrivateRoomsRef.current = insidePrivateRooms;
 
       drawScene(ctx, {
         P, HW, HH, T, heightPx: (h: number) => heightPx(h, T),
@@ -684,6 +717,7 @@ export function IsoOffice({
         seated: seatedRef.current,
         sleeping: sleepingRef.current,
         rooms: roomsRef.current,
+        roomVisibility,
         stations: stationsRef.current,
         activeStationId: activeStationRef.current,
         activeBotId: activeBotRef.current,
@@ -939,6 +973,7 @@ interface SceneCtx {
   capSpots: { col: number; row: number; w: number; d: number }[];
   seated: PixelOfficeBot[]; sleeping: PixelOfficeBot[];
   rooms: OfficeRoom[]; stations: OfficeStation[]; activeStationId: string | null;
+  roomVisibility: Record<string, OfficeRoomVisibility>;
   activeBotId: number | null;
   playable: boolean;
   fx: number; fy: number; facing: 'left' | 'right'; walk: number; run: boolean;
@@ -962,7 +997,10 @@ interface SceneCtx {
 function getAmbientPosition(occupant: OfficeAmbientOccupant, now: number): { col: number; row: number } {
   const path = occupant.path;
   if (!path || path.length < 2) return { col: occupant.col, row: occupant.row };
-  const phase = ((now / 1000) * (occupant.speed ?? 0.15) + occupant.id * 0.37) % path.length;
+  const routine = occupant.routine ? getTowerRoutineState(occupant.routine) : null;
+  if (routine?.phase === 'off_shift') return { col: path[0].col, row: path[0].row };
+  const speed = (occupant.speed ?? 0.15) * (routine?.speedMultiplier ?? 1);
+  const phase = ((now / 1000) * speed + occupant.id * 0.37) % path.length;
   const index = Math.floor(phase);
   const progress = phase - index;
   const from = path[index] ?? path[0];
@@ -1077,13 +1115,14 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 
   // Visitors and staff who belong to the room itself rather than a desk.
   for (const occupant of s.ambientOccupants) {
+    const routine = occupant.routine ? getTowerRoutineState(occupant.routine) : null;
     const position = getAmbientPosition(occupant, s.now);
     push(position.col, position.row, () => drawBot(ctx, s, position.col, position.row, {
       id: occupant.id,
       name: occupant.name,
       status: 'active',
       teamColor: occupant.color,
-      workLabel: occupant.workLabel,
+      workLabel: routine?.task ?? occupant.workLabel,
       role: occupant.role,
       artSrc: occupant.artSrc,
       dialogueText: occupant.id === s.dialogue?.occupantId ? s.dialogue.text : undefined,
@@ -1901,6 +1940,10 @@ function drawCapsule(
 }
 
 function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRoom) {
+  const visibility = s.roomVisibility[room.id] ?? { mode: room.privacy === "private" ? "undiscovered" : "live", room };
+  const undiscovered = visibility.mode === "undiscovered";
+  if (visibility.mode === "snapshot") room = { ...room, ...visibility.room, occupantSeed: undefined };
+  if (undiscovered) room = { ...room, label: undefined, sub: undefined, occupantSeed: undefined };
   const accent = room.accent ?? '#c4b5fd';
   // rug
   const { P } = s;
@@ -1968,8 +2011,21 @@ function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRo
     }
     ctx.textAlign = 'left';
   }
-  // occupant
-  if (room.occupantSeed != null) {
+  if (undiscovered) {
+    const fogA = P(room.x + 0.35, room.y + 0.35);
+    const fogB = P(room.x + room.w - 0.35, room.y + 0.35);
+    const fogC = P(room.x + room.w - 0.35, room.y + room.h - 0.35);
+    const fogD = P(room.x + 0.35, room.y + room.h - 0.35);
+    quad(ctx, [fogA, fogB, fogC, fogD], 'rgba(5, 9, 18, 0.97)');
+  } else if (visibility.mode === "snapshot" && !s.suppressLabels) {
+    ctx.fillStyle = "rgba(220, 230, 245, 0.48)";
+    ctx.font = `${Math.max(6, 3 * (s.T / TILE) * 0.5)}px "Fira Code", monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText("LAST KNOWN", top.x, top.y - s.heightPx(16) + 18 * (s.T / TILE) * 0.5);
+    ctx.textAlign = "left";
+  }
+  // Private occupants are live only while the player is physically inside.
+  if (visibility.mode === "live" && room.occupantSeed != null) {
     const c = room.x + room.w / 2, r = room.y + room.h - 0.8;
     drawBot(ctx, s, c, r, { id: room.occupantSeed, name: room.label ?? '', status: 'active', teamColor: accent });
   }

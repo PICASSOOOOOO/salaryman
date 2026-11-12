@@ -128,6 +128,36 @@ describe("PUT /api/autopilot/business_ops — numeric prefs clamping", () => {
   });
 });
 
+describe("PUT /api/autopilot/marketing — image generation consent", () => {
+  it("allows the owner to approve image generation without returning the internal owner id", async () => {
+    const owner = await createUser();
+    await createOrg(owner.id);
+    actAs(owner);
+
+    const res = await request(app).put("/api/autopilot/marketing").send({
+      prefs: { generateImages: true },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.prefs.generateImages).toBe(true);
+    expect(res.body.config.prefs.imageGenerationApprovedBy).toBeUndefined();
+  });
+
+  it("blocks a manager from approving the owner's credit spend", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+    actAs(manager);
+
+    const res = await request(app).put("/api/autopilot/marketing").send({
+      prefs: { generateImages: true },
+    });
+
+    expect(res.status).toBe(403);
+    expect(await getStoredConfig(orgId, "marketing")).toBeNull();
+  });
+});
+
 describe("PUT /api/autopilot/crm_calls — numeric prefs clamping", () => {
   it("clamps out-of-range numeric prefs (below min / above max) on the stored row", async () => {
     const owner = await createUser();

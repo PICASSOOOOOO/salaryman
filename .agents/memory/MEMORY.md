@@ -1,0 +1,147 @@
+- [Account settings cross-device sync](account-settings-sync.md) — Authenticated display preferences sync to users.gameSettings; logged-out settings remain local.
+- [Frontend API path prefix](frontend-api-path-prefix.md) — apiFetch does not add `/api` to slash-prefixed paths; browser callers must use `/api/...` or they request the SPA route.
+- [OpenAPI date strings](openapi-date-strings.md) — API JSON dates stay strings; avoid generated `Date` types unless the client revives them at runtime.
+- [Office onboarding and story gates](office-first-restructure.md) — Onboard to /office; see [receptionist flow](onboarding-immigration-flow.md) and [discovery cues](office-discovery-onboarding.md).
+- [Browser onboarding work paths](browser-onboarding-work-path.md) — web onboarding offers real business or “LOOKING FOR WORK”; fictional business/immigration stays in the downloadable game.
+- [Site-wide popup boundary](site-wide-popup-boundary.md) — keep alerts opt-in; offer COMMS as a page and user-opened desktop dock, with badges and intentional dialogs preserved.
+- [Phone tests](phone-system-daily-test.md) — mocked/live coverage, browser bridge, and toll-free retry; see [harness](twilio-phone-tests.md).
+- [Ten-minute feature checks](ten-minute-feature-checks.md) — test supported features and interactions for regressions and collisions every ten minutes.
+- [Shared demo phone number](shared-demo-phone-number.md) — the shared SALARYMAN number is for tester/admin checks and tightly limited demos to new users.
+- [Composite workspace-library declarations](composite-workspace-library-builds.md) — consumers may read stale emitted types; rebuild composite libraries after adding exports or schemas.
+- [DB migration mechanism](db-migration-mechanism.md) — inspect dev drift, keep changes additive, use Publish for prod; model composite FK targets as explicit unique constraints.
+- [Pablo chat retry safety](pablo-chat-retry-safety.md) — don't offer automatic command retries after ambiguous failures until side effects are idempotent.
+- [Pablo persona prompts](pablo-persona-prompts.md) — browser/phone use a shared professional core; industry follows the active org for all members, with sensitive data current-user/org scoped.
+- [Universal preparation tools](universal-prep-tools.md) — scenario prep counters are cost estimates, never customer caps; audio stays user-activated.
+- [Pablo Corp atmosphere](pablo-corp-atmosphere.md) — there is always an air of corruption at Pablo Corp; you never know what's happening behind the scenes.
+- [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
+- [COMMS delivery](comms-outgoing-delivery.md) — acknowledged HTTP; org channels stay separate from game voice; see [presence](comms-presence.md) and [toaster](comms-notification-toaster.md).
+- [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
+- [Inbound phone routing](telephony-owner-resolution.md) — Active number ownership wins; match country from the dialed number. See [country-aware matching](country-aware-telephony.md).
+- [Global UI sound coalescing](global-ui-sound-coalescing.md) — Defer capture-phase click sounds to avoid double-beeps with handlers that play their own sound.
+- [Debt payment plans + credit lending](debt-payment-plans.md) — Banco Ombra: pay/payoff send client wallet, server rejects 402{required} after tickPlan late-fee bump; enroll does not deduct.
+- [SALARYMAN art pipeline](salaryman-art-pipeline.md) — Honor full prompts across all generation sites; Nano Banana Pro only supports landscape or portrait.
+- [Stripe feature-price reuse](stripe-price-reuse.md) — Live subscriptions reuse the first active price; archive it to apply catalog price changes.
+- [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.
+- [Onboarding-aware test fixtures](onboarding-test-fixtures.md) — Protected-route fixtures need the same completed-onboarding signal as real users.
+- [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
+- [Auth routing](newuser-funnel-gate.md) — public routes stay open; see [protected-route gating](public-route-auth-gating.md) and [preview OIDC](replit-auth-preview-origin.md).
+- [Keep-alive ErrorBoundary + HMR](keepalive-errorboundary-hmr.md) — Hidden mounted subtrees can retain an ErrorBoundary fallback after HMR; reset it on vite:afterUpdate.
+- [Pablo nebula visuals](pablo-nebula-canonical.md) — Approved `/pablo` uses a painterly wave field; see [screenshot orb fallback](pablo-nebula-orb.md).
+- [Pablo voice and chat](pablo-voice-output-gating.md) — gate TTS and keep controls/history visible; see [controls](pablo-frontdoor-controls.md) and [mobile](pablo-mobile-chat-continuity.md).
+- [Tester program](tester-program.md) — 20 slots, atomic approvals, 3-day inactivity sweep, and a dismissible Discord banner.
+- [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — browser and game use one canonical assistant backend; keep its in-game character a visual representation, not a duplicate agent.
+- [Per-user Google Calendar](google-calendar-user-oauth.md) — each user links their own Google account in-app; never use the owner’s Replit Google connection for customer calendars.
+- [Education Classroom feature](classroom-feature.md) — Resolve teacher roles per user; gate only class-specific rooms on shared `/ws/conf`.
+- [Referral invites](referral-invites.md) — Preserve invite tokens through signup and award rewards atomically to prevent double-pay.
+- [IsoOffice isometric renderer](iso-office-renderer.md) — `/office` uses IsoOffice; inspect gated pages with a temporary non-lazy early return, then revert it.
+- [Office routes](office-consolidation.md) — one `/office` route; see [surveillance embed](office-embed-mode.md), [monitor](office-monitor.md), [player avatar](office-player-avatar.md).
+- [Audio boundaries](audio-music-vs-ambiance.md) — radio is MUSIC, score is AMBIANCE; see [pest danger](in-building-pest-danger-audio.md) and [office bed](office-ambient-bed.md).
+- [Object ACL disabled posture](object-acl-disabled-posture.md) — Object reads are path-protected; new routes must allow objects without policies.
+- [Character identity single source](character-identity-source.md) — Keep appearance allow-listed; distinguish swatch-derived from painted portraits and remove source selfies.
+- [Signup-funnel intent detectors](signup-funnel-intent.md) — Pablo chat and price questions stay signup-free; account intake starts only for explicit signup or another feature.
+- [Org deletion / disband](org-deletion.md) — Cascade related rows, null non-FK org references, and require owner plus confirmName.
+- [Pablo model + grounding](pablo-live.ts) — Web facts use Responses web_search with injection fencing; see [GPT-5 limits](gpt5-migration-constraints.md) and [Astra rollout](astra-model-rollout.md).
+- [Office interactables + camera](office-interactables.md) — Stations link to existing routes; camera uses near/mid/far zoom and footsteps use sfxStep.
+- [Native game clients](pygame-client-rules.md) — preserve framing, authority, and controls; see the [Godot runtime](godot-office-client.md), including dummy-focus input precedence.
+- [Pablo Radio global station](pablo-radio-global.md) — exactly one app-wide Call Home player serves all non-phone routes; HUDs and settings only change shared radio state.
+- [Marketplace bot roster](marketplace-bot-roster.md) — Curate nine bots; deactivate removed entries without deleting rows, and gate by owner/dev membership.
+- [Business Marketplace](business-marketplace.md) — Settle sales atomically; actual-business auctions need org legal roles, succession, and Tower sale flows.
+- [Item trading and lockers](item-trading-and-lockers.md) — Shops trade across the item catalog, player listings escrow items, and private lockers must stay secure.
+- [Accounting + ledger](accounting-books-reconcile.md) — Match paid-invoice and cash-ledger guards; see [autopilot actions](accounting-autopilot.md) for shared atomic finance operations.
+- [CRM telephony recording](crm-telephony-recording.md) — Deduplicate org Twilio activities; apply lead side effects only on new inserts across both SMS stacks.
+- [Organization permissions and locks](org-permissions-system.md) — map permission keys to roles and prevent settings lockout; see [door lock enforcement](org-door-locks.md).
+- [Organization invitation semantics](organization-invitation-semantics.md) — email invites create pending org invites; acceptance maps employment type to memberType, never featureBilling.
+- [Marketing Command Center](marketing-command-center.md) — Bluesky/Discord can publish for real; PRIME gates connections, otherwise posts simulate.
+- [PRIME gating money routes](prime-gating-money-routes.md) — Separate claw_bot, Pablo Tax, and TTS paid/tester gates.
+- [Post-onboarding cutscene + TTS double-fire](post-onboarding-cutscene.md) — Intro is one-time; TTS can fire both callbacks on failure, so advances must be idempotent.
+- [Platform Connections credentials](platform-connections-credentials.md) — Mask secrets and notes in connection lists; merge on reconnect and clear on disconnect.
+- [ATM network + BANCO OMBRA](atm-banco-ombra.md) — FIAT is server-owned; Stripe credits settle only when paid, and Plaid is view-only.
+- [Blueprint/CAD decoder](schematic-cad-decoder.md) — Authenticate every credit-burning AI route server-side; classify image/PDF separately from CAD text.
+- [Fiat HUD refresh gate](fiat-hud-refresh-gate.md) — Use apiFetch and keep FIAT_AFFECTING aligned to real spend paths.
+- [Starting fiat & quarantine](starting-fiat-and-quarantine.md) — Starting FIAT is seeded in bank and housing flows; PICASSO_START_FIAT is membership-gated.
+- [Pablo automation foundation](autopilot-foundation.md) — paid Prime starts only the original four workflows; pauses persist; new high-impact and income domains stay opt-in.
+- [Market Research Autopilot](market-research-autopilot.md) — owner-only, opt-in, source-backed briefs for review; web research must never mutate external systems.
+- [Pledge cost-plus + AI secrecy](pledge-cost-plus-secrecy.md) — Hide cost and markup from store APIs; secrecy rules apply to Pablo/Mila.
+- [Marketing autopilot handler](autopilot-marketing-handler.md) — Reuse social services; generation needs entitlement and credit, while publish may simulate.
+- [CRM & Calls autopilot](crm-calls-autopilot.md) — SMS-only; honors saved SMS opt-outs and cools down provider failures; no auto-calls; phone_system gate and per-lead follow-up interval.
+- [Business Ops autopilot domain](autopilot-business-ops.md) — Reuse manual services, scope to the org owner, and keep tick decisions pure and tested.
+- [Autopilot domain prefs](autopilot-domain-prefs.md) — Preference changes touch schema, sanitizer, route, handler, and UI; OFF must match manual behavior.
+- [Art Factory pluggable backends](art-factory-pluggable-backends.md) — All backends share SALARYMAN style; an unconfigured backend leaves the row untouched.
+- [Unreal render activation](unreal-render-activation.md) — Activate UE5 only with a real UNREAL_RENDER_URL; never seed a fake endpoint.
+- [Org Framer site reverse-proxy](org-framer-site-proxy.md) — Revalidate each untrusted Framer URL hop with SSRF-safe fetch and IP pinning.
+- [Account identity linking](account-identity-linking.md) — Provider identity links win over email during upsert; dangling links may fall through.
+- [Deploy build typecheck gate](deploy-typecheck-gate.md) — Publish typechecks before building; dev can hide TypeScript errors until release.
+- [Proxy TTS no speech API](proxy-tts-no-speech-api.md) — Use textToSpeech with the Replit proxy; it does not support audio.speech.create or tts-1.
+- [Streamer Mode + OBS WebSocket](streamer-mode.md) — Mask email and USD only; keep FIAT visible and OBS passwords device-local.
+- [Verified real-salary wage](verified-salary-wage.md) — Never count declared salary as wages paid; require org-owner confirmation of actual payroll.
+- [API health monitoring (two-layer)](api-health-monitoring.md) — Combine in-process transitions with external health:all; production validation sends email.
+- [Consumables + install slots](consumables-install-system.md) — Stack consumables; resolve install targets on the server, never from client IDs.
+- [Battery running-cost system](battery-running-cost.md) — Battery powers AI/electrical costs; installation charges fully and refunds require a full charge.
+- [Crafting system](crafting-system.md) — Crafting is atomic and faction-agnostic; utility outputs like batteries and fuel are forbidden.
+- [Character status and net-worth balance](networth-refocus.md) — Wealth brings access but drains stamina faster; recovery items and rest feed Pablo Corp's economy.
+- [Global multi-broker trade bot](global-trade-bot.md) — Trade Bot supports multiple brokers and currencies; amounts use native major units and analysis uses POST.
+- [Currency boundaries](fiat-gold-rail.md) — keep FIAT, GOLD, Credits, and external balances distinct; see [cross-client](cross-client-economy.md) and [banking](real-banking-overview.md).
+- [Godot game visual language](godot-game-visual-language.md) — ASCII motifs can extend into selected world art; confine CRT treatments to physical terminal and TV screens.
+- [Workspace light surfaces](workspace-light-surfaces.md) — browser/control-plane UI is strictly cream/white and black; all cyberpunk color belongs only to the downloadable game.
+- [SALARYMAN product manifesto](pablo-creation-workspace.md) — Gamified office automation; browser funnels users to desktop and free creator tools.
+- [Lab naming](lab-name-1999.md) — the lab is called 1999; preserve established project names and do not rename them.
+- [Authoritative world economy](authoritative-world-economy.md) — FIAT, quick-job runs, cargo, quotes, and economy-gated position are server-owned; client saves/UI only cache returned snapshots.
+- [Collections case cross-device progress](collections-case-cross-device.md) — server progress controls linked play; preserve unauthenticated local-only progress for offline compatibility.
+- [Purchased office floors](purchased-office-floors.md) — each deed has one property-keyed floor spec; office return poses are slot+property scoped and must validate before restoration.
+- [Realtime API indexes](realtime-api-indexes.md) — world/chat fan-out uses city/channel socket indexes; multi-socket read cursors require a unique key and monotonic upsert.
+- [World runtime idle discipline](world-runtime-idle-discipline.md) — hidden WorldPlay stops RAF/polls, outbound state is change-driven, saves become clean only after persistence succeeds.
+- [OpenClaw gateway dependency](openclaw-gateway-dependency.md) — SALARYMAN speaks to an external OpenClaw WebSocket gateway; it does not require the vulnerable openclaw npm package.
+- [Subscription pricing and localization](subscription-pricing.md) — In 2027, org base tiers 2/3 rise by $50; seat prices and personal subscriptions stay unchanged.
+- [Extensible income ecosystem](income-ecosystem.md) — build verified, owner-scoped income paths; bot-income payouts are optional per org owner and unavailable to employees.
+- [Recreation floor authority](recreation-floor-authority.md) — REC is public/system-owned; games, stamina, effects, inventory, sponsor rewards, and replay safety settle server-side.
+- [Employee wellbeing + time off](employee-wellbeing-time-off.md) — Player fatigue should encourage world play; office/org wellbeing should lead to retreat and vacation options.
+- [Internal Pablo AI routing](internal-pablo-ai-routing.md) — Use managed GPT/Claude fallback; keep health probes provider-strict and navigation server-owned.
+- [Paid custom phone numbers](paid-custom-phone-numbers.md) — CALLL HOME is fixed; internal employee calls reuse client identities and assigned office lines, never extra numbers.
+- [Replit session identity bridge](replit-session-identity-bridge.md) — Match OIDC callbacks to local users by email before creating another identity.
+- [Publish-safe expression indexes](publish-safe-expression-indexes.md) — avoid backslash regex literals in PostgreSQL expression indexes; publish diff serialization can truncate them.
+- [VendKing utility rule](vendking-utility-rule.md) — Decorative goods are valid stock; price stronger supported benefits higher.
+- [Tower layout](tower-basement-layout.md) — preserve B1–B6 and shop scope; see [access](shadow-tower-rules.md), [previews](tower-floor-previews.md), [shops](floor-seven-marketplace-scope.md).
+- [Godot visuals](godot-visual-continuity.md) — preserve native 3D; see [attachments](godot-review-model-attachments.md) and [tab/parser checks](godot-indentation-verification.md).
+- [Rigged voxel avatar conversion](rigged-voxel-avatar.md) — Avoid independent remeshes of overlapping shells; verify clean shading and all 32 clips before replacing the live model.
+- [Persistent building simulation](persistent-building-simulation.md) — Tower construction office creates real estate; each building is a server with Godot/player/NPC construction under Tower rules.
+- [View-only Tower exterior](outside-world-reset.md) — Godot generates noninteractive scenery beyond exterior windows; no outdoor access or automatic ambience.
+- [NPC economic agents](npc-economic-agents.md) — Shops pay shippers for external procurement; scarce-item reorder cooldowns vary by rarity.
+- [One-building mini-city milestone](one-building-mini-city.md) — deepen one complete building into a polished story-driven vertical slice before expanding to city travel or multiple buildings.
+- [Tower art and NPC worldbuilding](tower-art-and-worldbuilding.md) — Use the added RDR2 Nemesis Rage mod for NPC shop rivals who cooperate and compete.
+- [Legacy purchase recovery](legacy-purchase-recovery.md) — Keep reset-independent purchase snapshots outside wipe tables; restore monotonically under identity-safe locking.
+- [Business data platform](business-data-platform.md) — Store canonical business data in Postgres and binary files in App Storage.
+- [Contract delivery paper trail](contract-delivery-paper-trail.md) — Keep provider sending user-initiated; record email/provider references without claiming an API is connected.
+- [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
+- [Browser API and game scope](browser-game-scope.md) — Keep the public homepage intact, send signed-in users to THE OFFICE, and open game tools through native furniture and terminals.
+- [GitHub workflow and file writes](github-workflow-write-scope.md) — sync completed workspace updates to GitHub; use sequential Contents API PUTs, with separate workflow-file permissions.
+- [Browser navigation](canonical-browser-navigation.md) — boxed header, minimal mobile chrome; see [responsive](responsive-navigation-chrome.md) and [menu deduplication](shared-menu-route-dedupe.md).
+- [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is an Office feature/page, not a global dock; derive Pablo's working/offline state from the live socket.
+- [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
+- [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
+- [Drizzle array filters](drizzle-array-filters.md) — interpolated JavaScript arrays become SQL tuples; use parameterized `IN` lists for dynamic membership.
+- [AdSense verification](adsense-verification.md) — keep ownership static, gate scripts by route, and use a clean document for strict ad-free routes after SPA AdSense loading.
+- [Orval Zod output target](orval-zod-output-target.md) — Keep generated validators on Zod 3; Orval's automatic Zod 4 output crashes API startup.
+- [Marketing SMS consent boundary](marketing-sms-consent.md) — explicit per-contact SMS permission and an active user/org-owned Twilio sender; campaigns remain explicitly started.
+- [Organization custom pages](org-custom-apps.md) — custom pages use typed fields, active-org records, and published SALARYMAN views; do not run user-authored code or arbitrary remote calls.
+- [SALARYMAN company + support](salaryman-legal-entity.md) — Picasso AI, LLC is the legal entity; see [support routing](salaryman-support-routing.md).
+- [Room privacy gameplay](room-privacy-gameplay.md) — camera incidents route to understaffed security/collections; privacy and evidence rules still apply.
+- [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
+- [Native releases](desktop-release-packaging.md) — build targets natively; see [capture](godot-movie-capture-paths.md), [package](desktop-game-capture.md), [heap](release-build-heap-cap.md).
+- [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta starts December 25, 2026; require a 30-day major-feature stability window and defer pledge offers until the asset catalog is decided.
+- [Beta hosting capacity](beta-hosting-capacity.md) — deploy from GitHub to another host, support 1,000 concurrent users, and remind daily until the provider is chosen.
+- [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
+- [Replicant power lore](replicant-power-lore.md) — intrinsic power is replicant-only; unique recruit powers can be used by any player.
+- [Tower building vitality](tower-building-vitality.md) — Pablo Corp pays partner shop owners; owners pay employees and expand creatively over a five-real-time-year city/server plan.
+- [Pest work and carcass bounty](pest-work-and-carcass-bounty.md) — job listings stay local, co-op players fight shared pests, and each carcass can earn one server-issued FIAT bounty.
+- [Stats and maintenance](game-skill-maintenance-system.md) — point-spend skills, cooldowns, degrading gear, and repair loop; begin with water/power/safety/health.
+- [Tower wealth paths](tower-wealth-paths.md) — NPCs invest; all brands are tradable; player/NPC credit score is earned reputation that survives resets.
+- [Protected school campuses](school-protection-and-campus.md) — Apply server-enforced minor access limits and area-based rent to current and future school businesses.
+- [Service-credit work priority](service-credit-priority.md) — defer Stripe-connected browser Credits/STM economy work until all other requested Tower work is complete.
+- [Game business economy](game-business-economy.md) — separate from Business Hub; gate licenses, work, shops, contracts, credit, taxes, and closures.
+- [Brand rivalries and NPC personhood](game-only-rivalries.md) — each brand has shop-level bosses; NPCs act in real systems only with explicit access.
+- [Org integrations](org-wide-external-integrations.md) — owner-authorized bidirectional sync; members join through verified SALARYMAN invites and can have characters.
+- [Cyber Deck licensing and evidence boundary](cyber-deck-licensing.md) — Meshtastic browser SDK is GPL-3.0-only; evidence stays local and radio actions stay user-initiated.
+- [Unified standalone 1999 VST3](ableton-plugin-scope.md) — Build one full-workstation plugin here for external hosts; browser access remains free after SALARYMAN sign-in/onboarding.
+- [SampQOL reference boundary](1999-sampqol-reference.md) — adapt documented sampler workflows independently; do not bundle or redistribute the MPC firmware mod.
+- [1999 + creative stations](1999-machine-ecosystem.md) — free browser workstation plus one very expensive, placeable in-game recording terminal.
+- [SALARYMAN community mods](salaryman-mod-platform.md) — “firmware” means installable game-feature add-ons; personal code rewrites belong in local source forks.

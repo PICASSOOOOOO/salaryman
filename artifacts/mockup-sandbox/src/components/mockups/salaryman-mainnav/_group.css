@@ -1,0 +1,77 @@
+@theme inline {
+  --font-sans:
+    "DM Sans", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC", "Noto Sans",
+    sans-serif;
+  --font-mono:
+    "Space Mono", "Fira Code", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC",
+    monospace;
+  --color-background: #FAFAF7;
+  --color-foreground: #000000;
+  --color-card: #FFFCF5;
+  --color-card-foreground: #000000;
+  --color-popover: #FFFCF5;
+  --color-popover-foreground: #000000;
+  --color-border: #D8D1C3;
+  --color-input: #FFFCF5;
+  --color-ring: #000000;
+  --color-primary: #000000;
+  --color-primary-foreground: #FAFAF7;
+  --color-secondary: #EEE8DC;
+  --color-secondary-foreground: #000000;
+  --color-muted: #EEE8DC;
+  --color-muted-foreground: #6C665C;
+  --color-accent: #EEE8DC;
+  --color-accent-foreground: #000000;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+:root {
+  color-scheme: light;
+  --salary-ink: 8 15 22;
+  --salary-panel: 13 24 32;
+  --salary-paper: 229 220 198;
+  --salary-copper: 196 126 63;
+  --salary-signal: 92 213 208;
+  --device-link-void: 7 10 12;
+  --device-link-paper: 220 231 232;
+  --device-link-muted: 142 157 159;
+  --device-link-line: 38 52 54;
+  --device-link-signal: 181 230 87;
+  --device-link-warm: 225 169 93;
+  --font-sans:
+    "DM Sans", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC", "Noto Sans",
+    sans-serif;
+  --font-mono:
+    "Space Mono", "Fira Code", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC",
+    monospace;
+}
+
+.dark {
+  --salary-ink: 8 15 22;
+  --salary-panel: 13 24 32;
+  --salary-paper: 229 220 198;
+  --salary-copper: 196 126 63;
+  --salary-signal: 92 213 208;
+  --device-link-void: 7 10 12;
+  --device-link-paper: 220 231 232;
+  --device-link-muted: 142 157 159;
+  --device-link-line: 38 52 54;
+  --device-link-signal: 181 230 87;
+  --device-link-warm: 225 169 93;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: #000;
+  background: #FAFAF7;
+  font-family: var(--font-sans);
+}

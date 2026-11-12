@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, jsonb, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
-// (IMPORTANT) This table remains the app-local identity, authorization, and state bridge under Clerk.
+// (IMPORTANT) This table is the app-local identity and Replit Auth session store.
 export const sessionsTable = pgTable(
   "sessions",
   {
@@ -12,7 +12,7 @@ export const sessionsTable = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// (IMPORTANT) Retained for data compatibility during and after the Clerk migration.
+// (IMPORTANT) This table is the app-local user record shared by auth and product data.
 export const usersTable = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   // Immutable account-level identity for economy/banking records. Unlike a
@@ -24,6 +24,9 @@ export const usersTable = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   stripeConnectAccountId: varchar("stripe_connect_account_id", { length: 255 }),
   stripeConnectPayoutsEnabled: boolean("stripe_connect_payouts_enabled").notNull().default(false),
+  // Durable protection signal: unlike a live subscription row, this survives
+  // cancellation so retention jobs never treat a former paying account as free.
+  hasPaidHistory: boolean("has_paid_history").notNull().default(false),
   // Account-level public handle (without the leading "@"). Globally unique
   // (case-insensitive via a lower() unique index). Distinct from the
   // per-profile playerName used as the world data join key — do not conflate.
@@ -43,9 +46,10 @@ export const usersTable = pgTable("users", {
   // user-id rather than via this column). Null = no profile selected, fall
   // back to the legacy name-derivation path in derivePlayerName().
   activeProfileId: varchar("active_profile_id"),
-  // Lifecycle: drives the 3-day Pablo warning + 28-day asset seizure.
+  // Lifecycle: tracks activity and the 23-day warning / 30-day data cleanup.
   lastActiveAt: timestamp("last_active_at", { withTimezone: true }).notNull().defaultNow(),
   abandonmentWarnedAt: timestamp("abandonment_warned_at", { withTimezone: true }),
+  dataDeletedAt: timestamp("data_deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 
 interface Contact {
   id: number;
@@ -58,7 +58,7 @@ function Field({ label, value, onChange, type = 'text', placeholder = '' }: {
 
 export default function Deals() {
   const { isAuthenticated } = useAuth();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [deals, setDeals] = useState<Deal[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,13 +67,6 @@ export default function Deals() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const loadDeals = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -165,8 +158,8 @@ export default function Deals() {
 
       <main className="flex-1 p-6 max-w-6xl mx-auto w-full relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex flex-col items-start gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-amber-400" />
@@ -179,7 +172,7 @@ export default function Deals() {
               {boomerMode ? 'Track deals and opportunities through your pipeline.' : 'Deal flow interception module. Lead → Proposal → Negotiation → Won/Lost.'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
             <div className="flex items-center gap-1 bg-muted/20 rounded-xl p-1 border border-border">
               {(['kanban', 'list'] as const).map(v => (
                 <button key={v} onClick={() => setViewMode(v)}
@@ -351,11 +344,11 @@ export default function Deals() {
               </div>
             ) : deals.map(deal => (
               <motion.div key={deal.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="bg-card border border-border rounded-xl px-5 py-4 flex items-center gap-4 hover:border-primary/30 transition-all group">
+                className="bg-card border border-border rounded-xl px-4 sm:px-5 py-4 flex flex-wrap items-center gap-3 hover:border-primary/30 transition-all group">
                 <TrendingUp className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-foreground truncate">{deal.title}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
+                  <div className="flex flex-wrap items-center gap-3 mt-0.5">
                     {deal.contactName && (
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <Users className="w-2.5 h-2.5" /> {deal.contactName}

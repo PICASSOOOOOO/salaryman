@@ -60,19 +60,19 @@ async function mount() {
   });
 }
 
-// The CHAT tab is the first nav button; its badge is the red pill span inside it.
+// The CHAT tab is the first nav button; its badge is the green pill span inside it.
 function chatTabBadge(): string | null {
   const buttons = Array.from(container.querySelectorAll("button"));
   const chatBtn = buttons.find(b => /CHAT/.test(b.textContent ?? ""));
   if (!chatBtn) return null;
-  const badge = chatBtn.querySelector("span.bg-red-500");
+  const badge = chatBtn.querySelector("span.bg-emerald-600");
   return badge ? (badge.textContent ?? "") : null;
 }
 
 function smsTabBadge(): string | null {
   const buttons = Array.from(container.querySelectorAll("button"));
-  const smsBtn = buttons.find(b => /^SMS/.test((b.textContent ?? "").trim()));
-  const badge = smsBtn?.querySelector("span.bg-red-500");
+  const smsBtn = buttons.find(b => /CALLL SMS/.test((b.textContent ?? "").trim()));
+  const badge = smsBtn?.querySelector("span.bg-emerald-600");
   return badge ? (badge.textContent ?? "") : null;
 }
 
@@ -126,5 +126,21 @@ describe("Comms hub messages-tab badge", () => {
     summary = { unreadMessages: 0, unreadSms: 5, pendingRequests: 0, total: 5 };
     await mount();
     expect(smsTabBadge()).toBe("5");
+  });
+
+  it("shows existing Payphone alert controls from the Comms settings button", async () => {
+    await mount();
+
+    const settingsButton = Array.from(container.querySelectorAll("button"))
+      .find(button => button.textContent?.trim() === "Settings");
+    expect(settingsButton).toBeDefined();
+
+    await act(async () => {
+      settingsButton!.click();
+    });
+
+    expect(settingsButton?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector('[aria-label="Payphone notification settings"]')).not.toBeNull();
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(2);
   });
 });

@@ -1,8 +1,16 @@
 import { Router } from "express";
 import { db, projectsTable, notesTable, brandKitTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import {
+  GenerateWorkspaceProjectDraftBody,
+  GenerateWorkspaceProjectDraftParams,
+  GenerateWorkspaceProjectDraftResponse,
+} from "@workspace/api-zod";
+import { generateWorkspaceProjectDraft } from "../lib/pablo-creation-service";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
+const requireCreationEntitlement = requireFeature("claw_bot");
 
 // ── Auth guard helper ───────────────────────────────────────────────────────
 function requireAuth(req: any, res: any): string | null {
@@ -58,6 +66,62 @@ router.delete("/workspace/projects/:id", async (req, res) => {
     await db.delete(projectsTable).where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId)));
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: "Failed to delete project" }); }
+});
+
+// Generate and persist a review-only project plan plus an offline prototype.
+router.post("/workspace/projects/:projectId/generate", requireCreationEntitlement, async (req, res): Promise<void> => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  const params = GenerateWorkspaceProjectDraftParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = GenerateWorkspaceProjectDraftBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const projectId = params.data.projectId;
+  try {
+    const result = await generateWorkspaceProjectDraft(userId, projectId, body.data.brief);
+    if (result.status === "not_found") {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+    if (result.status === "invalid") {
+      req.log.warn({ projectId, provider: result.provider }, "Pablo creation returned an invalid or unsafe prototype");
+      res.status(502).json({ error: "Pablo could not produce a safe prototype. Try a shorter brief." });
+      return;
+    }
+
+    if (result.status !== "generated") {
+      res.status(409).json({ error: "Project changed while the draft was being prepared. Try again." });
+      return;
+    }
+
+    res.status(201).json(GenerateWorkspaceProjectDraftResponse.parse({
+      plan: {
+        id: result.plan.id,
+        projectId: result.plan.projectId,
+        title: result.plan.title,
+        content: result.plan.content,
+        category: result.plan.category,
+      },
+      prototype: {
+        id: result.prototype.id,
+        projectId: result.prototype.projectId,
+        title: result.prototype.title,
+        content: result.prototype.content,
+        category: result.prototype.category,
+      },
+    }));
+  } catch (e) {
+    req.log.error({ err: e, projectId }, "Failed to generate project draft");
+    res.status(500).json({ error: "Failed to generate project draft" });
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════

@@ -11,6 +11,7 @@ import {
   isAppNavItemActive,
   readAppHistoryDepth,
   isSafeAppHistoryState,
+  shouldShowGlobalSignIn,
   shouldShowModuleSubnav,
   withAppHistoryDepth,
 } from "./app-navigation";
@@ -29,16 +30,22 @@ describe("getPabloHref", () => {
 
 describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
-    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "contacts", "leads", "comms", "org", "office"]);
+    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "comms", "office"]);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
-      "business", "creative", "marketing", "pledge", "feedback",
-      "settings", "profile", "admin",
+      "workspace", "notepad", "calculator", "bots", "crm", "org", "business",
+      "creative", "marketing", "settings", "platform", "profile", "admin",
     ]);
   });
 
   it("shares active matching across desktop and mobile renderers", () => {
     const office = PRIMARY_NAV_ITEMS.find(item => item.id === "office")!;
     expect(isAppNavItemActive(office, "/phone")).toBe(false);
+  });
+
+  it("avoids duplicating Pablo's signed-out Start Work action", () => {
+    expect(shouldShowGlobalSignIn("/pablo", false)).toBe(false);
+    expect(shouldShowGlobalSignIn("/phone", false)).toBe(true);
+    expect(shouldShowGlobalSignIn("/pablo", true)).toBe(false);
   });
 
   it("suppresses redundant global phone sub-navigation", () => {
@@ -48,11 +55,11 @@ describe("shared app navigation", () => {
     expect(shouldShowModuleSubnav("business", 0, "/business")).toBe(false);
   });
 
-  it("keeps signed-out entry and authenticated office fallbacks distinct", () => {
+  it("keeps the public homepage and authenticated Office defaults distinct", () => {
     expect(getAppHomePath(false)).toBe("/");
-    expect(getAppHomePath(true)).toBe("/office");
-    expect(getAppBackPath(false)).toBe("/pablo");
-    expect(getAppBackPath(true)).toBe("/office");
+    expect(getAppHomePath(true)).toBe("/workspace");
+    expect(getAppBackPath(false)).toBe("/");
+    expect(getAppBackPath(true)).toBe("/workspace");
   });
 });
 

@@ -192,6 +192,70 @@ async function checkAccountActive(client: twilio.Twilio, sid: string, results: C
   }
 }
 
+async function checkBrowserVoiceApiKey(client: twilio.Twilio, accountSid: string, results: CheckResult[]) {
+  const storedSid = await db.select({ value: systemConfigTable.value })
+    .from(systemConfigTable)
+    .where(eq(systemConfigTable.key, "twilio_api_key_sid"))
+    .limit(1);
+  const storedSecret = await db.select({ value: systemConfigTable.value })
+    .from(systemConfigTable)
+    .where(eq(systemConfigTable.key, "twilio_api_key_secret"))
+    .limit(1);
+  const candidates = [
+    process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET
+      ? { sid: process.env.TWILIO_API_KEY_SID, secret: process.env.TWILIO_API_KEY_SECRET }
+      : null,
+    storedSid[0]?.value && storedSecret[0]?.value
+      ? { sid: storedSid[0].value, secret: storedSecret[0].value }
+      : null,
+  ].filter((candidate): candidate is { sid: string; secret: string } => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    try {
+      const keyClient = twilio(candidate.sid, candidate.secret, { accountSid });
+      await withTimeout(
+        keyClient.calls.list({ limit: 1 }),
+        OP_TIMEOUT_MS,
+        "Browser Voice API key authentication",
+      );
+      results.push({ name: "Browser Voice API key", status: "PASS", detail: "Authenticated against the Voice Calls API" });
+      return;
+    } catch {
+      // Try the persisted key when a stale environment key is still present.
+    }
+  }
+
+  // Keep scheduled repair aligned with the live /twilio/token route. Twilio
+  // returns an API key secret only at creation time, so persist it immediately.
+  try {
+    const key = await withTimeout(
+      client.newKeys.create({ friendlyName: "Salaryman Voice Key" }),
+      OP_TIMEOUT_MS,
+      "Browser Voice API key provisioning",
+    );
+    if (!key.secret) throw new Error("Twilio returned a key without a secret");
+    await db.insert(systemConfigTable)
+      .values({ key: "twilio_api_key_sid", value: key.sid, category: "twilio", description: "Auto-repaired by phone health" })
+      .onConflictDoUpdate({ target: systemConfigTable.key, set: { value: key.sid, updatedAt: new Date() } });
+    await db.insert(systemConfigTable)
+      .values({ key: "twilio_api_key_secret", value: key.secret, category: "twilio", description: "Auto-repaired by phone health" })
+      .onConflictDoUpdate({ target: systemConfigTable.key, set: { value: key.secret, updatedAt: new Date() } });
+    process.env.TWILIO_API_KEY_SID = key.sid;
+    process.env.TWILIO_API_KEY_SECRET = key.secret;
+    results.push({
+      name: "Browser Voice API key",
+      status: "PASS",
+      detail: "Stale key was replaced and authenticated for browser Voice",
+    });
+  } catch (e: any) {
+    results.push({
+      name: "Browser Voice API key",
+      status: "FAIL",
+      detail: `Could not authenticate or auto-provision a browser Voice API key: ${e?.message || e}`,
+    });
+  }
+}
+
 async function checkPhoneNumber(client: twilio.Twilio, num: string, results: CheckResult[]) {
   try {
     const nums = await withTimeout(
@@ -247,14 +311,26 @@ async function checkTollfreeMessagingVerification(client: twilio.Twilio, num: st
       OP_TIMEOUT_MS,
       "Toll-free verification lookup",
     );
-    const status = verifications[0]?.status;
+    // Twilio's live response has returned both IN_REVIEW and PENDING_REVIEW
+    // across API versions; normalize to a string so the health check remains
+    // compatible with the SDK's narrower status union.
+    const status = String(verifications[0]?.status ?? "");
     if (status === "TWILIO_APPROVED") {
       results.push({ name: "Toll-free SMS verification", status: "PASS", detail: "Sender approved by Twilio" });
+    } else if (status === "IN_REVIEW" || status === "PENDING_REVIEW" || status === "PENDING" || status === "IN_PROGRESS") {
+      results.push({
+        name: "Toll-free SMS verification",
+        status: "WARN",
+        detail: `Sender verification status is ${status}; SMS delivery may remain limited until Twilio approves the submission`,
+      });
     } else {
+      const rejectionReason = verifications[0]?.rejectionReason;
       results.push({
         name: "Toll-free SMS verification",
         status: "FAIL",
-        detail: status ? `Sender verification status is ${status}` : "No toll-free verification record exists",
+        detail: status
+          ? `Sender verification status is ${status}${rejectionReason ? `: ${rejectionReason}` : ""}`
+          : "No toll-free verification record exists",
       });
     }
   } catch (e: any) {
@@ -366,6 +442,24 @@ async function sendReport(subject: string, html: string, text: string): Promise<
 }
 
 async function main() {
+  if (process.argv.includes("--beta-host-reminder")) {
+    if (process.env.BETA_HOSTING_PROVIDER?.trim()) {
+      console.log("[beta-host-reminder] Hosting provider is selected; reminder stopped.");
+      return;
+    }
+    const sent = await sendReport(
+      "[SALARYMAN] Beta hosting decision reminder",
+      `<div style="font-family:system-ui,Segoe UI,Arial,sans-serif;">
+        <h2 style="margin:0 0 8px;">Choose the beta hosting provider</h2>
+        <p>SALARYMAN beta is planned for December 25, 2026. The runtime host is still undecided.</p>
+        <p>GitHub is the source and deployment trigger; choose a runtime platform for the API, database, realtime services, and the 1,000-concurrent-user target.</p>
+      </div>`,
+      "Daily reminder: choose SALARYMAN's beta hosting provider. Beta is planned for December 25, 2026. GitHub is the source/deployment trigger, not the runtime host. The selected platform must support the API, database, realtime services, and the 1,000-concurrent-user target.",
+    );
+    if (!sent) throw new Error("Beta hosting reminder email could not be delivered");
+    return;
+  }
+
   const results: CheckResult[] = [];
 
   const hasEnv = await checkEnv(results);
@@ -375,6 +469,7 @@ async function main() {
     const num = process.env.TWILIO_PHONE_NUMBER!;
     const client = twilio(sid, token);
     await checkAccountActive(client, sid, results);
+    await checkBrowserVoiceApiKey(client, sid, results);
     await checkPhoneNumber(client, num, results);
     await checkTollfreeMessagingVerification(client, num, results);
     await checkBalance(client, results);

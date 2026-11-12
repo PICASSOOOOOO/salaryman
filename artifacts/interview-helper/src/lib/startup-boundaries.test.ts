@@ -15,18 +15,31 @@ describe("frontend startup boundaries", () => {
     expect(main).toContain("installDeferredGlobalUiSound();");
   });
 
-  it("keeps Three, Twilio, audio conversion, and chat on demand", () => {
+  it("removes Replit-injected feedback controls from every route", () => {
+    const main = source("main.tsx");
+    expect(main).toContain("replit-agent-inbox-widget");
+    expect(main).toContain("replit-cdn.com/feedback-widget/");
+    expect(main).toContain("new MutationObserver(removeReplitInjectedUi)");
+  });
+
+  it("warms optional Pablo only when idle on a fast, non-data-saver connection", () => {
     const app = source("App.tsx");
     const twilio = source("contexts/TwilioDeviceContext.tsx");
     const music = source("contexts/MusicPlayerContext.tsx");
     const chat = source("components/DeferredChatPanel.tsx");
 
-    expect(app).toContain('lazy(() => import("@/pages/PabloTerminal"))');
+    expect(app).toContain('const Console = lazy(() => import("@/pages/Console"));');
+    expect(app).not.toContain('import Console from "@/pages/Console";');
+    expect(app).toContain('const PabloTerminal = lazy(loadPabloTerminal);');
+    expect(app).toContain("requestIdleCallback");
+    expect(app).toContain("connection?.saveData");
+    expect(app).toContain('connection.effectiveType !== "4g"');
     expect(twilio).toContain("await import('@twilio/voice-sdk')");
     expect(twilio).not.toMatch(/^import \\{ Device, Call \\}/m);
     expect(music).toContain('await import("@/lib/audioConvert")');
     expect(music).not.toMatch(/^import .*audioConvert/m);
-    expect(chat).toContain('import("@/components/ChatPanel")');
+    expect(chat).not.toContain('import("@/components/ChatPanel")');
+    expect(chat).toContain('navigate("/comms")');
   });
 
   it("keeps unfinished gameplay media off the public landing page", () => {
@@ -35,7 +48,24 @@ describe("frontend startup boundaries", () => {
     expect(app).toContain('lazy(() => import("@/pages/ProfessionalHome"))');
     expect(landing).not.toContain("<video");
     expect(landing).not.toContain(".mp4");
-    expect(landing).toContain("Three paths.");
+    expect(landing).toContain("Make work possible.");
+    expect(landing).toContain("PABLO PRIME AUTOMATION");
+    expect(landing).not.toContain("PIXEL AGENTS");
+    expect(landing).toContain('href: "/business/autopilot"');
+  });
+
+  it("forces successful sign-in into the requested work route", () => {
+    const app = source("App.tsx");
+    expect(app).toContain("window.location.replace(returnTo)");
+    expect(app).toContain('?? "/"');
+  });
+
+  it("holds background auth requests until onboarding session hydration resolves", () => {
+    const app = source("App.tsx");
+    const heartbeat = source("hooks/use-heartbeat.ts");
+    expect(app).toContain("useHeartbeat(isAuthenticated && onboardingResolved && !isLoading)");
+    expect(app).toContain("if (!isAuthenticated || !onboardingResolved) return;");
+    expect(heartbeat).toContain("if (!enabled || !user) return;");
   });
 
   it("lets route chunks own charts and syntax libraries", () => {

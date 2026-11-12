@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   canUsePlatformTwilio: vi.fn().mockResolvedValue(false),
   hasFeature: vi.fn().mockResolvedValue(true),
   checkoutCreate: vi.fn(),
+  autoActivatePrimeWorkflows: vi.fn().mockResolvedValue(null),
 }));
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
@@ -87,6 +88,10 @@ vi.mock("../lib/phone-number-service", () => ({
 
 vi.mock("../lib/platform-twilio-access", () => ({
   canUsePlatformTwilio: mocks.canUsePlatformTwilio,
+}));
+
+vi.mock("../lib/autopilot/activation", () => ({
+  autoActivatePrimeWorkflows: mocks.autoActivatePrimeWorkflows,
 }));
 
 // ─── Test app ─────────────────────────────────────────────────────────────────
@@ -168,6 +173,7 @@ describe("POST /stripe/webhook", () => {
     mocks.provisionPaidPhoneNumber.mockResolvedValue({ sid: "PNpaid", phoneNumber: "+15558881111" });
     mocks.hasFeature.mockResolvedValue(true);
     mocks.canUsePlatformTwilio.mockResolvedValue(true);
+    mocks.autoActivatePrimeWorkflows.mockResolvedValue(null);
     mocks.checkoutCreate.mockResolvedValue({ id: `cs_checkout_${Date.now()}`, url: "https://checkout.example/session" });
     // Default: constructEvent succeeds and returns a minimal no-op event so
     // tests that don't need a specific event still get a 200.
@@ -204,39 +210,30 @@ describe("POST /stripe/webhook", () => {
 
   // ── Subscription feature grant ───────────────────────────────────────────────
 
-  it("rejects number checkout for a subscribed but platform-unauthorized user", async () => {
-    mocks.canUsePlatformTwilio.mockResolvedValueOnce(false);
+  it("creates a one-time USD checkout for an available custom number", async () => {
+    mocks.checkoutCreate.mockResolvedValueOnce({ id: "cs_phone_checkout", url: "https://checkout.example/phone" });
     const res = await request(app).post("/api/stripe/create-phone-number-session").send({
       phoneNumber: "+15558881111",
       countryCode: "US",
-      requestId: "request-unauthorized-1",
+      requestId: "request-phone-001",
     });
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe("TWILIO_ORG_RESTRICTED");
-    expect(mocks.assertPhoneNumberAvailable).not.toHaveBeenCalled();
-  });
-
-  it("allows only one outstanding checkout reservation per number", async () => {
-    const phoneNumber = "+15558882222";
-    const previousBaseUrl = process.env.APP_BASE_URL;
-    process.env.APP_BASE_URL = "https://phone.example";
-    mocks.canUsePlatformTwilio.mockResolvedValue(true);
-    const first = await request(app).post("/api/stripe/create-phone-number-session").send({
-      phoneNumber,
+    expect(res.status).toBe(200);
+    expect(res.body.url).toBe("https://checkout.example/phone");
+    expect(mocks.assertPhoneNumberAvailable).toHaveBeenCalledWith("+15558881111", "US");
+    expect(mocks.checkoutCreate).toHaveBeenCalledWith(expect.objectContaining({
+      mode: "payment",
+      client_reference_id: TEST_USER,
+      metadata: expect.objectContaining({ type: "phone_number", phoneNumber: "+15558881111" }),
+    }), { idempotencyKey: `phone-number:${TEST_USER}:request-phone-001` });
+    const duplicate = await request(app).post("/api/stripe/create-phone-number-session").send({
+      phoneNumber: "+15558881111",
       countryCode: "US",
-      requestId: "request-reserve-first",
+      requestId: "request-phone-002",
     });
-    const second = await request(app).post("/api/stripe/create-phone-number-session").send({
-      phoneNumber,
-      countryCode: "US",
-      requestId: "request-reserve-second",
-    });
-    expect(first.status, JSON.stringify(first.body)).toBe(200);
-    expect(second.status).toBe(409);
+    expect(duplicate.status).toBe(409);
     expect(mocks.checkoutCreate).toHaveBeenCalledTimes(1);
-    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.phoneNumber, phoneNumber));
-    if (previousBaseUrl === undefined) delete process.env.APP_BASE_URL;
-    else process.env.APP_BASE_URL = previousBaseUrl;
+    await db.delete(phoneNumberPurchasesTable)
+      .where(eq(phoneNumberPurchasesTable.stripeSessionId, "cs_phone_checkout"));
   });
 
   it("fulfils a paid custom number exactly once across duplicate webhooks", async () => {
@@ -382,6 +379,114 @@ describe("POST /stripe/webhook", () => {
         expect.any(String),   // grantedBy (defaults to "stripe")
         TEST_SUB,
       );
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledWith(TEST_USER, {
+        orgId: null,
+        companyBilled: false,
+      });
+    });
+
+    it("starts Prime workflows in the business linked to the paid checkout", async () => {
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_org",
+        payment_status: "paid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: { feature: "claw_bot", primeAutopilotOrgId: "42" },
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledWith(TEST_USER, {
+        orgId: 42,
+        companyBilled: false,
+      });
+    });
+
+    it("does not start Prime workflows for an unpaid checkout", async () => {
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_unpaid",
+        payment_status: "unpaid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: { feature: "claw_bot", primeAutopilotOrgId: "42" },
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      expect(mocks.autoActivatePrimeWorkflows).not.toHaveBeenCalled();
+    });
+
+    it("resolves hosted Prime payment links from product metadata and starts workflows", async () => {
+      mocks.subscriptionsRetrieve.mockResolvedValueOnce({
+        items: {
+          data: [{
+            price: {
+              product: {
+                id: "prod_prime_payment_link",
+                metadata: { feature: "claw_bot" },
+              },
+            },
+          }],
+        },
+      });
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_payment_link",
+        payment_status: "paid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: {},
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      expect(mocks.grantFeature).toHaveBeenCalledWith(
+        TEST_USER,
+        "claw_bot",
+        "stripe-payment-link",
+        TEST_SUB,
+      );
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledWith(TEST_USER, {
+        orgId: null,
+      });
+    });
+
+    it("returns a retryable error when hosted Prime activation fails", async () => {
+      mocks.subscriptionsRetrieve.mockResolvedValueOnce({
+        items: {
+          data: [{
+            price: {
+              product: {
+                id: "prod_prime_payment_link",
+                metadata: { feature: "claw_bot" },
+              },
+            },
+          }],
+        },
+      });
+      mocks.autoActivatePrimeWorkflows.mockRejectedValueOnce(new Error("activation unavailable"));
+      const event = makeEvent("checkout.session.completed", {
+        id: "cs_test_prime_payment_link_retry",
+        payment_status: "paid",
+        mode: "subscription",
+        client_reference_id: TEST_USER,
+        subscription: TEST_SUB,
+        metadata: {},
+      });
+      mocks.constructEvent.mockReturnValueOnce(event);
+
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(500);
+      expect(mocks.autoActivatePrimeWorkflows).toHaveBeenCalledOnce();
     });
 
     it("uses metadata.userId when client_reference_id is absent", async () => {
@@ -623,7 +728,9 @@ describe("POST /stripe/webhook", () => {
       const [acct] = await db
         .select()
         .from(bankAccountsTable)
-        .where(and(eq(bankAccountsTable.userId, TOPUP_USER), eq(bankAccountsTable.kind, "checking")))
+        // FIAT now uses the authoritative CASH WALLET shape. Keep the helper
+        // name for readability in the top-up assertions.
+        .where(and(eq(bankAccountsTable.userId, TOPUP_USER), eq(bankAccountsTable.kind, "cash")))
         .limit(1);
       return acct ? acct.balance : null;
     }

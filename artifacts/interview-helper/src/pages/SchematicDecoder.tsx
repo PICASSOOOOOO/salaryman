@@ -133,7 +133,7 @@ export default function SchematicDecoder() {
       <div className="max-w-3xl mx-auto px-6 py-10">
         <div className="flex items-center gap-3 mb-2">
           <Ruler className="w-6 h-6 text-amber-400" />
-          <h1 className="text-2xl font-mono uppercase tracking-widest text-amber-400">Blueprint Decoder</h1>
+          <h1 className="text-2xl font-mono uppercase tracking-widest text-amber-400">CAD &amp; Blueprint Reader</h1>
         </div>
         <p className="text-zinc-500 text-sm mb-8">
           Drop in a CAD file or engineering schematic — image, PDF, or source (DXF, STEP, STL,

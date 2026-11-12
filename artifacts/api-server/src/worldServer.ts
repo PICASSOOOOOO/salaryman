@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable, worldPlayerPositionsTable } from '@workspace/db';
+import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable, worldPlayerPositionsTable, playerLedgerTable } from '@workspace/db';
 import { OUTSIDE_WORLD_ENABLED } from './lib/outside-world';
 import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
@@ -11,7 +11,7 @@ import { resolveClassroomLiveAccess } from './routes/education';
 // server; the cap keeps a single instance healthy and hosting cost predictable.
 // Default 50; raise per deployment (SERVER_MAX_PLAYERS) once a realm's economy
 // justifies more compute, or spin up a second city in the same continent.
-import { resolveClerkWebSocketUser } from "./lib/clerk-websocket-auth";
+import { resolveWebSocketUser, resolveWorldWebSocketUser } from "./lib/replit-websocket-auth";
 export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 50;
 
 // Which realm this (identical) deployment IS. Both servers run the same build;
@@ -59,6 +59,7 @@ interface LootItem {
   id: string;
   name: string;
   desc: string;
+  rarity?: string;
 }
 
 export interface Player {
@@ -82,6 +83,8 @@ export interface Player {
   money: number;
   lastPvpAttack: number;
   level: number;
+  networkCreditScore?: number;
+  lastPickpocketAt?: number;
   inventory: LootItem[];
   weaponId: string;
   lastPveReward: number;
@@ -153,6 +156,18 @@ const addPlayer = (player: Player) => {
   }
 };
 const removePlayer = (player: Player) => {
+  const encounter = pendingPickpockets.get(player.id);
+  if (encounter) {
+    clearTimeout(encounter.timeout);
+    pendingPickpockets.delete(player.id);
+    if (encounter.thiefId !== player.id) sendTo(encounter.thiefId, { type: "pickpocket_result", result: "cancelled" });
+  }
+  for (const [victimId, pending] of pendingPickpockets) {
+    if (pending.thiefId !== player.id) continue;
+    clearTimeout(pending.timeout);
+    pendingPickpockets.delete(victimId);
+    sendTo(victimId, { type: "pickpocket_encounter_end", result: "cancelled" });
+  }
   if (player.moveBroadcastTimer) clearTimeout(player.moveBroadcastTimer);
   players.delete(player.id);
   indexedRemove(cityPlayers, player.cityId, player.id);
@@ -164,6 +179,14 @@ const floorLocks = new Map<string, FloorLock>();
 const videoRooms = new Map<string, Set<string>>();
 const pendingCalls = new Map<string, { callerId: string; targetId: string; ts: number }>();
 const activeCalls = new Map<string, string>();
+interface PendingPickpocket {
+  thiefId: string;
+  victimId: string;
+  expiresAt: number;
+  success: boolean;
+  timeout: ReturnType<typeof setTimeout>;
+}
+const pendingPickpockets = new Map<string, PendingPickpocket>();
 
 // Guest connection state (room code → set of guest connection objects)
 interface GuestConn {
@@ -307,6 +330,81 @@ const broadcastPlayerList = (cityId: string) => {
 const sendTo = (id: string, msg: object) => {
   const p = players.get(id);
   if (p && p.ws?.readyState === WebSocket.OPEN) p.ws.send(JSON.stringify(msg));
+};
+
+export function pickpocketChance(creditScore: number, level: number): number {
+  if (!Number.isFinite(creditScore) || !Number.isFinite(level)) return 0;
+  // The base chance is deliberately very low. Network credit and game level
+  // improve the odds gradually, but never make pickpocketing reliable.
+  return Math.min(0.035, 0.002 + Math.max(0, Math.min(800, creditScore) - 400) * 0.000025
+    + Math.max(0, Math.min(50, level) - 1) * 0.0002);
+}
+
+export function pickpocketWalletAmount(wallet: number, random = Math.random): number {
+  if (!Number.isSafeInteger(wallet) || wallet <= 0) return 0;
+  const maxPercent = Math.min(0.0499, random() * 0.0499);
+  return Math.min(wallet, Math.floor(wallet * maxPercent));
+}
+
+export function canPickpocketItem(item: LootItem): boolean {
+  const rarity = (item.rarity ?? "").trim().toLowerCase();
+  return rarity !== "legendary" && rarity !== "impossible";
+}
+
+export function pickpocketItemChance(item: LootItem, creditScore: number, level: number): number {
+  const rarity = (item.rarity ?? "common").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  if (!canPickpocketItem(item)) return 0;
+  if (rarity === "veryrare") return 0.002;
+  if (rarity === "rare") return rarePickpocketChance(creditScore, level);
+  if (rarity === "expensive" || rarity === "hardtofind") return 0.005;
+  if (rarity === "moderate") return 0.01;
+  return 0.02;
+}
+
+export function rarePickpocketChance(creditScore: number, level: number): number {
+  if (creditScore < 700 || level < 10) return 0;
+  return 0.009; // strictly below one percent
+}
+
+const PICKPOCKET_ENCOUNTER_MS = 5_000;
+const resolvePickpocket = (victimId: string, caught = false) => {
+  const pending = pendingPickpockets.get(victimId);
+  if (!pending) return;
+  clearTimeout(pending.timeout);
+  pendingPickpockets.delete(victimId);
+  const thief = players.get(pending.thiefId);
+  const victim = players.get(victimId);
+  if (!thief || !victim) return;
+  if (caught || !pending.success) {
+    const result = caught ? "foiled" : "failed";
+    sendTo(thief.id, { type: "pickpocket_result", result });
+    sendTo(victim.id, { type: "pickpocket_encounter_end", result });
+    return;
+  }
+
+  const amount = pickpocketWalletAmount(victim.money);
+  victim.money = Math.max(0, victim.money - amount);
+  thief.money += amount;
+  let item: LootItem | null = null;
+  const eligible = victim.inventory.filter(canPickpocketItem);
+  const candidate = eligible.length ? eligible[Math.floor(Math.random() * eligible.length)] : null;
+  if (candidate && Math.random() < pickpocketItemChance(candidate, thief.networkCreditScore ?? 680, thief.level)) item = candidate;
+  if (item) {
+    const index = victim.inventory.findIndex((owned) => owned === item);
+    if (index >= 0) {
+      const [stolen] = victim.inventory.splice(index, 1);
+      thief.inventory.push(stolen);
+      item = stolen;
+    } else item = null;
+  }
+  sendTo(thief.id, {
+    type: "pickpocket_result", result: "success", money: amount, item,
+    wallet: thief.money, inventory: thief.inventory,
+  });
+  sendTo(victim.id, {
+    type: "pickpocket_encounter_end", result: "stolen", money: amount, item,
+    wallet: victim.money, inventory: victim.inventory,
+  });
 };
 
 // ── World Events (in-memory) ───────────────────────────────────────────────────
@@ -739,6 +837,80 @@ export const handleMessage = (player: Player, raw: string) => {
 
   switch (msg.type) {
 
+    case "pickpocket_attempt": {
+      const target = typeof msg.targetId === "string" ? players.get(msg.targetId) : undefined;
+      const alreadyEngaged = [...pendingPickpockets.values()].some(
+        (encounter) => encounter.thiefId === player.id || encounter.victimId === player.id,
+      );
+      if (!player.userId || !target?.userId || target.isBot || player.isBot
+        || target.id === player.id || target.cityId !== player.cityId
+        || target.interiorBid !== player.interiorBid || target.hp <= 0 || player.hp <= 0
+        || player.sleeping || player.paused || target.sleeping || target.paused
+        || Math.hypot(player.x - target.x, player.y - target.y) > PVP_RANGE
+        || alreadyEngaged) {
+        sendTo(player.id, { type: "pickpocket_result", result: "unavailable" });
+        break;
+      }
+      const now = Date.now();
+      if (now - (player.lastPickpocketAt ?? 0) < 20_000) {
+        sendTo(player.id, { type: "pickpocket_result", result: "cooldown" });
+        break;
+      }
+      player.lastPickpocketAt = now;
+      const success = Math.random() < pickpocketChance(player.networkCreditScore ?? 680, player.level);
+      const timeout = setTimeout(() => resolvePickpocket(target.id), PICKPOCKET_ENCOUNTER_MS);
+      pendingPickpockets.set(target.id, {
+        thiefId: player.id,
+        victimId: target.id,
+        expiresAt: now + PICKPOCKET_ENCOUNTER_MS,
+        success,
+        timeout,
+      });
+      sendTo(player.id, { type: "pickpocket_result", result: "encounter_started", expiresInMs: PICKPOCKET_ENCOUNTER_MS });
+      sendTo(target.id, {
+        type: "pickpocket_encounter",
+        attackerId: player.id,
+        attackerName: player.name,
+        slowMotionSeconds: 2,
+        expiresInMs: PICKPOCKET_ENCOUNTER_MS,
+        choices: ["prevent", "stop", "fight", "retaliate"],
+      });
+      break;
+    }
+
+    case "pickpocket_response": {
+      const choice = typeof msg.choice === "string" ? msg.choice : "";
+      const pending = pendingPickpockets.get(player.id);
+      if (!pending || !["prevent", "stop", "fight", "retaliate"].includes(choice)) break;
+      if (pending.expiresAt <= Date.now()) {
+        resolvePickpocket(player.id);
+        break;
+      }
+      // These are encounter-only responses. They end the attempt without
+      // opening a battle mode or applying general PvP damage.
+      resolvePickpocket(player.id, true);
+      sendTo(player.id, { type: "pickpocket_response_result", choice, result: "defended" });
+      break;
+    }
+
+    case "pickpocket_profile": {
+      if (!player.userId) break;
+      const score = player.networkCreditScore ?? 680;
+      const skillNodes = [
+        { id: "light_fingers", unlocked: score >= 620 && player.level >= 3, creditScore: 620, level: 3 },
+        { id: "quiet_hands", unlocked: score >= 680 && player.level >= 10, creditScore: 680, level: 10 },
+        { id: "ghost_step", unlocked: score >= 740 && player.level >= 20, creditScore: 740, level: 20 },
+      ];
+      sendTo(player.id, {
+        type: "pickpocket_profile",
+        creditScore: score,
+        experienceLevel: player.level,
+        chance: pickpocketChance(score, player.level),
+        skillNodes,
+      });
+      break;
+    }
+
     case 'move':
       {
       const oldInterior = player.interiorBid;
@@ -838,10 +1010,8 @@ export const handleMessage = (player: Player, raw: string) => {
       if (player.pveRewardCount > 12) break;
       if (now - player.lastPveReward < 400) break;
       player.lastPveReward = now;
-      if (typeof msg.exp === 'number' && msg.exp > 0 && msg.exp <= 100) {
-        player.level = Math.min(50, player.level + Math.floor(msg.exp / 100));
-        player.maxHp = (CLASS_HP[player.class.toLowerCase()] ?? 350) + (player.level - 1) * 10;
-      }
+      // XP and level are not accepted from the client. Character progression
+      // is persisted through server-owned save/progression state.
       if (Math.random() < 0.25) {
         const loot = LOOT_ITEMS[Math.floor(Math.random() * LOOT_ITEMS.length)];
         player.inventory.push(loot);
@@ -898,13 +1068,19 @@ export const handleMessage = (player: Player, raw: string) => {
 
     case 'speaking':
       player.speaking = !!msg.speaking;
-      broadcastCity(player.cityId, { type: 'player_speaking', id: player.id, speaking: player.speaking }, player.id);
+      for (const peer of players.values()) {
+        if (peer.id !== player.id && peer.cityId === player.cityId && peer.interiorBid === player.interiorBid
+          && Math.hypot(peer.x - player.x, peer.y - player.y) < 150) {
+          sendTo(peer.id, { type: 'player_speaking', id: player.id, speaking: player.speaking });
+        }
+      }
       break;
 
     case 'voice_join': {
       const nearbyPeers = Array.from(players.values()).filter(p =>
         p.id !== player.id &&
         p.cityId === player.cityId &&
+        p.interiorBid === player.interiorBid &&
         Math.hypot(p.x - player.x, p.y - player.y) < 100
       );
       for (const peer of nearbyPeers) {
@@ -915,24 +1091,32 @@ export const handleMessage = (player: Player, raw: string) => {
 
     case 'voice_offer': {
       const { to, sdp } = msg;
-      if (!to || !sdp || !players.has(to)) break;
-      const dist = Math.hypot(player.x - players.get(to)!.x, player.y - players.get(to)!.y);
+      const peer = to ? players.get(to) : null;
+      if (!to || !sdp || !peer) break;
       const inCall = activeCalls.get(player.id) === to || activeCalls.get(to) === player.id;
-      if (dist > 150 && !inCall) break;
+      const sameInterior = peer.cityId === player.cityId && peer.interiorBid === player.interiorBid;
+      const dist = Math.hypot(player.x - peer.x, player.y - peer.y);
+      if (!inCall && (!sameInterior || dist > 150)) break;
       sendTo(to, { type: 'voice_offer', from: player.id, sdp });
       break;
     }
 
     case 'voice_answer': {
       const { to, sdp } = msg;
-      if (!to || !sdp || !players.has(to)) break;
+      const peer = to ? players.get(to) : null;
+      if (!to || !sdp || !peer) break;
+      if (activeCalls.get(player.id) !== to && activeCalls.get(to) !== player.id
+        && (peer.cityId !== player.cityId || peer.interiorBid !== player.interiorBid)) break;
       sendTo(to, { type: 'voice_answer', from: player.id, sdp });
       break;
     }
 
     case 'voice_ice': {
       const { to, candidate } = msg;
-      if (!to || !candidate || !players.has(to)) break;
+      const peer = to ? players.get(to) : null;
+      if (!to || !candidate || !peer) break;
+      if (activeCalls.get(player.id) !== to && activeCalls.get(to) !== player.id
+        && (peer.cityId !== player.cityId || peer.interiorBid !== player.interiorBid)) break;
       sendTo(to, { type: 'voice_ice', from: player.id, candidate });
       break;
     }
@@ -1015,6 +1199,7 @@ export const handleMessage = (player: Player, raw: string) => {
         for (const [, p] of players) {
           if (p.cityId !== player.cityId) continue;
           if (player.interiorBid && p.interiorBid !== player.interiorBid) continue;
+          if (Math.hypot(p.x - player.x, p.y - player.y) > 150) continue;
           if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(proximityMsg);
         }
       }
@@ -1450,12 +1635,16 @@ const markIdlePlayersSleeping = () => {
 // raw upgrade request (req.cookies isn't populated for WS handshakes, so parse
 // the cookie header ourselves). Returns null when unauthenticated.
 const resolveSessionAvatar = async (req: IncomingMessage): Promise<string | null> => {
-  return (await resolveClerkWebSocketUser(req))?.profileImageUrl ?? null;
+  return (await resolveWorldWebSocketUser(req))?.profileImageUrl ?? null;
 };
 
-// Resolve the authenticated user id from a raw upgrade request's session cookie.
+// Resolve the authenticated user from a session or linked native desktop
+// credential. This is only used by the exterior world socket.
+const resolveWorldUserId = async (req: IncomingMessage): Promise<string | null> => {
+  return (await resolveWorldWebSocketUser(req))?.id ?? null;
+};
 const resolveSessionUserId = async (req: IncomingMessage): Promise<string | null> => {
-  return (await resolveClerkWebSocketUser(req))?.id ?? null;
+  return (await resolveWebSocketUser(req))?.id ?? null;
 };
 
 // Live WebSocket population, compared against MAX_PLAYERS for the capacity gate.
@@ -1621,7 +1810,7 @@ export const attachWorldServer = (httpServer: Server) => {
     const cityId  = (params.get('city')    ?? SERVER_CITY_ID).slice(0, 40);
     const startX  = parseFloat(params.get('x') ?? '820');
     const startY  = parseFloat(params.get('y') ?? '430');
-    const authenticatedUserId = await resolveSessionUserId(req);
+    const authenticatedUserId = await resolveWorldUserId(req);
 
     // Capacity is per-CITY, not global: each walled city is its own realm with
     // its own MAX_PLAYERS budget, so a packed Minx never locks newcomers out of
@@ -1701,9 +1890,23 @@ export const attachWorldServer = (httpServer: Server) => {
       }
     }
 
+    let networkCreditScore = authenticatedUserId ? 0 : 680;
+    if (authenticatedUserId) {
+      try {
+        const [ledger] = await db.select({ creditScore: playerLedgerTable.creditScore })
+          .from(playerLedgerTable)
+          .where(eq(playerLedgerTable.userId, authenticatedUserId))
+          .limit(1);
+        if (ledger && Number.isFinite(ledger.creditScore)) networkCreditScore = ledger.creditScore;
+        else if (!ledger) networkCreditScore = 680;
+      } catch (error) {
+        console.error("[World] Could not load network credit for player:", error);
+      }
+    }
+
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, sleeping: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
+    const player: Player = { id, userId: authenticatedUserId ?? undefined, name, class: cls, company, cityId, profileImageUrl: null, x: admittedX, y: admittedY, authoritativeX: authenticatedUserId ? admittedX : undefined, authoritativeY: authenticatedUserId ? admittedY : undefined, lastMoveAt: Date.now(), lastPositionPersistAt: Date.now(), speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, networkCreditScore, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, sleeping: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
     addPlayer(player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 
@@ -1799,15 +2002,23 @@ export const attachWorldServer = (httpServer: Server) => {
 
   httpServer.on('upgrade', (req, socket, head) => {
     const pathname = req.url?.split('?')[0] ?? '';
-    if (pathname.includes('/ws/meet')) {
-      guestWss.handleUpgrade(req, socket as any, head, (ws) => {
-        guestWss.emit('connection', ws, req);
-      });
-    } else if (pathname.includes('/ws/conf')) {
-      confWss.handleUpgrade(req, socket as any, head, (ws) => {
-        confWss.emit('connection', ws, req);
-      });
-    }
+    if (!pathname.includes('/ws/meet') && !pathname.includes('/ws/conf')) return;
+
+    void (async () => {
+      try {
+        if (pathname.includes('/ws/meet')) {
+          guestWss.handleUpgrade(req, socket as any, head, (ws) => {
+            guestWss.emit('connection', ws, req);
+          });
+        } else {
+          confWss.handleUpgrade(req, socket as any, head, (ws) => {
+            confWss.emit('connection', ws, req);
+          });
+        }
+      } catch {
+        socket.destroy();
+      }
+    })();
   });
 
   let guestIdCounter = 0;

@@ -45,6 +45,7 @@ export interface OnboardingAnswers {
   companyName: string;
   industry: string;
   contactEmail: string;
+  contactPhone?: string;
   playerName: string;
   perception: number;
   combatStyle: string;
@@ -66,11 +67,11 @@ export interface OnboardingAnswers {
   // payroll provider; the client surfaces this as a warning badge.
   pendingOwnerVerification: boolean;
   // Character-builder paper-doll appearance, chosen on the IDENTITY page and
-  // ridden into the save blob (data.appearance) by Immigration so WorldPlay,
+  // ridden into the save blob (data.appearance) by Onboarding so WorldPlay,
   // the office, and the customizer all render the same avatar.
   appearance: Appearance;
   // REAL ESTATE page — chosen home city (regional/timezone server) and the
-  // optional coarse-location consent. Immigration persists these and POSTs
+  // optional coarse-location consent. Onboarding persists these and POSTs
   // the home-city to the registry (replacing the old relocation phase).
   homeCityId: string;
   locationConsent: boolean;

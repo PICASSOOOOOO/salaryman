@@ -26,8 +26,22 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 
 **Work approach:**
 - When you have a clear picture of what exists, prioritize investigating the unclear parts first. Start from unknowns, not knowns.
+- Treat the full release audit as a hard publishing gate after every change. Do not recommend publishing until typecheck, builds, full test suites, workflow logs, production smoke checks, auth controls, API health, and 320px overflow/overlap checks have been reviewed.
+- Audit CALLL HOME, CRM, and Pixel Agent/Pablo Prime automation before lower-priority product areas. The hourly health gate must verify provider reachability, router mounting, authentication enforcement, and the safe boundaries that keep Prime automation aligned with manual user capabilities.
+- Keep an hourly read-only production audit scheduled. It must fail visibly and alert the owner when routes, auth rendering, cream surfaces, mobile layout, browser runtime, API health, or injected third-party UI regress.
+
+**Browser UI rules:**
+- Assume every business workflow is primarily used on a 320px-wide phone.
+- Lead with working, tappable feature visuals and motion; keep explanatory copy to an absolute minimum.
+- Preserve established product, route, and feature names during redesigns.
+- Preserve each screen's accepted layout and visual style when adding or upgrading features. Change only the requested surface; add only necessary UI and fix collisions by simplifying or reflowing, not by layering more controls.
+- Make feature discovery feel like exploring a video game: reveal useful features progressively and in context, with concise cues instead of front-loading instructions or clutter.
+- Never compress desktop tables or navigation into mobile; use mobile-native layouts without horizontal bleed or overlapping borders.
 
 **Naming / branding conventions:**
+- **Never use, embed, restore, or republish the old gameplay trailer anywhere in SALARYMAN.** Any future gameplay media must come from the current downloadable runtime and be explicitly approved before use.
+- **Keep the SALARYMAN logo as the persistent home anchor in the top app menu on every normal browser route, including App Download.** Only intentional fullscreen or embedded views may suppress global chrome.
+- **The App Download hero must autoplay a muted, inline capture from the current downloadable desktop runtime.** Keep playback controls and a poster as a fallback for browser data-saver or battery policies.
 - **The "Pledge Store" is the canonical name for the one massive SALARYMAN marketplace** — the single consolidated commerce surface. The old "Bot Factory" (`/bots`), the Pledge Store (`/pledge`), and the agents showcase (`/pledge/agents`) all merge into this one Pledge Store, which should carry extensive artwork.
 - **"Pixel Agents" are the bots/agents that are for sale — the bundle/product line sold INSIDE the Pledge Store.** Pixel Agents is NOT the page name; it is the agents section/offering within the Pledge Store. Purchasing, editing, and controlling bots lives under the Pixel Agents offering inside the Pledge Store.
 
@@ -41,9 +55,9 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 The project is a pnpm workspace monorepo built with TypeScript, emphasizing modularity and distinct UI/UX designs.
 
 ### UI/UX Decisions
-- **Non-game pages:** Utilize a dark office aesthetic with warm dark slate, Inter for body text, and Share Tech Mono for headings. Minimum font size is 11px.
-- **Game pages (.game-route):** Feature a CRT/Pip-Boy aesthetic with phosphor blue on black, scan lines, and VT323/Share Tech Mono fonts.
-- **Font Floor System:** Global CSS ensures a minimum font size of 11-13px for non-game pages, overriding Tailwind defaults for readability.
+- **Browser/workspace pages:** Use clean cream or white surfaces, black text, flat hierarchy, and essential controls only. Keep text readable on small phones.
+- **Feature upgrades:** Keep existing screens visually stable unless a redesign is explicitly requested. Prefer progressive, contextual discovery over dense onboarding, extra panels, or long copy.
+- **Downloadable game:** Keep its visual language distinct from the browser workspace; start bright and lively, with deterioration emerging through the story. Do not use CRT effects, scanlines, flicker, grain, or retro terminal fonts.
 
 ### Technical Implementations
 - **Core Technologies:** Node.js 24, pnpm, TypeScript 5.9, Express 5, PostgreSQL (Drizzle ORM), Zod, Orval, esbuild.
@@ -77,7 +91,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Jean Claw Workforce:** In-game building interiors spawn Jean Claw and department worker NPCs.
 - **Corporate Admin Panel:** Internal control panel for Picasso staff with analytics, user management, and system configuration.
 - **Game Lock (Picasso-admin gate):** MMO/city routes `/world`, `/world/play`, `/game*` are wrapped in a `GameLock` component in `App.tsx` that checks `usePlan().isOwner`. Non-admins see a "MINX CITY IS UNDER CONSTRUCTION" screen with a link back to `/`. In place while game art is scrapped and features are being moved into office-mode terminal pages.
-- **Immigration Gate (post-OAuth intake):** A dedicated `/immigration` route (`pages/Immigration.tsx`) sits OUTSIDE `GameLock` and is the only path that flips `tutorialDone` for an authed user. After OAuth, `PabloTerminal` redirects to `/immigration` (not `/world/play`). The page wraps the existing `PabloOnboarding` component in a "border control" themed backdrop and on completion writes `pabloOnboardingDone` plus char fields into `sm_save`, calls `markTutorialDone()`, then navigates home. `HomeOrCover`, the global new-user gate in `AppShell`, and `PabloTerminal` itself all redirect authed-but-uncleared users to `/immigration` to prevent the previous post-sign-in loop where users bounced off `GameLock` back into the terminal's name/email re-prompt.
+- **Browser onboarding and account boundary:** Free browsing does not require sign-in. `/onboarding` is an explicit, sign-in-required flow for business/work status; first login does not globally redirect there. Features that need business status, paid access, or saved user data must show their own sign-in prompt, while server-side authentication and ownership checks remain enforced.
 - **Notification System:** NavBar bell icon with dropdown for notifications.
 - **Media Center:** Tools for call recording downloads, in-app media sharing, and screen capture.
 - **Web Scraper (SIGNAL-INT):** Content extraction tool for single or batch URLs from various platforms.

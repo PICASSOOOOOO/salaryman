@@ -1,26 +1,83 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, LogIn, Download } from "lucide-react";
-import { PicassoLogo } from "@/components/PicassoLogo";
+import { Mic, MicOff, Send, Keyboard, GraduationCap, Volume2, RotateCcw, Paperclip, X } from "lucide-react";
 import { PabloControlsMenu } from "@/components/PabloControlsMenu";
 import { apiFetch } from "@/lib/api-client";
+import { trackEvent } from "@/lib/analytics";
 import { sanitizeReturnPath } from "@/lib/safe-path";
-import { speakWithTTS, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
+import { speakWithTTS, armAudioAutoUnlock, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@/hooks/use-auth";
+import { StartWorkMenu } from "@/components/StartWorkMenu";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
-import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
+import { PabloNebula3D, PABLO_VARIANT } from "@/components/PabloNebula3D";
 import { useBoomerMode } from "@/hooks/use-mobile";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
   isTutorialDone,
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
-import { isReadyToEnter, isCostCurious, isShowPapers } from "@/lib/signup-intent";
+import { isReadyToEnter, isCostCurious } from "@/lib/signup-intent";
 import { formatSpeechName } from "@/lib/speech-name";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
 const PABLO_TTS_OPTIONS = { character: "PABLO" } as const;
+const PABLO_CHAT_TIMEOUT_MS = 45_000;
+
+function pabloApiErrorMessage(payload: unknown, status: number): string {
+  const body = payload && typeof payload === "object"
+    ? payload as Record<string, unknown>
+    : {};
+  for (const value of [body.say, body.message, body.error]) {
+    if (typeof value !== "string" || !value.trim()) continue;
+    // Do not expose machine-readable error slugs as if they were user guidance.
+    if (/^[a-z0-9_.-]+$/i.test(value.trim())) continue;
+    return value.trim();
+  }
+  if (status === 401) return "Your sign-in expired. Sign in again to keep chatting.";
+  if (status === 402 || status === 403) return "Pablo can't continue this request on the current account.";
+  if (status === 429) return "Pablo needs a short pause. Try again shortly.";
+  return "Pablo couldn't process that request. Please try again.";
+}
+
+function isAbortError(error: unknown): boolean {
+  return typeof error === "object"
+    && error !== null
+    && "name" in error
+    && (error as { name?: unknown }).name === "AbortError";
+}
+
+async function fetchPabloWithTimeout(path: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), PABLO_CHAT_TIMEOUT_MS);
+  const requestId = crypto.randomUUID();
+  const route = path.split("/").filter(Boolean).at(-1) ?? "unknown";
+  const headers = new Headers(init.headers);
+  headers.set("X-Request-Id", requestId);
+  try {
+    const response = await apiFetch(path, { ...init, headers, signal: controller.signal });
+    if (!response.ok) {
+      console.warn("[Pablo] chat request returned non-OK", {
+        requestId: response.headers?.get?.("x-request-id") ?? requestId,
+        route,
+        status: response.status,
+      });
+    }
+    return response;
+  } catch (error) {
+    console.error("[Pablo] chat request failed", {
+      requestId,
+      route,
+      errorName: error && typeof error === "object" && "name" in error
+        ? String((error as { name?: unknown }).name)
+        : "UnknownError",
+    });
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 
 // Map the visitor's IANA timezone (e.g. "America/Los_Angeles") to one
 // of the in-platform city labels by matching the current UTC offset to
@@ -118,42 +175,16 @@ class NebulaErrorBoundary extends ReactComponent<{ children: RNode; fallback: RN
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-// Idle one-liners Pablo cycles through for returning users. The point is
-// presence — Pablo always feels like he's
-// in the chat, watching, joking, occasionally trying to upsell PABLO PRIME.
-// We pick a line at random on each mount and keep a tiny "recently said"
-// queue in localStorage so the same line never repeats two visits in a row.
-const IDLE_LINES: string[] = [
-  "Welcome back. I'm Pablo — your host here. What do you need?",
-  "Still with us? Good. This city eats the idle alive. What's on your mind?",
-  "You came back. Smart. In here you work, or you die trying. Where do we start?",
-  "I keep an eye on everyone who walks in. Glad it's you. How can I help?",
-  "Your host, at your service. Lost, curious, or ready to work — tell me.",
-  "The position's still open if you want it. First — what can I do for you?",
-  "I worry about the ones who wander off. Stay close. What do you need?",
-  "Talk to me. I've watched a thousand careers rise and fall. Yours can rise.",
-  "Quick question, big question, all welcome. I'm here to keep you alive in this town.",
-  "Ready when you are. Just remember — in this city, standing still is how you lose.",
-  "Speak or type, I'll keep up. Your host doesn't miss much.",
-  "What do you want to figure out? The clock's always running in here.",
-];
+const PABLO_INITIAL_GREETING = "Hey, I'm Pablo. What can I help you with?";
+const PABLO_GREETING_SESSION_KEY = "pablo.direct-greeting.v1";
 
-// Persisted ring of recently-shown indices so we don't repeat in a row.
-const IDLE_RECENT_KEY = "pablo.idle.recent";
-const IDLE_RECENT_MAX = 8;
-function pickIdleLine(): string {
-  if (typeof window === "undefined") return IDLE_LINES[0];
-  let recent: number[] = [];
+function shouldShowPabloGreeting(): boolean {
+  if (typeof window === "undefined") return false;
   try {
-    const raw = window.localStorage.getItem(IDLE_RECENT_KEY);
-    if (raw) recent = (JSON.parse(raw) as number[]).filter(n => Number.isInteger(n));
-  } catch {}
-  const candidates = IDLE_LINES.map((_, i) => i).filter(i => !recent.includes(i));
-  const pool = candidates.length > 0 ? candidates : IDLE_LINES.map((_, i) => i);
-  const idx = pool[Math.floor(Math.random() * pool.length)];
-  const next = [idx, ...recent].slice(0, IDLE_RECENT_MAX);
-  try { window.localStorage.setItem(IDLE_RECENT_KEY, JSON.stringify(next)); } catch {}
-  return IDLE_LINES[idx];
+    return window.sessionStorage.getItem(PABLO_GREETING_SESSION_KEY) !== "1";
+  } catch {
+    return true;
+  }
 }
 
 type Mode = "voice" | "text";
@@ -530,20 +561,18 @@ async function transcribe(blob: Blob): Promise<string> {
   return (data.text ?? "").trim();
 }
 
-// Keep the nebula present but pulled back from the camera so the terminal
-// controls and practical workspace remain readable around it. Resize updates
-// as the user rotates / changes window size.
+// The nebula is a full-page living background. Size the canvas beyond the
+// viewport diagonal so its circular field bleeds past every edge instead of
+// appearing as a centered boxed orb.
 function useNebulaSize() {
   const compute = () => {
     if (typeof window === "undefined") return 1200;
     const w = window.innerWidth;
     const h = window.innerHeight;
     const d = Math.hypot(w, h);
-    // A smaller field gives the visual room around the controls and reads as
-    // a zoomed-out camera instead of a full-screen wash.
     const isMobile = w < 640;
-    const mult = isMobile ? 0.78 : 0.9;
-    const min = isMobile ? 360 : 520;
+    const mult = 1.35;
+    const min = isMobile ? 520 : 900;
     return Math.max(min, Math.floor(d * mult));
   };
   const [size, setSize] = useState(compute);
@@ -779,15 +808,15 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // (wantsTool match) — never as the default opener anymore.
 const NAME_PROMPT_LINE = "What should I call you?";
 
-export default function PabloTerminal() {
+export default function PabloTerminal({ home = false }: { home?: boolean } = {}) {
   // The public terminal is safe to paint while auth resolves. Waiting here
   // used to flash a black BOOTING screen before the canonical nebula, defeating
   // its role as the immediate front door. Auth-dependent actions remain gated
   // by PabloTerminalAuthed's own isLoading checks.
-  return <PabloTerminalAuthed />;
+  return <PabloTerminalAuthed home={home} />;
 }
 
-function PabloTerminalAuthed() {
+function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   const [, navigate] = useLocation();
   const { logout, isAuthenticated, user, isLoading } = useAuth();
   // The front door uses one verified platform-auth flow. Provider-specific
@@ -804,9 +833,32 @@ function PabloTerminalAuthed() {
   const [boomerMode] = useBoomerMode();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<string>("");
-  const [reply, setReply] = useState<string>("");
+  const [reply, setReply] = useState<string>(() =>
+    shouldShowPabloGreeting() ? PABLO_INITIAL_GREETING : "",
+  );
+  const shouldSpeakInitialGreetingRef = useRef(reply === PABLO_INITIAL_GREETING);
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const pabloHistoryKey = `pablo-conversation:${user?.id ?? "guest"}`;
+  const hydratedHistoryKey = useRef<string | null>(null);
+  const conversationScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (hydratedHistoryKey.current !== pabloHistoryKey) return;
+    try { sessionStorage.setItem(pabloHistoryKey, JSON.stringify(history.slice(-40))); } catch {}
+  }, [history, pabloHistoryKey]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(pabloHistoryKey) ?? "[]");
+      setHistory(Array.isArray(saved) ? saved.filter((item): item is { role: "user" | "assistant"; content: string } =>
+        item && (item.role === "user" || item.role === "assistant") && typeof item.content === "string",
+      ).slice(-40) : []);
+    } catch { setHistory([]); }
+    hydratedHistoryKey.current = pabloHistoryKey;
+  }, [pabloHistoryKey]);
+  useEffect(() => {
+    const region = conversationScrollRef.current;
+    if (region) region.scrollTop = region.scrollHeight;
+  }, [history, transcript, reply, status]);
   // Default to TEXT on EVERY device. The nebula opens quiet — Pablo waits
   // for the user to type. Voice-first auto-listen on open used to arm the
   // mic the instant the screen loaded, which on a browser without a real
@@ -816,61 +868,17 @@ function PabloTerminalAuthed() {
   // voice anytime with the pablo-mode-toggle button.
   const [mode, setMode] = useState<Mode>("text");
   const [textInput, setTextInput] = useState("");
-  // Cached server-authoritative assistant persona, so the terminal paints the
-  // right identity (Pablo vs Mila) on the first frame before the fetch resolves.
-  const PERSONA_CACHE_KEY = "salaryman.persona";
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const [retryPrompt, setRetryPrompt] = useState<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState("");
+  const [isReplyReplaying, setIsReplyReplaying] = useState(false);
   // (Removed Simon-says puzzle and its state. The puzzle was a guard that
   // ran post-passcode; with the passcode gone, the user goes directly
   // from the intro question to the inline employment / name / email
   // intake. Deeper biz registration (company name, industry, type) is
   // captured by the post-OAuth PabloOnboarding modal in WorldPlay.)
-  // Idle dialogue, two-stage:
-  //   1. ONE greeting per session, picked from IDLE_LINES. No looping. Stored
-  //      in sessionStorage so navigating around doesn't re-greet.
-  //   2. After the greeting, Pablo slow-drips AI-generated world lore. First
-  //      drip ~5 min in; each subsequent drip waits DOUBLE the previous gap
-  //      (5 → 10 → 20 → 40…). Each drip carries two cheeky clickable reply
-  //      tokens — when tapped, they're sent to Pablo as a normal message.
-  const SESSION_GREETED_KEY = "pablo.greeted_v2";
-  const [idleLine, setIdleLine] = useState<string>(() => {
-    if (typeof window === "undefined" || !isTutorialDone()) return "";
-    try {
-      if (window.sessionStorage.getItem(SESSION_GREETED_KEY)) return ""; // greeted earlier this session
-      window.sessionStorage.setItem(SESSION_GREETED_KEY, "1");
-    } catch {}
-    return pickIdleLine();
-  });
-  const [idleOptions, setIdleOptions] = useState<string[]>([]);
-  const idleDelayRef = useRef<number>(5 * 60_000); // 5 min, doubles each fire
-  const idleTimerRef = useRef<number | null>(null);
-
-  const fetchLoreDrip = useCallback(async () => {
-    try {
-      const r = await apiFetch("/api/chat/pablo/lore", { method: "POST", body: JSON.stringify({}) });
-      if (!r.ok) return;
-      const data = await r.json() as { line?: string; options?: string[] };
-      if (data?.line) {
-        setIdleLine(data.line);
-        setIdleOptions(Array.isArray(data.options) ? data.options.slice(0, 2) : []);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    if (!isTutorialDone()) return;
-    // Schedule the first lore drip 5 min after mount; each subsequent
-    // drip doubles the wait so an idle tab gets quieter the longer it sits.
-    const scheduleNext = () => {
-      if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = window.setTimeout(async () => {
-        await fetchLoreDrip();
-        idleDelayRef.current = Math.min(idleDelayRef.current * 2, 24 * 60 * 60_000); // cap at 24h
-        scheduleNext();
-      }, idleDelayRef.current) as unknown as number;
-    };
-    scheduleNext();
-    return () => { if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current); };
-  }, [fetchLoreDrip]);
   // Audio unlocks itself the moment the user touches anything (handled by
   // the global armAudioAutoUnlock listener wired in App.tsx). Pablo's voice
   // is on by default and stays on; no manual unlock affordance needed.
@@ -964,7 +972,7 @@ function PabloTerminalAuthed() {
         if (!res.ok) return true;
         const data = await res.json() as { pass: boolean; pabloLine?: string };
         if (!data.pass) {
-          const line = data.pabloLine ?? "The Bureau is reviewing your file. Check back later.";
+          const line = data.pabloLine ?? "We couldn't accept that email address. Please try another one.";
           localStorage.removeItem("salaryman_email");
           interviewPhaseRef.current = 'asking-email';
           bumpInterview();
@@ -992,24 +1000,41 @@ function PabloTerminalAuthed() {
   });
 
   // Camera/file/URL-vision UI is available only after authentication and the
-  // immigration desk has completed.
+  // onboarding desk has completed.
   const hasFinishedOnboarding = isAuthenticated && isTutorialDone();
   const enterFromHomepage = useCallback(() => {
     navigate("/console");
   }, [navigate]);
-  const startWorkFromHomepage = useCallback(() => {
-    if (isAuthenticated) {
-      enterFromHomepage();
-      return;
-    }
-    navigate(`/sign-in?returnTo=${encodeURIComponent("/console")}`);
-  }, [enterFromHomepage, isAuthenticated, navigate]);
-
-  // Keep the existing global audio unlock path alive for reply speech and
-  // explicit voice input. There is no automatic greeting to start here.
+  // Keep the global unlock path alive. The welcome is visible immediately;
+  // browsers only allow its audio after a user gesture.
   useEffect(() => {
     armAudioAutoUnlock();
-    void unlockAudio();
+    // Do not start an unlock attempt here: a mount-time promise can be reused by
+    // the first iOS tap, so HTMLAudioElement.play() no longer has that gesture.
+  }, []);
+
+  useEffect(() => {
+    if (!shouldSpeakInitialGreetingRef.current) return;
+    let cancelled = false;
+    const cancelWait = whenAudioUnlocked(() => {
+      if (cancelled) return;
+      // Do not consume the one-time greeting merely because the component
+      // mounted. Wait until the user's gesture has actually unlocked playback.
+      try {
+        window.sessionStorage.setItem(PABLO_GREETING_SESSION_KEY, "1");
+      } catch {}
+      setStatus("speaking");
+      const done = () => {
+        ttsRef.current = null;
+        setStatus("idle");
+      };
+      ttsRef.current?.cancel();
+      ttsRef.current = speakWithTTS(PABLO_INITIAL_GREETING, done, done, PABLO_TTS_OPTIONS);
+    });
+    return () => {
+      cancelled = true;
+      cancelWait();
+    };
   }, []);
 
   const speakLine = useCallback((text: string, after?: () => void) => {
@@ -1025,7 +1050,7 @@ function PabloTerminalAuthed() {
   }, []);
 
   // Start the pre-auth intake when the visitor chooses to enter. The remaining
-  // race/gender/biz/appearance/location onboarding lives in Immigration and
+  // race/gender/biz/appearance/location onboarding lives in Onboarding and
   // WorldPlay after auth returns.
   const askEmailNow = useCallback(() => {
     interviewPhaseRef.current = 'asking-email';
@@ -1131,109 +1156,104 @@ function PabloTerminalAuthed() {
     setReply("Text mode on. Type what you need.");
   }, [cleanup]);
 
-  // Active assistant identity. Pre-story this is ALWAYS "pablo" (his orb + his
-  // voice, completely untouched). Once a player's story is live the server flips
-  // the answer to Mila and we mirror it here, which drives her distinct nebula
-  // and ElevenLabs voice. We never alter Pablo's look/voice.
-  //
-  // First-frame identity comes from a localStorage cache so a returning story
-  // player paints as Mila on the very first frame (no Pablo flash). The cache is
-  // ACCOUNT-TAGGED ({ uid, persona }) so a different account on the same browser
-  // can never inherit a stale Mila: the sync effect below drops a cache whose uid
-  // doesn't match the resolved user (and clears it for guests), and the server
-  // persona fetch is always the final authority. A normal pre-story player never
-  // has a "mila" cache written for them, so Pablo's path is fully untouched.
-  type PersonaName = "pablo" | "mila";
-  const readCachedPersona = (): PersonaName => {
-    try {
-      const raw = localStorage.getItem(PERSONA_CACHE_KEY);
-      if (!raw) return "pablo";
-      if (raw === "mila") return "mila"; // back-compat: legacy bare-string cache
-      if (raw === "pablo") return "pablo";
-      const parsed = JSON.parse(raw) as { persona?: PersonaName };
-      return parsed?.persona === "mila" ? "mila" : "pablo";
-    } catch { return "pablo"; }
-  };
-  const readCachedPersonaUid = (): string | null => {
-    try {
-      const raw = localStorage.getItem(PERSONA_CACHE_KEY);
-      if (!raw || raw === "mila" || raw === "pablo") return null;
-      const parsed = JSON.parse(raw) as { uid?: string | null };
-      return parsed?.uid ?? null;
-    } catch { return null; }
-  };
-  const writeCachedPersona = (who: PersonaName, uid: string | null) => {
-    try { localStorage.setItem(PERSONA_CACHE_KEY, JSON.stringify({ uid: uid ?? null, persona: who })); } catch { /* ignore */ }
-  };
-  const clearCachedPersona = () => {
-    try { localStorage.removeItem(PERSONA_CACHE_KEY); } catch { /* ignore */ }
-  };
-  const [persona, setPersona] = useState<PersonaName>(readCachedPersona);
-  const personaRef = useRef<PersonaName>(persona);
-  useEffect(() => { personaRef.current = persona; }, [persona]);
-
-  // Resolve WHO is answering (server-authoritative, cookie-scoped). Only mirrors
-  // the value into state; the sync effect below owns all cache writes.
-  const resolvePersona = useCallback(() => {
-    apiFetch("api/chat/pablo/persona")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { persona?: PersonaName } | null) => {
-        const who = d?.persona === "mila" ? "mila" : "pablo";
-        setPersona(who);
-        personaRef.current = who;
-      })
-      .catch(() => { /* leave cached/default persona on failure */ });
-  }, []);
-
-  useEffect(() => { resolvePersona(); }, [resolvePersona]);
-
-  // Cache ownership + cross-account safety. Once auth resolves we make the
-  // persona cache account-correct so the next first paint can't inherit another
-  // user's identity:
-  //   - guest  → never trust a non-pablo cache; force Pablo and clear it.
-  //   - cache owned by a DIFFERENT uid → drop it (server fetch repaints) and fall
-  //     back to Pablo until it does, so a pre-story account never shows Mila.
-  //   - same account (or an owner-unknown handoff seed) → (re)tag the cache with
-  //     the current uid so it's validated on the next load.
-  useEffect(() => {
-    if (isLoading) return;
-    const currentUid = user?.id ?? null;
-    if (!currentUid) {
-      if (personaRef.current !== "pablo") { setPersona("pablo"); personaRef.current = "pablo"; }
-      clearCachedPersona();
-      return;
-    }
-    const cachedUid = readCachedPersonaUid();
-    if (cachedUid && cachedUid !== currentUid) {
-      // Cache belongs to a different account on this browser. Drop it, fall back
-      // to Pablo, and re-resolve THIS user's authoritative persona immediately so
-      // a story-player switching accounts isn't stranded on Pablo (the persona
-      // fetch may have already resolved against the wrong cache/order).
-      clearCachedPersona();
-      if (personaRef.current !== "pablo") { setPersona("pablo"); personaRef.current = "pablo"; }
-      resolvePersona();
-      return;
-    }
-    writeCachedPersona(personaRef.current, currentUid);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, user, persona, resolvePersona]);
-
-  // Display name + accent for whoever is currently answering. Pablo keeps his
-  // pink theme untouched; Mila gets her cooler aqua/teal identity.
-  const personaLabel = persona === "mila" ? "MILA" : "PABLO";
+  // Browser Pablo always uses one professional identity; game Story Mode has its
+  // own characters and never changes the browser assistant.
+  const personaLabel = "PABLO";
 
   const speak = useCallback((text: string, character?: string) => new Promise<void>((resolve) => {
     setStatus("speaking");
     ttsRef.current?.cancel();
-    // Explicit character wins (e.g. a Pablo intrusion during Mila mode);
-    // otherwise always select the active assistant explicitly so Pablo cannot
-    // be recast by the generic ELEVENLABS_VOICE_ID setting.
-    const voice = character ?? (personaRef.current === "mila" ? "MILA" : "PABLO");
+    const voice = character ?? "PABLO";
     const done = () => { ttsRef.current = null; resolve(); };
     ttsRef.current = speakWithTTS(text, done, done, voice ? { character: voice } : undefined);
   }), []);
 
-  const sendToPablo = useCallback(async (text: string) => {
+  const replayReply = useCallback(() => {
+    const text = reply.trim();
+    if (!text) return;
+
+    setVoiceNotice("");
+    setIsReplyReplaying(true);
+    setStatus("speaking");
+    ttsRef.current?.cancel();
+
+    const character = "PABLO";
+    const speaker = "Pablo";
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      ttsRef.current = null;
+      setIsReplyReplaying(false);
+      setStatus("idle");
+      if (mode === "voice") autoListenRef.current = true;
+    };
+    const handleError = (err: Error) => {
+      if (err.message === "Pablo voice access required") {
+        const eligibility = "Voice access is available with active Pablo Prime or CALLL HOME, an active purchased phone number, or an approved tester/moderator account.";
+        setVoiceNotice(isAuthenticated
+          ? eligibility
+          : `Sign in to check voice access. ${eligibility}`);
+      } else {
+        setVoiceNotice(`${speaker}'s voice couldn't play. Tap Hear reply to try again.`);
+      }
+    };
+
+    try {
+      ttsRef.current = speakWithTTS(text, finish, handleError, { character });
+    } catch {
+      handleError(new Error("voice playback failed"));
+      finish();
+    }
+  }, [reply, isAuthenticated, mode]);
+
+  const sendToPablo = useCallback(async (text: string, file?: File) => {
+    setRetryPrompt(null);
+    setVoiceNotice("");
+    setIsReplyReplaying(false);
+    if (file) {
+      if (!isAuthenticated) {
+        setReply("Sign in to share a file with Pablo.");
+        return;
+      }
+      setStatus("thinking");
+      setReply("");
+      try {
+        const form = new FormData();
+        form.append("content", text);
+        form.append("context", JSON.stringify(history.slice(-20)));
+        form.append("file", file, file.name);
+        const res = await fetchPabloWithTimeout("api/chat/pablo/message", {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+        if (!res.ok) {
+          const errorBody = await res.json().catch(() => null);
+          setReply(pabloApiErrorMessage(errorBody, res.status));
+          return;
+        }
+        const data = await res.json() as { pabloMessage?: { content?: string } };
+        const say = data.pabloMessage?.content?.trim() || "I couldn't complete that request.";
+        const filename = file.name.replace(/[\r\n]/g, " ").slice(0, 180);
+        setReply(say);
+        setHistory((items) => [
+          ...items,
+          { role: "user", content: `${text}\n\n[Attached file: ${filename}]` },
+          { role: "assistant", content: say },
+        ]);
+        setUploadFile(null);
+        setUploadError("");
+        trackEvent("pablo_message_replied", { surface: "terminal", response_route: "crm_attachment" });
+        await speak(say, "PABLO");
+      } catch (err) {
+        setReply("I couldn't send that file. Please try again.");
+        setError(err instanceof Error ? err.message : "File upload failed");
+      } finally {
+        setStatus("idle");
+      }
+      return;
+    }
     // Returning visitor whose name + email are already on file: ANY
     // admittance intent ("let me in", "show you my papers", "open my
     // dashboard") should hand them STRAIGHT to the sign-in choice — we
@@ -1337,7 +1357,7 @@ function PabloTerminalAuthed() {
       const crossChat = detectCrosstalk(text);
       if (crossChat) {
         const line = crossChat.reason === 'multiple_emails'
-          ? "Two emails came through. Whoever's the one signing in — just say your name. The rest of you, hold the line."
+          ? "I heard two email addresses. Please share just your name."
           : "Sounded like more than one of you. Whoever wants in — speak up alone. What's your name?";
         await speak(line);
         return;
@@ -1349,25 +1369,23 @@ function PabloTerminalAuthed() {
       // name "ready" / "in" — which would slip past the asking-name
       // handler's prefix-garbage guard and get stored as the user's
       // identity. Readiness wins.
-      // Cost/"is it free" question — a buying signal. Reassure that the
-      // door's free (advantage is what costs) and pivot straight to intake,
-      // rather than letting the free-chat LLM answer and risk losing them.
+      // Cost/"is it free" question. Reassure that the chat itself is free,
+      // but do not treat curiosity as consent to create
+      // an account. A separate feature request or explicit signup intent can
+      // start intake later.
       if (isCostCurious(text)) {
-        interviewPhaseRef.current = 'asking-name';
-        bumpInterview();
-        const line = "Walking in is free — only advantage costs. Let's get you set up. What should I call you?";
+        const line = "Pablo chat is free without an account. To use other SALARYMAN features, you'll need to sign up; some optional features have a cost.";
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
         await speak(line);
         return;
       }
-      if (isReadyToEnter(text) || isShowPapers(text)) {
-        // Admittance intent: "let me in" / "I'm ready" / "sign up" or the
-        // immigration "here are my papers" framing. A returning visitor we
-        // already have on file goes STRAIGHT to the sign-in choice; a brand
-        // new one pivots to asking-name with the sharper prompt.
+      if (isReadyToEnter(text)) {
+        // Readiness intent: "let me in" / "I'm ready" / "sign up".
+        // A returning visitor we already have on file goes straight to the
+        // sign-in choice; a brand-new one pivots to asking-name.
         const known = getSalarymanName();
         const spokenKnown = known ? formatSpeechName(known) : null;
-        if (admitIfKnown(spokenKnown ? `Cleared, ${spokenKnown}. Heading in.` : "Cleared. Heading in.")) return;
+        if (admitIfKnown(spokenKnown ? `Thanks, ${spokenKnown}. Let's continue to sign-in.` : "Let's continue to sign-in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: NAME_PROMPT_LINE }]);
@@ -1385,7 +1403,7 @@ function PabloTerminalAuthed() {
         // away rather than re-asking for an account they already created.
         const known = getSalarymanName();
         const spokenKnown = known ? formatSpeechName(known) : null;
-        if (admitIfKnown(spokenKnown ? `On it, ${spokenKnown}. Heading in.` : "On it. Heading in.")) return;
+        if (admitIfKnown(spokenKnown ? `Thanks, ${spokenKnown}. Let's continue to sign-in.` : "Let's continue to sign-in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         const line = "For that I'll need to set you up with an account — what should I call you?";
@@ -1436,7 +1454,7 @@ function PabloTerminalAuthed() {
         setStatus("thinking");
         setReply("");
         try {
-          const res = await apiFetch("api/chat/pablo/public", {
+          const res = await fetchPabloWithTimeout("api/chat/pablo/public", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1455,10 +1473,19 @@ function PabloTerminalAuthed() {
               },
             }),
           });
-          if (!res.ok) throw new Error(`pablo ${res.status}`);
+          if (!res.ok) {
+            if (res.status >= 500) throw new Error(`pablo ${res.status}`);
+            const errorBody = await res.json().catch(() => null);
+            setReply(pabloApiErrorMessage(errorBody, res.status));
+            setStatus("idle");
+            return;
+          }
           const data = (await res.json()) as { say: string };
           const said = (data.say ?? "I'm here.").trim() || "I'm here.";
+          trackEvent("pablo_message_replied", { surface: "terminal", response_route: "public" });
           setReply(said);
+          setVoiceNotice("");
+          setRetryPrompt(null);
           setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: said }]);
           setStatus("speaking");
           ttsRef.current?.cancel();
@@ -1467,8 +1494,16 @@ function PabloTerminalAuthed() {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error("[Pablo] public chat failed:", msg);
-          // Soft re-prompt — don't strand them on a network blip.
-          await speak("Lost you for a second — try again?");
+          const timedOut = isAbortError(err);
+          const failedReply = timedOut
+            ? "Pablo's taking longer than usual. Your message is still here — try again in a moment."
+            : typeof navigator !== "undefined" && !navigator.onLine
+              ? "I’m offline right now. Your message is here — reconnect and try again."
+              : "I couldn’t reach the conversation service. Your message is here — try again in a moment.";
+          setReply(failedReply);
+          setRetryPrompt(text);
+          setStatus("idle");
+          if (mode === "voice") autoListenRef.current = true;
         }
         return;
       }
@@ -1492,7 +1527,7 @@ function PabloTerminalAuthed() {
       setStatus("thinking");
       setReply("");
       try {
-        const res = await apiFetch("api/chat/pablo/public", {
+        const res = await fetchPabloWithTimeout("api/chat/pablo/public", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1508,6 +1543,7 @@ function PabloTerminalAuthed() {
         });
         if (!res.ok) throw new Error(`pablo ${res.status}`);
         const data = (await res.json()) as { say: string };
+        trackEvent("pablo_message_replied", { surface: "terminal", response_route: "public" });
         const combined = `${(data.say ?? '').trim()} ${reprompt}`.trim();
         setReply(combined);
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: combined }]);
@@ -1534,9 +1570,9 @@ function PabloTerminalAuthed() {
         // what the user explicitly asked for. We address only the one
         // who wants in and keep the door cracked.
         if (cross.reason === 'multiple_emails') {
-          await speak("Two emails came through. Whoever's the one signing in — say your name. Just yours.");
+           await speak("I heard two email addresses. Please share just your name.");
         } else {
-          await speak("More than one of you in there. Whoever wants in — speak alone. Your name?");
+           await speak("Please say your name one at a time.");
         }
         return;
       }
@@ -1576,9 +1612,9 @@ function PabloTerminalAuthed() {
           // Lock in the email; we still need a name. Advance to a
           // name-only re-prompt instead of asking for both again.
           setSalarymanEmail(inlineEmail);
-          await speak("Got the email. Now — your name. Just what to call you.");
+          await speak("Thanks. What name should I use?");
         } else {
-          await speak("Try again. Just a name.");
+          await speak("Please say or type your name.");
         }
         return;
       }
@@ -1591,7 +1627,7 @@ function PabloTerminalAuthed() {
         setSalarymanEmail(inlineEmail);
         interviewPhaseRef.current = 'idle';
         bumpInterview();
-        const line = `Cleared, ${name}. Heading in.`;
+        const line = `Thanks, ${name}. Let's continue to sign-in.`;
         setReply(line);
         setStatus("speaking");
         ttsRef.current?.cancel();
@@ -1639,7 +1675,7 @@ function PabloTerminalAuthed() {
         // Same interested-party framing as asking-name. Address the one
         // who wants in, not the room.
         if (cross.reason === 'multiple_emails') {
-          await speak("Two emails came through. Which one is yours? Just yours.");
+          await speak("I heard two email addresses. Which one should I use?");
         } else {
           await speak("More than one voice in there. Whoever's the one signing in — just your email.");
         }
@@ -1650,7 +1686,7 @@ function PabloTerminalAuthed() {
       // email" until they typed it manually.
       const email = (extractEmailFromText(text) ?? text.trim()).toLowerCase();
       if (!isLikelyEmail(email)) {
-        await speak("That's not an email. Real one. user@somewhere.com.");
+        await speak("That doesn't look like a valid email address. Try name@example.com.");
         return;
       }
       // Screen the email before we open the door — blocked domains get
@@ -1660,8 +1696,10 @@ function PabloTerminalAuthed() {
       setSalarymanEmail(email);
       interviewPhaseRef.current = 'idle';
       bumpInterview();
-      const known = formatSpeechName(getSalarymanName() ?? 'salaryman');
-      const line = `Cleared, ${known}. Heading in.`;
+      const savedName = getSalarymanName();
+      const line = savedName
+        ? `Thanks, ${formatSpeechName(savedName)}. You're ready to sign in.`
+        : "You're ready to sign in.";
       setReply(line);
       setStatus("speaking");
       ttsRef.current?.cancel();
@@ -1698,7 +1736,7 @@ function PabloTerminalAuthed() {
     // Authenticated new users remain on Pablo's homepage until they explicitly
     // choose to enter. Keep the handoff deterministic instead of asking the
     // command model to infer whether "I'm ready" means Tower access.
-    if (isAuthenticated && !hasFinishedOnboarding && (isReadyToEnter(text) || isShowPapers(text))) {
+    if (isAuthenticated && !hasFinishedOnboarding && isReadyToEnter(text)) {
       enterFromHomepage();
       return;
     }
@@ -1711,12 +1749,19 @@ function PabloTerminalAuthed() {
     setStatus("thinking");
     setReply("");
     try {
-      const res = await apiFetch("api/chat/pablo/command", {
+      const res = await fetchPabloWithTimeout("api/chat/pablo/command", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript: text, history: history.slice(-10) }),
       });
       if (!res.ok) {
+        if ([401, 402, 403, 429].includes(res.status)) {
+          const errorBody = await res.json().catch(() => null);
+          setReply(pabloApiErrorMessage(errorBody, res.status));
+          setStatus("idle");
+          if (mode === "voice") autoListenRef.current = true;
+          return;
+        }
         const detail = await res.text().catch(() => "");
         throw new Error(`pablo ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
       }
@@ -1725,17 +1770,10 @@ function PabloTerminalAuthed() {
         | { kind: "logout" }
         | { kind: "search"; query: string }
         | { kind: "external"; url: string };
-      const data = (await res.json()) as { say: string; action: PabloAction | null; persona?: "pablo" | "mila"; intrusion?: string };
+      const data = (await res.json()) as { say: string; action: PabloAction | null };
+      trackEvent("pablo_message_replied", { surface: "terminal", response_route: "authenticated_command" });
       let action = data.action;
       let say = data.say;
-
-      // Mirror the server-authoritative persona so the orb + voice match who's
-      // actually answering (Pablo pre-story, Mila once the story is live).
-      const who = data.persona ?? "pablo";
-      setPersona(who);
-      personaRef.current = who;
-      // Cache write-through is owned by the account-tagging sync effect, which
-      // fires on this persona change and stores { uid, persona }.
 
       // PRE-AUTH GATE: if the user hasn't signed in yet and Pablo decided to
       // send them somewhere,
@@ -1752,7 +1790,7 @@ function PabloTerminalAuthed() {
       //     an unauthenticated user is a phishing surface.
       // In every case the action is set to null so nothing fires now, and
       // we append an in-voice gating sentence to Pablo's reply so the
-      // user understands why we're routing them through immigration.
+      // user understands why we're routing them through onboarding.
       const isPreOnboarding =
         !isAuthenticated ||
         interviewPhaseRef.current !== 'idle';
@@ -1779,30 +1817,23 @@ function PabloTerminalAuthed() {
       }
 
       setReply(say);
+      setVoiceNotice("");
+      setRetryPrompt(null);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: say }]);
-      // Speak Pablo's (or Mila's) reply on EVERY device. Voice OUTPUT is
+      // Speak Pablo's reply on EVERY device. Voice OUTPUT is
       // decoupled from voice INPUT here: the mic / auto-listen stays gated to
       // voice mode (see the autoListen flags below), but the spoken reply must
       // play even in text mode. Phones default to text mode, so gating speech
       // on `mode === "voice"` left mobile users with a permanently silent
       // Pablo ("voice response isn't working"). The onboarding intake already
       // speaks regardless of mode — this makes normal chat replies match.
-      {
-        // Pablo occasionally claws back through the channel — a short glitchy
-        // intrusion in HIS voice cuts in before Mila wrestles control back.
-        if (who === "mila" && data.intrusion) {
-          await speak(data.intrusion, "PABLO");
-        }
-        await speak(say);
-      }
+      const speech = speak(say);
+      if (action) await speech;
+      else void speech.catch(() => setVoiceNotice("Pablo's voice couldn't play. Tap Hear reply to try again."));
       if (action?.kind === "navigate") {
-        // Architect-flagged: server already strips /phone* navigations,
-        // but defense in depth — gate the immediate navigate too. Use
-        // the same sanitizeReturnPath that handles canonical URL parsing
-        // (drops fragments, dot-segments, encoded variants that would
-        // resolve to /phone). If the path is denied (or any other
-        // disallowed destination like /api/*), drop the nav silently
-        // and let `say` carry the user message.
+        // The server authorizes exact routes before returning a navigation
+        // action. Keep client-side same-origin and /api checks as defense in
+        // depth; phone pages then apply their normal sign-in and entitlement gates.
         const safeNav = sanitizeReturnPath(action.path);
         if (safeNav) setTimeout(() => navigate(safeNav), 300);
         else { setStatus("idle"); if (mode === "voice") autoListenRef.current = true; }
@@ -1811,9 +1842,6 @@ function PabloTerminalAuthed() {
         setHistory([]);
         setReply("");
         setTranscript("");
-        // Drop this account's persona cache so the next account on this browser
-        // can never inherit a stale Mila on first paint.
-        clearCachedPersona();
         setTimeout(() => { try { logout(); } catch { window.location.href = "/"; } }, 400);
       } else if (action?.kind === "search") {
         setTimeout(() => navigate(`/?q=${encodeURIComponent(action.query)}`), 300);
@@ -1828,19 +1856,36 @@ function PabloTerminalAuthed() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Pablo] command failed:", msg);
-      setError(`Pablo hit a snag: ${msg}`);
+      // The command route may already have consumed usage or FIAT before a
+      // failure reaches the browser. Do not replay it through the ordinary
+      // chat route: the client cannot know whether those side effects landed.
+      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      const failedReply = offline
+        ? "I’m offline, so I can’t confirm whether Pablo received that request. Check before sending it again."
+        : isAbortError(err)
+          ? "Pablo took too long to confirm. The request may still be processing—check before sending it again."
+          : "I couldn’t confirm whether that request completed. It may have been processed, so check before sending it again.";
+      setReply(failedReply);
+      setRetryPrompt(null);
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
   }, [history, navigate, speak, speakLine, mode, chooseTextMode, logout, beginIntake, askEmailNow, isAuthenticated, hasFinishedOnboarding, enterFromHomepage]);
+
+  const retryLastMessage = useCallback(() => {
+    const text = retryPrompt;
+    if (!text) return;
+    setRetryPrompt(null);
+    void sendToPablo(text);
+  }, [retryPrompt, sendToPablo]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
     if (!t) return;
     setTextInput("");
     setTranscript(t);
-    void sendToPablo(t);
-  }, [textInput, sendToPablo]);
+    void sendToPablo(t, uploadFile ?? undefined);
+  }, [textInput, uploadFile, sendToPablo]);
 
   const startListening = useCallback(async () => {
     setError("");
@@ -1980,9 +2025,32 @@ function PabloTerminalAuthed() {
     autoListenRef.current = true;
   }, []);
 
+  const pabloControlsTarget = !home && typeof document !== "undefined"
+    ? document.getElementById("pablo-controls-rail")
+    : null;
+  const pabloHeader = !home ? (
+    <div className="pablo-header w-full flex items-center justify-end gap-2 px-3 py-1.5 sm:px-5">
+      <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2 shrink-0">
+        <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
+        {!isLoading && isAuthenticated && <StartWorkMenu />}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
+          data-testid="pablo-mode-toggle"
+          className="pablo-action app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
+          title={mode === "text" ? "Switch to voice" : "Switch to text"}
+          aria-label={mode === "text" ? "Switch to voice" : "Switch to text"}
+        >
+          {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+          <span className="pablo-mode-label">{mode === "text" ? "VOICE" : "TEXT"}</span>
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div
-      className={`fixed left-0 top-0 z-50 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}`}
+      className={`pablo-terminal fixed left-0 flex w-full flex-col items-center overflow-hidden${boomerMode ? " boomer-terminal" : ""}${home ? " pablo-home-terminal" : ""}`}
       style={{
         // Brand-toned base. Used to be near-black (#0a0a14 → #000), which
         // turned the whole page into a "black screen" on iOS Safari whenever
@@ -1991,10 +2059,19 @@ function PabloTerminalAuthed() {
         // alive even if the shader never lights up.
         background:
           "radial-gradient(ellipse at 50% 35%, #1a0a2e 0%, #0a0418 55%, #000 100%)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        paddingTop: "env(safe-area-inset-top)",
-        height: "var(--app-viewport-height, 100dvh)",
+        paddingBottom: 0,
+        paddingTop: 0,
+        // /pablo uses the shared fixed app chrome. Start below the top bar and
+        // end above the bottom bar so controls never sit underneath either.
+        // The app root already reserves the shared top bar's 3.5rem. Adding
+        // another offset here created a blank band and pushed the composer
+        // under the fixed bottom bar.
+        top: home ? "3.5rem" : 0,
+         height: home
+           ? "calc(var(--app-viewport-height, 100dvh) - 3.5rem)"
+           : "calc(var(--app-viewport-height, 100dvh) - var(--pablo-shell-bottom-space, 7rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))",
         transform: "translateY(var(--app-viewport-top, 0px))",
+        zIndex: home ? 0 : 30,
       }}
     >
       {/* Free-flowing nebula — full-bleed living background. Sized to the
@@ -2025,132 +2102,14 @@ function PabloTerminalAuthed() {
             }}
           >
             <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-              <PabloNebula3D status={status} size={nebulaSize} variant={persona === "mila" ? MILA_VARIANT : PABLO_VARIANT} />
+              <PabloNebula3D status={status} size={nebulaSize} variant={PABLO_VARIANT} />
             </NebulaErrorBoundary>
           </div>
         )}
       </button>
 
-      {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
-          above the nebula via z-10 so it stays clickable. The header itself
-          gets extra horizontal padding on mobile so the logo + buttons clear
-          the curved corners + camera bumps of modern phones, and the
-          GFX/status pills (which are fixed) get their own safe-area padding
-           above. We also push the whole header down so it sits BELOW the
-           GFX/status pills row instead of fighting them for the top edge.
-           On desktop, the global alpha warning occupies the top strip, so
-           reserve that strip here rather than hiding the controls behind it. */}
-      <header
-        className="relative z-10 w-full flex items-center justify-between gap-1 px-2 sm:mt-12 sm:gap-2 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
-        style={{
-          // GFX/status pills already eat ~32px below the inset. Push the
-          // header below that so its logo + buttons don't collide with them.
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
-        }}
-      >
-         {/* Pablo is the homepage. The three explicit choices are the only
-             front-door destinations: download the native world, enter the
-             practical terminal, or stay with Pablo AI. */}
-        {hasFinishedOnboarding ? (
-          <Link
-            href={pendingDestinationRef.current ?? "/"}
-            className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
-            data-testid="link-logo-loop"
-            aria-label="Back to previous location"
-            title="Return to Tower"
-          >
-            <PicassoLogo size={20} gap={2} glow />
-            <span className="pablo-brand-wordmark font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
-              SALARYMAN
-            </span>
-          </Link>
-        ) : (
-          <Link
-            href="/pablo"
-            className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
-            data-testid="link-logo-loop"
-          >
-            <PicassoLogo size={20} gap={2} glow />
-            <span className="pablo-brand-wordmark font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
-              SALARYMAN
-            </span>
-          </Link>
-        )}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          <PabloControlsMenu showHummingbird={hasFinishedOnboarding} />
-           <button
-              type="button"
-              data-testid="pablo-download-salaryman"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.matchMedia("(max-width: 640px)").matches) {
-                  window.alert("DOWNLOAD is available on desktop only. Open SALARYMAN on a desktop browser to continue.");
-                  return;
-                }
-                navigate("/desktop");
-              }}
-              className="pablo-download-control app-action pablo-header-action app-control mobile-tap-target border-lime-400/45 bg-lime-500/10 text-lime-200 hover:bg-lime-500/20"
-              title="Download SALARYMAN desktop client"
-              aria-label="Download SALARYMAN desktop client"
-            >
-              <Download className="w-3 h-3" />
-              <span className="pablo-download-label">DOWNLOAD</span>
-            </button>
-          {!isLoading && !isAuthenticated && (
-            <button
-              type="button"
-               onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
-              data-testid="pablo-sign-in"
-                className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-               title="Start work in the terminal"
-            >
-              <LogIn className="w-3 h-3" />
-               START WORK
-            </button>
-          )}
-          {!isLoading && isAuthenticated && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); startWorkFromHomepage(); }}
-              data-testid="pablo-enter-tower"
-              className="app-action pablo-header-action app-control mobile-tap-target border-cyan-400/50 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
-               title="Start work in the terminal"
-            >
-              <LogIn className="w-3 h-3" />
-              START WORK
-            </button>
-          )}
-           <button
-             type="button"
-             onClick={(e) => { e.stopPropagation(); if (mode === "text") setMode("text"); else onOrbClick(); }}
-             data-testid="pablo-ai-choice"
-              className="pablo-mobile-secondary app-action pablo-header-action app-control mobile-tap-target border-violet-400/45 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20"
-             title="Open Pablo AI"
-           >
-             <Sparkles className="w-3 h-3" />
-             PABLO AI
-           </button>
-          {/* TEXT/VOICE toggle is now visible during the intro too. The
-              session defaults to voice (autoListen on), but a user who
-              prefers typing — or whose mic is dead — needs the button up
-              here so they can flip without having to first unlock the
-              door. The audio attach strip stays hidden during the intro
-              because tapping it surfaces an unrelated file picker
-              mid-story; that's a post-onboarding tool. */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
-            data-testid="pablo-mode-toggle"
-              className="app-action pablo-header-action app-control mobile-tap-target border-pink-400/40 bg-black/60 text-pink-200 hover:bg-pink-500/15"
-            title={mode === "text" ? "Switch to voice" : "Switch to text"}
-          >
-            {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-            {mode === "text" ? "VOICE" : "TEXT"}
-          </button>
-          {/* No exit X — the SALARYMAN logo is the only authenticated exit,
-              and the primary work handoff goes through the physical Tower. */}
-        </div>
-      </header>
+      {/* Controls live in the cream app-shell rail, not over the nebula. */}
+      {!home && (pabloControlsTarget ? createPortal(pabloHeader, pabloControlsTarget) : pabloHeader)}
 
       {/* Spacer so the rest of the column lays out at the bottom of the
           page even though the nebula is now an absolutely-positioned
@@ -2185,14 +2144,32 @@ function PabloTerminalAuthed() {
       )}
 
       {/* Shared conversation surface for visitors and returning users. */}
-      {(transcript || reply || status === "thinking") && (
+      {(history.length > 0 || transcript || reply || status === "thinking") && (
         <div
-          className="mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
-          style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + ${mode === "text" ? 96 : 140}px)` }}
+          ref={conversationScrollRef}
+          className="pablo-conversation mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto overscroll-contain touch-pan-y px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-auto z-10"
+          style={{ bottom: `calc(${mode === "text" ? 104 : 124}px)` }}
+          aria-label="Pablo conversation"
         >
-          {transcript && (
+          {history.slice(-40).map((message, index, items) => {
+            const isCurrentReply = message.role === "assistant" && index === items.length - 1 && message.content === reply;
+            const isCurrentPrompt = message.role === "user" && message.content === transcript;
+            if (isCurrentReply || isCurrentPrompt) return null;
+            return (
+              <div
+                key={`${index}-${message.role}`}
+                className={`pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg px-3 py-2 border ${message.role === "user" ? "self-end bg-black/55 border-cyan-400/25" : "self-start bg-black/65 border-pink-400/25"}`}
+              >
+                <div className={`text-[9px] font-mono tracking-[0.3em] mb-0.5 ${message.role === "user" ? "text-cyan-300/80" : "text-pink-200"}`}>
+                  {message.role === "user" ? "YOU" : personaLabel}
+                </div>
+                <p className="text-zinc-100 text-sm leading-snug whitespace-pre-wrap">{message.content}</p>
+              </div>
+            );
+          })}
+          {transcript && history[history.length - 2]?.content !== transcript && (
             <div
-              className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/60 backdrop-blur px-3 py-2 border border-cyan-400/25"
+              className="pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/60 backdrop-blur px-3 py-2 border border-cyan-400/25"
               data-testid="pablo-user-transcript"
             >
               <div className="text-cyan-300/80 text-[9px] font-mono tracking-[0.3em] mb-0.5">YOU</div>
@@ -2201,78 +2178,78 @@ function PabloTerminalAuthed() {
           )}
           {(reply || status === "thinking") && (
             <div
-              className={`pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border ${persona === "mila" ? "border-teal-400/55" : "border-pink-400/55"}`}
-              style={{ boxShadow: persona === "mila" ? "0 0 32px rgba(45,212,191,0.30)" : "0 0 32px rgba(236,72,153,0.32)" }}
+              className="pablo-overlay pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border border-pink-400/55"
+              style={{ boxShadow: "0 0 32px rgba(236,72,153,0.32)" }}
               data-testid="pablo-reply-bubble"
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-200" : "text-pink-200"}`}>{personaLabel}</span>
-                {status === "thinking" && (
-                  <span className={`text-[9px] font-mono tracking-[0.3em] animate-pulse ${persona === "mila" ? "text-teal-300/60" : "text-pink-300/60"}`}>THINKING</span>
-                )}
-                {status === "speaking" && (
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full animate-pulse ${persona === "mila" ? "bg-teal-400" : "bg-pink-400"}`} style={{ boxShadow: persona === "mila" ? "0 0 6px #2dd4bf" : "0 0 6px #ec4899" }} aria-hidden="true" />
-                )}
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[9px] font-mono tracking-[0.3em] text-pink-200">{personaLabel}</span>
+                <div className="flex items-center justify-end gap-2">
+                  {reply && (
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); replayReply(); }}
+                      disabled={isReplyReplaying}
+                      data-testid="pablo-replay-button"
+                      aria-label={`Hear ${personaLabel}'s reply`}
+                      className="inline-flex items-center gap-1 rounded border border-pink-200/30 px-2 py-1 text-[10px] font-sans tracking-normal text-pink-100 transition-colors hover:bg-pink-400/10 disabled:opacity-60"
+                    >
+                      <Volume2 className="h-3 w-3" aria-hidden="true" />
+                      {isReplyReplaying ? "Playing…" : "Hear reply"}
+                    </button>
+                  )}
+                  {retryPrompt && (
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); retryLastMessage(); }}
+                      data-testid="pablo-chat-retry-button"
+                      className="inline-flex items-center gap-1 rounded border border-white/20 px-2 py-1 text-[10px] font-sans tracking-normal text-zinc-200 transition-colors hover:bg-white/10"
+                    >
+                      <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                      Try again
+                    </button>
+                  )}
+                  {status === "thinking" && (
+                    <span className="animate-pulse text-[9px] font-mono tracking-[0.3em] text-pink-300/60">THINKING</span>
+                  )}
+                  {status === "speaking" && (
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-pink-400" style={{ boxShadow: "0 0 6px #ec4899" }} aria-hidden="true" />
+                  )}
+                </div>
               </div>
               <p
                 className="text-zinc-100 text-sm sm:text-base leading-snug sm:leading-relaxed"
-                style={{ textShadow: persona === "mila" ? "0 0 14px rgba(45,212,191,0.30)" : "0 0 14px rgba(236,72,153,0.32)" }}
+                style={{ textShadow: "0 0 14px rgba(236,72,153,0.32)" }}
               >
                 {reply || "…"}
               </p>
+              {voiceNotice && (
+                <p
+                  className="mt-2 text-[11px] leading-snug text-amber-100/85"
+                  role="status"
+                  aria-live="polite"
+                  data-testid="pablo-voice-notice"
+                >
+                  {voiceNotice}
+                </p>
+              )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Idle Pablo bubble — one greeting per session, then slow lore drips
-          on a doubling cadence (5→10→20→40 min…). Each lore drip carries
-          two cheeky clickable reply tokens; tapping one fires it back as a
-          normal Pablo message. */}
-      {!reply && !transcript && idleLine && mode !== "text" && (
-        <div className="absolute inset-x-0 bottom-44 sm:bottom-48 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
-          <div className={`pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
-            <div className="flex items-center justify-between mb-0.5">
-              <div className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-300/80" : "text-purple-300/80"}`}>{personaLabel}</div>
-              <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">IDLE</div>
-            </div>
-            <p className="text-zinc-200 text-sm leading-snug">{idleLine}</p>
-            {idleOptions.length === 2 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {idleOptions.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setIdleOptions([]); sendToPablo(opt); }}
-                    className="mobile-tap-target px-3 py-2 rounded border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 text-[10px] font-mono tracking-[0.14em]"
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Removed: persistent "UPGRADE TO PABLO PRIME" button.
-              On mobile it sat directly over the text input box, and it
-              shouldn't be the very first thing a brand-new arrival sees
-              before they've even cleared immigration. The Prime upsell
-              is now delivered as a one-shot TV-ad interstitial on /
-              after onboarding (see PrimeAdInterstitial). */}
         </div>
       )}
 
       {/* Voice control is available from the first frame. */}
       {mode !== "text" && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full pointer-events-none z-20"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)" }}
+          className="pablo-voice-controls absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 px-4 w-full pointer-events-none z-20"
+          style={{ bottom: "24px" }}
         >
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onOrbClick(); }}
             data-testid="pablo-talk-button-main"
             aria-label="Tap to talk to Pablo"
-            className="pointer-events-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-sm sm:text-base font-semibold transition-colors"
+            className="pablo-talk-button pointer-events-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-sm sm:text-base font-semibold transition-colors"
             style={{
               borderColor: status === "listening" ? "rgba(103,232,249,0.85)" : "rgba(236,72,153,0.75)",
               boxShadow: status === "listening" ? "0 0 26px rgba(103,232,249,0.40)" : "0 0 18px rgba(236,72,153,0.25)",
@@ -2293,10 +2270,59 @@ function PabloTerminalAuthed() {
       {mode === "text" && (
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
-          className="absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+           className="pablo-text-form absolute left-1/2 z-30 -translate-x-1/2 w-full max-w-2xl px-4 sm:px-6 flex items-center gap-2"
+             style={{ bottom: "calc(3rem + var(--app-safe-bottom, 0px))" }}
           data-testid="pablo-text-form"
         >
+          <input
+            ref={uploadRef}
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp,.pdf,.docx,.txt,.md,.markdown,.csv,.json,.xml,.html,.log,.xlsx,.xls,.xlsm"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0] ?? null;
+              event.currentTarget.value = "";
+              setUploadError("");
+              if (!file) return;
+              if (file.size > 10 * 1024 * 1024) {
+                setUploadFile(null);
+                 setUploadError("Files must be 10 MB or smaller.");
+                return;
+              }
+              setUploadFile(file);
+            }}
+            data-testid="pablo-crm-file-input"
+          />
+          {(uploadFile || uploadError) && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 flex items-center justify-between gap-2 rounded-md border border-zinc-700 bg-zinc-950/90 px-3 py-2 text-xs text-zinc-200">
+              <span className="min-w-0 truncate" role={uploadError ? "alert" : undefined}>
+                {uploadError || `Attached: ${uploadFile?.name}`}
+              </span>
+              {uploadFile && (
+                <button
+                  type="button"
+                  onClick={() => { setUploadFile(null); setUploadError(""); }}
+                  className="shrink-0 text-zinc-400 hover:text-white"
+                  aria-label="Remove attached file"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
+          {isAuthenticated && interviewPhaseRef.current === "idle" && (
+            <button
+              type="button"
+              onClick={() => uploadRef.current?.click()}
+              disabled={status === "thinking"}
+              className="pablo-send-button mobile-tap-target w-10 shrink-0 rounded-lg border border-zinc-700 bg-zinc-950/70 px-2 py-2.5 text-zinc-300 transition-colors hover:border-purple-500/60 disabled:opacity-40"
+              aria-label="Attach a picture or document"
+              title="Attach a picture or document"
+              data-testid="pablo-crm-file-button"
+            >
+              <Paperclip className="mx-auto h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
           <input
             type="text"
             value={textInput}
@@ -2304,16 +2330,17 @@ function PabloTerminalAuthed() {
             placeholder={
               interviewPhaseRef.current === 'asking-name' ? "Type your name"
                 : interviewPhaseRef.current === 'asking-email' ? "Type your email"
+                : uploadFile ? "Ask Pablo about this file"
                 : "Type a message…"
             }
-            className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
+             className="pablo-input min-w-0 flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
             autoFocus
             data-testid="pablo-text-input"
           />
           <button
             type="submit"
             disabled={!textInput.trim() || status === "thinking"}
-            className="mobile-tap-target px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
+            className="pablo-send-button mobile-tap-target w-11 shrink-0 px-2 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
             aria-label="Send"
             data-testid="pablo-text-send"
           >
@@ -2325,11 +2352,9 @@ function PabloTerminalAuthed() {
       {/* Silent error indicator — tiny, doesn't interrupt the nebula */}
       {error && (
         <div
-          className="pointer-events-none absolute left-1/2 z-30 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[10px] font-mono tracking-wider text-red-300/80 backdrop-blur"
+          className="pablo-overlay pointer-events-none absolute left-1/2 z-30 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[10px] font-mono tracking-wider text-red-300/80 backdrop-blur"
           style={{
-            bottom: mode === "text"
-              ? "calc(env(safe-area-inset-bottom, 0px) + 82px)"
-              : "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+             bottom: mode === "text" ? "82px" : "12px",
           }}
         >
           {error}

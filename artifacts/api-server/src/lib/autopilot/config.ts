@@ -8,8 +8,7 @@ import {
 import { eq, and } from "drizzle-orm";
 
 // CRUD service for per-org, per-domain autopilot configuration. A MISSING row
-// means "disabled, no bot assigned" — i.e. today's behavior — so a fresh org
-// needs zero setup and OFF == today.
+// means "disabled" — a fresh org needs zero setup and OFF == manual-only.
 
 /** The default-shaped config for a domain with no stored row. */
 export function defaultConfigShape(orgId: number, domain: AutopilotDomain): Pick<
@@ -44,8 +43,8 @@ export async function getDomainConfig(orgId: number, domain: AutopilotDomain): P
 }
 
 /**
- * Merge stored rows over the default shape so the UI always gets all four
- * domains, whether or not a row exists yet.
+ * Merge stored rows over the default shape so the UI always gets every
+ * supported domain, whether or not a row exists yet.
  */
 export async function getOrgAutopilotView(orgId: number): Promise<
   (ReturnType<typeof defaultConfigShape> & { exists: boolean; updatedBy: string | null })[]
@@ -59,7 +58,9 @@ export async function getOrgAutopilotView(orgId: number): Promise<
       orgId: row.orgId,
       domain: domain,
       enabled: row.enabled,
-      botId: row.botId,
+      // Keep the legacy field in the response shape, but never expose an old
+      // Pixel Agent assignment as the runner for Pablo's automation.
+      botId: null,
       cadenceMinutes: row.cadenceMinutes,
       maxActionsPerTick: row.maxActionsPerTick,
       budgetCapCents: row.budgetCapCents,
@@ -73,7 +74,6 @@ export async function getOrgAutopilotView(orgId: number): Promise<
 
 export interface UpsertConfigInput {
   enabled?: boolean;
-  botId?: number | null;
   cadenceMinutes?: number | null;
   maxActionsPerTick?: number | null;
   budgetCapCents?: number | null;
@@ -90,7 +90,6 @@ export async function upsertDomainConfig(
   const existing = await getDomainConfig(orgId, domain);
   const patch: Partial<typeof autopilotConfigsTable.$inferInsert> = { updatedBy: input.updatedBy };
   if (input.enabled !== undefined) patch.enabled = input.enabled;
-  if (input.botId !== undefined) patch.botId = input.botId;
   if (input.cadenceMinutes !== undefined) patch.cadenceMinutes = input.cadenceMinutes;
   if (input.maxActionsPerTick !== undefined) patch.maxActionsPerTick = input.maxActionsPerTick;
   if (input.budgetCapCents !== undefined) patch.budgetCapCents = input.budgetCapCents;

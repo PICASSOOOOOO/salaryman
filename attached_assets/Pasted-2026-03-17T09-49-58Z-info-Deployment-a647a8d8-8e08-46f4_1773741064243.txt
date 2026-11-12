@@ -1,0 +1,208 @@
+2026-03-17T09:49:58Z info: Deployment: a647a8d8-8e08-46f4-91e6-39d6cd551990
+2026-03-17T09:49:58Z info: Running Security Scan
+2026-03-17T09:50:07Z info: Security Scan Complete
+2026-03-17T09:50:07Z info: Connecting to builder
+2026-03-17T09:50:07Z info: Builder connected
+2026-03-17T09:50:08Z info: Installing packages
+--> pnpm install
+
+Scope: all 12 workspace projects
+
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.26.1 → 10.32.1.   │
+   │   Changelog: https://pnpm.io/v/10.32.1   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+
+Lockfile is up to date, resolution step is skipped
+
+Already up to date
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+. preinstall: Done
+
+Done in 3.3s using pnpm v10.26.1
+
+2026-03-17T09:50:12Z info: Starting Build
+
+> workspace@0.0.0 build /home/runner/workspace
+> pnpm run typecheck && pnpm -r --if-present run build
+
+
+
+> workspace@0.0.0 typecheck /home/runner/workspace
+> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+
+
+
+> workspace@0.0.0 typecheck:libs /home/runner/workspace
+> tsc --build
+
+
+Scope: 4 of 12 workspace projects
+
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck: Done
+
+artifacts/api-server typecheck: Done
+
+artifacts/mockup-sandbox typecheck: Done
+
+artifacts/interview-helper typecheck: Done
+
+Scope: 11 of 12 workspace projects
+
+artifacts/mockup-sandbox build$ vite build
+
+artifacts/mockup-sandbox build: vite v7.3.1 building client environment for production...
+
+artifacts/mockup-sandbox build: transforming...
+
+artifacts/mockup-sandbox build: ✓ 30 modules transformed.
+
+artifacts/mockup-sandbox build: rendering chunks...
+
+artifacts/mockup-sandbox build: computing gzip size...
+
+artifacts/mockup-sandbox build: ✓ built in 1.03s
+
+artifacts/mockup-sandbox build: Done
+
+artifacts/api-server build$ tsx ./build.ts
+
+artifacts/api-server build: building server... version: 3c1292f · 2026-03-17 09:50
+
+artifacts/api-server build:   dist/index.cjs  1.5mb ⚠️
+artifacts/api-server build: ⚡ Done in 586ms
+
+artifacts/api-server build: Done
+
+artifacts/interview-helper build$ vite build --config vite.config.ts
+
+artifacts/interview-helper build: vite v7.3.1 building client environment for production...
+
+artifacts/interview-helper build: transforming...
+
+artifacts/interview-helper build: src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+artifacts/interview-helper build: ✓ 3268 modules transformed.
+
+artifacts/interview-helper build: rendering chunks...
+
+artifacts/interview-helper build: computing gzip size...
+
+artifacts/interview-helper build: dist/public/index.html                             1.81 kB │ gzip:   0.75 kB
+
+artifacts/interview-helper build: dist/public/assets/index-BLUxAOh3.css            129.02 kB │ gzip:  21.19 kB
+
+artifacts/interview-helper build: dist/public/assets/mic-C55C5EST.js                 0.23 kB │ gzip:   0.20 kB
+
+artifacts/interview-helper build: dist/public/assets/download-DGrm40bB.js            0.23 kB │ gzip:   0.19 kB
+
+artifacts/interview-helper build: dist/public/assets/MarkdownRenderer-CXw8CQlh.js    2.95 kB │ gzip:   1.27 kB
+
+artifacts/interview-helper build: dist/public/assets/BillboardAdmin-Ci95jsiD.js      6.02 kB │ gzip:   1.96 kB
+
+artifacts/interview-helper build: dist/public/assets/Profile-DSOk3LGW.js            18.78 kB │ gzip:   4.65 kB
+artifacts/interview-helper build: dist/public/assets/MobileTerminal-D5CfR3D5.js     21.19 kB │ gzip:   5.70 kB
+
+artifacts/interview-helper build: dist/public/assets/Dashboard-BxOUy8_R.js          22.63 kB │ gzip:   5.83 kB
+
+artifacts/interview-helper build: Done
+
+
+> @workspace/api-server@0.0.0 build /home/runner/workspace/artifacts/api-server
+> tsx ./build.ts
+
+
+building server... version: 3c1292f · 2026-03-17 09:50
+
+
+  dist/index.cjs  1.5mb ⚠️
+
+⚡ Done in 173ms
+
+
+> @workspace/interview-helper@0.0.0 build /home/runner/workspace/artifacts/interview-helper
+> vite build --config vite.config.ts
+
+
+vite v7.3.1 building client environment for production...
+
+transforming...
+
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+✓ 3268 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+dist/public/index.html                             1.81 kB │ gzip:   0.75 kB
+
+dist/public/assets/index-BLUxAOh3.css            129.02 kB │ gzip:  21.19 kB
+dist/public/assets/chevron-right-BBVbEq0i.js       0.13 kB │ gzip:   0.14 kB
+dist/public/assets/plus-CPdEz92F.js                0.15 kB │ gzip:   0.15 kB
+dist/public/assets/arrow-right-CkfRW0VL.js         0.17 kB │ gzip:   0.16 kB
+dist/public/assets/lock-LwE8IJh2.js                0.20 kB │ gzip:   0.19 kB
+dist/public/assets/chevron-up-CuR_2VhS.js          0.21 kB │ gzip:   0.18 kB
+
+✓ built in 5.44s
+
+Version 10.26.1 (compiled to binary; bundled Node.js v24.12.0)
+Usage: pnpm [command] [flags]
+       pnpm [ -h | --help | -v | --version ]
+
+These are common pnpm commands used in various situations, use 'pnpm help -a' to list all commands
+
+Manage your dependencies:
+      add                  Installs a package and any packages that it depends
+                           on. By default, any new package is installed as a
+                           prod dependency
+   i, install              Install all dependencies for a project
+  ln, link                 Connect the local project to another one
+  rm, remove               Removes packages from node_modules and from the
+                           project's package.json
+      unlink               Unlinks a package. Like yarn unlink but pnpm
+                           re-installs the dependency after removing the
+                           external link
+  up, update               Updates packages to their latest version based on the
+                           specified range
+
+Review your dependencies:
+      audit                Checks for known security issues with the installed
+                           packages
+  ls, list                 Print all the versions of packages that are
+                           installed, as well as their dependencies, in a
+                           tree-structure
+      outdated             Check for outdated packages
+      why                  Shows all packages that depend on the specified
+                           package
+
+Run your scripts:
+      create               Create a project from a "create-*" or "@foo/create-*"
+                           starter kit
+      dlx                  Fetches a package from the registry without
+                           installing it as a dependency, hot loads it, and runs
+                           whatever default command binary it exposes
+      exec                 Executes a shell command in scope of a project
+      run                  Runs a defined package script
+
+Other:
+   c, config               Manage the pnpm configuration files
+      init                 Create a package.json file
+      publish              Publishes a package to the registry
+      self-update          Updates pnpm to the latest version
+
+Options:
+  -r, --recursive          Run the command for each project in the workspace.
+

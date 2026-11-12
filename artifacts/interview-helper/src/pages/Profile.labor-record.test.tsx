@@ -79,10 +79,6 @@ vi.mock("@/components/CurrencySelector", () => ({
   CurrencySelector: () => null,
 }));
 
-vi.mock("@/components/FeedbackModal", () => ({
-  FeedbackModal: () => null,
-}));
-
 vi.mock("@/components/SignInPrompt", () => ({
   SignInPage: () => null,
 }));

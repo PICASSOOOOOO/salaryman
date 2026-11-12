@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { getOwnerEmailRecipients } from "../lib/owner-email-recipients";
 import { getUncachableResendClient } from "../lib/resend";
 
 const router = Router();
@@ -82,11 +83,17 @@ router.post("/legal/contact", async (req: Request, res: Response) => {
     const safeSubject = escapeHtml(subject);
     const safeMessage = escapeHtml(message);
 
+    const ownerRecipients = getOwnerEmailRecipients();
+    if (ownerRecipients.length === 0) {
+      res.status(503).json({ error: "Support is temporarily unavailable. Please try again later." });
+      return;
+    }
+
     const { client, fromEmail } = await getUncachableResendClient();
 
     await client.emails.send({
       from: fromEmail,
-      to: ["support@picassoo.ai"],
+      to: ownerRecipients,
       replyTo: email,
       subject: `[SALARYMAN Support] ${safeSubject}`,
       html: `

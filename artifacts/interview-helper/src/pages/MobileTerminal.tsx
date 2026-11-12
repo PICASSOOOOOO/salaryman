@@ -217,7 +217,7 @@ export default function MobileTerminal({ physicalTerminal = false }: MobileTermi
                 <Phone className="h-5 w-5" aria-hidden />
               </span>
               <div className="mobile-terminal-feature-label">
-                <h3>PHONE SYSTEM</h3>
+                <h3>CALLL HOME</h3>
                 <ArrowRight aria-hidden />
               </div>
             </button>

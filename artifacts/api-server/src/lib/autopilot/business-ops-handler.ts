@@ -232,7 +232,16 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
     const next = nextTaskStatus(t.status);
     if (!next) continue;
     if (!ctx.claimAction()) { capReached = true; break; }
-    await updateBusinessTask(userId, t.id, { status: next });
+    const updated = await updateBusinessTask(userId, t.id, { status: next });
+    if (!updated) {
+      await ctx.log({
+        action: "advance_task",
+        summary: `Could not advance task "${t.title}" because it was removed or changed.`,
+        outcome: "error",
+        detail: { taskId: t.id, from: t.status, to: next },
+      });
+      continue;
+    }
     acted++;
     await ctx.log({
       action: "advance_task",
@@ -247,7 +256,16 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
     const entries = await listTimeEntries(userId);
     for (const e of pickStaleTimeEntries(entries, todayString(now))) {
       if (!ctx.claimAction()) { capReached = true; break; }
-      await updateTimeEntry(userId, e.id, { status: "completed", clockOut: "23:59" });
+      const updated = await updateTimeEntry(userId, e.id, { status: "completed", clockOut: "23:59" });
+      if (!updated) {
+        await ctx.log({
+          action: "close_time_entry",
+          summary: `Could not close the time entry for ${e.employeeName || "staff"} because it was removed or changed.`,
+          outcome: "error",
+          detail: { entryId: e.id, date: e.date },
+        });
+        continue;
+      }
       acted++;
       await ctx.log({
         action: "close_time_entry",
@@ -325,7 +343,7 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
   if (!capReached && prefs.postAnnouncements) {
     const anns = await listAnnouncements(userId);
     const lastOps = anns
-      .filter((a) => a.category === AUTOPILOT_ANNOUNCEMENT_CATEGORY && a.authorName === ctx.bot.name)
+      .filter((a) => a.category === AUTOPILOT_ANNOUNCEMENT_CATEGORY && a.authorName === ctx.assistantName)
       .reduce<Date | null>((acc, a) => {
         const t = new Date(a.createdAt);
         return !acc || t > acc ? t : acc;
@@ -333,15 +351,24 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
 
     if (shouldPostAnnouncement(lastOps, now, announcementIntervalMs)) {
       if (ctx.claimAction()) {
-        const ann = buildRoutineAnnouncement(ctx.bot.name, now, announcementIntervalMs);
-        await createAnnouncement(userId, ann);
-        acted++;
-        await ctx.log({
-          action: "post_announcement",
-          summary: `Posted a routine update "${ann.title}" to the team.`,
-          outcome: "success",
-          detail: { category: ann.category },
-        });
+        const ann = buildRoutineAnnouncement(ctx.assistantName, now, announcementIntervalMs);
+        const created = await createAnnouncement(userId, ann);
+        if (!created) {
+          await ctx.log({
+            action: "post_announcement",
+            summary: `Could not post the routine update "${ann.title}".`,
+            outcome: "error",
+            detail: { category: ann.category },
+          });
+        } else {
+          acted++;
+          await ctx.log({
+            action: "post_announcement",
+            summary: `Posted a routine update "${ann.title}" to the team.`,
+            outcome: "success",
+            detail: { category: ann.category },
+          });
+        }
       } else {
         capReached = true;
       }

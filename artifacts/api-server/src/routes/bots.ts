@@ -1795,7 +1795,7 @@ const BOT_RECOMMEND_SYSTEM = `You are Pablo, the AI assistant for Salaryman by P
 
 You have access to TWO sources of bots:
 
-SOURCE 1 — MARKETPLACE BOTS (nine curated agents included with Pixel Agents $149/mo, organized across four teams):
+SOURCE 1 — MARKETPLACE BOTS (nine curated agents included with PABLO PRIME $100/mo, organized across four teams):
 These are fully built bots ready to activate. You'll receive the current marketplace catalog.
 
 SOURCE 2 — CUSTOM BOT TEMPLATES (50+ templates for creating your own):

@@ -1,0 +1,108 @@
+[Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-Bmwpz343.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-Bmwpz343.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+use-voice-conversation-Bmwpz343.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-Bmwpz343.js:1 [Conv] onstop: 8 chunks, totalSize=105547
+use-voice-conversation-Bmwpz343.js:1 [Conv] Sending audio to server for transcription...
+use-voice-conversation-Bmwpz343.js:1 [Conv] Transcription: "Why is the sky blue?"
+use-voice-conversation-Bmwpz343.js:1 [Conv] Sending to advisor: "Why is the sky blue?..."
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+use-voice-conversation-Bmwpz343.js:1 [Conv] Advisor response: "The sky appears blue because of a process called **Rayleigh scattering**. When s..." (699 chars)
+use-voice-conversation-Bmwpz343.js:1 [Conv] Starting TTS...
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+use-voice-conversation-Bmwpz343.js:1 [Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-Bmwpz343.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-Bmwpz343.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+use-voice-conversation-Bmwpz343.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-Bmwpz343.js:1 [Conv] onstop: 8 chunks, totalSize=128751
+use-voice-conversation-Bmwpz343.js:1 [Conv] Sending audio to server for transcription...
+use-voice-conversation-Bmwpz343.js:1 [Conv] Transcription: "Why does water appear blue?"
+use-voice-conversation-Bmwpz343.js:1 [Conv] Sending to advisor: "Why does water appear blue?..."
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+use-voice-conversation-Bmwpz343.js:1 [Conv] Advisor response: "Water appears blue because of how it absorbs and scatters light. While **Rayleig..." (1043 chars)
+use-voice-conversation-Bmwpz343.js:1 [Conv] Starting TTS...
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+index-DcAb3m2X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DcAb3m2X.js:9
+(anonymous) @ index-DcAb3m2X.js:9Understand this error
+use-voice-conversation-Bmwpz343.js:1 [Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-Bmwpz343.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-Bmwpz343.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+use-voice-conversation-Bmwpz343.js:1 [Conv] onstop: conv mode inactive, skipping

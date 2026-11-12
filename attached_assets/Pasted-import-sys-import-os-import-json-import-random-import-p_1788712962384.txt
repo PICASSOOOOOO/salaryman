@@ -1,0 +1,212 @@
+import sys
+import os
+import json
+import random
+import pygame
+
+# Initialize Pygame Core Architecture
+pygame.init()
+pygame.font.init()
+
+# --- 1. GLOBAL DESIGN SYSTEM & PALETTE ---
+WIDTH, HEIGHT = 1000, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Office Executive Tycoon Ultra — Production Build")
+clock = pygame.time.Clock()
+
+COLOR_BG       = (15, 18, 25)     # Deep Void Obsidian
+COLOR_SURFACE  = (24, 30, 41)     # Container default fills
+COLOR_PANEL    = (36, 45, 62)     # Boarders, grids, and active dividers
+COLOR_ACCENT   = (59, 130, 246)   # Corporate Tech Blue
+COLOR_TEXT_MAIN= (243, 244, 246)  # High-readability titles
+COLOR_TEXT_MUTED= (148, 163, 184) # Technical sub-labels
+COLOR_GREEN    = (16, 185, 129)   # Emerald profits & healthy stamina
+COLOR_ORANGE   = (245, 158, 11)   # Fatigue alert threshold warning
+COLOR_RED      = (239, 68, 68)    # Critical exhaustion / Financial debit
+
+FONT_HEADING   = pygame.font.SysFont("Segoe UI, Arial", 26, bold=True)
+FONT_UI_MEDIUM = pygame.font.SysFont("Segoe UI, Arial", 16, bold=True)
+FONT_UI_REG    = pygame.font.SysFont("Segoe UI, Arial", 14, bold=False)
+
+SAVE_FILE = "tycoon_save.json"
+
+# Pool of prospective candidates for the Hire Shop Desk generator
+CANDIDATE_POOL = [
+    {"name": "Devin Wright", "prod": 22.0, "wage": 90.0, "cost": 400},
+    {"name": "Clara Oswald", "prod": 35.0, "wage": 160.0, "cost": 750},
+    {"name": "Marcus Vance", "prod": 55.0, "wage": 240.0, "cost": 1200},
+    {"name": "Sarah Connor", "prod": 80.0, "wage": 380.0, "cost": 2200},
+    {"name": "Ada Lovelace", "prod": 140.0, "wage": 700.0, "cost": 5000},
+    {"name": "Alan Turing", "prod": 260.0, "wage": 1250.0, "cost": 12000}
+]
+
+# --- 2. NOTIFICATION SUB-ENGINE ---
+class ToastNotification:
+    def __init__(self, message, style="warning"):
+        self.message = message
+        self.style = style
+        self.lifetime = 3.5
+        self.alpha = 255
+
+    def update(self, dt):
+        self.lifetime -= dt
+        if self.lifetime < 1.0:
+            self.alpha = max(0, int(self.lifetime * 255))
+        return self.lifetime > 0
+
+# --- 3. HIGH-PERFORMANCE CENTRAL GAME STATE MANAGER ---
+class OfficeManager:
+    def __init__(self):
+        self.money = 1500.0
+        self.current_hour = 9
+        self.current_day = 1
+        self.tick_timer = 0.0
+        self.seconds_per_hour = 2.0
+        self.employees = []
+        self.alerts = []
+        self.shop_candidates = []
+
+    def push_alert(self, text, style="warning"):
+        if not any(a.message == text for a in self.alerts):
+            self.alerts.insert(0, ToastNotification(text, style))
+
+    def update(self, delta_time):
+        self.tick_timer += delta_time
+        if self.tick_timer >= self.seconds_per_hour:
+            self.tick_timer = 0.0
+            self.advance_time()
+        self.alerts = [a for a in self.alerts if a.update(delta_time)]
+
+    def advance_time(self):
+        self.current_hour += 1
+        is_shift_active = 9 <= self.current_hour <= 17
+
+        for emp in self.employees:
+            emp.hourly_update(self.current_hour, is_shift_active)
+
+        if self.current_hour > 17:
+            self.current_hour = 9
+            self.current_day += 1
+            self.save_game_state()  # Auto-save at the end of every business day
+            self.push_alert(f"Day {self.current_day - 1} complete. Auto-saved data.", "success")
+
+    def refresh_shop_candidates(self):
+        self.shop_candidates = random.sample(CANDIDATE_POOL, 3)
+
+    # --- ENHANCED STORAGE ENGINE ---
+    def save_game_state(self):
+        save_data = {
+            "money": self.money,
+            "current_day": self.current_day,
+            "current_hour": self.current_hour,
+            "employees": [
+                {"name": e.name, "prod": e.base_productivity, "wage": e.salary_per_day, "stamina": e.stamina}
+                for e in self.employees
+            ]
+        }
+        try:
+            with open(SAVE_FILE, "w") as f:
+                json.dump(save_data, f)
+        except Exception as e:
+            print(f"Save Failure: {e}")
+
+    def load_game_state(self):
+        if not os.path.exists(SAVE_FILE):
+            # Seed default starter staff if no save module file exists
+            self.employees = [EmployeeCard("John Doe", 15.0, 70.0), EmployeeCard("Jane Smith", 28.0, 130.0)]
+            self.refresh_shop_candidates()
+            return
+        try:
+            with open(SAVE_FILE, "r") as f:
+                data = json.load(f)
+                self.money = data.get("money", 1500.0)
+                self.current_day = data.get("current_day", 1)
+                self.current_hour = data.get("current_hour", 9)
+                self.employees = []
+                for emp_data in data.get("employees", []):
+                    emp = EmployeeCard(emp_data["name"], emp_data["prod"], emp_data["wage"])
+                    emp.stamina = emp_data["stamina"]
+                    self.employees.append(emp)
+            self.push_alert("Loaded previous enterprise save file.", "success")
+        except Exception as e:
+            self.push_alert("Failed to load secure save data.", "danger")
+            self.employees = [EmployeeCard("John Doe", 15.0, 70.0)]
+        self.refresh_shop_candidates()
+
+    def draw_alerts(self, surface):
+        start_y = HEIGHT - 60
+        for i, alert in enumerate(self.alerts[:4]):
+            alert_rect = pygame.Rect(WIDTH - 330, start_y - (i * 55), 300, 45)
+            s = pygame.Surface((alert_rect.width, alert_rect.height), pygame.SRCALPHA)
+            
+            if alert.style == "danger":       col = (239, 68, 68, alert.alpha)
+            elif alert.style == "success":   col = (16, 185, 129, alert.alpha)
+            else:                            col = (245, 158, 11, alert.alpha)
+            
+            pygame.draw.rect(s, col, (0, 0, alert_rect.width, alert_rect.height), border_radius=6)
+            surface.blit(s, (alert_rect.x, alert_rect.y))
+            lbl_msg = FONT_UI_REG.render(alert.message, True, (255, 255, 255))
+            lbl_msg.set_alpha(alert.alpha)
+            surface.blit(lbl_msg, (alert_rect.x + 15, alert_rect.y + 13))
+
+# --- 4. COMPONENT ARCHITECTURE: EMPLOYEE DESK CARD ---
+class EmployeeCard:
+    def __init__(self, name, productivity, salary):
+        self.name = name
+        self.base_productivity = productivity
+        self.salary_per_day = salary
+        self.width, self.height = 280, 150
+        self.coffee_btn = pygame.Rect(0, 0, 85, 28)
+        self.max_stamina = 100.0
+        self.stamina = 100.0
+        self.drain_rate = 7.0
+        self.coffee_cost = 25.0
+        self.is_resting = False
+
+    def hourly_update(self, hour, is_shift_active):
+        if is_shift_active:
+            if self.is_resting:
+                self.stamina = min(self.max_stamina, self.stamina + 40.0)
+                if self.stamina >= self.max_stamina:
+                    self.is_resting = False
+            else:
+                if self.stamina > 0:
+                    self.stamina = max(0.0, self.stamina - self.drain_rate)
+                    efficiency = self.stamina / self.max_stamina
+                    manager.money += (self.base_productivity * efficiency)
+                    
+                    if self.stamina <= 0.0:
+                        manager.push_alert(f"{self.name} is EXHAUSTED!", "danger")
+                    elif self.stamina <= 20.0:
+                        manager.push_alert(f"{self.name} needs a coffee break.", "warning")
+        if hour == 17:
+            manager.money -= self.salary_per_day
+
+    def draw(self, surface, x, y, scroll_offset, current_hour):
+        real_y = y - scroll_offset
+        card_rect = pygame.Rect(x, real_y, self.width, self.height)
+        self.coffee_btn.topleft = (x + 180, real_y + 108)
+
+        # Draw structural framing panels
+        pygame.draw.rect(surface, COLOR_SURFACE, card_rect, border_radius=10)
+        pygame.draw.rect(surface, COLOR_PANEL, card_rect, width=2, border_radius=10)
+        
+        # Details text strings compilation passes
+        lbl_name = FONT_UI_MEDIUM.render(self.name, True, COLOR_TEXT_MAIN)
+        lbl_prod = FONT_UI_REG.render(f"Output: +${self.base_productivity}/hr", True, COLOR_TEXT_MUTED)
+        lbl_wage = FONT_UI_REG.render(f"Wage: -${self.salary_per_day}/day", True, COLOR_TEXT_MUTED)
+        surface.blit(lbl_name, (x + 16, real_y + 14))
+        surface.blit(lbl_prod, (x + 16, real_y + 44))
+        surface.blit(lbl_wage, (x + 16, real_y + 66))
+
+        # Context evaluation calculations 
+        if self.is_resting:             txt, col = "BREAK", COLOR_ORANGE
+        elif 9 <= current_hour < 17:    txt, col = "RUNNING", COLOR_GREEN
+        else:                           txt, col = "STANDBY", COLOR_TEXT_MUTED
+            
+        surface.blit(FONT_UI_MEDIUM.render(txt, True, col), (x + 16, real_y + 92))
+
+        # Render Energy Metrics Bars
+        bar_x, bar_y, bar_w, bar_h = x + 16, real_y + 115, 140, 12
+        pygame.draw.rect(surface, COLOR_PANEL, (bar_x, bar_y, bar_w, bar_h), border_radius=4)
+        pct = self.stamina / self.max_stamina

@@ -1,4 +1,5 @@
 import * as React from "react"
+import { BOOMER_MODE_ENABLED } from "@/lib/vocabulary"
 
 const MOBILE_BREAKPOINT = 768
 
@@ -22,10 +23,10 @@ export function useIsMobile() {
 // hook because many surfaces consume the shared label mode, but do not expose a
 // user-facing switch or honor stale local preferences.
 export function getDefaultBoomerMode(): boolean {
-  return true;
+  return BOOMER_MODE_ENABLED;
 }
 
 export function useBoomerMode(): [boolean, (on: boolean) => void] {
   const setBoomer = React.useCallback((_on: boolean) => {}, []);
-  return [true, setBoomer];
+  return [BOOMER_MODE_ENABLED, setBoomer];
 }

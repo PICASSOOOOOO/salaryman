@@ -12,9 +12,8 @@ import { MODULES, PROFILE_MODULES, SETTINGS_MODULES, type Module } from "./modul
 //   2. Server — the palette ships a compact form of it to /chat/pablo/command
 //      so Pablo only ever picks REAL, existing paths (grounding).
 //
-// The phone / call system is OFF-LIMITS (user request), so /phone* pages are
-// intentionally excluded — they never appear as a search result or a Pablo
-// suggestion.
+// Phone destinations are included for navigation. Call actions still happen
+// inside the phone interface and retain their existing auth/entitlement gates.
 
 export type PageEntry = {
   /** In-app path to navigate to. */
@@ -31,11 +30,28 @@ export type PageEntry = {
 // likely to type for a given page. Kept small and high-signal.
 const ALIASES: Record<string, string[]> = {
   "/": ["pablo", "home", "assistant", "ai", "start", "front door"],
+  "/workspace": ["workspace", "widgets", "personal workspace"],
+  "/workspace/notepad": ["notes", "notepad", "quick notes"],
+  "/workspace/calculator": ["calculator", "calculations"],
+  "/phone": ["phone", "calll home", "phone system", "calls"],
+  "/phone/dialer": ["dialer", "phone dialer", "crm dialer", "outbound calls", "call a lead"],
+  "/phone/contacts": ["phone contacts", "call contacts"],
+  "/phone/active": ["active calls", "live calls"],
+  "/phone/history": ["call history", "call log", "past calls"],
+  "/phone/recordings": ["call recordings", "recordings"],
+  "/phone/recording": ["call recordings", "recordings"],
+  "/phone/voicemail": ["voicemail", "voice messages"],
+  "/phone/conference": ["conference calls"],
+  "/phone/sessions": ["dialing sessions", "power dialer"],
+  "/phone/coach": ["call coach", "phone coach"],
+  "/phone/secretary": ["phone secretary", "call secretary"],
+  "/phone/numbers": ["phone numbers", "business phone lines"],
+  "/phone/call-center": ["call center", "outbound call center"],
+  "/phone/sms": ["phone messages", "sms"],
   "/my-office": ["my office", "office dashboard", "workspace", "my workspace"],
   "/office": ["the office", "office", "surveillance", "cctv", "watch office", "floor"],
   "/comms": ["comms", "messages", "chat", "dm", "colleagues", "inbox"],
   "/pledge": ["pledge store", "store", "support", "founder", "perks", "pablo prime"],
-  "/bots/my": ["my agents", "my bots", "robots", "pixel agents"],
   "/armory": ["gear store", "armory", "buy gear", "weapons", "equipment", "shop gear"],
   "/armory/inventory": ["my inventory", "my gear", "owned gear", "loadout"],
   "/business/payroll": ["payroll", "pay employees", "salaries", "wages"],
@@ -52,7 +68,8 @@ const ALIASES: Record<string, string[]> = {
   "/business/profit-loss": ["profit and loss", "p&l", "pnl", "income statement"],
   "/business/marketplace": ["business marketplace", "buy a business", "sell business"],
   "/marketplace": ["marketplace", "cross-city exchange", "buy items", "sell items", "properties", "vehicles"],
-  "/business/autopilot": ["autopilot", "agent autopilot", "automation"],
+  "/business/autopilot": ["pablo prime", "automation workspace", "pablo automation", "autopilot", "automated workflows"],
+  "/business/crm": ["crm", "lead management", "customer management", "contacts", "clients", "partners", "customers"],
   "/business/contacts": ["contacts", "address book", "people"],
   "/business/services": ["services board", "gigs", "bounties", "debt bounty", "vehicle rental", "escort", "player services"],
   "/business/tasks": ["tasks", "task board", "todo", "to do"],
@@ -74,23 +91,24 @@ const ALIASES: Record<string, string[]> = {
   "/marketing/ads": ["ads", "ad bots", "advertising"],
   "/creative/music": ["music", "humming bird", "hummingbird", "tracks", "songs"],
   "/creative/darkroom": ["dark room", "photos", "image editor", "photo studio"],
+  "/1999": ["1999", "music production", "audio production", "music workstation", "step sequencer"],
   "/creative/design": ["design studio", "design", "graphics"],
   "/creative/brand": ["brand kit", "branding", "logo"],
   "/creative/writer": ["writer", "hemingway", "writing", "copywriting"],
   "/creative/video": ["video", "video studio", "video maker"],
-  "/creative/media": ["media library", "media", "assets"],
-  "/creative/schematic": ["blueprint", "schematic", "cad", "decoder"],
-  "/creative/classroom": ["classroom", "conference", "education", "lessons", "academy", "live session", "video call", "meeting"],
+  "/creative/media": ["data vault", "files", "documents", "assets"],
+  "/creative/schematic": ["cad and blueprint reader", "blueprint", "schematic", "cad", "technical drawings"],
+  "/creative/classroom": ["meeting room", "conference room", "video meetings", "classes", "classroom", "live session", "video call"],
+  "/1999/stems": ["stem player", "audio stems", "stems"],
   "/console": ["console", "terminal", "cipher"],
-  "/bots": ["agents", "agent team", "my agents", "agent command center"],
   "/console/video": ["video intel", "video analyzer"],
   "/console/vault": ["vault", "knowledge vault", "notes"],
   "/console/scraper": ["scraper", "web scraper"],
   "/profile": ["account", "my account", "profile", "identity", "call sign", "avatar", "appearance"],
-  "/settings": ["settings", "preferences", "account settings", "linked accounts", "connections", "language", "currency", "privacy", "memory", "data export", "delete account", "platform", "api keys", "org settings", "city settings"],
-  "/profile/platform": ["platform", "platform api", "developer", "api"],
-  "/profile/platform?tab=keys": ["api keys", "keys"],
-  "/profile/platform?tab=webhooks": ["webhooks", "hooks"],
+  "/settings": ["settings", "preferences", "account settings", "linked accounts", "connections", "language", "currency", "privacy", "memory", "data export", "delete account", "org settings", "city settings"],
+  "/platform": ["platform", "platform api", "developer", "api"],
+  "/platform?tab=keys": ["api keys", "keys"],
+  "/platform?tab=webhooks": ["webhooks", "hooks"],
   "/profile/admin": ["admin", "admin panel", "users"],
   "/game": ["game", "city", "play", "world"],
   "/game/bank": ["bank", "atm", "banco ombra", "money"],
@@ -102,15 +120,39 @@ const ALIASES: Record<string, string[]> = {
   "/legal": ["legal", "terms", "privacy", "policies"],
 };
 
+const GROUP_OVERRIDES: Record<string, string> = {
+  "/creative/brand": "Marketing",
+};
+
 // Curated standalone pages that aren't module subs but are real navigable
 // screens users search for.
 const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
   { path: "/", label: "Pablo (AI Assistant)", group: "Pablo" },
+  { path: "/phone", label: "CALLL HOME", group: "Phone" },
+  { path: "/phone/dialer", label: "Phone Dialer", group: "Phone" },
+  { path: "/phone/cmd", label: "Phone Command Center", group: "Phone" },
+  { path: "/phone/contacts", label: "Phone Contacts", group: "Phone" },
+  { path: "/phone/active", label: "Active Calls", group: "Phone" },
+  { path: "/phone/history", label: "Call History", group: "Phone" },
+  { path: "/phone/recordings", label: "Call Recordings", group: "Phone" },
+  { path: "/phone/recording", label: "Call Recording", group: "Phone" },
+  { path: "/phone/voicemail", label: "Voicemail", group: "Phone" },
+  { path: "/phone/conference", label: "Conference", group: "Phone" },
+  { path: "/phone/sessions", label: "Dialing Sessions", group: "Phone" },
+  { path: "/phone/coach", label: "Call Coach", group: "Phone" },
+  { path: "/phone/secretary", label: "Phone Secretary", group: "Phone" },
+  { path: "/phone/numbers", label: "Phone Numbers", group: "Phone" },
+  { path: "/phone/call-center", label: "Outbound Call Center", group: "Phone" },
+  { path: "/phone/sms", label: "Phone SMS", group: "Phone" },
   { path: "/my-office", label: "My Office", group: "Office" },
+  { path: "/workspace", label: "The Office", group: "The Office" },
+  { path: "/workspace/notepad", label: "Notes", group: "The Office" },
+  { path: "/workspace/calculator", label: "Calculator", group: "The Office" },
+  { path: "/hummingbird", label: "Hummingbird", group: "Tools" },
   { path: "/marketplace", label: "Marketplace", group: "World" },
   { path: "/office", label: "The Office (Live View)", group: "Office" },
   { path: "/comms", label: "Payphone", group: "Payphone" },
-  { path: "/pledge", label: "Pledge Store", group: "Agents" },
+  { path: "/pledge", label: "Pledge Store", group: "Account" },
   { path: "/game", label: "The City", group: "Game" },
   { path: "/game/bank", label: "Bank", group: "Game" },
   { path: "/game/character", label: "Character", group: "Game" },
@@ -123,7 +165,6 @@ const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
 
 function isExcluded(path: string): boolean {
   const lower = path.toLowerCase();
-  if (lower === "/phone" || lower.startsWith("/phone/") || lower.startsWith("/phone?")) return true;
   if (lower === "/api" || lower.startsWith("/api/")) return true;
   return false;
 }
@@ -166,7 +207,7 @@ export function buildPageCatalog(): PageEntry[] {
   const addModule = (m: Module) => {
     const groupLabel = friendly(m.label);
     for (const sub of m.subs) {
-      add(sub.path, friendly(sub.boomerLabel || sub.label), groupLabel);
+      add(sub.path, friendly(sub.boomerLabel || sub.label), GROUP_OVERRIDES[sub.path] ?? groupLabel);
     }
     // Some modules (e.g. Pablo) have no subs — index the module itself.
     if (m.subs.length === 0) add(m.path, groupLabel, groupLabel);

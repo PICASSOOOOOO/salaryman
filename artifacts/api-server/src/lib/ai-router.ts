@@ -14,7 +14,9 @@ export interface RouterResult {
   requestType: RequestType;
 }
 
-const OPENCLAW_WS_URL = "ws://127.0.0.1:18789";
+const OPENCLAW_WS_URL =
+  process.env.OPENCLAW_GATEWAY_URL?.trim() ||
+  (process.env.OPENCLAW_GATEWAY_TOKEN ? "ws://127.0.0.1:18789" : "");
 
 // Bounded retry helper — wraps a single provider attempt so a transient error
 // gets one retry with a short back-off before the cascade falls to the next
@@ -50,6 +52,7 @@ let lastOpenclawCheck = 0;
 const OPENCLAW_CHECK_INTERVAL = 30_000;
 
 async function isOpenclawAvailable(): Promise<boolean> {
+  if (!OPENCLAW_WS_URL) return false;
   const now = Date.now();
   if (now - lastOpenclawCheck < OPENCLAW_CHECK_INTERVAL) return openclawAlive;
   lastOpenclawCheck = now;
@@ -157,6 +160,9 @@ async function tryOpenclawStream(
   maxTokens: number,
   onChunk: (chunk: StreamChunk) => void
 ): Promise<void> {
+  if (!OPENCLAW_WS_URL) {
+    throw new Error("OpenClaw gateway is not configured");
+  }
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(OPENCLAW_WS_URL);
     let connected = false;

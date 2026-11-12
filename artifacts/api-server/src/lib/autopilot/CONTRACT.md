@@ -1,15 +1,15 @@
 # Autopilot shared-service contract
 
-This is the foundation the four domain autopilots build on: **Business Ops,
-Marketing, CRM & Calls, Accounting**. Read this before implementing a domain
-handler.
+This is the foundation the domain autopilots build on: **Business Ops,
+Marketing, CRM & Calls, Accounting, and opt-in Creative Work**. Read this before
+implementing a domain handler.
 
 ## The one rule that matters
 
 > An autopilot handler MUST do its work by calling the **same service functions
 > the manual screens call** — never by re-implementing the logic inline.
 
-That is what guarantees the task's hard constraint: *everything a bot does
+That is what guarantees the task's hard constraint: *everything Pablo automates
 automatically remains doable by a human, and turning autopilot OFF returns the
 domain to manual-only with no data divergence.* If a manual route still has its
 logic inlined in the Express handler, extract it into a callable service function
@@ -26,13 +26,13 @@ first, then have BOTH the route and the autopilot handler call that function.
    ```
 
 3. The scheduler invokes your handler once per due tick for each org that has the
-   domain **enabled** with a **valid assigned bot**. You do not schedule anything
-   yourself — there is ONE scheduler.
+   domain **enabled**. Pablo Prime owns the automation arm; no bot assignment is
+   required. You do not schedule anything yourself — there is ONE scheduler.
 
 ## What the engine has already done before your handler runs
 
-- Confirmed the domain is enabled and a bot is assigned.
-- Resolved and validated the bot belongs to the org (`ctx.bot`).
+- Confirmed the domain is enabled and resolved the organization owner.
+- Set the stable automation actor to Pablo Prime (`ctx.assistantName`).
 - Resolved the org owner (`ctx.ownerId` / `ctx.ownerEmail`) — the account whose
   entitlement and API-credit balance gate paid work.
 - Computed the per-tick action cap (`ctx.maxActions`).
@@ -69,3 +69,15 @@ activity log instead of erroring:
 - HTTP: `routes/autopilot.ts` (`GET /api/autopilot`, `PUT /api/autopilot/:domain`),
   owner/manager-gated via the `autopilot.manage` org permission.
 - UI shell: the web app's Autopilot panel (`/business/autopilot`).
+
+## Creative Work (opt-in)
+
+- Keep paid activation limited to the four existing business workflows; Creative
+  Work is disabled until the organization owner selects a private workspace
+  project and enables it.
+- Check at most once per day and draft only after the project description or its
+  creation-context/reference notes change. Reuse the workspace draft service.
+- Save only a validated, offline plan and prototype for owner review. Never
+  execute, publish, deploy, fetch reference URLs, or move money.
+- Activity summaries must not disclose private project names, IDs, or content to
+  organization managers.

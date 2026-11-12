@@ -35,11 +35,38 @@ describe("API structure: liveness", () => {
   });
 });
 
+describe("API structure: browser-facing routes", () => {
+  it("GET /api/plan returns the anonymous plan payload", async () => {
+    const res = await request(app).get("/api/plan");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ tier: "free", isOwner: false });
+    expect(res.body.features).toEqual(expect.any(Array));
+  });
+
+  it("GET /api/workspace/projects is mounted and enforces login", async () => {
+    const res = await request(app).get("/api/workspace/projects");
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/interview/advisor validates its request instead of returning 404", async () => {
+    const res = await request(app).post("/api/interview/advisor").send({});
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: "Missing messages" });
+  });
+
+  it("POST /api/interview/advisor returns 400 for a bodyless request", async () => {
+    const res = await request(app).post("/api/interview/advisor");
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: "Missing messages" });
+  });
+});
+
 describe("API structure: auth-enforced routes return 401 (not 404/500)", () => {
   const authRoutes: { method: "get" | "post"; path: string }[] = [
     { method: "get", path: "/api/account/settings" },
     { method: "post", path: "/api/salaryman/saves/ensure" },
     { method: "get", path: "/api/economy/bank/accounts" },
+    { method: "get", path: "/api/orgs/1/time-off" },
     { method: "get", path: "/api/autopilot" },
     { method: "post", path: "/api/twilio/call" },
     { method: "get", path: "/api/admin/connections/status" },

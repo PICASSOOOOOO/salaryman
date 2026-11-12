@@ -2,17 +2,21 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
+import { AutopilotWorkflow } from '@/components/AutopilotWorkflow';
+import { AutopilotBriefReview } from '@/components/AutopilotBriefReview';
+import './autopilot.css';
 import {
-  Bot, Loader2, RefreshCw, Power, AlertCircle, Clock,
-  Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck, Check,
+  Sparkles, Loader2, RefreshCw, Power, AlertCircle, Clock,
+  Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck, Check, Search, ExternalLink,
 } from 'lucide-react';
 
-type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting';
+type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting' | 'creative_work' | 'market_research';
 
 interface MarketingPrefs {
   platforms: string[];
   tone: string;
   topics: string[];
+  generateImages?: boolean;
 }
 
 interface BusinessOpsPrefs {
@@ -37,6 +41,19 @@ interface AccountingPrefs {
   payrollPeriodDays: number;
 }
 
+interface CreativeProjectOption {
+  id: number;
+  name: string;
+  type: string;
+}
+
+interface MarketResearchPrefs {
+  subject: string;
+  region: string;
+  competitors: string;
+  autoInvestigateRecentCalls: boolean;
+}
+
 interface DomainConfig {
   orgId: number;
   domain: AutopilotDomain;
@@ -51,13 +68,6 @@ interface DomainConfig {
   updatedBy: string | null;
 }
 
-interface OrgBot {
-  id: number;
-  name: string;
-  status: string;
-  department: string | null;
-}
-
 interface ActivityRow {
   id: number;
   domain: AutopilotDomain;
@@ -66,16 +76,23 @@ interface ActivityRow {
   summary: string;
   outcome: string;
   createdAt: string;
+  detail?: Record<string, unknown>;
 }
 
 interface AutopilotPayload {
   orgId: number;
   meta: Record<AutopilotDomain, { label: string; description: string }>;
-  defaults: { cadenceMinutes: number; maxActionsPerTick: number };
-  marketing: { tones: string[]; platforms: { id: string; label: string }[] };
+  defaults: { cadenceMinutes: number; creativeCadenceMinutes?: number; marketResearchCadenceMinutes?: number; maxActionsPerTick: number };
+  creative?: { canManage: boolean; projects: CreativeProjectOption[] };
+  marketResearch?: { canManage: boolean };
+  accounting?: { canManage: boolean };
+  marketing: {
+    tones: string[];
+    platforms: { id: string; label: string }[];
+    canApproveImageGeneration: boolean;
+  };
   crm: { leadStatuses: { id: string; label: string }[] };
   domains: DomainConfig[];
-  bots: OrgBot[];
   activity: ActivityRow[];
 }
 
@@ -87,7 +104,7 @@ function readMarketingPrefs(prefs: Record<string, unknown>): MarketingPrefs {
   const topics = Array.isArray(prefs.topics)
     ? (prefs.topics.filter((t) => typeof t === 'string') as string[])
     : [];
-  return { platforms, tone, topics };
+  return { platforms, tone, topics, generateImages: prefs.generateImages === true };
 }
 
 const num = (v: unknown, fallback: number): number =>
@@ -180,6 +197,15 @@ function readAccountingPrefs(prefs: Record<string, unknown>): AccountingPrefs {
     payroll: bool(prefs.payroll, true),
     reminderCooldownDays: num(prefs.reminderCooldownDays, 3),
     payrollPeriodDays: num(prefs.payrollPeriodDays, 28),
+  };
+}
+
+function readMarketResearchPrefs(prefs: Record<string, unknown>): MarketResearchPrefs {
+  return {
+    subject: typeof prefs.subject === 'string' ? prefs.subject : '',
+    region: typeof prefs.region === 'string' ? prefs.region : '',
+    competitors: typeof prefs.competitors === 'string' ? prefs.competitors : '',
+    autoInvestigateRecentCalls: prefs.autoInvestigateRecentCalls === true,
   };
 }
 
@@ -452,10 +478,12 @@ function CrmPrefsEditor({
 function AccountingPrefsEditor({
   cfg,
   busy,
+  canManage,
   onSave,
 }: {
   cfg: DomainConfig;
   busy: boolean;
+  canManage: boolean;
   onSave: (prefs: AccountingPrefs) => void;
 }) {
   const initial = readAccountingPrefs(cfg.prefs);
@@ -478,6 +506,11 @@ function AccountingPrefsEditor({
   return (
     <div className="mt-4 pt-4 border-t border-cyan-500/10">
       <p className={PREFS_HEADER_CLS}>CFO PREFERENCES — choose which books duties the bot runs.</p>
+      {!canManage && (
+        <p className="mt-2 font-mono text-[9px] text-amber-300/70">
+          Finance manager permission is required to change these settings. You can pause this workflow above.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
         <ToggleRow
@@ -564,7 +597,11 @@ function MarketingPrefsEditor({
   onSave,
 }: {
   cfg: DomainConfig;
-  options: { tones: string[]; platforms: { id: string; label: string }[] };
+  options: {
+    tones: string[];
+    platforms: { id: string; label: string }[];
+    canApproveImageGeneration: boolean;
+  };
   busy: boolean;
   onSave: (prefs: MarketingPrefs) => void;
 }) {
@@ -572,6 +609,7 @@ function MarketingPrefsEditor({
   const [platforms, setPlatforms] = useState<string[]>(initial.platforms);
   const [tone, setTone] = useState<string>(initial.tone || (options.tones[0] ?? 'professional'));
   const [topicsText, setTopicsText] = useState<string>(initial.topics.join('\n'));
+  const [generateImages, setGenerateImages] = useState(initial.generateImages === true);
 
   // Re-sync local state if the server view changes (e.g. after a refresh).
   useEffect(() => {
@@ -579,6 +617,7 @@ function MarketingPrefsEditor({
     setPlatforms(next.platforms);
     setTone(next.tone || (options.tones[0] ?? 'professional'));
     setTopicsText(next.topics.join('\n'));
+    setGenerateImages(next.generateImages === true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg.prefs]);
 
@@ -591,7 +630,12 @@ function MarketingPrefsEditor({
       .split('\n')
       .map((t) => t.trim())
       .filter(Boolean);
-    onSave({ platforms, tone, topics });
+    onSave({
+      platforms,
+      tone,
+      topics,
+      ...(options.canApproveImageGeneration ? { generateImages } : {}),
+    });
   };
 
   return (
@@ -657,6 +701,26 @@ function MarketingPrefsEditor({
         </div>
       </div>
 
+      <div className="mt-3 rounded border border-cyan-500/15 bg-[#080c12] p-3">
+        <label className={`flex items-start gap-2 font-mono text-[10px] tracking-wide ${options.canApproveImageGeneration ? 'cursor-pointer text-cyan-200/80' : 'text-cyan-500/35'}`}>
+          <input
+            type="checkbox"
+            data-testid="marketing-generate-images"
+            checked={generateImages}
+            disabled={busy || !options.canApproveImageGeneration}
+            onChange={(event) => setGenerateImages(event.target.checked)}
+            className="mt-0.5 accent-cyan-400"
+          />
+          <span>
+            <span className="block">ALLOW AUTOMATIC CAMPAIGN IMAGE GENERATION</span>
+            <span className="mt-1 block normal-case tracking-normal text-[9px] text-cyan-500/45">
+              Uses the organization owner’s assistant battery per image. Available for Facebook, Instagram, and Threads; TikTok and YouTube still need a video.
+              {!options.canApproveImageGeneration ? ' Only the organization owner can approve this.' : ''}
+            </span>
+          </span>
+        </label>
+      </div>
+
       <div className="flex justify-end mt-3">
         <button
           type="button"
@@ -674,14 +738,181 @@ function MarketingPrefsEditor({
   );
 }
 
-const DOMAIN_ICON: Record<AutopilotDomain, typeof Bot> = {
+function CreativeFocusEditor({
+  cfg,
+  projectId,
+  busy,
+  onSave,
+}: {
+  cfg: DomainConfig;
+  projectId: number;
+  busy: boolean;
+  onSave: (focus: string) => void;
+}) {
+  const [focus, setFocus] = useState(
+    typeof cfg.prefs.focus === 'string' ? cfg.prefs.focus : '',
+  );
+
+  useEffect(() => {
+    setFocus(typeof cfg.prefs.focus === 'string' ? cfg.prefs.focus : '');
+  }, [cfg.prefs]);
+
+  return (
+    <div className="mt-3 grid gap-2">
+      <label className={LABEL_CLS} htmlFor="creative-work-focus">OWNER DIRECTION (OPTIONAL)</label>
+      <textarea
+        id="creative-work-focus"
+        data-testid="creative-work-focus"
+        value={focus}
+        maxLength={1000}
+        rows={3}
+        disabled={busy}
+        onChange={(event) => setFocus(event.target.value)}
+        className={INPUT_CLS}
+        placeholder="What should Pablo emphasize in the next project draft?"
+      />
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-[9px] text-cyan-500/35">Applied to the next owner-input-triggered draft.</span>
+        <button
+          type="button"
+          disabled={busy || focus.trim() === (typeof cfg.prefs.focus === 'string' ? cfg.prefs.focus : '')}
+          onClick={() => onSave(focus.trim())}
+          className={SAVE_BTN_CLS}
+        >
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          SAVE DIRECTION
+        </button>
+      </div>
+      {projectId > 0 && (
+        <a
+          href={`/pablo/create?project=${projectId}&review=autopilot`}
+          className="inline-flex w-fit items-center gap-1.5 font-mono text-[10px] tracking-wider text-cyan-300/80 hover:text-cyan-200 underline underline-offset-2"
+        >
+          REVIEW PROJECT DRAFTS <ExternalLink className="w-3 h-3" />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function MarketResearchPrefsEditor({
+  cfg,
+  busy,
+  onSave,
+}: {
+  cfg: DomainConfig;
+  busy: boolean;
+  onSave: (prefs: MarketResearchPrefs) => void;
+}) {
+  const initial = readMarketResearchPrefs(cfg.prefs);
+  const [subject, setSubject] = useState(initial.subject);
+  const [region, setRegion] = useState(initial.region);
+  const [competitors, setCompetitors] = useState(initial.competitors);
+  const [autoInvestigateRecentCalls, setAutoInvestigateRecentCalls] = useState(initial.autoInvestigateRecentCalls);
+
+  useEffect(() => {
+    const next = readMarketResearchPrefs(cfg.prefs);
+    setSubject(next.subject);
+    setRegion(next.region);
+    setCompetitors(next.competitors);
+    setAutoInvestigateRecentCalls(next.autoInvestigateRecentCalls);
+  }, [cfg.prefs]);
+
+  const unchanged = subject.trim() === initial.subject
+    && region.trim() === initial.region
+    && competitors.trim() === initial.competitors
+    && autoInvestigateRecentCalls === initial.autoInvestigateRecentCalls;
+
+  return (
+    <div className="mt-4 border-t border-cyan-500/10 pt-3" data-testid="market-research-settings">
+      <p className={PREFS_HEADER_CLS}>PUBLIC-SOURCE RESEARCH · CITED FINDINGS ARE SAVED IN THE CRM FOR OWNER REVIEW.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className={LABEL_CLS} htmlFor="market-research-subject">MARKET OR PRODUCT *</label>
+          <input
+            id="market-research-subject"
+            data-testid="market-research-subject"
+            value={subject}
+            maxLength={180}
+            disabled={busy}
+            onChange={(event) => setSubject(event.target.value)}
+            className={INPUT_CLS}
+            placeholder="e.g. payroll software for small clinics"
+          />
+        </div>
+        <div>
+          <label className={LABEL_CLS} htmlFor="market-research-region">REGION (OPTIONAL)</label>
+          <input
+            id="market-research-region"
+            value={region}
+            maxLength={120}
+            disabled={busy}
+            onChange={(event) => setRegion(event.target.value)}
+            className={INPUT_CLS}
+            placeholder="e.g. Vietnam"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={LABEL_CLS} htmlFor="market-research-competitors">COMPETITORS TO INCLUDE (OPTIONAL)</label>
+          <textarea
+            id="market-research-competitors"
+            value={competitors}
+            maxLength={500}
+            rows={2}
+            disabled={busy}
+            onChange={(event) => setCompetitors(event.target.value)}
+            className={INPUT_CLS}
+            placeholder="Names or a short list"
+          />
+        </div>
+        <label className="sm:col-span-2 flex items-start gap-2 rounded border border-cyan-500/15 bg-[#080c12] px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoInvestigateRecentCalls}
+            disabled={busy}
+            onChange={(event) => setAutoInvestigateRecentCalls(event.target.checked)}
+            className="mt-0.5 accent-cyan-400"
+          />
+          <span>
+            <span className="block font-mono text-[9px] tracking-wider text-cyan-300/75">
+              INVESTIGATE COMPANY LEADS AFTER CALLS
+            </span>
+            <span className="mt-1 block font-sans text-[10px] leading-relaxed text-cyan-500/45">
+              Check company leads linked to calls from the last 30 days. Save cited notes to this CRM for owner review; do not research personal profiles or change external sites.
+            </span>
+          </span>
+        </label>
+      </div>
+      <div className="flex justify-end mt-3">
+        <button
+          type="button"
+          disabled={busy || unchanged}
+          onClick={() => onSave({
+            subject: subject.trim(),
+            region: region.trim(),
+            competitors: competitors.trim(),
+            autoInvestigateRecentCalls,
+          })}
+          className={`${SAVE_BTN_CLS} ${busy || unchanged ? 'opacity-50' : ''}`}
+        >
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+          SAVE SCOPE
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const DOMAIN_ICON: Record<AutopilotDomain, typeof Briefcase> = {
   business_ops: Briefcase,
   marketing: Megaphone,
   crm_calls: PhoneCall,
   accounting: Calculator,
+  creative_work: Sparkles,
+  market_research: Search,
 };
 
-const AUTOPILOT_DOMAIN_ORDER: AutopilotDomain[] = ['business_ops', 'marketing', 'crm_calls', 'accounting'];
+const AUTOPILOT_DOMAIN_ORDER: AutopilotDomain[] = ['business_ops', 'marketing', 'crm_calls', 'accounting', 'creative_work', 'market_research'];
 
 const OUTCOME_STYLE: Record<string, { text: string; label: string }> = {
   success: { text: 'text-green-400', label: 'SUCCESS' },
@@ -723,6 +954,34 @@ function fmtRelative(iso: string | null): string {
   return fmtTime(iso);
 }
 
+function readResearchReview(detail: unknown): { title: string; report: string; sources: { title: string; url: string }[] } | null {
+  if (typeof detail !== 'object' || detail === null) return null;
+  const value = detail as Record<string, unknown>;
+  if (typeof value.report !== 'string' || !Array.isArray(value.sources)) return null;
+  const sources = value.sources.flatMap((item) => {
+    if (typeof item !== 'object' || item === null) return [];
+    const source = item as Record<string, unknown>;
+    if (typeof source.url !== 'string') return [];
+    try {
+      const url = new URL(source.url);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return [];
+      return [{
+        title: typeof source.title === 'string' && source.title.trim() ? source.title.trim() : url.hostname,
+        url: url.href,
+      }];
+    } catch {
+      return [];
+    }
+  });
+  return sources.length ? {
+    title: typeof value.company === 'string'
+      ? value.company
+      : typeof value.subject === 'string' ? value.subject : 'Public research',
+    report: value.report,
+    sources,
+  } : null;
+}
+
 const ACTIVITY_POLL_MS = 15000;
 const ACTIVITY_PAGE_SIZE = 50;
 
@@ -731,6 +990,7 @@ export default function Autopilot() {
   const [data, setData] = useState<AutopilotPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorAction, setErrorAction] = useState<{ href: string; label: string } | null>(null);
   const [savingDomain, setSavingDomain] = useState<AutopilotDomain | null>(null);
   // Per-domain inline save feedback: which change failed (and why) or just saved,
   // shown on the affected card instead of one shared page-level banner.
@@ -771,15 +1031,30 @@ export default function Autopilot() {
     const silent = opts?.silent ?? false;
     if (!silent) setLoading(true);
     setError(null);
+    setErrorAction(null);
     try {
-      const res = await apiFetch('/autopilot');
+      const res = await apiFetch('/api/autopilot');
       if (res.status === 401) {
         setError('Sign in required.');
         setData(null);
         return;
       }
-      if (res.status === 403) {
-        setError('You need owner or manager access to manage autopilot.');
+      if (res.status === 403 || res.status === 428) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          feature?: string;
+          onboardingRequired?: boolean;
+          paymentRequired?: boolean;
+        };
+        if (body.onboardingRequired) {
+          setError('Complete onboarding before using the Pablo Prime automation workspace.');
+          setErrorAction({ href: '/onboarding', label: 'OPEN ONBOARDING' });
+        } else if (body.feature === 'claw_bot' || body.paymentRequired) {
+          setError('Pablo AI access is required to use automation.');
+          setErrorAction({ href: '/pricing?view=prime', label: 'VIEW PABLO AI' });
+        } else {
+          setError('You need owner or manager access to manage Pablo Automation.');
+        }
         setData(null);
         return;
       }
@@ -789,7 +1064,7 @@ export default function Autopilot() {
         return;
       }
       if (!res.ok) {
-        setError('Failed to load autopilot.');
+        setError('Failed to load Pablo Automation.');
         setData(null);
         return;
       }
@@ -815,7 +1090,7 @@ export default function Autopilot() {
       try {
         const params = new URLSearchParams({ limit: String(ACTIVITY_PAGE_SIZE) });
         if (filter !== 'all') params.set('domain', filter);
-        const res = await apiFetch(`/autopilot/activity?${params.toString()}`);
+        const res = await apiFetch(`/api/autopilot/activity?${params.toString()}`);
         if (!res.ok) {
           setActivityError(true);
           return;
@@ -849,7 +1124,7 @@ export default function Autopilot() {
         before: String(oldest.id),
       });
       if (activityFilter !== 'all') params.set('domain', activityFilter);
-      const res = await apiFetch(`/autopilot/activity?${params.toString()}`);
+      const res = await apiFetch(`/api/autopilot/activity?${params.toString()}`);
       if (!res.ok) return;
       const payload: { activity?: ActivityRow[]; hasMore?: boolean } = await res.json();
       const rows = payload.activity ?? [];
@@ -916,7 +1191,7 @@ export default function Autopilot() {
         delete savedTimers.current[domain];
       }
       try {
-        const res = await apiFetch(`/autopilot/${domain}`, {
+        const res = await apiFetch(`/api/autopilot/${domain}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -956,7 +1231,7 @@ export default function Autopilot() {
     };
   }, []);
 
-  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage autopilot." />;
+  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage Pablo Automation." />;
 
   if (loading) {
     return (
@@ -967,19 +1242,20 @@ export default function Autopilot() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-cyan-100 px-4 py-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
+    <div className="salaryman-workspace autopilot-page min-h-screen bg-[#FFFAF0] text-[#111111] px-4 py-6 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-5 gap-3">
         <div>
-          <h1 className="font-mono text-base text-cyan-300 tracking-widest flex items-center gap-2">
-            <Bot className="w-5 h-5" /> AGENT AUTOPILOT
+          <h1 className="font-mono text-base tracking-widest flex items-center gap-2">
+            <Sparkles className="w-5 h-5" /> PABLO PRIME / AUTOMATION WORKSPACE
           </h1>
-          <p className="font-mono text-[10px] text-cyan-500/40 tracking-wider mt-1">
-            Assign a Pixel Agent to run a business domain on its own. OFF = fully manual, exactly as today.
+          <p className="font-sans text-xs text-cyan-500/40 mt-1 max-w-2xl">
+            Paid Prime starts only the four established workflows. Creative Work and Market Research stay off until the organization owner enables them.
           </p>
         </div>
         <button
           onClick={() => void load()}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/25 text-cyan-400/80 font-mono text-[10px] tracking-wider hover:bg-cyan-500/20 transition-colors rounded"
+          aria-label="Refresh automation settings and activity"
+          className="mobile-tap-target flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/25 text-cyan-400/80 font-mono text-[10px] tracking-wider hover:bg-cyan-500/20 transition-colors rounded"
         >
           <RefreshCw className="w-3 h-3" /> REFRESH
         </button>
@@ -987,18 +1263,28 @@ export default function Autopilot() {
 
       {error && (
         <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400 text-xs font-mono">
-          <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+          {errorAction && (
+            <a
+              href={errorAction.href}
+              className="ml-auto shrink-0 border border-amber-400/30 px-2 py-1 text-[9px] tracking-wider hover:bg-amber-400/10"
+            >
+              {errorAction.label}
+            </a>
+          )}
         </div>
       )}
 
       {data && (
         <>
-          <div className="flex items-start gap-2 px-3 py-2 mb-4 bg-cyan-500/[0.04] border border-cyan-500/15 rounded text-cyan-500/50 text-[10px] font-mono leading-relaxed">
+          <div className="flex items-start gap-2 px-3 py-2 mb-4 bg-cyan-500/[0.04] border border-cyan-500/15 rounded text-cyan-500/50 text-xs font-sans leading-relaxed">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400/60" />
-            Autopilot only does what a human in the same seat could do, and respects entitlement, credit, and
-            per-tick limits. Automated behavior for each domain is being rolled out — toggling ON now just arms the
-            scheduler and logs activity below.
+            Scheduled domains require active Pablo Prime. Your organization permissions, saved preferences, action caps,
+            available assistant power for paid AI, and channel consent remain in force. CRM sends SMS only.
           </div>
+
+          <AutopilotBriefReview />
 
           <div className="space-y-3">
             {data.domains.map((cfg) => {
@@ -1007,33 +1293,57 @@ export default function Autopilot() {
               const busy = savingDomain === cfg.domain;
               const status = saveState[cfg.domain];
               const nonce = revertNonce[cfg.domain] ?? 0;
+              const canManageWorkflow = cfg.domain === 'creative_work'
+                ? data.creative?.canManage === true
+                : cfg.domain === 'market_research'
+                  ? data.marketResearch?.canManage === true
+                  : cfg.domain === 'accounting'
+                    ? data.accounting?.canManage === true
+                    : true;
+              const canPauseAccounting = cfg.domain === 'accounting' && cfg.enabled && !canManageWorkflow;
+              const creativeProjectId = cfg.domain === 'creative_work' ? num(cfg.prefs.projectId, 0) : 0;
+              const creativeProjectAvailable = cfg.domain !== 'creative_work' ||
+                (data.creative?.projects ?? []).some((project) => project.id === creativeProjectId);
+              const researchSubject = cfg.domain === 'market_research' && typeof cfg.prefs.subject === 'string'
+                ? cfg.prefs.subject.trim()
+                : '';
+              const toggleDisabled = busy || (!canManageWorkflow && !canPauseAccounting) ||
+                (cfg.domain === 'creative_work' && !cfg.enabled && !creativeProjectAvailable) ||
+                (cfg.domain === 'market_research' && !cfg.enabled && !researchSubject);
               return (
-                <div key={cfg.domain} className="bg-[#0c1018] border border-cyan-500/15 rounded-lg p-4">
+                <div key={cfg.domain} data-autopilot-domain={cfg.domain} className="bg-[#0c1018] border border-cyan-500/15 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-                        <Icon className="w-4 h-4 text-cyan-400/80" />
+                        <div className="w-9 h-9 rounded bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                          <Icon className="w-4 h-4 text-cyan-400/80" />
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-mono text-xs text-cyan-300 tracking-wider">{meta?.label ?? cfg.domain}</h3>
                         <p className="font-mono text-[9px] text-cyan-500/40 leading-relaxed mt-0.5">
                           {meta?.description}
                         </p>
+                          <p className="mt-1 font-mono text-[9px] tracking-wider text-violet-300/70">
+                            RUN BY PABLO AI
+                         </p>
                       </div>
                     </div>
                     <button
-                      disabled={busy}
+                      disabled={toggleDisabled}
+                      aria-label={`${cfg.enabled ? 'Pause' : 'Enable'} ${meta?.label ?? cfg.domain} scheduled workflow`}
+                      data-testid={`toggle-workflow-${cfg.domain}`}
                       onClick={() => void patchDomain(cfg.domain, { enabled: !cfg.enabled })}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[10px] tracking-wider border transition-colors shrink-0 ${
                         cfg.enabled
                           ? 'bg-green-500/15 border-green-500/30 text-green-400 hover:bg-green-500/25'
                           : 'bg-[#080c12] border-cyan-500/15 text-cyan-500/40 hover:border-cyan-500/30'
-                      } ${busy ? 'opacity-50' : ''}`}
+                      } ${toggleDisabled ? 'opacity-50' : ''}`}
                     >
                       {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Power className="w-3 h-3" />}
                       {cfg.enabled ? 'ON' : 'OFF'}
                     </button>
                   </div>
+
+                  <AutopilotWorkflow domain={cfg.domain} enabled={cfg.enabled} />
 
                   {status && (
                     <div
@@ -1057,53 +1367,36 @@ export default function Autopilot() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                    <div>
-                      <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
-                        ASSIGNED AGENT
-                      </label>
-                      <select
-                        disabled={busy}
-                        value={cfg.botId ?? ''}
-                        onChange={(e) =>
-                          void patchDomain(cfg.domain, {
-                            botId: e.target.value === '' ? null : Number(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none appearance-none"
-                      >
-                        <option value="">— none —</option>
-                        {data.bots.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                            {b.department ? ` · ${b.department}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                     <div>
                       <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
                         CADENCE (MIN)
                       </label>
-                      <input
-                        key={`cadence-${nonce}`}
-                        type="number"
-                        min={5}
-                        max={1440}
-                        disabled={busy}
-                        defaultValue={cfg.cadenceMinutes ?? data.defaults.cadenceMinutes}
-                        onBlur={(e) => {
-                          const current = cfg.cadenceMinutes ?? data.defaults.cadenceMinutes;
-                          const v = parseClampedCap(e.target.value, 5, 1440);
-                          if (v === null) {
-                            e.target.value = String(current); // blank/non-numeric → revert, no write
-                            return;
-                          }
-                          e.target.value = String(v); // reflect the clamped/normalized value
-                          if (v !== current) void patchDomain(cfg.domain, { cadenceMinutes: v });
-                        }}
-                        className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none"
-                      />
+                      {cfg.domain === 'creative_work' || cfg.domain === 'market_research' ? (
+                        <div data-testid={`text-${cfg.domain}-cadence`} className="px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono">
+                          At most once per day
+                        </div>
+                      ) : (
+                        <input
+                          key={`cadence-${nonce}`}
+                          type="number"
+                          min={5}
+                          max={1440}
+                          disabled={busy || (cfg.domain === 'accounting' && !canManageWorkflow)}
+                          defaultValue={cfg.cadenceMinutes ?? data.defaults.cadenceMinutes}
+                          onBlur={(e) => {
+                            const current = cfg.cadenceMinutes ?? data.defaults.cadenceMinutes;
+                            const v = parseClampedCap(e.target.value, 5, 1440);
+                            if (v === null) {
+                              e.target.value = String(current); // blank/non-numeric → revert, no write
+                              return;
+                            }
+                            e.target.value = String(v); // reflect the clamped/normalized value
+                            if (v !== current) void patchDomain(cfg.domain, { cadenceMinutes: v });
+                          }}
+                          className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
@@ -1114,7 +1407,7 @@ export default function Autopilot() {
                         type="number"
                         min={1}
                         max={100}
-                        disabled={busy}
+                        disabled={busy || (cfg.domain === 'accounting' && !canManageWorkflow)}
                         defaultValue={cfg.maxActionsPerTick ?? data.defaults.maxActionsPerTick}
                         onBlur={(e) => {
                           const current = cfg.maxActionsPerTick ?? data.defaults.maxActionsPerTick;
@@ -1165,9 +1458,77 @@ export default function Autopilot() {
                     <AccountingPrefsEditor
                       key={`prefs-${nonce}`}
                       cfg={cfg}
-                      busy={busy}
+                      busy={busy || !canManageWorkflow}
+                      canManage={canManageWorkflow}
                       onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
                     />
+                  )}
+                  {cfg.domain === 'creative_work' && (
+                    <div className="mt-4 border-t border-cyan-500/10 pt-3" data-testid="creative-work-settings">
+                      <label htmlFor="creative-work-project" className="font-mono text-[9px] text-cyan-500/50 tracking-wider mb-1 block">
+                        OWNER WORKSPACE PROJECT
+                      </label>
+                      {data.creative?.canManage ? (
+                        (data.creative.projects ?? []).length > 0 ? (
+                          <select
+                            id="creative-work-project"
+                            data-testid="select-creative-work-project"
+                            key={`creative-project-${nonce}`}
+                            defaultValue={creativeProjectId ? String(creativeProjectId) : ''}
+                            disabled={busy}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              void patchDomain(cfg.domain, { prefs: { projectId: value ? Number(value) : null } });
+                            }}
+                            className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-200 text-xs font-mono focus:border-cyan-500/40 outline-none disabled:opacity-50"
+                          >
+                            <option value="" disabled={cfg.enabled}>Choose a project</option>
+                            {data.creative.projects.map((project) => (
+                              <option key={project.id} value={String(project.id)}>{project.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="font-sans text-[11px] text-cyan-500/50">
+                            Create a project in the <a href="/pablo/create" className="text-cyan-300 underline">Creation Workspace</a> first.
+                          </p>
+                        )
+                      ) : (
+                        <p data-testid="text-creative-owner-only" className="font-sans text-[11px] text-cyan-500/50">
+                          Only the organization owner can select a private project or control this workflow.
+                        </p>
+                      )}
+                      <p className="mt-2 font-sans text-[10px] text-cyan-500/40 leading-relaxed">
+                        Drafts are saved for review. Pablo does not publish or run them, and waits for a project description or source-note update before drafting again.
+                      </p>
+                      {data.creative?.canManage && (
+                        <CreativeFocusEditor
+                          key={`creative-focus-${nonce}`}
+                          cfg={cfg}
+                          projectId={creativeProjectId}
+                          busy={busy}
+                          onSave={(focus) => void patchDomain(cfg.domain, { prefs: { focus } })}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {cfg.domain === 'market_research' && (
+                    <>
+                      {data.marketResearch?.canManage ? (
+                        <MarketResearchPrefsEditor
+                          key={`prefs-${nonce}`}
+                          cfg={cfg}
+                          busy={busy}
+                          onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
+                        />
+                      ) : (
+                        <p className="mt-3 font-sans text-[11px] text-cyan-500/50">
+                          Market scope and source-backed briefs are visible to the organization owner only.
+                        </p>
+                      )}
+                      <p className="mt-2 font-sans text-[10px] text-cyan-500/40 leading-relaxed">
+                        Public web research only. Cited results may be saved to SALARYMAN’s CRM for owner review; no external sites are changed or contacted.
+                      </p>
+                    </>
                   )}
                 </div>
               );
@@ -1243,13 +1604,16 @@ export default function Autopilot() {
               {activity.length === 0 && (
                 <div className="px-4 py-6 text-center font-mono text-[10px] text-cyan-500/30">
                   {activityFilter === 'all'
-                    ? 'No autopilot activity yet.'
+                    ? 'No Pablo Automation activity yet.'
                     : `No ${(data.meta[activityFilter]?.label ?? activityFilter)} activity yet.`}
                 </div>
               )}
               {activity.map((row) => {
                 const oc = OUTCOME_STYLE[row.outcome] ?? { text: 'text-cyan-500/50', label: row.outcome.toUpperCase() };
                 const meta = data.meta[row.domain];
+                const researchReview = row.domain === 'market_research' && ['research_brief', 'lead_investigation'].includes(row.action)
+                  ? readResearchReview(row.detail)
+                  : null;
                 return (
                   <div key={row.id} className="flex items-start gap-3 px-4 py-2.5">
                     <span className={`font-mono text-[9px] tracking-wider w-16 shrink-0 ${oc.text}`}>{oc.label}</span>
@@ -1259,6 +1623,34 @@ export default function Autopilot() {
                         {meta?.label ?? row.domain} · {row.action} ·{' '}
                         <span title={fmtTime(row.createdAt)}>{fmtRelative(row.createdAt)}</span>
                       </p>
+                      {researchReview && (
+                        <details className="mt-2 rounded border border-cyan-500/15 bg-[#080c12] px-3 py-2">
+                          <summary className="cursor-pointer font-mono text-[9px] tracking-wider text-cyan-300/75">
+                            {row.action === 'lead_investigation' ? 'REVIEW COMPANY RESEARCH' : 'REVIEW MARKET BRIEF'} · {researchReview.sources.length} SOURCES
+                          </summary>
+                          <p className="mt-2 font-mono text-[9px] tracking-wider text-cyan-500/45">{researchReview.title}</p>
+                          <div className="mt-3 whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-cyan-100/75">
+                            {researchReview.report}
+                          </div>
+                          <div className="mt-3 border-t border-cyan-500/10 pt-2">
+                            <p className="mb-1 font-mono text-[8px] tracking-wider text-cyan-500/45">SOURCES</p>
+                            <ul className="space-y-1">
+                              {researchReview.sources.map((source) => (
+                                <li key={source.url}>
+                                  <a
+                                    href={source.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 font-sans text-[10px] text-cyan-300/75 underline underline-offset-2 hover:text-cyan-200"
+                                  >
+                                    {source.title} <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </details>
+                      )}
                     </div>
                   </div>
                 );

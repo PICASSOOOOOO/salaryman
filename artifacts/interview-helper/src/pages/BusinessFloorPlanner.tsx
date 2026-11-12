@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, BriefcaseBusiness, Hammer, HardHat, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 import type { BusinessFloorKind, BusinessFloorLaborMode, BusinessFloorTemplate } from "@workspace/api-zod/shadow-tower";
 
 type CurrentFloor = { id: number; floorNumber: number; city: string; settings?: Record<string, unknown> };
 type Option = { id: string; label: string };
 
 export default function BusinessFloorPlanner() {
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   const [templates, setTemplates] = useState<BusinessFloorTemplate[]>([]);
   const [options, setOptions] = useState<Option[]>([]);
   const [floor, setFloor] = useState<CurrentFloor | null>(null);
@@ -18,15 +20,18 @@ export default function BusinessFloorPlanner() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    setFloor(null);
     void Promise.all([
       apiFetch("/api/shadow-tower/business-templates").then((r) => r.json()),
-      apiFetch("/api/shadow-tower/floors/current", { credentials: "include" }).then(async (r) => r.ok ? r.json() : null),
+      isAuthenticated
+        ? apiFetch("/api/shadow-tower/floors/current", { credentials: "include" }).then(async (r) => r.ok ? r.json() : null)
+        : Promise.resolve(null),
     ]).then(([catalog, current]) => {
       setTemplates(catalog.templates ?? []);
       setOptions(catalog.customizationOptions ?? []);
       setFloor(current?.floor ?? null);
     }).catch(() => setStatus("FLOOR PLANNER OFFLINE"));
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
   const template = useMemo(() => templates.find((item) => item.kind === kind), [templates, kind]);
   const customizationFiat = selected.length * 2_500;
@@ -57,7 +62,22 @@ export default function BusinessFloorPlanner() {
         <Link href="/business/marketplace" className="text-xs border border-white/15 px-3 py-2 flex items-center gap-2"><ArrowLeft className="w-3 h-3" /> EXCHANGE</Link>
       </header>
 
-      {!floor && <div className="my-6 border border-amber-400/25 bg-amber-400/5 p-5 text-sm text-amber-200">Acquire or lease a Shadow Tower business floor before commissioning a fit-out. <Link href="/realty" className="underline">VIEW FLOORS</Link></div>}
+      {!floor && (
+        <div className="my-6 border border-amber-400/25 bg-amber-400/5 p-5 text-sm text-amber-200">
+          {authLoading ? (
+            "CHECKING SIGN-IN…"
+          ) : !isAuthenticated ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>Sign in to check for an owned floor and commission a fit-out. Public floor listings remain open.</span>
+              <button type="button" onClick={() => login("/business/floor-plans")} className="border border-amber-300/40 px-3 py-2 text-[10px] tracking-widest">
+                SIGN IN
+              </button>
+            </div>
+          ) : (
+            <>Acquire or lease a Shadow Tower business floor before commissioning a fit-out. <Link href="/realty" className="underline">VIEW FLOORS</Link></>
+          )}
+        </div>
+      )}
       <div className="grid md:grid-cols-[1.4fr_.9fr] gap-5 mt-6">
         <section>
           <h2 className="text-xs tracking-[.2em] text-zinc-400 mb-3">1 · CHOOSE BUSINESS BONES</h2>

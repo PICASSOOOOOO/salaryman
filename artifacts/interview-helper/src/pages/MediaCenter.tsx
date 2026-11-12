@@ -31,7 +31,7 @@ interface SharedItem {
   sourceUrl?: string;
   isRead: boolean;
   createdAt: string;
-  callHistoryId?: number;
+  callHistoryId?: number | null;
 }
 
 interface OrgMember {
@@ -72,7 +72,7 @@ function formatDate(d: string): string {
 }
 
 export default function MediaCenter() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [tab, setTab] = useState<Tab>("recordings");
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [inbox, setInbox] = useState<SharedItem[]>([]);
@@ -119,11 +119,16 @@ export default function MediaCenter() {
   const fetchCalls = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await mediaApi("/twilio/history?limit=100");
+      if (!user?.id) {
+        setCalls([]);
+        setLoading(false);
+        return;
+      }
+      const data = await mediaApi(`/twilio/history/${encodeURIComponent(user.id)}?limit=100`);
       setCalls((data.calls || data).filter((c: CallRecord) => c.recordingUrl));
     } catch {}
     setLoading(false);
-  }, []);
+  }, [user?.id]);
 
   const fetchInbox = useCallback(async () => {
     try {
@@ -159,7 +164,7 @@ export default function MediaCenter() {
     fetchCalls();
     fetchInbox();
     fetchMembers();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchCalls, fetchInbox, fetchMembers]);
 
   useEffect(() => {
     if (tab === "sent") fetchSent();
@@ -370,7 +375,7 @@ export default function MediaCenter() {
           <div>
             <h2 style={{ fontSize: "1.1rem", letterSpacing: "0.1em", marginBottom: 16 }}>CALL RECORDINGS</h2>
             {loading && <p style={{ color: "rgba(0,255,65,0.5)" }}>Loading...</p>}
-            {!loading && calls.length === 0 && <p style={{ color: "rgba(0,255,65,0.4)" }}>No recorded calls yet. Recordings are automatically saved for all calls.</p>}
+            {!loading && calls.length === 0 && <p style={{ color: "rgba(0,255,65,0.4)" }}>No call recordings are available. Recording depends on your and your organization’s settings. Open Phone → Recordings to manage them.</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {calls.map((call) => (
                 <div key={call.id} style={{ border: "1px solid rgba(0,255,65,0.2)", padding: 16, background: "rgba(0,255,65,0.03)" }}>
@@ -382,7 +387,7 @@ export default function MediaCenter() {
                       <span style={{ color: "rgba(0,255,65,0.4)", marginLeft: 10, fontSize: "0.8rem" }}>{formatDuration(call.durationSeconds)}</span>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      {["mp3", "wav", "ogg"].map((fmt) => (
+                      {["mp3"].map((fmt) => (
                         <button
                           key={fmt}
                           onClick={() => handleDownload(call.id, fmt)}
@@ -472,6 +477,22 @@ export default function MediaCenter() {
                   </div>
                 </div>
                 {item.description && <p style={{ color: "rgba(0,255,65,0.4)", fontSize: "0.8rem", marginTop: 6 }}>{item.description}</p>}
+                {item.mediaType === "recording" && item.callHistoryId != null && (
+                  <div onClick={(event) => event.stopPropagation()} style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <audio
+                      controls
+                      preload="none"
+                      src={`${API}/twilio/recording/${item.callHistoryId}`}
+                      aria-label={`Shared call recording: ${item.title}`}
+                      style={{ width: "min(420px, 100%)", height: 36 }}
+                    />
+                    <a
+                      href={`${API}/twilio/recording/${item.callHistoryId}?download=1`}
+                      download={`call-${item.callHistoryId}.mp3`}
+                      style={{ color: "#4af", fontSize: "0.8rem" }}
+                    >Download MP3</a>
+                  </div>
+                )}
                 {item.sourceUrl && (
                   <a href={item.sourceUrl} target="_blank" rel="noopener" style={{ color: "#4af", fontSize: "0.8rem" }}>View Source</a>
                 )}

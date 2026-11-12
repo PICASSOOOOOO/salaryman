@@ -1,0 +1,197 @@
+import { sql } from "drizzle-orm";
+import {
+  check,
+  foreignKey,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
+import { usersTable } from "./auth";
+import { deviceLinksTable } from "./device-links";
+
+export const towerOperationsStateTable = pgTable(
+  "tower_operations_state",
+  {
+    buildingKey: varchar("building_key", { length: 64 }).primaryKey().notNull().default("shadow_tower"),
+    accumulatedTrash: integer("accumulated_trash").notNull().default(0),
+    incomingSupplyCrates: integer("incoming_supply_crates").notNull().default(0),
+    storedSupplyCrates: integer("stored_supply_crates").notNull().default(0),
+    processedTrash: integer("processed_trash").notNull().default(0),
+    lastTrashTickAt: timestamp("last_trash_tick_at", { withTimezone: true }).notNull().defaultNow(),
+    lastTrashHaulAt: timestamp("last_trash_haul_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSupplyDeliveryAt: timestamp("last_supply_delivery_at", { withTimezone: true }).notNull().defaultNow(),
+    lastGeneratorWorkAt: timestamp("last_generator_work_at", { withTimezone: true }).notNull().defaultNow(),
+    lastPumpWorkAt: timestamp("last_pump_work_at", { withTimezone: true }).notNull().defaultNow(),
+    operatingBalanceFiat: integer("operating_balance_fiat").notNull().default(250000),
+    powerBillDueFiat: integer("power_bill_due_fiat").notNull().default(0),
+    waterBillDueFiat: integer("water_bill_due_fiat").notNull().default(0),
+    lastUtilityBillAt: timestamp("last_utility_bill_at", { withTimezone: true }).notNull().defaultNow(),
+    backupFuelDays: integer("backup_fuel_days").notNull().default(5),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => [
+    check("tower_operations_state_trash_check", sql`${table.accumulatedTrash} between 0 and 1000000`),
+    check("tower_operations_state_supplies_check", sql`${table.incomingSupplyCrates} between 0 and 1000000`),
+    check("tower_operations_state_stored_supplies_check", sql`${table.storedSupplyCrates} between 0 and 1000000`),
+    check("tower_operations_state_processed_trash_check", sql`${table.processedTrash} between 0 and 1000000`),
+    check("tower_operations_balance_check", sql`${table.operatingBalanceFiat} between 0 and 2147483647`),
+    check("tower_operations_power_bill_check", sql`${table.powerBillDueFiat} between 0 and 2147483647`),
+    check("tower_operations_water_bill_check", sql`${table.waterBillDueFiat} between 0 and 2147483647`),
+    check("tower_operations_backup_fuel_check", sql`${table.backupFuelDays} between 0 and 5`),
+  ],
+);
+
+export const towerOperationsLedgerTable = pgTable(
+  "tower_operations_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventKey: varchar("event_key", { length: 220 }).notNull(),
+    eventType: varchar("event_type", { length: 24 }).notNull(),
+    category: varchar("category", { length: 32 }).notNull(),
+    userId: varchar("user_id", { length: 256 }),
+    amountFiat: integer("amount_fiat").notNull(),
+    balanceAfterFiat: integer("balance_after_fiat").notNull(),
+    description: text("description").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tower_operations_ledger_event_unique").on(table.eventKey),
+    index("tower_operations_ledger_created_idx").on(table.createdAt),
+    index("tower_operations_ledger_user_created_idx").on(table.userId, table.createdAt),
+    check("tower_operations_ledger_event_type_check", sql`${table.eventType} in ('opening_capital', 'company_revenue', 'bill_payment', 'shop_capital_transfer')`),
+    check("tower_operations_ledger_amount_check", sql`${table.amountFiat} > 0`),
+    check("tower_operations_ledger_balance_check", sql`${table.balanceAfterFiat} between 0 and 2147483647`),
+  ],
+);
+
+export const towerWasteHaulsTable = pgTable(
+  "tower_waste_hauls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: varchar("user_id", { length: 256 }).notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    linkId: uuid("link_id").notNull()
+      .references(() => deviceLinksTable.id, { onDelete: "cascade" }),
+    units: integer("units").notNull(),
+    pickedUpFloor: integer("picked_up_floor").notNull(),
+    pickedUpAt: timestamp("picked_up_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("tower_waste_hauls_one_active_per_user_idx")
+      .on(table.userId)
+      .where(sql`${table.deliveredAt} is null`),
+    index("tower_waste_hauls_link_idx").on(table.linkId, table.pickedUpAt),
+    check("tower_waste_hauls_units_check", sql`${table.units} between 1 and 100`),
+    check("tower_waste_hauls_floor_check", sql`${table.pickedUpFloor} in (1, 6)`),
+  ],
+);
+
+export const towerRestroomSessionsTable = pgTable(
+  "tower_restroom_sessions",
+  {
+    userId: varchar("user_id", { length: 256 }).primaryKey().notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    linkId: uuid("link_id").notNull()
+      .references(() => deviceLinksTable.id, { onDelete: "cascade" }),
+    floorNumber: integer("floor_number").notNull(),
+    stallKey: varchar("stall_key", { length: 48 }).notNull(),
+    sessionId: uuid("session_id").notNull().defaultRandom(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tower_restroom_sessions_stall_unique").on(table.floorNumber, table.stallKey),
+    check("tower_restroom_sessions_floor_check", sql`${table.floorNumber} in (1, 6)`),
+  ],
+);
+
+export const careerPositionsTable = pgTable(
+  "career_positions",
+  {
+    positionKey: varchar("position_key", { length: 220 }).primaryKey().notNull(),
+    employerKey: varchar("employer_key", { length: 120 }).notNull(),
+    title: varchar("title", { length: 160 }).notNull(),
+    department: varchar("department", { length: 80 }).notNull().default(""),
+    incumbentName: varchar("incumbent_name", { length: 120 }).notNull(),
+    incumbentSince: timestamp("incumbent_since", { withTimezone: true }).notNull().defaultNow(),
+    nextTurnoverAt: timestamp("next_turnover_at", { withTimezone: true }).notNull().defaultNow(),
+    lastTurnoverAt: timestamp("last_turnover_at", { withTimezone: true }),
+    baselineOutputUnits: integer("baseline_output_units").notNull().default(20),
+    baselineAttendanceDays: integer("baseline_attendance_days").notNull().default(18),
+    baselineReliabilityPct: integer("baseline_reliability_pct").notNull().default(88),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("career_positions_employer_idx").on(table.employerKey),
+    check("career_positions_output_check", sql`${table.baselineOutputUnits} between 1 and 1000000`),
+    check("career_positions_attendance_check", sql`${table.baselineAttendanceDays} between 1 and 31`),
+    check("career_positions_reliability_check", sql`${table.baselineReliabilityPct} between 1 and 100`),
+  ],
+);
+
+export const careerWorkEventsTable = pgTable(
+  "career_work_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventKey: varchar("event_key", { length: 180 }).notNull(),
+    positionKey: varchar("position_key", { length: 220 }).notNull(),
+    userId: varchar("user_id", { length: 256 }).notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 16 }).notNull().default("started"),
+    outputUnits: integer("output_units").notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("career_work_events_event_key_idx").on(table.eventKey),
+    foreignKey({
+      name: "career_work_event_position_fk",
+      columns: [table.positionKey],
+      foreignColumns: [careerPositionsTable.positionKey],
+    }).onDelete("cascade"),
+    index("career_work_events_position_user_completed_idx")
+      .on(table.positionKey, table.userId, table.completedAt),
+    index("career_work_events_started_idx").on(table.status, table.startedAt),
+    check("career_work_events_status_check", sql`${table.status} in ('started', 'completed', 'missed')`),
+    check("career_work_events_output_check", sql`${table.outputUnits} between 0 and 1000000`),
+    check(
+      "career_work_events_completion_check",
+      sql`(${table.status} = 'completed' and ${table.completedAt} is not null and ${table.outputUnits} > 0) or (${table.status} <> 'completed' and ${table.completedAt} is null)`,
+    ),
+  ],
+);
+
+export const careerPromotionsTable = pgTable(
+  "career_promotions",
+  {
+    employerKey: varchar("employer_key", { length: 120 }).notNull(),
+    positionKey: varchar("position_key", { length: 220 }).notNull()
+      .references(() => careerPositionsTable.positionKey, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 256 }).notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    level: integer("level").notNull().default(1),
+    promotedAt: timestamp("promoted_at", { withTimezone: true }),
+    evaluatedIncumbentSince: timestamp("evaluated_incumbent_since", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({
+      name: "career_promotions_employer_position_user_pk",
+      columns: [table.employerKey, table.positionKey, table.userId],
+    }),
+    check("career_promotions_level_check", sql`${table.level} between 1 and 10`),
+  ],
+);
+
+export type TowerOperationsState = typeof towerOperationsStateTable.$inferSelect;
+export type TowerOperationsLedgerEntry = typeof towerOperationsLedgerTable.$inferSelect;
+export type TowerWasteHaul = typeof towerWasteHaulsTable.$inferSelect;
+export type CareerPosition = typeof careerPositionsTable.$inferSelect;
+export type CareerWorkEvent = typeof careerWorkEventsTable.$inferSelect;
+export type CareerPromotion = typeof careerPromotionsTable.$inferSelect;

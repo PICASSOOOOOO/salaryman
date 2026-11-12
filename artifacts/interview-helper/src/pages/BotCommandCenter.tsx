@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import type { BotData, BotConnection } from './BotFactory';
+import { PixelAgentFace, divisionFor } from '@/components/PixelAgentFace';
 
 interface BotTask {
   id: number;
@@ -182,6 +183,13 @@ export default function BotCommandCenter({
                   bot.status === 'active' ? 'bg-emerald-400 animate-pulse' :
                   bot.status === 'paused' ? 'bg-amber-400' : 'bg-red-400 animate-pulse'
                 }`} />
+                <div className="h-9 w-9 shrink-0 overflow-hidden rounded border border-cyan-500/20 bg-cyan-500/10">
+                  <PixelAgentFace
+                    seed={bot.name}
+                    theme={divisionFor(bot.name).theme}
+                    className="h-full w-full"
+                  />
+                </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

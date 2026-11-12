@@ -277,7 +277,7 @@ export async function processIncomingMessage(
       }
 
       if (!ownerSubscribed) {
-        musicAppendix = "\n\n🔒 **PABLO SUBSCRIPTION REQUIRED** — Auto-generation via Replicate MusicGen is a Jean Claw / PABLO PACKAGE perk ($149/mo). The [MUSIC_GENERATE] brief above is ready; subscribe to /pricing to have Terrence cut the track automatically.";
+        musicAppendix = "\n\n🔒 **PABLO SUBSCRIPTION REQUIRED** — Auto-generation via Replicate MusicGen is a PABLO PRIME perk ($100/mo). The [MUSIC_GENERATE] brief above is ready; subscribe to /pricing to have Terrence cut the track automatically.";
       } else if (isMusicConfigured()) {
         try {
           const result = await generateMusic(musicReq);

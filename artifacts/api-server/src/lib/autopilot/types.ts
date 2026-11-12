@@ -1,9 +1,11 @@
-import type { AutopilotConfig, AutopilotDomain, AutopilotOutcome, Bot } from "@workspace/db";
+import type { AutopilotConfig, AutopilotDomain, AutopilotOutcome } from "@workspace/db";
+
+export const AUTOPILOT_ASSISTANT_NAME = "Pablo Prime";
 
 // ─── Autopilot handler contract ──────────────────────────────────────────────
 // A domain handler is invoked by the scheduler ONCE per due tick for an org that
-// has the domain enabled with a valid assigned bot. The four dependent tasks
-// (Business Ops / Marketing / CRM & Calls / Accounting) each register a handler.
+// has the domain enabled. Pablo Prime owns the supported domains; paid account
+// activation remains limited to the original four workflows.
 //
 // CORE RULE: a handler must perform its work by calling the SAME service
 // functions the manual screens call — never by re-implementing logic — so the
@@ -22,8 +24,8 @@ export interface AutopilotContext {
   orgId: number;
   domain: AutopilotDomain;
   config: AutopilotConfig;
-  /** The assigned bot running this domain (already validated to belong to the org). */
-  bot: Bot;
+  /** Stable actor identity for work performed by Pablo's automation arm. */
+  assistantName: typeof AUTOPILOT_ASSISTANT_NAME;
   /** Org owner — the account whose entitlement & API-credit balance gate paid work. */
   ownerId: string;
   ownerEmail: string | null;

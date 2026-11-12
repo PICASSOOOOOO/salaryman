@@ -3,9 +3,8 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 // ─── Bot Autopilot ───────────────────────────────────────────────────────────
-// Per-org, per-domain configuration that lets an assigned bot (Pixel Agent) run
-// a business domain automatically. This is the SHARED FOUNDATION the four domain
-// autopilots (business ops, marketing, CRM/calls, accounting) build on. Autopilot
+// Per-org, per-domain configuration for Pablo Prime's scheduled workflows. This
+// is the SHARED FOUNDATION the domain autopilots build on. Autopilot
 // is strictly ADDITIVE: every domain defaults to disabled, and turning it off
 // returns the domain to manual-only with zero data divergence — the automated
 // handlers call the SAME service functions the manual screens use.
@@ -15,8 +14,19 @@ export const AUTOPILOT_DOMAINS = [
   "marketing",
   "crm_calls",
   "accounting",
+  "creative_work",
+  "market_research",
 ] as const;
 export type AutopilotDomain = (typeof AUTOPILOT_DOMAINS)[number];
+
+// Paid Prime activation is intentionally narrower than the supported domain
+// catalog. New domains remain opt-in unless this list is explicitly changed.
+export const AUTOPILOT_PRIME_AUTO_START_DOMAINS = [
+  "business_ops",
+  "marketing",
+  "crm_calls",
+  "accounting",
+] as const satisfies readonly AutopilotDomain[];
 
 export function isAutopilotDomain(d: string): d is AutopilotDomain {
   return (AUTOPILOT_DOMAINS as readonly string[]).includes(d);
@@ -34,11 +44,19 @@ export const AUTOPILOT_DOMAIN_META: Record<AutopilotDomain, { label: string; des
   },
   crm_calls: {
     label: "CRM & Calls",
-    description: "Works the lead pipeline, logs activity and handles routine calls, SMS and follow-ups.",
+    description: "Works the lead pipeline and sends consent-aware SMS follow-ups. Automated phone calls are not used.",
   },
   accounting: {
     label: "Accounting",
     description: "Keeps the books — reconciles transactions, drafts invoices and prepares financial reports.",
+  },
+  creative_work: {
+    label: "Creative Work",
+    description: "Drafts an offline project plan and prototype after the owner updates the selected project. Never publishes or runs it.",
+  },
+  market_research: {
+    label: "Market Research",
+    description: "Creates a source-linked market brief for owner review. Read-only; no outreach, publishing, or purchases.",
   },
 };
 
@@ -48,6 +66,10 @@ export type AutopilotOutcome = (typeof AUTOPILOT_OUTCOMES)[number];
 
 // Default cadence (minutes) for a domain tick when an org has not set one.
 export const AUTOPILOT_DEFAULT_CADENCE_MINUTES = 60;
+// Creative Work is both opt-in and deliberately rate-limited to one check per day.
+export const AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES = 1440;
+// Market research is opt-in and limited to one source-backed brief per day.
+export const AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES = 1440;
 // Default per-tick action cap when an org has not set one.
 export const AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK = 5;
 
@@ -78,6 +100,8 @@ export interface MarketingAutopilotPrefs {
   platforms: string[];
   tone: string;
   topics: string[];
+  generateImages: boolean;
+  imageGenerationApprovedBy: string | null;
 }
 
 // ── Business Ops autopilot preferences ───────────────────────────────────────
@@ -155,6 +179,19 @@ export interface AccountingAutopilotPrefs {
   payroll: boolean;
   reminderCooldownDays: number;
   payrollPeriodDays: number;
+}
+
+// Owner-only target for the review-only Creative Work workflow.
+export interface CreativeWorkAutopilotPrefs {
+  projectId: number | null;
+  focus: string;
+}
+
+// Owner-only scope for one daily, read-only market brief.
+export interface MarketResearchAutopilotPrefs {
+  subject: string;
+  region: string;
+  competitors: string;
 }
 
 // Per-org, per-domain autopilot configuration. A row is created lazily the first

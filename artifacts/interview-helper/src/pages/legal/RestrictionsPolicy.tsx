@@ -10,7 +10,7 @@ export default function RestrictionsPolicy() {
       <h2>1. Age Requirements</h2>
       <p><strong>Minimum Age — General Use:</strong> You must be at least <strong>13 years of age</strong> to create a SALARYMAN account. By registering, you confirm that you meet this requirement.</p>
       <p><strong>Minimum Age — Purchases &amp; Subscriptions:</strong> You must be at least <strong>18 years of age</strong> (or the age of majority in your jurisdiction, whichever is higher) to make any purchases, including FIAT (ƒ), cosmetic items, Passport, Calll Home, or physical merchandise. Users under 18 must obtain verifiable parental or guardian consent before making any purchase.</p>
-      <p><strong>Minimum Age — Phone System (Calll Home):</strong> Use of the Calll Home phone system requires you to be at least 18 years of age.</p>
+      <p><strong>Minimum Age — CALLL HOME:</strong> Use of CALLL HOME requires you to be at least 18 years of age.</p>
       <p>PICASSO AI LLC does not knowingly permit minors under 13 to use the Service. If we become aware of an underage user, the account will be suspended pending age verification or parental consent.</p>
 
       <h2>2. Geographic Restrictions</h2>
@@ -50,7 +50,7 @@ export default function RestrictionsPolicy() {
       <p>SALARYMAN's cosmetic store does not use randomized "loot box" or chance-based mechanics for purchasing cosmetics. All cosmetic items are available for a fixed FIAT (ƒ) price. Promotional events may include chance-based elements; where such elements exist, odds will be disclosed in accordance with applicable law.</p>
 
       <h2>6. Telecommunications Compliance</h2>
-      <p>The Calll Home phone system is subject to applicable telecommunications laws including the Telephone Consumer Protection Act (TCPA) in the United States. You agree not to use Calll Home to make calls that violate the TCPA or equivalent laws in your jurisdiction, including making unsolicited robocalls or calls to numbers on the National Do Not Call Registry.</p>
+      <p>CALLL HOME is subject to applicable telecommunications laws including the Telephone Consumer Protection Act (TCPA) in the United States. You agree not to use CALLL HOME to make calls that violate the TCPA or equivalent laws in your jurisdiction, including making unsolicited robocalls or calls to numbers on the National Do Not Call Registry.</p>
 
       <h2>7. Contact</h2>
       <p>For questions regarding legal or export restrictions, please use our <a href="/legal/contact">Contact Us</a> page with subject "Legal Inquiry".</p>

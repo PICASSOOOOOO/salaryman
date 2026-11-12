@@ -1,0 +1,60 @@
+extends CharacterBody2D
+
+# --- ZELDA: LINK TO THE PAST TUNING VARIABLES ---
+@export var MAX_SPEED = 175.0        # Perfect pace for top-down exploration
+@export var ACCELERATION = 2500.0    # Very fast startup for snappy combat response
+@export var FRICTION = 3000.0        # Rapid dropoff so you stop right away when releasing keys
+
+# Tracking cardinal direction for animations later (Up, Down, Left, Right)
+var facing_direction := Vector2.DOWN 
+
+var server := TCPServer.new()
+var connection: StreamPeerTCP
+var pygame_input := Vector2.ZERO     
+
+func _ready():
+	server.listen(4242)
+
+func _physics_process(delta: float):
+	_check_network()
+	
+	# 1. THE VECTOR CLAMP (Crucial for Zelda)
+	# .normalized() prevents diagonal movement from being 1.4x faster
+	var input_dir = pygame_input.normalized() 
+	
+	# 2. CALCULATE VELOCITY
+	if input_dir != Vector2.ZERO:
+		# Blend current velocity up to top speed seamlessly
+		velocity = velocity.move_toward(input_dir * MAX_SPEED, ACCELERATION * delta)
+		
+		# Update orientation tracking based on primary movement
+		_update_facing_direction(input_dir)
+	else:
+		# Snap to a stop almost instantly like classic Link
+		velocity = velocity.move_toward(Vector2.ZERO, FRICTION * delta)
+
+	# 3. COLLISION HANDLING
+	# If you walk into a pottery jar or wall corner, Godot guides you around it smoothly
+	move_and_slide()
+
+func _update_facing_direction(dir: Vector2):
+	# Prioritizes the stronger vector axis to figure out if you're facing N/S/E/W
+	if abs(dir.x) > abs(dir.y):
+		facing_direction = Vector2.RIGHT if dir.x > 0 else Vector2.LEFT
+	else:
+		facing_direction = Vector2.DOWN if dir.y > 0 else Vector2.UP
+	
+	# You can now use 'facing_direction' to trigger the right sprite animations!
+
+func _check_network():
+	if server.is_connection_available():
+		connection = server.take_connection()
+	if connection and connection.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+		var bytes = connection.get_available_bytes()
+		if bytes > 0:
+			var data = connection.get_string(bytes)
+			var json = JSON.new()
+			if json.parse(data) == OK:
+				var input_data = json.get_data()
+				pygame_input.x = input_data.get("x", 0)
+				pygame_input.y = input_data.get("y", 0)

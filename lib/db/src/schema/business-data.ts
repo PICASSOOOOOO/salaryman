@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -80,7 +81,7 @@ export const businessEntityRelationsTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     orgId: integer("org_id").notNull(),
-    fromEntityId: uuid("from_entity_id").notNull().references(() => businessEntitiesTable.id, { onDelete: "cascade" }),
+    fromEntityId: uuid("from_entity_id").notNull(),
     toEntityId: uuid("to_entity_id").notNull().references(() => businessEntitiesTable.id, { onDelete: "cascade" }),
     relationType: varchar("relation_type", { length: 60 }).notNull(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
@@ -91,6 +92,11 @@ export const businessEntityRelationsTable = pgTable(
     uniqueIndex("business_entity_relations_unique_idx").on(table.fromEntityId, table.toEntityId, table.relationType),
     index("business_entity_relations_org_type_idx").on(table.orgId, table.relationType),
     index("business_entity_relations_to_idx").on(table.toEntityId, table.relationType),
+    foreignKey({
+      name: "business_entity_relation_from_fk",
+      columns: [table.fromEntityId],
+      foreignColumns: [businessEntitiesTable.id],
+    }).onDelete("cascade"),
   ],
 );
 

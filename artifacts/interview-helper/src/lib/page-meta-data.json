@@ -1,6 +1,6 @@
 {
-  "baseUrl": "https://salaryman.replit.app",
-  "defaultOgImage": "https://salaryman.replit.app/og-salaryman.png",
+  "baseUrl": "https://salaryman.io",
+  "defaultOgImage": "https://salaryman.io/og-salaryman.png",
   "routes": {
     "/": {
       "title": "Salaryman by Picasso AI - AI Business Operating System",
@@ -10,15 +10,15 @@
     },
     "/pricing": {
       "title": "Pricing — SALARYMAN by Picasso AI",
-      "description": "SALARYMAN is free to start. Upgrade to PABLO PRIME at $149/month for the curated nine-agent workforce, the AI phone system, and all premium features.",
+      "description": "SALARYMAN is free to start. Pablo AI brings chat and business automation together. CALLL HOME connects calling and messaging to your CRM.",
       "ogTitle": "SALARYMAN Pricing — Free to Start, Powerful to Scale",
-      "ogDescription": "Start free with Pablo. Unlock the curated nine-agent workforce and the full SALARYMAN platform with a PABLO PRIME subscription at $149/month."
+      "ogDescription": "Start free with SALARYMAN. Compare Pablo AI and CALLL HOME plans, with custom terms for client-specific services."
     },
     "/pledge": {
-      "title": "Pledge Store — SALARYMAN by Picasso AI",
-      "description": "Get PABLO PRIME and dollar-backed Pixel Agent upgrades through secure billing. Property, gear, vehicles, and supplies stay in the SALARYMAN FIAT economy.",
-      "ogTitle": "SALARYMAN Pledge Store — PABLO PRIME & Pixel Agent Upgrades",
-      "ogDescription": "The single store for PABLO PRIME membership and dollar-backed Pixel Agent upgrades, with all other goods earned or purchased in-game."
+      "title": "Pricing — SALARYMAN by Picasso AI",
+      "description": "SALARYMAN is free to start. Compare Pablo AI and CALLL HOME plans, with custom terms agreed with each client.",
+      "ogTitle": "SALARYMAN Pricing — Pablo AI and CALLL HOME",
+      "ogDescription": "Compare SALARYMAN service plans for Pablo AI and CALLL HOME."
     },
     "/pledge/agents": {
       "title": "Pixel Agents — Meet the AI Bot Team — SALARYMAN",
@@ -31,6 +31,12 @@
       "description": "Investment and partnership opportunities with Picasso AI, the company behind SALARYMAN — the AI-powered business operating system built for the next era of work.",
       "ogTitle": "Investors — SALARYMAN by Picasso AI",
       "ogDescription": "Picasso AI is building the next generation AI business operating system. Learn about investment and partnership opportunities."
+    },
+    "/sms-opt-in": {
+      "title": "SMS Opt-In — SALARYMAN",
+      "description": "Voluntarily enroll in recurring automated SALARYMAN informational text messages. Message frequency varies; message and data rates may apply.",
+      "ogTitle": "SALARYMAN SMS Text Updates",
+      "ogDescription": "Review the SALARYMAN text message program and its optional opt-in, frequency, rates, STOP, and HELP information."
     },
     "/legal": {
       "title": "Legal — SALARYMAN by Picasso AI",

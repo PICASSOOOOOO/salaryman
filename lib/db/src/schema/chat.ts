@@ -61,7 +61,7 @@ export const chatReadCursorsTable = pgTable("chat_read_cursors", {
   lastReadMessageId: integer("last_read_message_id"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
-  unique("chat_read_cursors_user_channel_unique").on(t.userId, t.channelId),
+  unique("chat_read_cursors_user_channel_unique").on(t.channelId, t.userId),
   index("chat_read_cursors_user_idx").on(t.userId),
   index("chat_read_cursors_channel_idx").on(t.channelId),
 ]);

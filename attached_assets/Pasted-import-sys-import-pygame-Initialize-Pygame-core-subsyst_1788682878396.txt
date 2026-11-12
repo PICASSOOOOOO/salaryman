@@ -1,0 +1,218 @@
+import sys
+import pygame
+
+# Initialize Pygame core subsystems
+pygame.init()
+pygame.font.init()
+
+# --- 1. CONFIGURATION & DESIGN SYSTEM ---
+WIDTH, HEIGHT = 900, 650
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Office Executive Tycoon — Grid & Alert Update")
+clock = pygame.time.Clock()
+
+# Cohesive Palette System
+COLOR_BG       = (20, 24, 33)    # Deep Obsidian Slate
+COLOR_SURFACE  = (28, 34, 46)    # Container standard fills
+COLOR_PANEL    = (38, 46, 62)    # Borders, grids, card default
+COLOR_TEXT_MAIN= (240, 244, 248) # Crisp title typography
+COLOR_TEXT_MUTED= (148, 163, 184)# Desaturated technical spec labels
+COLOR_GREEN    = (52, 211, 153)  # Emerald operational success
+COLOR_ORANGE   = (251, 146, 60)  # Warning (Low stamina)
+COLOR_RED      = (248, 113, 113) # Fatal (Exhausted / Cost)
+
+# Typography Anchors
+FONT_UI_LARGE  = pygame.font.SysFont("Segoe UI, Arial", 24, bold=True)
+FONT_UI_MEDIUM = pygame.font.SysFont("Segoe UI, Arial", 16, bold=True)
+FONT_UI_REG    = pygame.font.SysFont("Segoe UI, Arial", 14, bold=False)
+
+
+# --- 2. FLOATING ALERTS ENGINE ---
+class ToastNotification:
+    def __init__(self, message, type="warning"):
+        self.message = message
+        self.type = type
+        self.lifetime = 3.5  # Seconds toast stays active
+        self.alpha = 255     # Fade opacity mapping
+
+    def update(self, dt):
+        self.lifetime -= dt
+        if self.lifetime < 1.0:
+            self.alpha = max(0, int(self.lifetime * 255))
+        return self.lifetime > 0
+
+
+# --- 3. CORE SYSTEM LOGIC MANAGER ---
+class OfficeManager:
+    def __init__(self):
+        self.money = 2500.0
+        self.current_hour = 9
+        self.current_day = 1
+        self.tick_timer = 0.0
+        self.seconds_per_hour = 2.0
+        self.employees = []
+        self.alerts = []  # Active notification track
+
+    def push_alert(self, text, type="warning"):
+        # Enforce unique alerts to avoid spamming the log
+        if not any(a.message == text for a in self.alerts):
+            self.alerts.insert(0, ToastNotification(text, type))
+
+    def update(self, delta_time):
+        self.tick_timer += delta_time
+        if self.tick_timer >= self.seconds_per_hour:
+            self.tick_timer = 0.0
+            self.advance_time()
+            
+        # Update running notification animations
+        self.alerts = [a for a in self.alerts if a.update(delta_time)]
+
+    def advance_time(self):
+        self.current_hour += 1
+        is_shift_active = 9 <= self.current_hour <= 17
+
+        for emp in self.employees:
+            emp.hourly_update(self.current_hour, is_shift_active)
+
+        if self.current_hour > 17:
+            self.current_hour = 9
+            self.current_day += 1
+
+    def draw_alerts(self, surface):
+        # Render stack starting from the lower right canvas quadrant
+        start_y = HEIGHT - 50
+        for i, alert in enumerate(self.alerts[:4]):  # Cap visible queue size to 4
+            alert_rect = pygame.Rect(WIDTH - 320, start_y - (i * 55), 300, 45)
+            
+            # Alpha surfaces for smooth fade-out animations
+            s = pygame.Surface((alert_rect.width, alert_rect.height), pygame.SRCALPHA)
+            bg_col = (239, 68, 68, alert.alpha) if alert.type == "danger" else (245, 158, 11, alert.alpha)
+            
+            pygame.draw.rect(s, bg_col, (0, 0, alert_rect.width, alert_rect.height), border_radius=6)
+            surface.blit(s, (alert_rect.x, alert_rect.y))
+            
+            txt_color = (255, 255, 255)
+            lbl_msg = FONT_UI_REG.render(alert.message, True, txt_color)
+            lbl_msg.set_alpha(alert.alpha)
+            surface.blit(lbl_msg, (alert_rect.x + 15, alert_rect.y + 13))
+
+
+# --- 4. DATA MODEL / MODULAR LAYOUT COMPONENT ---
+class EmployeeCard:
+    def __init__(self, name, productivity, salary):
+        self.name = name
+        self.base_productivity = productivity
+        self.salary_per_day = salary
+        
+        # Dimensions are absolute structural bounds; layout positions are calculated during draw cycles
+        self.width = 240
+        self.height = 180
+        self.coffee_btn = pygame.Rect(0, 0, 95, 32)
+        
+        self.max_stamina = 100.0
+        self.stamina = 100.0
+        self.drain_rate = 12.0 # Adjusted for faster demonstration mechanics
+        self.coffee_cost = 20.0
+        self.is_resting = False
+
+    def hourly_update(self, hour, is_shift_active):
+        if is_shift_active:
+            if self.is_resting:
+                self.stamina = min(self.max_stamina, self.stamina + 35.0)
+                if self.stamina >= self.max_stamina:
+                    self.is_resting = False
+            else:
+                if self.stamina > 0:
+                    self.stamina = max(0.0, self.stamina - self.drain_rate)
+                    efficiency = self.stamina / self.max_stamina
+                    manager.add_money(self.base_productivity * efficiency)
+                    
+                    # Core trigger evaluation states
+                    if self.stamina  0:
+            status_txt, status_col = "WORKING", COLOR_GREEN
+        else:
+            status_txt, status_col = "IDLE", COLOR_TEXT_MUTED
+            
+        lbl_status = FONT_UI_MEDIUM.render(status_txt, True, status_col)
+        surface.blit(lbl_status, (x + 16, real_y + 90))
+
+        # Stamina Vector Bar Rendering
+        bar_x, bar_y, bar_w, bar_h = x + 16, real_y + 140, 100, 14
+        pygame.draw.rect(surface, COLOR_PANEL, (bar_x, bar_y, bar_w, bar_h), border_radius=4)
+        
+        stamina_pct = self.stamina / self.max_stamina
+        if stamina_pct > 0:
+            bar_color = COLOR_GREEN if stamina_pct > 0.4 else (COLOR_ORANGE if stamina_pct > 0.15 else COLOR_RED)
+            pygame.draw.rect(surface, bar_color, (bar_x, bar_y, int(bar_w * stamina_pct), bar_h), border_radius=4)
+
+        # Action Input Layout mapping
+        btn_hover = self.coffee_btn.collidepoint(pygame.mouse.get_pos())
+        btn_color = COLOR_PANEL if not btn_hover else (55, 65, 87)
+        pygame.draw.rect(surface, btn_color, self.coffee_btn, border_radius=6)
+        
+        lbl_btn = FONT_UI_REG.render(f"Coffee (${int(self.coffee_cost)})", True, COLOR_TEXT_MAIN)
+        surface.blit(lbl_btn, (self.coffee_btn.x + 12, self.coffee_btn.y + 7))
+
+
+# --- 5. EXECUTION & APP PIPELINE ---
+manager = OfficeManager()
+scroll_y = 0
+max_scroll = 0
+
+# Bulk Mock Data population verifying Grid Scalability properties
+worker_roster = [
+    ("Alice Vance", 30, 120), ("Bob Wright", 45, 180), ("Charlie Fox", 60, 250),
+    ("David Miller", 25, 100), ("Eva Green", 50, 210), ("Frank Castle", 80, 400),
+    ("Grace Hopper", 95, 500), ("Henry Ford", 40, 160), ("Ivy League", 70, 310)
+]
+for item in worker_roster:
+    manager.employees.append(EmployeeCard(item[0], item[1], item[2]))
+
+running = True
+while running:
+    dt = clock.tick(60) / 1000.0
+    
+    # Process Inputs
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+            
+        # Vertical Scrolling Calculations mapping mouse wheel mechanics
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 4:    # Scroll Up
+                scroll_y = max(0, scroll_y - 30)
+            elif event.button == 5:  # Scroll Down
+                scroll_y = min(max_scroll, scroll_y + 30)
+                
+            # Direct Interaction checking inside target coordinates
+            elif event.button == 1:
+                for emp in manager.employees:
+                    if emp.coffee_btn.collidepoint(event.pos) and manager.money >= emp.coffee_cost:
+                        manager.pay_wages(emp.coffee_cost)
+                        emp.is_resting = True
+
+    # Process State Machines
+    manager.update(dt)
+
+    # Frame Buffer Clean
+    screen.fill(COLOR_BG)
+
+    # Infinite Grid Draw Compiler Logic Loops
+    col_width, row_height = 270, 210
+    start_x, start_y = 50, 160
+    
+    for i, employee in enumerate(manager.employees):
+        column = i % 3
+        row = i // 3
+        pos_x = start_x + (column * col_width)
+        pos_y = start_y + (row * row_height)
+        
+        # Render item instances using our calculated layout and scroll metrics
+        employee.draw(screen, pos_x, pos_y, scroll_y, manager.current_hour)
+        
+    # Recalculate deep scroll limits dynamically as data changes
+    total_rows = ((len(manager.employees) - 1) // 3) + 1
+    max_scroll = max(0, (start_y + (total_rows * row_height)) - (HEIGHT - 50))
+
+    # Sticky Persistent HUD Layer Dashboard Overlay
+    pygame.draw.rect(screen, COLOR_SURFACE, (0, 0, WIDTH, 130))

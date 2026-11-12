@@ -3,17 +3,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import legacy from "@vitejs/plugin-legacy";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { createRequire } from "module";
 
 const _require = createRequire(import.meta.url);
-const { getFormattedVersion, bumpVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
-
+const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 const isBuild = process.argv.includes("build");
-
-if (isBuild) {
-  try { bumpVersion(); } catch {}
-}
 const rawPort = process.env.PORT;
 
 if (!rawPort && !isBuild) {
@@ -35,7 +29,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss({ optimize: false }),
-    runtimeErrorOverlay(),
     // Ship a parallel "legacy" bundle (with polyfills) for older browsers
     // — older Safari/iOS, older Edge, older Android Chrome. Modern browsers
     // still get the lean modern bundle via <script type="module">; legacy
@@ -54,30 +47,30 @@ export default defineConfig({
       modernPolyfills: true,
       renderLegacyChunks: true,
     }),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      "os": path.resolve(import.meta.dirname, "src/lib/browser-node-shims/os.ts"),
+      "path": path.resolve(import.meta.dirname, "src/lib/browser-node-shims/path.ts"),
+      "util": path.resolve(import.meta.dirname, "src/lib/browser-node-shims/util.ts"),
     },
     dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname),
   define: {
     "__BUILD_VERSION__": JSON.stringify(getFormattedVersion()),
+    // A browser dependency in the Meshtastic stack reads Node's process
+    // metadata. Keep its expected shape without shipping a Node polyfill.
+    process: "globalThis.process",
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        process: "globalThis.process",
+      },
+    },
   },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
@@ -87,6 +80,10 @@ export default defineConfig({
     // overridden with a warning. We *do* still set cssTarget — plugin-legacy
     // doesn't manage CSS compatibility.
     cssTarget: ["chrome64", "safari12", "firefox67", "edge79"],
+    // plugin-legacy forces Terser for legacy chunks. Vite defaults its Terser
+    // pool to CPU count minus one; serialize it to keep the shared build's
+    // peak memory within the existing 3 GiB Node heap budget.
+    terserOptions: { maxWorkers: 1 },
     rollupOptions: {
       output: {
         manualChunks(id) {

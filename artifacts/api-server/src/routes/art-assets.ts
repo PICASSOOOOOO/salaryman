@@ -230,14 +230,19 @@ export function shouldRetryFailedAsset(asset: ArtAsset): boolean {
  * Updates the row with the provider's job handle (taskId + backendMeta).
  */
 async function kickoff(asset: ArtAsset): Promise<ArtAsset> {
-  const provider = getProvider(asset.backend);
+  let provider = getProvider(asset.backend);
   if (!provider.isConfigured()) {
-    const msg = `${provider.label} is not configured; refusing to silently switch renderers`;
-    const [updated] = await db.update(artAssetsTable)
-      .set({ status: "failed", failMsg: msg, updatedAt: new Date() })
+    // An explicitly selected backend is allowed to fall back to the configured
+    // default.  If the default is unavailable too, leave the row completely
+    // untouched so it can be retried when a backend is configured.
+    const fallback = getProvider(DEFAULT_PROVIDER_ID);
+    if (!fallback.isConfigured()) return asset;
+    provider = fallback;
+    const [reassigned] = await db.update(artAssetsTable)
+      .set({ backend: DEFAULT_PROVIDER_ID, updatedAt: new Date() })
       .where(eq(artAssetsTable.id, asset.id))
       .returning();
-    return updated || asset;
+    asset = reassigned || { ...asset, backend: DEFAULT_PROVIDER_ID };
   }
   if (inflight.has(asset.key)) return asset;
   inflight.add(asset.key);

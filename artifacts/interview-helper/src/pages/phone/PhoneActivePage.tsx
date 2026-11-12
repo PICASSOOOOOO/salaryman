@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight, FileText, MessageSquare, Clock, Shield, Volume2, Hash, User, Activity , PhoneIncoming, VolumeX} from 'lucide-react';
+import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight, FileText, MessageSquare, Clock, Shield, Volume2, Hash, User, Activity , PhoneIncoming, VolumeX, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
@@ -24,6 +24,21 @@ interface DialingSession {
   total: number;
   dialed: number;
   queue?: Array<{ phone: string; name?: string }>;
+  concurrency?: number;
+  delayBetweenCalls?: number;
+  paused?: boolean;
+  error?: string;
+}
+
+interface DialingAttempt {
+  id: number;
+  queueIndex: number | null;
+  phone: string;
+  name: string | null;
+  status: string;
+  durationSeconds: number | null;
+  recordingSid: string | null;
+  recordingUrl: string | null;
 }
 
 function loadSession(): DialingSession | null {
@@ -93,6 +108,7 @@ export default function PhoneActivePage() {
   const [error, setError] = useState('');
   const [dialingSession, setDialingSession] = useState<DialingSession | null>(() => loadSession());
   const [advancingNext, setAdvancingNext] = useState(false);
+  const [dialingAttempts, setDialingAttempts] = useState<DialingAttempt[]>([]);
   const [expandedCall, setExpandedCall] = useState<string | null>(null);
   const connectedConferenceRef = useRef<string | null>(null);
   const [phoneTranslationEnabled, setPhoneTranslationEnabled] = useState(() => {
@@ -104,7 +120,44 @@ export default function PhoneActivePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
-  useEffect(() => { saveSession(dialingSession); }, [dialingSession]);
+  useEffect(() => {
+    saveSession(dialingSession);
+    if (dialingSession?.error) setError(dialingSession.error);
+  }, [dialingSession]);
+
+  useEffect(() => {
+    if (!dialingSession) {
+      setDialingAttempts([]);
+      return;
+    }
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const r = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/attempts`), { credentials: 'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (cancelled) return;
+        setDialingAttempts(d.attempts ?? []);
+        if (d.session) {
+          if (d.session.status === 'completed') {
+            setDialingSession(null);
+            return;
+          }
+          const sessionStopped = d.session.status !== 'running';
+          setDialingSession(prev => prev ? {
+            ...prev,
+            dialed: d.session.dialedCount ?? prev.dialed,
+            total: d.session.totalNumbers ?? prev.total,
+            paused: prev.paused || sessionStopped,
+            error: prev.error ?? (sessionStopped ? 'This dialing session is stopped. Review call history before restarting.' : undefined),
+          } : null);
+        }
+      } catch {}
+    };
+    void sync();
+    const timer = window.setInterval(sync, 2000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [apiUrl, dialingSession?.id]);
 
   // Translation observes the existing live transcript only. It never touches
   // the Twilio media stream or call-control lifecycle.
@@ -130,7 +183,7 @@ export default function PhoneActivePage() {
       const r = await apiFetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' });
       if (r.status === 403) {
         const d = await r.json().catch(() => ({}));
-        setError(d.error || 'Access denied — phone system subscription required.');
+        setError(d.error || 'Access denied — CALLL HOME subscription required.');
         navigate('/pricing');
         return;
       }
@@ -157,6 +210,12 @@ export default function PhoneActivePage() {
   }, [activeCalls, connectToConference]);
 
   useEffect(() => {
+    if (!activeCalls.some(ac => ac.status === 'in-progress' && ac.conferenceName)) {
+      connectedConferenceRef.current = null;
+    }
+  }, [activeCalls]);
+
+  useEffect(() => {
     if (!expandedCall) {
       const firstLive = activeCalls.find(c => c.status === 'in-progress');
       if (firstLive) setExpandedCall(firstLive.callSid);
@@ -164,7 +223,7 @@ export default function PhoneActivePage() {
   }, [activeCalls, expandedCall]);
 
   const advanceSession = async () => {
-    if (!dialingSession || advancingNext) return;
+    if (!dialingSession || dialingSession.paused || advancingNext) return;
     setAdvancingNext(true);
     setError('');
     try {
@@ -172,10 +231,16 @@ export default function PhoneActivePage() {
         const r = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
         const body = await r.json();
         if (r.status === 403) { navigate('/pricing'); throw new Error(body.error || 'Access denied'); }
-        if (!r.ok) throw new Error(body.error || 'Failed to advance session');
+        if (!r.ok) {
+          if (body.paused) return { paused: true, error: body.error };
+          throw new Error(body.error || 'Failed to advance session');
+        }
         return body;
       }, created => created.callSid ? [{ callSid: created.callSid, conferenceName: created.conferenceName }] : [], { allowNoLegs: true });
-      if (d.completed) {
+      if (d.paused) {
+        setDialingSession(prev => prev ? { ...prev, paused: true, error: d.error } : null);
+        setError(d.error || 'Dialing stopped. Review call history before restarting.');
+      } else if (d.completed) {
         setDialingSession(null);
       } else if (d.ok && d.callSid) {
         const newCall: ActiveCall = { callSid: d.callSid, phone: d.phone, name: d.name || '', status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName };
@@ -188,27 +253,37 @@ export default function PhoneActivePage() {
         setError(d.error || 'Failed to advance session');
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Network error');
+      const message = e instanceof Error ? e.message : 'Network error';
+      await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' }).catch(() => {});
+      setDialingSession(prev => prev ? {
+        ...prev,
+        paused: true,
+        error: `Dialing stopped after an uncertain request. ${message} Review call history before restarting.`,
+      } : null);
+      setError(`Dialing stopped after an uncertain request. ${message} Review call history before restarting.`);
     }
     setAdvancingNext(false);
   };
 
   useEffect(() => {
-    if (!dialingSession || advancingNext || dialingSession.dialed >= dialingSession.total) return;
+    if (!dialingSession || dialingSession.paused || advancingNext || dialingSession.dialed >= dialingSession.total) return;
     if (dialingSession.mode !== 'auto' && dialingSession.mode !== 'predictive') return;
     const terminal = new Set(['completed', 'failed', 'busy', 'no-answer', 'canceled']);
     const liveCount = activeCalls.filter(call => !terminal.has(call.status)).length;
-    const targetConcurrency = dialingSession.mode === 'predictive' ? 3 : 1;
+    const targetConcurrency = dialingSession.mode === 'predictive' ? (dialingSession.concurrency ?? 3) : 1;
     if (liveCount >= targetConcurrency) return;
     const timer = window.setTimeout(() => {
       void advanceSession();
-    }, 500);
+    }, Math.max(500, (dialingSession.delayBetweenCalls ?? 1) * 1000));
     return () => window.clearTimeout(timer);
   }, [
     dialingSession?.id,
     dialingSession?.mode,
     dialingSession?.dialed,
     dialingSession?.total,
+    dialingSession?.concurrency,
+    dialingSession?.delayBetweenCalls,
+    dialingSession?.paused,
     advancingNext,
     activeCalls,
   ]);
@@ -216,7 +291,11 @@ export default function PhoneActivePage() {
   const stopSession = async () => {
     if (!dialingSession) return;
     try {
-      await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
+      const response = await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Could not stop session (${response.status})`);
+      }
       setDialingSession(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not stop session');
@@ -333,7 +412,9 @@ export default function PhoneActivePage() {
                 <Radio size={20} style={{ color: slate(0.8) }} />
               </div>
               <div>
-                <div style={{ fontSize: '0.42rem', color: slate(0.55), letterSpacing: '0.2em', marginBottom: 3 }}>ACTIVE DIALING SESSION</div>
+                <div style={{ fontSize: '0.42rem', color: dialingSession.paused ? warning(0.8) : slate(0.55), letterSpacing: '0.2em', marginBottom: 3 }}>
+                  {dialingSession.paused ? 'DIALING SESSION PAUSED' : 'ACTIVE DIALING SESSION'}
+                </div>
                 <div style={{ fontSize: '0.85rem', color: slate(0.9), letterSpacing: '0.05em' }}>
                   {dialingSession.mode.toUpperCase()} · {dialingSession.dialed} / {dialingSession.total} DIALED
                 </div>
@@ -363,7 +444,7 @@ export default function PhoneActivePage() {
               {dialingSession.mode === 'power' && (
                 <PhoneBtn
                   onClick={advanceSession}
-                  disabled={advancingNext || dialingSession.dialed >= dialingSession.total}
+                  disabled={dialingSession.paused || advancingNext || dialingSession.dialed >= dialingSession.total}
                   color={primary}
 
                 >
@@ -375,6 +456,39 @@ export default function PhoneActivePage() {
                 <X size={13} /> STOP SESSION
               </PhoneBtn>
             </div>
+          </div>
+        </PhoneCard>
+      )}
+
+      {dialingSession && dialingAttempts.length > 0 && (
+        <PhoneCard style={{ marginBottom: 20 }}>
+          <PhoneCardHeader>LIVE NUMBER TRACKING</PhoneCardHeader>
+          <div style={{ overflowX: 'auto' }}>
+            {dialingAttempts.map(attempt => (
+              <div
+                key={attempt.id}
+                style={{
+                  minWidth: 560,
+                  display: 'grid',
+                  gridTemplateColumns: '36px minmax(170px, 1fr) 110px 80px 90px',
+                  gap: 10,
+                  alignItems: 'center',
+                  padding: '10px 14px',
+                  borderBottom: `1px solid ${slate(0.08)}`,
+                  fontSize: '0.52rem',
+                }}
+              >
+                <span style={{ color: slate(0.45) }}>#{(attempt.queueIndex ?? 0) + 1}</span>
+                <span style={{ color: slate(0.85) }}>
+                  {attempt.name || 'Unknown'} · {formatPhone(attempt.phone)}
+                </span>
+                <span style={{ color: statusColor(attempt.status) }}>{statusLabel(attempt.status)}</span>
+                <span style={{ color: slate(0.6) }}>{formatDuration(attempt.durationSeconds ?? 0)}</span>
+                <span style={{ color: attempt.recordingSid || attempt.recordingUrl ? primary(0.9) : slate(0.4) }}>
+                  {attempt.recordingSid || attempt.recordingUrl ? 'RECORDED' : attempt.status === 'answered' || attempt.status === 'in-progress' ? 'RECORDING' : '—'}
+                </span>
+              </div>
+            ))}
           </div>
         </PhoneCard>
       )}
@@ -471,7 +585,15 @@ export default function PhoneActivePage() {
                           {c.recordingActive && <span style={{ color: destructive(0.7), display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 5, height: 5, borderRadius: '50%', background: destructive(0.9), animation: 'pulse 1s infinite' }} /> REC</span>}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div style={{
+                        display: 'flex',
+                        gap: 6,
+                        flexShrink: 0,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        width: isMobile ? '100%' : 'auto',
+                        paddingLeft: isMobile ? 56 : 0,
+                      }}>
                         {!ended && (
                           <PhoneBtn onClick={() => setExpandedCall(isExpanded ? null : c.callSid)} color={isExpanded ? slate : undefined} size="sm" title="Call details">
                             <FileText size={13} />
@@ -546,7 +668,7 @@ export default function PhoneActivePage() {
                             {c.liveTranscript
                               ? c.liveTranscript
                               : isLive
-                                ? '⏳ Waiting for speech...'
+                                ? <><Loader2 size={10} style={{ marginRight: 4, display: 'inline' }} className="animate-spin" /> Waiting for speech...</>
                                 : isRinging
                                   ? <><PhoneIncoming size={10} style={{ marginRight: 4 }} /> Connecting...</>
                                   : 'No transcript available'

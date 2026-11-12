@@ -30,7 +30,7 @@ export function PrimeAdInterstitial() {
   if (!open) return null;
 
   const dismiss = () => { markSeen(); setOpen(false); };
-  const upgrade = () => { markSeen(); setOpen(false); navigate('/upgrade'); };
+  const upgrade = () => { markSeen(); setOpen(false); navigate('/pricing'); };
 
   const VT: React.CSSProperties = { fontFamily: "var(--font-sans)" };
   const ST: React.CSSProperties = { fontFamily: "var(--font-sans)" };
@@ -111,7 +111,7 @@ export function PrimeAdInterstitial() {
               GO PRIME.
             </div>
             <div style={{ ...VT, fontSize: '1.15rem', color: 'rgba(244,114,182,.85)', letterSpacing: '.08em' }}>
-              PABLO PRIME · ƒ145/MO
+              PABLO AI · ƒ145/MO
             </div>
 
             <ul style={{

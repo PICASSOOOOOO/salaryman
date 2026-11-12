@@ -37,7 +37,7 @@ const router = Router();
  * round-trip: bank balance breakdown (earned vs quarantined), gold,
  * Pablo Tax meter, Prime status, recent line items, pending invoices.
  *
- * Currency display is rendered client-side from the canonical $1 = ƒ100
+ * Currency display is rendered client-side from the canonical $1 = ƒ1,000
  * = 0.005oz gold conversions so this endpoint can stay rate-free.
  */
 router.get("/wallet/snapshot", async (req: Request, res: Response) => {
@@ -187,7 +187,7 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
   // True combined net worth: liquid fiat + gold-equivalent + property values
   // minus outstanding tax debt. More authoritative than the cashflow-only
   // netWorthRows sum (which only covers balance_sheet_transactions).
-  const FIAT_PER_GOLD_RATE = 1_000; // matches client gameSystems.ts FIAT_PER_GOLD
+  const FIAT_PER_GOLD_RATE = 10_000; // matches client gameSystems.ts FIAT_PER_GOLD
   const saveSalary = num(save.salary, 0);
   const activeGold = goldAccounts.find((account) => account.slotIndex === (latestSaves[0]?.slotIndex ?? 0));
   const saveGold = (activeGold?.balanceTenths ?? 0) / 10;

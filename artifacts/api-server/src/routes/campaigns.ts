@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, or, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import {
@@ -13,14 +13,16 @@ import {
   contactsTable,
   contactChannelPrefsTable,
   notificationsTable,
+  phoneNumbersTable,
 } from "@workspace/db";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
-import { recordTelephonyActivity } from "../lib/crm-recorder";
+import { recordTelephonyActivity, resolveOrgForUser } from "../lib/crm-recorder";
 import { sendSmsMessage } from "../lib/telephony-service";
 import { toE164 } from "../lib/phone";
 import { resolveUserCountry } from "../lib/phone-context";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
+import { hasRecordedSmsMarketingPermission } from "../lib/campaign-consent";
 
 const router = Router();
 
@@ -33,11 +35,21 @@ async function requireAuth(req: Request, res: Response): Promise<string | null> 
   if (!userId) return null;
   const has = await hasFeature(userId, req.user?.email, "phone_system");
   if (!has) {
-    res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
+    res.status(403).json({ error: "CALLL HOME subscription required ($50/mo)", feature: "phone_system", price: 50, upgrade: "/pricing" });
     return null;
   }
   if (!(await canUsePlatformTwilio(userId, req.user?.email))) {
     res.status(403).json({ error: "Platform phone system is restricted to authorized organizations.", code: "TWILIO_ORG_RESTRICTED" });
+    return null;
+  }
+  return userId;
+}
+
+async function requireSmsMarketingAccess(req: Request, res: Response): Promise<string | null> {
+  const userId = await requireAuth(req, res);
+  if (!userId) return null;
+  if (!(await hasFeature(userId, req.user?.email, "phone_advanced"))) {
+    res.status(403).json({ error: "SMS marketing requires a Custom CALLL HOME plan.", feature: "phone_advanced", upgrade: "/pricing" });
     return null;
   }
   return userId;
@@ -312,7 +324,7 @@ router.get("/campaigns/email/unsubscribe", async (req: Request, res: Response) =
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/campaigns/sms", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   try {
     const campaigns = await db
@@ -327,8 +339,52 @@ router.get("/campaigns/sms", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/campaigns/sms/audience", async (req: Request, res: Response) => {
+  const userId = await requireSmsMarketingAccess(req, res);
+  if (!userId) return;
+  try {
+    const contacts = await db.select({
+      id: contactsTable.id,
+      name: contactsTable.name,
+      phone: contactsTable.phone,
+      tag: contactsTable.tag,
+      dealStage: contactsTable.dealStage,
+    }).from(contactsTable)
+      .where(eq(contactsTable.userId, userId))
+      .orderBy(desc(contactsTable.id))
+      .limit(500);
+    const ids = contacts.map((contact) => contact.id);
+    const rows = ids.length
+      ? await db.select().from(contactChannelPrefsTable)
+        .where(and(
+          eq(contactChannelPrefsTable.userId, userId),
+          inArray(contactChannelPrefsTable.contactId, ids),
+        ))
+        .orderBy(desc(contactChannelPrefsTable.updatedAt))
+      : [];
+    const latest = new Map<number, typeof rows[number]>();
+    for (const row of rows) {
+      if (!latest.has(row.contactId)) latest.set(row.contactId, row);
+    }
+    res.json({
+      contacts: contacts.map((contact) => {
+        const preference = latest.get(contact.id);
+        return {
+          ...contact,
+          smsOptIn: preference?.smsOptIn ?? false,
+          smsConsentedAt: preference?.smsConsentedAt ?? null,
+          smsOptedOutAt: preference?.smsOptedOutAt ?? null,
+        };
+      }),
+    });
+  } catch (err: any) {
+    console.error("[campaigns] sms audience error:", err.message);
+    res.status(500).json({ error: "Failed to load SMS campaign audience" });
+  }
+});
+
 router.get("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   try {
     const [campaign] = await db
@@ -349,7 +405,7 @@ router.get("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/sms", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   const { name, messageBody, scheduledAt, recipientFilter } = req.body;
   if (!name?.trim()) { res.status(400).json({ error: "Campaign name required" }); return; }
@@ -373,7 +429,7 @@ router.post("/campaigns/sms", async (req: Request, res: Response) => {
 });
 
 router.put("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   const { name, messageBody, scheduledAt, recipientFilter, status } = req.body;
   try {
@@ -404,7 +460,7 @@ router.put("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
   try {
     await db
@@ -418,9 +474,9 @@ router.delete("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
-  const userId = await requireAuth(req, res);
+  const userId = await requireSmsMarketingAccess(req, res);
   if (!userId) return;
-  const { test, testPhone } = req.body;
+  const { test, testPhone } = req.body ?? {};
 
   try {
     const [campaign] = await db
@@ -429,8 +485,28 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
       .where(and(eq(smsCampaignsTable.id, Number(req.params.id)), eq(smsCampaignsTable.userId, userId)));
     if (!campaign) { res.status(404).json({ error: "Not found" }); return; }
     if (!campaign.messageBody?.trim()) { res.status(400).json({ error: "Message body required" }); return; }
+    // Pin every campaign touch to the sender's owning organization rather than
+    // relying on whichever membership happens to be resolved later.
+    const campaignOrgId = (await resolveOrgForUser(userId))?.orgId ?? undefined;
 
-    const campaignCountry = await resolveUserCountry(userId);
+    const [campaignSender] = await db
+      .select({
+        id: phoneNumbersTable.id,
+        countryCode: phoneNumbersTable.countryCode,
+      })
+      .from(phoneNumbersTable)
+      .where(and(
+        eq(phoneNumbersTable.isActive, true),
+        campaignOrgId
+          ? or(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.orgId, campaignOrgId))
+          : eq(phoneNumbersTable.userId, userId),
+      ))
+      .limit(1);
+    if (!campaignSender) {
+      res.status(400).json({ error: "Assign an active organization-owned Twilio number before starting an SMS campaign." });
+      return;
+    }
+    const campaignCountry = campaignSender.countryCode || "US";
 
     if (test) {
       if (!testPhone) { res.status(400).json({ error: "Test phone number required" }); return; }
@@ -439,15 +515,20 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
       await sendSmsMessage({
         userId,
         userEmail: req.user?.email,
+        orgId: campaignOrgId,
         phone: e164,
         body: `[TEST] ${campaign.messageBody}`,
         defaultCountry: campaignCountry,
+        phoneNumberId: campaignSender.id,
       });
       res.json({ ok: true, message: `Test SMS sent to ${e164}` });
       return;
     }
 
-    if (campaign.status === "sent") { res.status(400).json({ error: "Campaign already sent" }); return; }
+    if (campaign.status !== "draft" && campaign.status !== "scheduled") {
+      res.status(409).json({ error: "Campaign is already sending or has been sent." });
+      return;
+    }
 
     const contacts = await db
       .select()
@@ -459,22 +540,41 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
     if (filter.tag) eligible = eligible.filter((c) => c.tag === filter.tag);
     if (filter.dealStage) eligible = eligible.filter((c) => c.dealStage === filter.dealStage);
 
-    const unsubscribedPrefs = await db
+    const campaignContactIds = eligible.map((contact) => contact.id);
+    const campaignPrefs = campaignContactIds.length
+      ? await db
       .select()
       .from(contactChannelPrefsTable)
-      .where(and(eq(contactChannelPrefsTable.userId, userId), eq(contactChannelPrefsTable.smsOptIn, false)));
-    const unsubscribedContactIds = new Set(unsubscribedPrefs.map((p) => p.contactId));
-    eligible = eligible.filter((c) => !unsubscribedContactIds.has(c.id));
+      .where(and(
+        eq(contactChannelPrefsTable.userId, userId),
+        inArray(contactChannelPrefsTable.contactId, campaignContactIds),
+      ))
+      .orderBy(desc(contactChannelPrefsTable.updatedAt))
+      : [];
+    const latestPrefs = new Map<number, typeof campaignPrefs[number]>();
+    for (const pref of campaignPrefs) {
+      if (!latestPrefs.has(pref.contactId)) latestPrefs.set(pref.contactId, pref);
+    }
+    eligible = eligible.filter((contact) => hasRecordedSmsMarketingPermission(latestPrefs.get(contact.id)));
 
     if (eligible.length === 0) {
       res.status(400).json({ error: "No eligible recipients with phone numbers" });
       return;
     }
 
-    await db
+    const [claimedCampaign] = await db
       .update(smsCampaignsTable)
       .set({ status: "sending", totalRecipients: eligible.length, updatedAt: new Date() })
-      .where(eq(smsCampaignsTable.id, campaign.id));
+      .where(and(
+        eq(smsCampaignsTable.id, campaign.id),
+        eq(smsCampaignsTable.userId, userId),
+        eq(smsCampaignsTable.status, campaign.status),
+      ))
+      .returning({ id: smsCampaignsTable.id });
+    if (!claimedCampaign) {
+      res.status(409).json({ error: "Campaign is already sending or has been sent." });
+      return;
+    }
 
     res.json({ ok: true, total: eligible.length, message: `Sending to ${eligible.length} recipients...` });
 
@@ -483,6 +583,20 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
       let sent = 0;
       let failed = 0;
       for (const contact of eligible) {
+        const freshPrefs = await db
+          .select()
+          .from(contactChannelPrefsTable)
+          .where(and(
+            eq(contactChannelPrefsTable.userId, userId),
+            eq(contactChannelPrefsTable.contactId, contact.id),
+          ))
+          .orderBy(desc(contactChannelPrefsTable.updatedAt))
+          .limit(1);
+        const freshPref = freshPrefs[0];
+        if (!hasRecordedSmsMarketingPermission(freshPref)) {
+          failed++;
+          continue;
+        }
         const e164 = toE164(contact.phone, campaignCountry);
         if (!e164) { failed++; continue; }
         const _gateSms = await _consumeUsage_cs(req.user?.id ?? "", req.user?.email, "sms_count", 1);
@@ -491,11 +605,13 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
           const sentSms = await sendSmsMessage({
             userId: campaign.userId,
             userEmail: req.user?.email,
+            orgId: campaignOrgId,
             phone: e164,
             body: campaign.messageBody,
             contactId: contact.id,
             contactName: contact.name,
             defaultCountry: campaignCountry,
+            phoneNumberId: campaignSender.id,
           });
           await db.insert(smsCampaignRecipientsTable).values({
             campaignId: campaign.id,
@@ -597,13 +713,16 @@ router.get("/sms/conversations/:id/messages", async (req: Request, res: Response
 router.post("/sms/send", async (req: Request, res: Response) => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
-  const { phone, body, contactId, contactName } = req.body;
+  const { phone, body, contactId, contactName, countryCode } = req.body;
   if (!phone || !body?.trim()) { res.status(400).json({ error: "Phone and message body required" }); return; }
 
-  const e164 = toE164(phone, await resolveUserCountry(userId));
+  const outboundCountry = typeof countryCode === "string" && /^[A-Za-z]{2}$/.test(countryCode)
+    ? countryCode.toUpperCase()
+    : "US";
+  const e164 = toE164(phone, outboundCountry);
   if (!e164) { res.status(400).json({ error: "Invalid phone number" }); return; }
 
-  const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+  const { checkAndEnforce, throttleResponse } = await import("../lib/usage-meter");
   const gate = await checkAndEnforce(userId, req.user?.email, "sms_count", 1);
   if (!gate.allowed) {
     res.status(429).json(throttleResponse("sms_count", gate.used, gate.limit));
@@ -613,8 +732,15 @@ router.post("/sms/send", async (req: Request, res: Response) => {
   try {
     // Outbound SMS lives in the shared telephony service so the manual route and
     // the CRM autopilot send + record identically (same CRM dedupe/side-effects).
-    const { message, conversation } = await sendSmsMessage({ userId, userEmail: req.user?.email, phone: e164, body, contactId, contactName });
-    await recordUsage(userId, "sms_count", 1);
+    const { message, conversation } = await sendSmsMessage({
+      userId,
+      userEmail: req.user?.email,
+      phone: e164,
+      body,
+      contactId,
+      contactName,
+      defaultCountry: outboundCountry,
+    });
     res.json({ ok: true, message, conversation });
   } catch (err: any) {
     console.error("[sms] send error:", err.message);
@@ -634,18 +760,33 @@ router.post("/sms/webhook/inbound", async (req: Request, res: Response) => {
     const fromPhone = From;
     const toPhone = To;
 
+    // This legacy inbound endpoint must use the same owning-number resolution
+    // as the primary Twilio SMS webhook. Looking up a contact by raw phone
+    // alone can select another user's contact (or "unknown"), which silently
+    // prevents the shared CRM recorder from finding the owning organization.
+    const { resolveTelephonyOwner } = await import("../lib/telephony-owner");
+    const owner = await resolveTelephonyOwner({ destinationNumber: toPhone });
+    const ownerUserId = owner?.userId ?? null;
+    const ownerOrgId = owner?.orgId ?? (ownerUserId ? (await resolveOrgForUser(ownerUserId))?.orgId ?? null : null);
     const contacts = await db
       .select()
       .from(contactsTable)
-      .where(eq(contactsTable.phone, fromPhone))
+      .where(and(
+        eq(contactsTable.phone, fromPhone),
+        ...(ownerUserId ? [eq(contactsTable.userId, ownerUserId)] : []),
+      ))
       .limit(1);
 
     const contact = contacts[0];
+    const conversationUserId = ownerUserId ?? contact?.userId ?? null;
 
     const [conv] = await db
       .select()
       .from(smsConversationsTable)
-      .where(eq(smsConversationsTable.contactPhone, fromPhone))
+      .where(and(
+        eq(smsConversationsTable.contactPhone, fromPhone),
+        ...(conversationUserId ? [eq(smsConversationsTable.userId, conversationUserId)] : []),
+      ))
       .limit(1);
 
     let conversation = conv;
@@ -653,7 +794,7 @@ router.post("/sms/webhook/inbound", async (req: Request, res: Response) => {
       [conversation] = await db
         .insert(smsConversationsTable)
         .values({
-          userId: contact?.userId || "unknown",
+          userId: conversationUserId || "unknown",
           contactId: contact?.id || null,
           contactPhone: fromPhone,
           contactName: contact?.name || fromPhone,
@@ -685,6 +826,7 @@ router.post("/sms/webhook/inbound", async (req: Request, res: Response) => {
 
     await recordTelephonyActivity({
       userId: conversation.userId,
+      orgId: ownerOrgId,
       channel: "sms",
       direction: "inbound",
       phone: fromPhone,
@@ -752,13 +894,35 @@ router.get("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
 router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Response) => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
-  const { emailOptIn, smsOptIn, tags } = req.body;
+  const { emailOptIn, smsOptIn, phoneCallOptIn, tags } = req.body;
   const contactId = Number(req.params.contactId);
+  if (!Number.isInteger(contactId) || contactId <= 0) {
+    res.status(400).json({ error: "Invalid contact ID" });
+    return;
+  }
+  if (phoneCallOptIn !== undefined && typeof phoneCallOptIn !== "boolean") {
+    res.status(400).json({ error: "Phone-call permission must be true or false" });
+    return;
+  }
+  if (smsOptIn !== undefined && typeof smsOptIn !== "boolean") {
+    res.status(400).json({ error: "SMS marketing permission must be true or false" });
+    return;
+  }
   try {
-    const [existing] = await db
+    const [contact] = await db
+      .select({ id: contactsTable.id })
+      .from(contactsTable)
+      .where(and(eq(contactsTable.id, contactId), eq(contactsTable.userId, userId)));
+    if (!contact) {
+      res.status(404).json({ error: "Contact not found" });
+      return;
+    }
+    const existingRows = await db
       .select()
       .from(contactChannelPrefsTable)
-      .where(and(eq(contactChannelPrefsTable.contactId, contactId), eq(contactChannelPrefsTable.userId, userId)));
+      .where(and(eq(contactChannelPrefsTable.contactId, contactId), eq(contactChannelPrefsTable.userId, userId)))
+      .orderBy(desc(contactChannelPrefsTable.updatedAt));
+    const existing = existingRows[0];
 
     const now = new Date();
     if (existing) {
@@ -769,13 +933,30 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
       }
       if (smsOptIn !== undefined) {
         updates.smsOptIn = smsOptIn;
-        if (!smsOptIn && existing.smsOptIn) updates.smsOptedOutAt = now;
+        if (smsOptIn) {
+          updates.smsConsentedAt = now;
+          updates.smsOptedOutAt = null;
+        } else {
+          updates.smsOptedOutAt = existing.smsOptIn ? now : existing.smsOptedOutAt ?? null;
+        }
+      }
+      if (phoneCallOptIn !== undefined) {
+        updates.phoneCallOptIn = phoneCallOptIn;
+        if (phoneCallOptIn) {
+          updates.phoneCallConsentedAt = now;
+          updates.phoneCallOptedOutAt = null;
+        } else {
+          updates.phoneCallOptedOutAt = now;
+        }
       }
       if (tags !== undefined) updates.tags = tags;
       const [pref] = await db
         .update(contactChannelPrefsTable)
         .set(updates)
-        .where(eq(contactChannelPrefsTable.id, existing.id))
+        .where(and(
+          eq(contactChannelPrefsTable.contactId, contactId),
+          eq(contactChannelPrefsTable.userId, userId),
+        ))
         .returning();
       res.json({ pref });
     } else {
@@ -785,7 +966,12 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
           contactId,
           userId,
           emailOptIn: emailOptIn ?? true,
-          smsOptIn: smsOptIn ?? true,
+          smsOptIn: smsOptIn ?? false,
+          smsOptedOutAt: null,
+          smsConsentedAt: smsOptIn === true ? now : null,
+          phoneCallOptIn: phoneCallOptIn ?? false,
+          phoneCallConsentedAt: phoneCallOptIn ? now : null,
+          phoneCallOptedOutAt: phoneCallOptIn === false ? now : null,
           tags: tags || [],
         })
         .returning();

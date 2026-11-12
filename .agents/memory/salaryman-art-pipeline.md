@@ -1,0 +1,66 @@
+---
+name: SALARYMAN art pipeline (Nano Banana)
+description: How in-game art is generated/served, and the Pro-API aspect/format limits that break tiles & transparency.
+---
+
+# Art kit pipeline
+- All in-game art is generated server-side and lazily baked. To add art: append an entry to
+  `SALARYMAN_ART_KIT` in `artifacts/api-server/src/lib/salaryman-art.ts` (key/category/subject/aspectRatio).
+  One shared style suffix (`SALARYMAN_STYLE`) is auto-appended to every prompt.
+- Served via `GET /api/art/asset/:key` (public; creates the row + kicks off generation on first hit).
+  Client consumes with `useArtAsset(key)` from `artifacts/interview-helper/src/lib/art.ts`.
+- Boot seeder only kicks off the first ~8 missing entries; new entries near the end of the kit won't
+  auto-bake at boot — hit their `/api/art/asset/:key` once (or POST `/api/art/seed`, admin) to bake.
+
+# Per-entry custom prompt (`fullPrompt`) — bypasses the shared pixel style
+**Why:** the realistic intake character templates must NOT get the auto-appended pixel
+`SALARYMAN_STYLE`; they need a photoreal Unreal-style prompt instead.
+- An `ArtKitEntry` may carry `fullPrompt` (verbatim, style already baked in). Every place that
+  composes a prompt for a kit row MUST use `entry.fullPrompt ?? composeSalarymanPrompt(entry.subject)`.
+  There are FOUR such sites in `art-assets.ts`: `upsertAssetRow`, the `/regenerate` route, the GET
+  lazy-bake, **and the boot `seedSalarymanArtKit` insert** — the seeder is the easy one to miss, and it
+  silently bakes the wrong (pixel) prompt for entries that have a `fullPrompt`.
+- The seeder must persist `backend`/`jobType` from the entry too (not just `prompt`) — `art_assets.backend`
+  defaults to `"nano-banana"` in schema, so a seeder INSERT that omits `backend` silently strands an
+  Unreal-routed entry on the default backend. Mirror `upsertAssetRow` (only override when the entry sets them).
+- The seeder only sets these on INSERT. Pre-existing rows seeded before an entry gained a `fullPrompt`/backend
+  keep the stale values forever (GET leaves `failed`/existing rows untouched). Fix: seeder now refreshes
+  prompt+backend+jobType and resets to `pending` for any row with `!url && (prompt/backend/jobType differ)`;
+  rows WITH a real image (url) are left alone (never clobber a successful bake — even if its prompt/backend is
+  stale). So changing an entry's prompt/backend self-heals on next boot/restart unless it already baked.
+**How to apply:** realistic look = `REALISTIC_CHARACTER_STYLE` / `composeRealisticCharacterPrompt`;
+backend-agnostic (set `backend:"unreal"`, falls back to nano-banana when `UNREAL_RENDER_URL` unset, SAME
+prompt). Intake templates: `CHARACTER_TEMPLATE_CATALOG` (3 archetype × 3 faction = 9, keys
+`char_template_<archetype>_<faction>`), listed via `GET /api/salaryman/character/templates` (public,
+degrades `imageUrl:null/status:"none"`); client applies `look` hints via `applyCharacterTemplate` in
+`character-identity.ts` so the pixel sprite matches the portrait.
+
+# Nano Banana Pro (apipass) hard limits — IMPORTANT
+**Why:** discovered while generating world-rebuild tiles — "1:1" tiles came back 16:9, not square.
+- `createImageTask` only sends `prompt` + `aspect_ratio` (+ optional ref `images`). It maps ANY ratio to
+  just `LANDSCAPE` or `PORTRAIT` (w>=h ⇒ LANDSCAPE). So **there is no true 1:1/square output** and
+  requesting "1:1" yields a landscape image.
+- `outputFormat` in GenerateImageOptions is **never sent** to the API → output is effectively the model
+  default (jpg-like), and **transparent backgrounds are NOT reliable**. The kit works around this by
+  baking subjects on a flat "dark navy void" that blends with the world's dark ambient.
+**How to apply:** for seamless square tiles or alpha-cutout sprites, do NOT rely on this pipeline as-is.
+Options: generate landscape then crop/slice client-side, chroma-key the navy at draw time, or extend
+the pipeline to pass a real square size + format. Isometric buildings on dark navy void DO work well.
+
+# Credit exhaustion is a real failure mode
+**Why:** the apipass/Nano Banana account can run dry — `createTask` returns `402 Insufficient credit:
+required N, available M` and the asset row ends up `status:"failed"`. New kit entries simply never bake.
+**How to apply:** ANY UI that consumes `useArtAsset` MUST render a self-sufficient non-art fallback
+(themed gradient/placeholder), never a blank/broken box — `useArtAsset` stops polling on `failed`, so the
+fallback is permanent until credits are topped up and the key is re-hit. After adding kit entries, restart
+the api-server workflow (dev runs plain `tsx`, NO watch — old kit stays loaded) before hitting the keys.
+
+# Distinguishing OUTAGE vs bad-input on live generation routes
+**Why:** on-demand image routes (e.g. the character-portrait i2i) buried a `402 Insufficient credit`
+inside a generic 500, so users got a "try a clearer photo" message when the real cause was a depleted
+credit pool — wrongly blaming their selfie.
+**How to apply:** `isImageServiceOutage(err)` in `nano-banana.ts` (pure, unit-tested) classifies an
+apipass `402|429|5xx` wrapper OR credit/quota text as an account-level OUTAGE. A live image route should
+check it in BOTH the thrown-error catch AND on a `failed` gen state (`gen.failMsg`), and return `503 +
+{studioOutage:true}` with a calm "service is down, not your fault" message; the client keys off
+`res.status===503 || body.studioOutage` to nudge the manual builder instead of showing a red error.

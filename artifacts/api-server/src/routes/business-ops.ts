@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import {
+  createBusinessTask,
   updateBusinessTask,
   updateTimeEntry,
   createAnnouncement,
@@ -68,12 +69,10 @@ router.post("/business/tasks", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const { title, description, status, priority, assignee, dueDate, project, tags } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: "Title required" });
-  const [row] = await db.insert(businessTasksTable).values({
-    userId: uid(req), title, description: description || "", status: status || "todo",
-    priority: priority || "medium", assignee: assignee || "", dueDate: dueDate || null,
-    project: project || "", tags: tags || "",
-  }).returning();
-  return res.json({ task: row });
+  const task = await createBusinessTask(uid(req), {
+    title, description, status, priority, assignee, dueDate, project, tags,
+  });
+  return res.json({ task });
 });
 
 router.put("/business/tasks/:id", async (req: Request, res: Response) => {

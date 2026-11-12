@@ -1,333 +1,165 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { apiFetch } from '@/lib/api-client';
-import { Bug, Loader2, RefreshCw, ChevronDown, BellRing } from 'lucide-react';
+import { useCallback, useEffect, useState } from "react";
+import { Check, ExternalLink, Loader2, MessageSquare, RefreshCw, RotateCw } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
+import { SignInPage } from "@/components/SignInPrompt";
+import { useAuth } from "@/hooks/use-auth";
 
-// localStorage key for the "last time this admin opened the inbox". We use
-// it client-side to highlight reports created since that visit. Per-browser
-// (not per-user-account) is fine — this is a triage convenience, not a
-// security boundary.
-const LAST_VISIT_KEY = 'feedback:lastVisitAt';
-function readLastVisit(): number {
-  if (typeof window === 'undefined') return 0;
-  const raw = window.localStorage.getItem(LAST_VISIT_KEY);
-  const n = raw ? Number(raw) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
-
-interface FeedbackReport {
+interface Report {
   id: number;
   userId: string | null;
   title: string;
   description: string;
+  kind: string;
   category: string;
-  kind?: string;
-  screenshotUrl: string | null;
   status: string;
   appVersion: string | null;
+  occurrenceCount: number;
+  githubIssueNumber: number | null;
+  githubIssueUrl: string | null;
+  githubSyncStatus: string;
+  githubSyncError: string | null;
   createdAt: string;
-  updatedAt: string;
 }
 
-const CATEGORIES = ["all", "Bug", "UI Issue", "Feature Request", "Performance", "Other"];
 const STATUSES = ["all", "open", "acknowledged", "resolved"];
-const KINDS: { value: string; label: string }[] = [
-  { value: "all", label: "All Kinds" },
-  { value: "error_report", label: "Auto Errors" },
-  { value: "bug", label: "Bugs" },
-  { value: "feedback", label: "Feedback" },
-];
+const KINDS = ["all", "feedback", "bug", "error_report"];
 
-function readInitialKindFromUrl(): string {
-  if (typeof window === "undefined") return "all";
-  const k = new URLSearchParams(window.location.search).get("kind");
-  return k && KINDS.some(x => x.value === k) ? k : "all";
+function dateLabel(value: string) {
+  return new Date(value).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
-
-const STATUS_STYLES: Record<string, string> = {
-  open: 'bg-red-500/15 text-red-400 border-red-500/25',
-  acknowledged: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-  resolved: 'bg-sky-500/15 text-sky-400 border-sky-500/25',
-};
-
-const CATEGORY_STYLES: Record<string, string> = {
-  Bug: 'bg-red-500/10 text-red-300 border-red-500/20',
-  'UI Issue': 'bg-purple-500/10 text-purple-300 border-purple-500/20',
-  'Feature Request': 'bg-blue-500/10 text-blue-300 border-blue-500/20',
-  Performance: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-  Other: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
-};
 
 export default function FeedbackAdmin() {
-  const [reports, setReports] = useState<FeedbackReport[]>([]);
-  const [total, setTotal] = useState(0);
+  const { isAuthenticated } = useAuth();
+  const [reports, setReports] = useState<Report[]>([]);
+  const [status, setStatus] = useState("open");
+  const [kind, setKind] = useState("all");
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterKind, setFilterKind] = useState(readInitialKindFromUrl);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
-  // Snapshot taken at mount so the "new since" set doesn't flicker when the
-  // user clicks "Mark all seen" — we only re-read after that click.
-  const [lastVisitAt, setLastVisitAt] = useState<number>(() => readLastVisit());
-
-  const newCount = useMemo(
-    () => reports.filter(r => new Date(r.createdAt).getTime() > lastVisitAt).length,
-    [reports, lastVisitAt],
-  );
-
-  const markAllSeen = useCallback(() => {
-    const now = Date.now();
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(LAST_VISIT_KEY, String(now));
-    }
-    setLastVisitAt(now);
-  }, []);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setAccessDenied(false);
     try {
-      const params = new URLSearchParams();
-      if (filterCategory !== 'all') params.set('category', filterCategory);
-      if (filterStatus !== 'all') params.set('status', filterStatus);
-      if (filterKind !== 'all') params.set('kind', filterKind);
-      params.set('limit', '100');
-      const res = await apiFetch(`/api/feedback?${params.toString()}`, { credentials: 'include' });
-      if (res.status === 403 || res.status === 401) { setAccessDenied(true); return; }
-      if (!res.ok) throw new Error('Failed to load');
-      const data = await res.json();
-      setReports(data.reports ?? []);
-      setTotal(data.total ?? 0);
-    } catch (e) {
-      console.error(e);
+      const query = new URLSearchParams({ status, kind, limit: "100" });
+      const response = await apiFetch(`/api/feedback?${query}`);
+      if (response.status === 403) { setAccessDenied(true); return; }
+      if (!response.ok) throw new Error("Could not load reports.");
+      const body = await response.json();
+      setReports(body.reports ?? []);
+    } catch {
+      setReports([]);
     } finally {
       setLoading(false);
     }
-  }, [filterCategory, filterStatus, filterKind]);
+  }, [kind, status]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const updateStatus = async (id: number, status: string) => {
-    setUpdatingId(id);
+  const updateStatus = async (id: number, nextStatus: string) => {
+    setBusyId(id);
     try {
-      const res = await apiFetch(`/api/feedback/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status }),
+      const response = await apiFetch(`/api/feedback/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
       });
-      if (!res.ok) throw new Error('Failed to update');
-      setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-    } catch (e) {
-      console.error(e);
+      if (response.ok) setReports((current) => current.map((report) => report.id === id ? { ...report, status: nextStatus } : report).filter((report) => status === "all" || report.status === status));
     } finally {
-      setUpdatingId(null);
+      setBusyId(null);
     }
   };
 
-  const fmt = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-      ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const retryGithub = async (id: number) => {
+    setBusyId(id);
+    try {
+      const response = await apiFetch(`/api/feedback/${id}/github-sync`, { method: "POST" });
+      const body = await response.json().catch(() => ({}));
+      setReports((current) => current.map((report) => report.id === id ? {
+        ...report,
+        githubSyncStatus: body.githubSync?.status ?? "failed",
+        githubIssueNumber: body.githubSync?.issueNumber ?? report.githubIssueNumber,
+        githubIssueUrl: body.githubSync?.issueUrl ?? report.githubIssueUrl,
+        githubSyncError: body.githubSync?.error ?? null,
+      } : report));
+    } finally {
+      setBusyId(null);
+    }
   };
 
+  if (!isAuthenticated) return <SignInPage context="Sign in to triage feedback." />;
+
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 p-4 sm:p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <main className="min-h-[100dvh] bg-[#FAFAF7] px-4 py-8 text-black sm:px-8">
+      <div className="mx-auto max-w-5xl">
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-black pb-4">
           <div className="flex items-center gap-3">
-            <Bug className="w-5 h-5 text-sky-400" />
+            <MessageSquare className="h-5 w-5" />
             <div>
-              <h1 className="font-mono text-lg text-zinc-100 tracking-widest uppercase">Error & Feedback Inbox</h1>
-              <p className="font-mono text-[10px] text-zinc-600 tracking-wide">{total} reports · admin / alpha tester / alpha dev access</p>
+              <h1 className="font-mono text-lg font-bold uppercase tracking-[0.14em]">Feedback inbox</h1>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-black/55">SALARYMAN internal triage</p>
             </div>
           </div>
-          <button
-            onClick={load}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-[11px] tracking-widest uppercase text-zinc-500 border border-white/[0.08] hover:text-zinc-300 hover:bg-white/4 transition-colors"
-          >
-            <RefreshCw className="w-3 h-3" />
-            Refresh
+          <button type="button" onClick={() => void load()} className="flex items-center gap-2 border border-black px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-black/5">
+            <RefreshCw className="h-3 w-3" /> Refresh
           </button>
+        </header>
+
+        <div className="mb-5 flex flex-wrap gap-2">
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className="border border-black bg-transparent px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest">
+            {STATUSES.map((item) => <option key={item} value={item}>{item === "all" ? "All statuses" : item}</option>)}
+          </select>
+          <select value={kind} onChange={(event) => setKind(event.target.value)} className="border border-black bg-transparent px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest">
+            {KINDS.map((item) => <option key={item} value={item}>{item === "all" ? "All types" : item.replace("_", " ")}</option>)}
+          </select>
         </div>
 
-        {/* New-since-last-visit banner — purely client-side, based on the
-            createdAt of items currently loaded vs the last time this
-            browser opened the page. Helps the triager spot fresh
-            reports without scanning timestamps. */}
-        {!loading && !accessDenied && newCount > 0 && (
-          <div className="mb-4 flex items-center justify-between gap-3 px-4 py-2.5 rounded-md border border-amber-500/30 bg-amber-500/[0.06]">
-            <div className="flex items-center gap-2 min-w-0">
-              <BellRing className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="font-mono text-[11px] text-amber-300 tracking-wide truncate">
-                {newCount} new report{newCount === 1 ? '' : 's'} since your last visit
-              </span>
-            </div>
-            <button
-              onClick={markAllSeen}
-              className="font-mono text-[10px] tracking-widest uppercase text-amber-300/80 hover:text-amber-200 px-2 py-1 rounded border border-amber-500/30 hover:bg-amber-500/10 transition-colors shrink-0"
-            >
-              Mark all seen
-            </button>
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-5">
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase">Category</label>
-            <select
-              value={filterCategory}
-              onChange={e => setFilterCategory(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1.5 font-mono text-[11px] text-zinc-300 outline-none"
-            >
-              {CATEGORIES.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>)}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase">Status</label>
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1.5 font-mono text-[11px] text-zinc-300 outline-none"
-            >
-              {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase">Kind</label>
-            <select
-              value={filterKind}
-              onChange={e => setFilterKind(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1.5 font-mono text-[11px] text-zinc-300 outline-none"
-            >
-              {KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* Table */}
         {accessDenied ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Bug className="w-8 h-8 text-zinc-700" />
-            <p className="font-mono text-sm text-zinc-500">Authorized viewer access required.</p>
-            <p className="font-mono text-[10px] text-zinc-700">Picasso admins, approved alpha testers, and approved alpha devs can triage reports. Apply at <a href="/alpha" className="text-sky-400 hover:underline">/alpha</a>.</p>
+          <div className="border border-black p-8 text-center">
+            <p className="font-mono text-sm font-bold uppercase tracking-widest">Authorized viewer access required</p>
+            <p className="mt-2 text-xs text-black/60">Admins and approved alpha triagers can view this inbox.</p>
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-5 h-5 text-zinc-600 animate-spin" />
-          </div>
+          <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin" /></div>
         ) : reports.length === 0 ? (
-          <div className="text-center py-20">
-            <Bug className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-            <p className="font-mono text-sm text-zinc-600">No reports found.</p>
-          </div>
+          <div className="border border-black p-8 text-center font-mono text-xs uppercase tracking-widest text-black/55">No reports in this view.</div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {reports.map(r => {
-              const isNew = new Date(r.createdAt).getTime() > lastVisitAt;
-              return (
-              <div key={r.id} className={`border rounded-lg overflow-hidden ${
-                isNew
-                  ? 'bg-amber-500/[0.04] border-amber-500/25'
-                  : 'bg-white/[0.02] border-white/[0.06]'
-              }`}>
-                {/* Row */}
-                <button
-                  className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
-                  onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className={`font-mono text-[9px] px-2 py-0.5 rounded border uppercase tracking-wider ${CATEGORY_STYLES[r.category] ?? CATEGORY_STYLES.Other}`}>
-                        {r.category}
-                      </span>
-                      <span className={`font-mono text-[9px] px-2 py-0.5 rounded border uppercase tracking-wider ${STATUS_STYLES[r.status] ?? 'bg-zinc-500/10 text-zinc-400'}`}>
-                        {r.status}
-                      </span>
-                      {r.appVersion && (
-                        <span className="font-mono text-[9px] text-zinc-700">v{r.appVersion}</span>
-                      )}
-                      {isNew && (
-                        <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wider bg-amber-500/15 text-amber-300 border-amber-500/30">
-                          NEW
-                        </span>
-                      )}
+          <div className="space-y-2">
+            {reports.map((report) => (
+              <article key={report.id} className="border border-black bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-widest">
+                      <span className="border border-black px-1.5 py-0.5">{report.kind.replace("_", " ")}</span>
+                      <span className="text-black/55">{report.category}</span>
+                      <span className="text-black/45">{dateLabel(report.createdAt)}</span>
+                      {report.occurrenceCount > 1 && <span className="text-black/55">×{report.occurrenceCount}</span>}
                     </div>
-                    <p className="font-mono text-sm text-zinc-200 truncate">{r.title}</p>
-                    <p className="font-mono text-[10px] text-zinc-600 mt-0.5">{fmt(r.createdAt)}</p>
+                    <h2 className="font-mono text-sm font-bold">{report.title}</h2>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-black/75">{report.description}</p>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-zinc-600 shrink-0 mt-1 transition-transform ${expandedId === r.id ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Expanded details */}
-                {expandedId === r.id && (
-                  <div className="px-4 pb-4 border-t border-white/[0.06] pt-3 flex flex-col gap-3">
-                    {r.userId && (
-                      <div>
-                        <span className="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">User ID</span>
-                        <p className="font-mono text-[11px] text-zinc-400 mt-0.5 break-all">{r.userId}</p>
-                      </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <select value={report.status} onChange={(event) => void updateStatus(report.id, event.target.value)} disabled={busyId === report.id} className="border border-black bg-transparent px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest">
+                      {STATUSES.filter((item) => item !== "all").map((item) => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                    {report.githubIssueUrl ? (
+                      <a href={report.githubIssueUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 border border-black px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest hover:bg-black/5">
+                        <ExternalLink className="h-3 w-3" /> GitHub
+                      </a>
+                    ) : (
+                      <button type="button" onClick={() => void retryGithub(report.id)} disabled={busyId === report.id} className="flex items-center gap-1 border border-black px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest hover:bg-black/5 disabled:opacity-50">
+                        <RotateCw className="h-3 w-3" /> Retry GitHub
+                      </button>
                     )}
-                    <div>
-                      <span className="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">Description</span>
-                      <p className="font-mono text-sm text-zinc-300 mt-1 whitespace-pre-wrap">{r.description}</p>
-                    </div>
-                    {r.screenshotUrl && (() => {
-                      let safeUrl: string | null = null;
-                      try {
-                        const parsed = new URL(r.screenshotUrl);
-                        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
-                          safeUrl = parsed.href;
-                        }
-                      } catch { /* ignore */ }
-                      return (
-                        <div>
-                          <span className="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">Screenshot</span>
-                          {safeUrl ? (
-                            <a
-                              href={safeUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block font-mono text-[11px] text-sky-400 hover:underline mt-0.5 break-all"
-                            >
-                              {safeUrl}
-                            </a>
-                          ) : (
-                            <p className="font-mono text-[11px] text-zinc-600 mt-0.5 break-all">{r.screenshotUrl}</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {/* Status update */}
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">Update Status:</span>
-                      {["open", "acknowledged", "resolved"].map(s => (
-                        <button
-                          key={s}
-                          onClick={() => updateStatus(r.id, s)}
-                          disabled={r.status === s || updatingId === r.id}
-                          className={`px-2.5 py-1 rounded font-mono text-[10px] uppercase tracking-wider border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                            r.status === s
-                              ? STATUS_STYLES[s]
-                              : 'text-zinc-500 border-zinc-700 hover:text-zinc-300 hover:border-zinc-500'
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                      {updatingId === r.id && <Loader2 className="w-3 h-3 text-zinc-500 animate-spin" />}
-                    </div>
                   </div>
-                )}
-              </div>
-              );
-            })}
+                </div>
+                {report.githubSyncStatus === "synced" && <p className="mt-3 flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-black/55"><Check className="h-3 w-3" /> GitHub issue #{report.githubIssueNumber}</p>}
+                {report.githubSyncError && <p className="mt-3 border-t border-black/15 pt-2 font-mono text-[10px] text-black/60">GitHub sync: {report.githubSyncError}</p>}
+              </article>
+            ))}
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

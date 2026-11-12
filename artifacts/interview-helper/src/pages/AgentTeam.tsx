@@ -2,9 +2,10 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Zap, Brain, Activity, Cpu, Shield, AlertCircle } from 'lucide-react';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
+import { PixelAgentFace, divisionFor } from '@/components/PixelAgentFace';
 
 interface AgentDefinition {
   id: string;
@@ -71,14 +72,7 @@ function StatusDot({ status }: { status: 'online' | 'offline' | 'unknown' }) {
 
 export default function AgentTeam({ embedded = false }: { embedded?: boolean } = {}) {
   const { agents, loading, error } = useAgentTeam();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
+  const boomerMode = BOOMER_MODE_ENABLED;
 
   const { isAuthenticated } = useAuth();
 
@@ -172,19 +166,24 @@ export default function AgentTeam({ embedded = false }: { embedded?: boolean } =
                     }`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 ${
+                      <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 overflow-hidden ${
                         agent.provider === 'claude'
                           ? 'bg-orange-500/10 border-orange-500/30'
                           : agent.provider === 'openclaw'
                           ? 'bg-cyan-500/10 border-cyan-500/30'
                           : 'bg-sky-500/10 border-sky-500/30'
                       }`}>
-                        {agent.provider === 'claude'
-                          ? <Brain className="w-6 h-6 text-orange-400" />
-                          : agent.provider === 'openclaw'
-                          ? <Cpu className="w-6 h-6 text-cyan-400" />
-                          : <Zap className="w-6 h-6 text-sky-400" />
-                        }
+                        <PixelAgentFace
+                          seed={agent.id}
+                          theme={
+                            agent.provider === 'claude'
+                              ? divisionFor('creative').theme
+                              : agent.provider === 'openclaw'
+                              ? divisionFor('automation').theme
+                              : divisionFor('core').theme
+                          }
+                          className="h-10 w-10"
+                        />
                       </div>
 
                       <div className="flex-1 min-w-0">

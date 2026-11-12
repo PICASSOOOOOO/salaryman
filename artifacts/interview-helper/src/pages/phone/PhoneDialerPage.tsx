@@ -2,8 +2,9 @@ import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle } from 'lucide-react';
+import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle, RefreshCw, Rocket } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
 import {
@@ -13,6 +14,8 @@ import {
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/max';
+import { PhoneCountrySelect } from './PhoneCountrySelect';
 
 const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
@@ -22,16 +25,16 @@ type DialMode = 'power' | 'auto' | 'predictive';
 
 const MODES: { key: DialMode; label: string; desc: string; color: (o: number) => string; icon: React.ReactNode }[] = [
   { key: 'power', label: 'POWER', desc: 'Manual queue — one at a time', color: slate, icon: <Zap size={14} /> },
-  { key: 'auto', label: 'AUTO', desc: 'Auto-advance after each call', color: primary, icon: '🔄' },
-  { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: accent, icon: '🚀' },
+  { key: 'auto', label: 'AUTO', desc: 'Auto-advance after each call', color: primary, icon: <RefreshCw size={14} /> },
+  { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: accent, icon: <Rocket size={14} /> },
 ];
 
-function validatePhoneNumber(raw: string): boolean {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 10) return true;
-  if (digits.length === 11 && digits[0] === '1') return true;
-  if (raw.startsWith('+') && digits.length >= 7 && digits.length <= 15) return true;
-  return false;
+function validatePhoneNumber(raw: string, country: CountryCode): boolean {
+  try {
+    return Boolean(parsePhoneNumberFromString(raw, country)?.isPossible());
+  } catch {
+    return false;
+  }
 }
 
 export default function PhoneDialerPage() {
@@ -40,14 +43,17 @@ export default function PhoneDialerPage() {
   const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
+  const { features: planFeatures } = usePlan();
+  const hasAdvancedDialing = planFeatures.has('phone_advanced');
   const [, rawNavigate] = useLocation();
   const hubNav = useCalllHomeNavigate();
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
-  const { disconnect: disconnectDevice } = useTwilioDeviceContext();
+  const { deviceState, deviceError } = useTwilioDeviceContext();
 
   const [manualNumber, setManualNumber] = useState('');
+  const [dialCountry, setDialCountry] = useState<CountryCode>('US');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [recentContacts, setRecentContacts] = useState<CRMContact[]>([]);
@@ -57,19 +63,20 @@ export default function PhoneDialerPage() {
   const [callStarting, setCallStarting] = useState(false);
   const [dialingMode, setDialingMode] = useState<DialMode>('power');
   const audioCtx = useRef<AudioContext | null>(null);
+  const actionInFlightRef = useRef<'call' | 'session' | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
-  const isValidNumber = useMemo(() => validatePhoneNumber(manualNumber), [manualNumber]);
+  const isValidNumber = useMemo(() => validatePhoneNumber(manualNumber, dialCountry), [manualNumber, dialCountry]);
   const numberHasInput = manualNumber.trim().length > 0;
   const showValidationError = numberHasInput && !isValidNumber;
 
   const handleFetchError = useCallback(async (r: Response) => {
     if (r.status === 403) {
       const d = await r.json().catch(() => ({}));
-      setError(d.error || 'Access denied — phone system subscription required.');
-      navigate('/upgrade');
+      setError(d.error || 'Access denied — CALLL HOME subscription required.');
+      navigate('/pricing');
       return true;
     }
     if (!r.ok) {
@@ -81,6 +88,7 @@ export default function PhoneDialerPage() {
   }, [navigate]);
 
   useEffect(() => {
+    if (!userId) return;
     apiFetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
         if (r.status === 403) { rawNavigate('/pricing'); return null; }
@@ -102,6 +110,25 @@ export default function PhoneDialerPage() {
       .then(d => { if (d?.calls) setRecentCalls(d.calls.slice(0, 6)); })
       .catch(() => { setError('Failed to load recent calls'); });
   }, [userId, apiUrl, rawNavigate]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isEditable = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isEditable || loading) return;
+      if (/^[0-9*#]$/.test(event.key)) {
+        event.preventDefault();
+        pressKey(event.key);
+      } else if (event.key === 'Backspace') {
+        event.preventDefault();
+        setManualNumber(prev => prev.slice(0, -1));
+      } else if (event.key === 'Escape') {
+        setManualNumber('');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [loading]);
 
   const playDTMF = (key: string) => {
     setDtmfTone(key);
@@ -131,7 +158,9 @@ export default function PhoneDialerPage() {
   };
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
-    if (!validatePhoneNumber(phone)) { setError('Invalid phone number format'); return; }
+    if (actionInFlightRef.current) return;
+    if (!validatePhoneNumber(phone, dialCountry)) { setError('Invalid phone number format'); return; }
+    actionInFlightRef.current = 'call';
     setError('');
     setLoading(true);
     setCallStarting(true);
@@ -141,7 +170,7 @@ export default function PhoneDialerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }) });
+          body: JSON.stringify({ recipientNumber: phone, countryCode: dialCountry, userId, callerName, contactName: name, contactId }) });
         if (await handleFetchError(r)) throw new Error('Call request failed');
         return r.json();
       }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
@@ -151,14 +180,18 @@ export default function PhoneDialerPage() {
       navigate('/phone/active');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error — check your connection and try again');
+    } finally {
+      actionInFlightRef.current = null;
+      setLoading(false);
       setCallStarting(false);
     }
-    setLoading(false);
   };
 
   const launchDialingSession = async () => {
+    if (actionInFlightRef.current) return;
     const nums = recentContacts.map(c => ({ phone: c.phone, name: c.name }));
     if (nums.length === 0) { navigate('/phone/sessions'); return; }
+    actionInFlightRef.current = 'session';
     setLoading(true);
     setError('');
     try {
@@ -167,27 +200,41 @@ export default function PhoneDialerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }) });
+          body: JSON.stringify({ mode: dialingMode, contactIds: recentContacts.map(c => c.id), settings: {}, countryCode: dialCountry }) });
         if (await handleFetchError(r)) throw new Error('Dialing session request failed');
         return r.json();
-      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), { allowNoLegs: true });
       const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
       const newActiveCalls: ActiveCall[] = batchCalls
         .filter(c => c.ok && c.callSid)
         .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
       addActiveCallsBatch(newActiveCalls);
-      const session = { id: d.sessionId, mode: d.mode, total: nums.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length, queue: d.queue ?? nums };
+      const session = {
+        id: d.sessionId,
+        mode: d.mode,
+        total: d.queue?.length ?? recentContacts.length,
+        dialed: batchCalls.filter((c: BatchResult) => c.ok).length,
+        queue: d.queue ?? nums,
+        paused: Boolean(d.paused),
+        error: d.error,
+      };
       try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
       navigate('/phone/active');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      actionInFlightRef.current = null;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const dialKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 
   const formattedDisplay = manualNumber ? formatPhone(manualNumber) : '';
+  const systemStatus =
+    deviceState === 'ready' ? 'READY' :
+      deviceState === 'initializing' ? 'CONNECTING' :
+        deviceState === 'error' ? 'OFFLINE' : 'STARTING';
 
   return (
     <PhonePageLayout
@@ -224,23 +271,26 @@ export default function PhoneDialerPage() {
                 padding: '14px 18px', marginBottom: 8, borderRadius: 8,
                 transition: 'border-color 0.3s ease' }}>
                 <div style={{ fontSize: '0.4rem', color: showValidationError ? destructive(0.6) : slate(0.2), letterSpacing: '0.2em', marginBottom: 4 }}>NUMBER INPUT</div>
-                <input
-                  value={manualNumber}
-                  onChange={e => setManualNumber(e.target.value)}
-                  placeholder="Enter phone number..."
-                  style={{
-                    width: '100%', background: 'transparent', border: 'none',
-                    color: showValidationError ? destructive(0.8) : slate(0.95), fontSize: '1.6rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                    outline: 'none', letterSpacing: '0.08em' }}
-                  onKeyDown={e => { if (e.key === 'Enter' && isValidNumber) callSingle(manualNumber); }}
-                />
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <PhoneCountrySelect value={dialCountry} onChange={setDialCountry} compact />
+                  <input
+                    value={manualNumber}
+                    onChange={e => setManualNumber(e.target.value)}
+                    placeholder="Phone number"
+                    style={{
+                      minWidth: 0, flex: 1, background: 'transparent', border: 'none',
+                      color: showValidationError ? destructive(0.8) : slate(0.95), fontSize: '1.25rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
+                      outline: 'none', letterSpacing: '0.05em' }}
+                    onKeyDown={e => { if (e.key === 'Enter' && isValidNumber) callSingle(manualNumber); }}
+                  />
+                </div>
                 {formattedDisplay && formattedDisplay !== manualNumber && !showValidationError && (
                   <div style={{ fontSize: '0.55rem', color: slate(0.55), marginTop: 4 }}>{formattedDisplay}</div>
                 )}
                 {showValidationError && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                     <AlertCircle size={10} style={{ color: destructive(0.7), flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.48rem', color: destructive(0.7) }}>Invalid format — enter 10-digit US or E.164 number</span>
+                    <span style={{ fontSize: '0.48rem', color: destructive(0.7) }}>Invalid number for {dialCountry}. Select another country or enter the full + international number.</span>
                   </div>
                 )}
               </div>
@@ -253,13 +303,13 @@ export default function PhoneDialerPage() {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
                 {dialKeys.map(key => (
                   <button
                     key={key}
                     onClick={() => pressKey(key)}
                     style={{
-                      height: 62, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      height: isMobile ? 58 : 62, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                       background: dtmfTone === key ? slate(0.15) : slate(0.02),
                       border: `1px solid ${dtmfTone === key ? slate(0.4) : slate(0.1)}`,
                       color: slate(0.85), cursor: 'pointer', borderRadius: 8,
@@ -334,7 +384,12 @@ export default function PhoneDialerPage() {
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 10 }}>
             <StatBlock label="CONTACTS" value={recentContacts.length} sub="with phone" />
             <StatBlock label="CALLS TODAY" value={recentCalls.filter(c => new Date(c.startedAt).toDateString() === new Date().toDateString()).length} sub="outbound" color={primary} />
-            <StatBlock label="SYSTEM" value="READY" sub="all lines open" color={slate} />
+            <StatBlock
+              label="SYSTEM"
+              value={systemStatus}
+              sub={deviceError ? 'reconnect required' : deviceState === 'ready' ? 'browser phone connected' : 'browser phone not connected'}
+              color={deviceState === 'ready' ? primary : deviceState === 'error' ? destructive : warning}
+            />
           </div>
 
           <PhoneCard>
@@ -343,12 +398,16 @@ export default function PhoneDialerPage() {
               <div style={{ display: 'flex', gap: 8 }}>
                 {MODES.map(m => {
                   const isSel = dialingMode === m.key;
+                  const locked = m.key !== 'power' && !hasAdvancedDialing;
                   return (
                     <button
                       key={m.key}
-                      onClick={() => setDialingMode(m.key)}
+                      onClick={() => { if (!locked) setDialingMode(m.key); }}
+                      disabled={locked}
+                      title={locked ? 'Available on Custom CALLL HOME plans' : undefined}
                       style={{
-                        flex: 1, padding: '10px 8px', textAlign: 'center', borderRadius: 8, cursor: 'pointer',
+                        flex: 1, padding: '10px 8px', textAlign: 'center', borderRadius: 8, cursor: locked ? 'not-allowed' : 'pointer',
+                        opacity: locked ? 0.45 : 1,
                         background: isSel ? slate(0.06) : slate(0.04),
                         border: `1px solid ${isSel ? m.color(0.35) : slate(0.08)}`,
                         transition: 'all 0.15s' }}

@@ -24,12 +24,18 @@ import { startAutopilotScheduler, registerAutopilotHandler, businessOpsAutopilot
 import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
 import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting';
 import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
+import { creativeWorkAutopilotHandler } from './lib/autopilot/handlers/creative-work';
+import { marketResearchAutopilotHandler } from './lib/autopilot/handlers/market-research';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
+import { seedConfirmedTowerNpcAgency } from "./lib/seed-npc-agency";
 import { expireOverdueRentals } from './routes/fleet';
+import { isUserDataRetentionEnabled, runUserDataRetentionSweep } from './routes/lifecycle';
 import { purgeOutsideWorldState } from './lib/outside-world';
 import { setupGodotRenderBridge } from './godot-render-bridge';
 import { setupDeviceControlBridge } from './device-control-bridge';
+import { startPhoneHealthScheduler } from './lib/phone-health-scheduler';
+import { startTowerShopLogisticsScheduler } from './routes/items';
 
 const rawPort = process.env["PORT"];
 
@@ -79,6 +85,9 @@ function runDeferredBoot(): void {
     });
     seedResourceNodes().catch(err => {
       console.error("[Resource Seed] Error:", err);
+    });
+    seedConfirmedTowerNpcAgency().catch(err => {
+      console.error("[NPC Agency Seed] Error:", err);
     });
     tickCommodityPrices().catch(err => {
       console.error("[Commodity Prices] Error:", err);
@@ -130,6 +139,8 @@ function runDeferredBoot(): void {
   registerAutopilotHandler("accounting", accountingAutopilotHandler);
   registerAutopilotHandler("crm_calls", crmCallsAutopilotHandler);
   registerAutopilotHandler("business_ops", businessOpsAutopilotHandler);
+  registerAutopilotHandler("creative_work", creativeWorkAutopilotHandler);
+  registerAutopilotHandler("market_research", marketResearchAutopilotHandler);
   startAutopilotScheduler();
 }
 
@@ -142,6 +153,8 @@ function startListening(): void {
   httpServer.listen(port, () => {
     bindAttempts = 0;
     console.log(`Server listening on port ${port}`);
+    startPhoneHealthScheduler();
+    startTowerShopLogisticsScheduler();
     if (ownerEmails.length > 0) {
       console.log(`[Access] Tester / Picasso staff bypass active for ${ownerEmails.length} address(es) — every paid feature free.`);
     } else {
@@ -266,3 +279,22 @@ function runFleetExpiry(): void {
 }
 setTimeout(runFleetExpiry, 120_000); // 2 min after boot
 setInterval(runFleetExpiry, FLEET_CRON_MS);
+
+// Warn inactive unpaid accounts after 23 days and remove eligible app data
+// only after the full 30-day idle period and seven-day notice have elapsed.
+const USER_DATA_RETENTION_SWEEP_MS = 24 * 60 * 60 * 1000;
+if (isUserDataRetentionEnabled()) {
+  function runUserDataRetention(): void {
+    runUserDataRetentionSweep()
+      .then((result) => {
+        if (result.warned || result.deletedUsers) {
+          console.log(`[User Data Retention] warned=${result.warned} deleted=${result.deletedUsers}`);
+        }
+      })
+      .catch((error) => console.error("[User Data Retention] sweep failed:", error instanceof Error ? error.message : error));
+  }
+  setTimeout(runUserDataRetention, 75_000);
+  setInterval(runUserDataRetention, USER_DATA_RETENTION_SWEEP_MS);
+} else {
+  console.log("[User Data Retention] scheduled sweep disabled pending verified paid-history protection.");
+}

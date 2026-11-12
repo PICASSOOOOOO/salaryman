@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Radio, Upload, FileImage, FileAudio, FileVideo, X, MoreHorizontal } from 'lucide-react';
-import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
+import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode, type PrepScenario } from '@/hooks/use-interview';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { useMediaAnalyzer, detectMediaFileType, validateMediaFile } from '@/hooks/use-media-analyzer';
 import { ActionPanel } from '@/components/ActionPanel';
@@ -10,7 +10,7 @@ import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'wouter';
@@ -27,18 +27,13 @@ export default function Console() {
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan' | 'media'>('solve');
+  const [prepScenario, setPrepScenario] = useState<PrepScenario>('interview');
+  const [prepConsent, setPrepConsent] = useState(false);
   const [typeMode, setTypeMode] = useState(false);
   const [showTowerLife, setShowTowerLife] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const { t } = useTranslation();
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const { response, status, isStreaming, solve, cancel, reset } = useInterviewSolver();
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
@@ -118,9 +113,10 @@ export default function Console() {
 
   const handleListen = () => {
     if (isRecording) { stopListening(); return; }
+    if (!prepConsent) return;
     setActivePanel('listen'); setTypeMode(false);
     reset(); resetScan();
-    startListening();
+    startListening(prepScenario);
   };
 
   const handleScanOnce = () => {
@@ -250,10 +246,10 @@ export default function Console() {
             data-testid="console-open-phone"
             className="hidden items-center gap-1.5 rounded px-2 py-1 md:inline-flex"
             style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'rgba(110,231,183,0.95)', border: '1px solid rgba(110,231,183,0.32)', background: 'rgba(110,231,183,0.06)' }}
-            title="Open Phone System"
+            title="Open CALLL HOME"
           >
             <Radio className="w-3 h-3" />
-            PHONE SYSTEM
+            CALLL HOME
           </Link>
         <button
           type="button"
@@ -267,30 +263,6 @@ export default function Console() {
         <span className="hidden xl:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
           {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}
         </span>
-        <button
-          className="hidden md:inline-flex"
-          onClick={() => {
-            const nb = !boomerMode;
-            setBoomerMode(nb);
-            try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
-          }}
-          style={{
-            fontFamily: "'Fira Code', monospace",
-            fontSize: '0.5rem',
-            letterSpacing: '0.08em',
-            padding: '2px 8px',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            transition: 'all .15s',
-            whiteSpace: 'nowrap',
-            background: boomerMode ? 'rgba(255,176,0,0.08)' : 'transparent',
-            border: boomerMode ? '1px solid rgba(255,176,0,0.4)' : '1px solid rgba(52,211,153,0.2)',
-            color: boomerMode ? 'rgba(255,176,0,0.9)' : 'rgba(52,211,153,0.4)',
-          }}
-          title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
-        >
-          {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
-        </button>
         </div>
         {showMobileActions && (
           <div
@@ -313,7 +285,7 @@ export default function Console() {
               onClick={() => setShowMobileActions(false)}
               className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-emerald-300 hover:bg-emerald-500/10"
             >
-              <Radio className="h-3 w-3" /> PHONE SYSTEM
+              <Radio className="h-3 w-3" /> CALLL HOME
             </Link>
             <button
               type="button"
@@ -321,18 +293,6 @@ export default function Console() {
               className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-violet-300 hover:bg-violet-500/10"
             >
               TOWER CLASSIFIEDS
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const nb = !boomerMode;
-                setBoomerMode(nb);
-                setShowMobileActions(false);
-                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
-              }}
-              className="flex min-h-10 items-center gap-2 rounded px-3 text-left text-[10px] font-bold tracking-[0.12em] text-amber-300 hover:bg-amber-500/10"
-            >
-              <Settings2 className="h-3 w-3" /> {boomerMode ? 'MODERN MODE' : 'BOOMER MODE'}
             </button>
           </div>
         )}
@@ -384,8 +344,9 @@ export default function Console() {
               <div className="flex flex-wrap items-center gap-1.5">
                 {consoleConv.isSupported && (
                   <button
-                    onClick={() => consoleConv.isConvMode ? consoleConv.stopConversation() : consoleConv.startConversation()}
-                    disabled={(isAnyBusy && !consoleConv.isConvMode)}
+                    onClick={() => consoleConv.isConvMode ? consoleConv.stopConversation() : prepConsent && consoleConv.startConversation()}
+                    disabled={(isAnyBusy && !consoleConv.isConvMode) || (!prepConsent && !consoleConv.isConvMode)}
+                    data-testid="live-coach-conversation"
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                       ${consoleConv.isConvMode
                         ? 'bg-sky-500/25 text-sky-300 border-sky-500/40 animate-pulse'
@@ -397,7 +358,8 @@ export default function Console() {
                 )}
                 <button
                   onClick={handleListen}
-                  disabled={(isAnyBusy && !isRecording) || isListenProcessing || consoleConv.isConvMode}
+                  disabled={(isAnyBusy && !isRecording) || isListenProcessing || consoleConv.isConvMode || (!prepConsent && !isRecording)}
+                  data-testid="live-coach-listen"
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                     ${isRecording
                       ? 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'
@@ -415,6 +377,43 @@ export default function Console() {
                 </button>
               </div>
             </div>
+            <label className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-sky-200/70">
+              <span className="font-bold tracking-[0.08em]">COACHING CONTEXT</span>
+              <select
+                value={prepScenario}
+                onChange={e => setPrepScenario(e.target.value as PrepScenario)}
+                disabled={isRecording || isListenProcessing}
+                className="min-h-9 rounded-md border border-sky-500/25 bg-background px-2 text-xs text-foreground"
+                aria-label="Live coaching context"
+              >
+                <option value="interview">Interview</option>
+                <option value="meeting">Meeting</option>
+                <option value="pitch">Pitch or negotiation</option>
+                <option value="presentation">Presentation</option>
+                <option value="management">Management conversation</option>
+                <option value="hiring">Hiring</option>
+                <option value="firing">Termination conversation</option>
+                <option value="difficult_conversation">Difficult conversation</option>
+              </select>
+              <span className="text-muted-foreground">Pablo gives the situation, a response, and one skill to use.</span>
+            </label>
+            <label className="mb-2 flex items-start gap-2 text-[10px] text-muted-foreground">
+              <input
+                type="checkbox"
+                data-testid="live-coach-consent"
+                checked={prepConsent}
+                onChange={e => {
+                  const accepted = e.target.checked;
+                  setPrepConsent(accepted);
+                  if (!accepted) {
+                    if (isRecording) stopListening();
+                    if (consoleConv.isConvMode) consoleConv.stopConversation();
+                  }
+                }}
+                className="mt-0.5 accent-sky-400"
+              />
+              <span>I consent to send captured conversation audio to Pablo for scenario-specific coaching while listening is active.</span>
+            </label>
             {consoleConv.isConvMode ? (
               <div className="flex items-center gap-2 mt-1.5">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${

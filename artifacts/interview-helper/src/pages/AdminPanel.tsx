@@ -18,6 +18,7 @@ import { usePlan } from '@/hooks/use-plan';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useLocation } from 'wouter';
 import { AdminConstructionOverview } from '@/components/ConstructionOverview';
+import { TowerShopStaffPanel } from '@/components/TowerShopStaffPanel';
 
 interface UserRecord {
   id: string;
@@ -137,7 +138,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'construction' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship' | 'credit';
+type AdminTab = 'analytics' | 'pulse' | 'construction' | 'shopstaff' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship' | 'credit';
 
 interface SalaryQualRow {
   id: number;
@@ -214,18 +215,19 @@ const FEATURE_LABELS: Record<string, string> = {
   live_listen: 'LIVE LISTEN',
   screen_scan: 'SCREEN SCAN',
   say_this: 'SAY THIS',
-  phone_system: 'PHONE SYSTEM',
+  phone_system: 'CALLL HOME',
+  phone_advanced: 'CALLL HOME ADVANCED',
   claw_bot: 'CLAW BOT',
 };
 
-const ALL_FEATURES = ['live_listen', 'screen_scan', 'say_this', 'phone_system', 'claw_bot'];
+const ALL_FEATURES = ['live_listen', 'screen_scan', 'say_this', 'phone_system', 'phone_advanced', 'claw_bot'];
 
 const DEFAULT_TOGGLES: { key: string; label: string; desc: string; category: string; defaultOn: boolean }[] = [
   { key: 'maintenance_mode', label: 'MAINTENANCE MODE', desc: 'Disables all user access except Picasso admins', category: 'system', defaultOn: false },
   { key: 'registration_open', label: 'REGISTRATION OPEN', desc: 'Allow new user registration', category: 'system', defaultOn: true },
   { key: 'world_enabled', label: 'SALARYMAN WORLD', desc: 'Enable or disable the Salaryman MMO world', category: 'features', defaultOn: true },
   { key: 'marketplace_enabled', label: 'PIXEL AGENTS STORE', desc: 'Enable or disable the Pixel Agents store', category: 'features', defaultOn: true },
-  { key: 'phone_system_enabled', label: 'PHONE SYSTEM', desc: 'Enable or disable the Twilio phone integration', category: 'features', defaultOn: true },
+  { key: 'phone_system_enabled', label: 'CALLL HOME', desc: 'Enable or disable the CALLL HOME phone integration', category: 'features', defaultOn: true },
   { key: 'chat_enabled', label: 'CHAT SYSTEM', desc: 'Enable or disable in-app messaging', category: 'features', defaultOn: true },
   { key: 'hiring_enabled', label: 'HIRING BOARD', desc: 'Enable or disable the job board', category: 'features', defaultOn: true },
   { key: 'crm_enabled', label: 'CRM TOOLS', desc: 'Enable or disable CRM / contacts / deals', category: 'features', defaultOn: true },
@@ -415,7 +417,7 @@ export default function AdminPanel() {
   // a launcher in the tab strip — accepting it here would render a blank
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
-    'analytics', 'pulse', 'construction', 'users', 'orgs', 'config', 'toggles', 'broadcast',
+    'analytics', 'pulse', 'construction', 'shopstaff', 'users', 'orgs', 'config', 'toggles', 'broadcast',
     'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual', 'citizenship', 'credit',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
@@ -1156,6 +1158,7 @@ export default function AdminPanel() {
     { key: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
     { key: 'pulse', label: 'WORLD PULSE', icon: Activity },
     { key: 'construction', label: 'CONSTRUCTION', icon: HardHat },
+    { key: 'shopstaff', label: 'SHOP STAFF', icon: UserCog },
     { key: 'alpha', label: 'ALPHA APPS', icon: UserPlus, badge: alphaPending },
     { key: 'users', label: 'USERS', icon: Users },
     { key: 'orgs', label: 'BUSINESSES', icon: Building2 },
@@ -1483,6 +1486,7 @@ export default function AdminPanel() {
               <AdminConstructionOverview />
             </motion.div>
           )}
+          {activeTab === 'shopstaff' && <TowerShopStaffPanel />}
 
           {activeTab === 'users' && !selectedUser && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">

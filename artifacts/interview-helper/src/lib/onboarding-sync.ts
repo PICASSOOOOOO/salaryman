@@ -8,8 +8,8 @@ import { isTutorialDone, markTutorialDone, resetTutorial } from "./tutorial-prog
 // (salaryman_tutorial_done, read by isTutorialDone()). That breaks for a
 // returning, already-onboarded user who signs in on a fresh device or after
 // clearing their browser: the local flag is missing, so every routing gate
-// (App.tsx HomeOrCover, AppShell, NavBar, Immigration) treats them as brand new
-// and force-redirects them through the /immigration intake again.
+// (App.tsx HomeOrCover, AppShell, NavBar, Onboarding) treats them as brand new
+// and force-redirects them through the /onboarding flow again.
 //
 // The server already knows the truth: an already-onboarded user has a row in
 // worldBusinessesTable, exposed via GET /world/my-business. This module checks
@@ -26,7 +26,25 @@ import { useSyncExternalStore } from "react";
 
 let resolved = false;
 let inFlight: Promise<void> | null = null;
+let activeSessionKey: string | null = null;
+let generation = 0;
 const listeners = new Set<() => void>();
+const AUTH_BOOTSTRAP_MAX_ATTEMPTS = 4;
+const ONBOARDING_BOOTSTRAP_TIMEOUT_MS = 7000;
+
+async function readOnboardingState(path: string): Promise<Response> {
+  let response = await apiFetch(path, { skipSessionExpiryRedirect: true });
+  // Clerk can finish the browser sign-in before the API middleware sees the
+  // newly established session. Retry that narrow bootstrap race instead of
+  // letting apiFetch redirect the user back to the sign-in form. JIT user
+  // provisioning can take longer than one render tick, so use a bounded
+  // backoff rather than a single 250ms retry.
+  for (let attempt = 1; response.status === 401 && attempt < AUTH_BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)));
+    response = await apiFetch(path, { skipSessionExpiryRedirect: true });
+  }
+  return response;
+}
 
 function emit(): void {
   for (const l of listeners) l();
@@ -46,6 +64,14 @@ export function getOnboardingResolved(): boolean {
 function markResolved(): void {
   if (resolved) return;
   resolved = true;
+  emit();
+}
+
+export function resetOnboardingStatus(): void {
+  generation += 1;
+  activeSessionKey = null;
+  resolved = false;
+  inFlight = null;
   emit();
 }
 
@@ -80,18 +106,41 @@ function applyServerHomeCity(value: unknown): void {
 //   across devices and is available before office/HUD/world routes mount.
 // - The gate resolves only after an authoritative saves response. On a network,
 //   non-OK, or malformed saves response, keep protected surfaces fail-closed.
-export function hydrateOnboardingStatus(): Promise<void> {
+export function hydrateOnboardingStatus(sessionKey = "default"): Promise<void> {
+  if (activeSessionKey !== sessionKey) {
+    generation += 1;
+    activeSessionKey = sessionKey;
+    resolved = false;
+    inFlight = null;
+    emit();
+  }
   if (resolved) return Promise.resolve();
   if (inFlight) return inFlight;
 
+  const requestGeneration = generation;
   inFlight = (async () => {
     let authoritativeSavesRead = false;
+    let timedOut = false;
     try {
-      const [businessResult, homeCityResult, savesResult] = await Promise.allSettled([
-        apiFetch("/api/world/my-business"),
-        apiFetch("/api/world/home-city"),
-        apiFetch("/api/salaryman/saves"),
+      const results = await Promise.race([
+        Promise.allSettled([
+          readOnboardingState("/api/world/my-business"),
+          readOnboardingState("/api/world/home-city"),
+          readOnboardingState("/api/salaryman/saves"),
+        ]),
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), ONBOARDING_BOOTSTRAP_TIMEOUT_MS);
+        }),
       ]);
+      if (results === null) {
+        timedOut = true;
+        return;
+      }
+      const [businessResult, homeCityResult, savesResult] = results;
+      // A logout/login transition can finish an older request after a new
+      // session has started. Never apply old user's onboarding data to the
+      // current browser session.
+      if (requestGeneration !== generation || activeSessionKey !== sessionKey) return;
       if (savesResult.status === "fulfilled" && savesResult.value.ok) {
         const data = (await savesResult.value.json()) as { saves?: unknown };
         if (Array.isArray(data.saves)) {
@@ -104,11 +153,27 @@ export function hydrateOnboardingStatus(): Promise<void> {
           }
         }
       }
+      // A brand-new account has no local completion marker yet. If the only
+      // bootstrap failure is the transient auth 401, let it enter onboarding
+      // rather than trapping it on the loading screen forever. Returning users
+      // with a completion marker remain fail-closed until their server state is
+      // available.
+      if (
+        !authoritativeSavesRead &&
+        savesResult.status === "fulfilled" &&
+        savesResult.value.status === 401
+      ) {
+        // A returning user may still have a valid browser auth result while
+        // the API middleware is one step behind during callback bootstrap.
+        // Do not trap that user on the route-handshake screen; protected
+        // pages will perform their own auth check and the next load retries.
+        markResolved();
+      }
       if (businessResult.status === "fulfilled" && businessResult.value.ok) {
         const data = (await businessResult.value.json()) as { businesses?: unknown };
         if (Array.isArray(data.businesses) && data.businesses.length > 0) {
           // Server says this user already onboarded — flip the local flag so
-          // App.tsx / AppShell / NavBar / Immigration all treat them as cleared.
+          // App.tsx / AppShell / NavBar / Onboarding all treat them as cleared.
           markTutorialDone();
         }
       }
@@ -119,8 +184,14 @@ export function hydrateOnboardingStatus(): Promise<void> {
     } catch {
       // Keep protected routes held until a future load can verify server state.
     } finally {
-      if (authoritativeSavesRead) markResolved();
-      inFlight = null;
+      if (requestGeneration === generation && activeSessionKey === sessionKey) {
+        // Never leave a signed-in user on the blank/syncing gate forever. A
+        // successful saves read is authoritative; a bounded timeout is the
+        // safe fallback because the route can still perform its own auth check
+        // and a new session will retry this bootstrap on the next load.
+        if (authoritativeSavesRead || timedOut) markResolved();
+        inFlight = null;
+      }
     }
   })();
 

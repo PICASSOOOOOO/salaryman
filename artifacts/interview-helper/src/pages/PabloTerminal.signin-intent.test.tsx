@@ -4,7 +4,7 @@
 // (detectSignInIntent -> setAuthChoice). This is distinct from the admit
 // flow tested in PabloTerminal.admit.test.tsx:
 //
-//   • The admit path (isReadyToEnter / isShowPapers) walks a brand-new
+//   • The readiness path (isReadyToEnter) walks a brand-new
 //     visitor through name -> email before handing off, and only short-
 //     circuits straight to the modal when name+email are already CACHED.
 //   • The sign-in shortcut here fires for phrases like "I already have an
@@ -50,6 +50,10 @@ vi.mock("@/lib/tts", () => ({
   speakWithTTS: (_text: string, onDone?: () => void) => {
     if (onDone) onDone();
     return { cancel: () => {} };
+  },
+  whenAudioUnlocked: (callback: () => void) => {
+    callback();
+    return () => {};
   },
   unlockAudio: async () => {},
   armAudioAutoUnlock: () => {},

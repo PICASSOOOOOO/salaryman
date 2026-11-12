@@ -1,0 +1,60 @@
+04-23 11:40:09
+TypeError: Cannot destructure property 'audio' of 't.body' as it is undefined.
+04-23 11:40:09
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:96171
+04-23 11:40:09
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:99140
+04-23 11:40:09
+at wy.handleRequest (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:25761)
+04-23 11:40:44
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:99140
+04-23 11:40:44
+at wy.handleRequest (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:25761)
+04-23 11:40:44
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:96171
+04-23 11:40:44
+at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+04-23 11:40:44
+TypeError: Cannot destructure property 'audio' of 't.body' as it is undefined.
+04-23 11:40:44
+at c (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:27680)
+04-23 11:41:02
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:99140
+04-23 11:41:02
+TypeError: Cannot destructure property 'audio' of 't.body' as it is undefined.
+04-23 11:41:02
+at c (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:27680)
+04-23 11:41:02
+at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+04-23 11:41:02
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:96171
+04-23 11:41:02
+at wy.handleRequest (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:25761)
+04-23 11:46:34
+at wy.handleRequest (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:25761)
+04-23 11:46:34
+at c (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:27680)
+04-23 11:46:34
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:96171
+04-23 11:46:34
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:99140
+04-23 11:46:34
+TypeError: Cannot destructure property 'audio' of 't.body' as it is undefined.
+04-23 11:46:34
+at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+04-23 11:47:07
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:99140
+04-23 11:47:07
+at /home/runner/workspace/artifacts/api-server/dist/index.cjs:224:96171
+04-23 11:47:07
+TypeError: Cannot destructure property 'audio' of 't.body' as it is undefined.
+04-23 11:47:07
+at wy.handleRequest (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:25761)
+04-23 11:47:07
+at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+04-23 11:47:07
+at c (/home/runner/workspace/artifacts/api-server/dist/index.cjs:31:27680)
+04-23 12:21:26
+[Twilio] Restored API Key from DB: SK4b96828003639d8f1298b7643873ea2e
+04-23 12:21:26
+[Twilio] Resolved domain for TwiML App: salaryman.replit.app

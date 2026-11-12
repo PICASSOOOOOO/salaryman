@@ -28,21 +28,21 @@ vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 let putMode: "ok" | "fail" | "throw" = "ok";
 
 const apiFetch = vi.fn(async (path: string, opts?: any) => {
-  if (typeof path === "string" && path.startsWith("/autopilot/") && opts?.method === "PUT") {
+  if (typeof path === "string" && path.startsWith("/api/autopilot/") && opts?.method === "PUT") {
     if (putMode === "throw") throw new Error("network down");
     if (putMode === "fail") {
       return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
     }
-    const domain = path.slice("/autopilot/".length);
+    const domain = path.slice("/api/autopilot/".length);
     const body = JSON.parse(opts.body);
     const cfg = payload.domains.find((d: any) => d.domain === domain);
     if (cfg) Object.assign(cfg, body);
     return { ok: true, status: 200, json: async () => ({ ok: true }) } as unknown as Response;
   }
-  if (path === "/autopilot") {
+  if (path === "/api/autopilot") {
     return { ok: true, status: 200, json: async () => payload } as unknown as Response;
   }
-  if (String(path).startsWith("/autopilot/activity")) {
+  if (String(path).startsWith("/api/autopilot/activity")) {
     return { ok: true, status: 200, json: async () => ({ activity: [], hasMore: false }) } as unknown as Response;
   }
   return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
@@ -78,10 +78,7 @@ function freshPayload() {
     defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
     marketing: { tones: TONES, platforms: PLATFORMS },
     crm: { leadStatuses: LEAD_STATUSES },
-    bots: [
-      { id: 10, name: "Pablo", status: "active", department: "Ops" },
-      { id: 11, name: "Mila", status: "active", department: null },
-    ],
+    accounting: { canManage: true },
     domains: [
       {
         orgId: 1,
@@ -168,10 +165,9 @@ async function mount() {
 function cardFor(label: string): HTMLElement {
   const h3 = Array.from(container.querySelectorAll("h3")).find((h) => h.textContent === label);
   if (!h3) throw new Error(`no card heading for "${label}"`);
-  let el: HTMLElement | null = h3;
-  while (el && !el.querySelector("select")) el = el.parentElement;
-  if (!el) throw new Error(`no card body for "${label}"`);
-  return el;
+  const card = h3.closest("[data-autopilot-domain]");
+  if (!card) throw new Error(`no card body for "${label}"`);
+  return card as HTMLElement;
 }
 
 function topToggle(card: HTMLElement): HTMLButtonElement {

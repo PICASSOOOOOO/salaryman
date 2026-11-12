@@ -134,7 +134,7 @@ export default function PixelAgents({ embedded = false }: { embedded?: boolean }
           /* Top bar */
           <div className="flex items-center justify-between mb-8">
             <button
-              onClick={() => navigate("/pledge")}
+              onClick={() => navigate("/pricing")}
               className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" /> Pledge Store

@@ -9,10 +9,10 @@
 //
 // It mounts the real Autopilot component with apiFetch and useAuth mocked, then
 // for each interaction asserts:
-//   • a PUT /autopilot/<domain> fired, with method PUT, JSON content-type, and
-//     the expected body (enabled / botId / cadenceMinutes / maxActionsPerTick /
+//   • a PUT /api/autopilot/<domain> fired, with method PUT, JSON content-type, and
+//     the expected body (enabled / cadenceMinutes / maxActionsPerTick /
 //     prefs)
-//   • a GET /autopilot reload followed that PUT
+//   • a GET /api/autopilot reload followed that PUT
 //
 // A regression that silently drops a user's change (broken onClick/onBlur, a
 // malformed body, or a missing reload) would be caught here.
@@ -25,21 +25,21 @@ import { createRoot, type Root } from "react-dom/client";
 vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
 vi.mock("@/components/SignInPrompt", () => ({ SignInPage: () => null }));
 
-// apiFetch double. Serves the saved control surface for GET /autopilot, an empty
-// feed for the activity poll, and accepts PUT /autopilot/<domain> writes
+// apiFetch double. Serves the saved control surface for GET /api/autopilot, an empty
+// feed for the activity poll, and accepts PUT /api/autopilot/<domain> writes
 // (reflecting the body back into the payload so the reload shows the change).
 const apiFetch = vi.fn(async (path: string, opts?: any) => {
-  if (typeof path === "string" && path.startsWith("/autopilot/") && opts?.method === "PUT") {
-    const domain = path.slice("/autopilot/".length);
+  if (typeof path === "string" && path.startsWith("/api/autopilot/") && opts?.method === "PUT") {
+    const domain = path.slice("/api/autopilot/".length);
     const body = JSON.parse(opts.body);
     const cfg = payload.domains.find((d: any) => d.domain === domain);
     if (cfg) Object.assign(cfg, body);
     return { ok: true, status: 200, json: async () => ({ ok: true }) } as unknown as Response;
   }
-  if (path === "/autopilot") {
+  if (path === "/api/autopilot") {
     return { ok: true, status: 200, json: async () => payload } as unknown as Response;
   }
-  if (String(path).startsWith("/autopilot/activity")) {
+  if (String(path).startsWith("/api/autopilot/activity")) {
     return { ok: true, status: 200, json: async () => ({ activity: [], hasMore: false }) } as unknown as Response;
   }
   return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
@@ -77,10 +77,6 @@ function freshPayload() {
     defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
     marketing: { tones: TONES, platforms: PLATFORMS },
     crm: { leadStatuses: LEAD_STATUSES },
-    bots: [
-      { id: 10, name: "Pablo", status: "active", department: "Ops" },
-      { id: 11, name: "Mila", status: "active", department: null },
-    ],
     domains: [
       {
         orgId: 1,
@@ -164,15 +160,13 @@ async function mount() {
   await flush();
 }
 
-// The card for a domain is the nearest ancestor of its <h3> label that also
-// contains the ASSIGNED AGENT <select>.
+// The domain data attribute gives tests a stable way to address one card.
 function cardFor(label: string): HTMLElement {
   const h3 = Array.from(container.querySelectorAll("h3")).find((h) => h.textContent === label);
   if (!h3) throw new Error(`no card heading for "${label}"`);
-  let el: HTMLElement | null = h3;
-  while (el && !el.querySelector("select")) el = el.parentElement;
-  if (!el) throw new Error(`no card body for "${label}"`);
-  return el;
+  const card = h3.closest("[data-autopilot-domain]");
+  if (!card) throw new Error(`no card body for "${label}"`);
+  return card as HTMLElement;
 }
 
 // The top ON/OFF toggle button inside a card (its text is exactly ON or OFF —
@@ -246,7 +240,7 @@ async function changeNumber(input: HTMLInputElement, value: number) {
 // All PUTs issued for a domain, newest last.
 function putCalls(domain: string) {
   return apiFetch.mock.calls.filter(
-    (c: any[]) => c[0] === `/autopilot/${domain}` && c[1]?.method === "PUT",
+    (c: any[]) => c[0] === `/api/autopilot/${domain}` && c[1]?.method === "PUT",
   );
 }
 
@@ -263,18 +257,18 @@ function callIndex(predicate: (c: any[]) => boolean, from = 0): number {
 }
 
 // Asserts the most recent PUT for `domain` carried the right verb + headers +
-// body, and that a GET /autopilot reload followed it.
+// body, and that a GET /api/autopilot reload followed it.
 function expectSavedAndReloaded(domain: string, body: unknown) {
   const put = lastPut(domain);
-  expect(put, `expected a PUT /autopilot/${domain}`).toBeTruthy();
+  expect(put, `expected a PUT /api/autopilot/${domain}`).toBeTruthy();
   const opts = put![1];
   expect(opts.method).toBe("PUT");
   expect(opts.headers["Content-Type"]).toBe("application/json");
   expect(JSON.parse(opts.body)).toEqual(body);
 
-  const putIdx = callIndex((c) => c[0] === `/autopilot/${domain}` && c[1]?.method === "PUT");
-  const reloadIdx = callIndex((c) => c[0] === "/autopilot" && (!c[1] || !c[1].method), putIdx + 1);
-  expect(reloadIdx, "expected a GET /autopilot reload after the PUT").toBeGreaterThan(putIdx);
+  const putIdx = callIndex((c) => c[0] === `/api/autopilot/${domain}` && c[1]?.method === "PUT");
+  const reloadIdx = callIndex((c) => c[0] === "/api/autopilot" && (!c[1] || !c[1].method), putIdx + 1);
+  expect(reloadIdx, "expected a GET /api/autopilot reload after the PUT").toBeGreaterThan(putIdx);
 }
 
 beforeEach(() => {
@@ -304,26 +298,13 @@ describe("Autopilot dashboard saves changes to the server", () => {
     expectSavedAndReloaded("business_ops", { enabled: false });
   });
 
-  it("picking an agent PUTs the selected botId (numeric) and reloads", async () => {
+  it("shows Pablo Prime as the runner without an agent assignment control", async () => {
     await mount();
-    apiFetch.mockClear();
 
     const card = cardFor("Business Ops");
-    const agentSelect = card.querySelector("select") as HTMLSelectElement;
-    await changeSelect(agentSelect, "11");
-
-    expectSavedAndReloaded("business_ops", { botId: 11 });
-  });
-
-  it("clearing the agent PUTs botId null and reloads", async () => {
-    await mount();
-    apiFetch.mockClear();
-
-    const card = cardFor("Business Ops");
-    const agentSelect = card.querySelector("select") as HTMLSelectElement;
-    await changeSelect(agentSelect, "");
-
-    expectSavedAndReloaded("business_ops", { botId: null });
+    expect(card.textContent).toContain("RUN BY PABLO AI");
+    expect(card.querySelector("select")).toBeNull();
+    expect(card.textContent).not.toContain("ASSIGNED AGENT");
   });
 
   it("editing the cadence cap (onBlur) PUTs cadenceMinutes and reloads", async () => {

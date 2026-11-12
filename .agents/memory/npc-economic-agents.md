@@ -1,0 +1,420 @@
+---
+name: NPC economic agents
+description: NPCs are full participants in SALARYMAN's economy, with needs, consumption, income, and wealth progression.
+---
+
+NPCs are part of the economy, not background decoration. They need food and other ordinary necessities, consume resources, receive income for productive work, and grow or lose personal wealth over time.
+
+**Why:** The user explicitly wants NPC life to participate in the same persistent business/world system as the player.
+
+**How to apply:** When adding an NPC domain, include its needs, spending, income source, wealth state, and visible progression. Avoid player-only economy logic that makes NPCs passive props.
+
+Current development priority is to build out shops, physical objects, customization,
+supporting simulation systems, and game UI/UX before adding more story missions.
+
+**Why:** the user explicitly said the game is not ready for missions and prioritized
+the shop, object, customization, systems, and interface foundations.
+
+**How to apply:** prefer improvements to the native Tower’s shops, construction,
+objects, customization, simulation, and usability; do not add a new mission unless
+the user changes this priority.
+
+Build a broad Sims-like life simulation for residents, not just an economy or
+business simulator. Personal life includes needs and wellbeing, faith and
+beliefs, relationships and family (marriage, children, affairs, and pregnancy),
+work, homes and living conditions, desires, money and debt, routines, and
+emergent social events. Keep this breadth original to SALARYMAN's live city and
+its dystopian corporate setting.
+
+The life simulation also spans public and private services and real estate:
+clinics, water fountains, restrooms, hostels, hotels, apartments, rent,
+ownership, and citizenship. Restrooms restore stamina. These systems should
+connect to residents' wellbeing, housing, finances, legal status, and everyday
+choices.
+
+**Why:** The user clarified they want the full breadth of The Sims-style life
+simulation, including the previously named relationships and family systems.
+
+**How to apply:** Treat residents as persistent people with interconnected
+needs, relationships, work, finances, and living conditions. Make choices and
+events affect ongoing routines and relationships rather than reducing life
+systems to one-off decorative dialogue. Connect housing, services, rent,
+ownership, and citizenship to the same persistent life simulation.
+
+Education is a major progression meter. The current fictional school focuses on
+business training; real schools can also increase education and award XP.
+"School of hard knocks" experiences can award XP only when they teach a real
+lesson about commerce, finance, or capitalism; that XP is not itself formal
+education. Education provides a bonus to XP gain, and XP improves credit score
+and stats. More education should provide stronger skill boosts and business
+advantages.
+Do not put cooldown timers on education; real education does not work that way.
+
+**Why:** the user wants education to be substantial, school-led progression,
+with the fictional school focused on business training, real-school contributions,
+XP-linked credit and stats, and practical business lessons counting only when
+they actually teach something. Higher education should improve skills and
+business outcomes without artificial cooldowns.
+
+**How to apply:** keep formal education separate from XP. Award practical XP for
+meaningful commerce, finance, or capitalism learning, but do not let other
+activities raise the education meter. Let higher education increase relevant
+skill bonuses and business advantages, and let education boost XP gain. XP
+should contribute to credit score and stats. Do not gate education progression
+behind cooldown timers or assume specific formulas.
+
+## Relationship-based profile information
+
+Players can examine both other players and NPCs. The information shown is
+limited by the relationship: strangers reveal less, and stronger relationships
+can reveal more. Progression through these levels comes from extensive
+participation between the examining player and the NPC or player being examined;
+both sides' involvement matters.
+
+- Level 1: name.
+- Level 2: name and age.
+- Level 3: name, age, and profession.
+- Level 4: name, age, profession, and credit score.
+- Level 5: name, age, profession, credit score, and net worth.
+
+NPC employment varies: some are simply unemployed, while others may present as
+employed. An employment cover is not universal. Advanced criminals may use a
+front company, including having a business office.
+
+**Why:** the user wants relationship-based limits on examining both NPCs and
+other players, with five exact information levels that deepen through extensive
+participation by both parties. Some NPCs are simply unemployed; employment
+covers are optional, and advanced criminals may have front companies with
+offices.
+
+**How to apply:** make profile disclosure gradual rather than all-or-nothing,
+enforce the level gates server-side, and keep each field within its security
+and data-access permissions. Base progression on substantial participation
+between the two people, not a one-sided profile view. Allow genuine
+unemployment as well as employment covers; let advanced criminals use a front
+company with an office when appropriate.
+
+## Public maintenance workforce
+
+Keep the maintenance NPC group small and believable. Give workers routes, breaks,
+and realistic work conditions; most should be slow and average rather than
+consistently efficient. Limit specialist NPCs to one or two, each with a defined
+automation responsibility that can also work through the shared browser/game
+bridge for free features.
+
+**Why:** the user wants NPC labor to make public-work payouts sustainable without
+making the crew feel like perfect, unlimited automation.
+
+**How to apply:** model individual capability and work cadence when assigning,
+animating, and paying public maintenance jobs. Keep specialist automations
+distinct, and do not create separate game-only assistant backends.
+
+## Shop staffing, schedules, and personal lives
+
+Shops operate 24/7 with four staggered nine-hour shifts, including a one-hour
+lunch and two 15-minute breaks. Overlapping coverage is intentional and is
+funded by the shop's budget. Up to 3–5 employees per shift is the maximum
+staffing example, not a requirement for every shop; staffing needs vary by
+business.
+
+Every shop should keep hiring because people always need help. Building-wide
+detection of its aspects should accelerate over real months, increasing visible
+maintenance needs; businesses with budget should hire to meet those needs.
+
+The Tower receptionist handles all hires. Keep jobs discoverable on the web
+job board and through in-world classifieds posted on walls, newspapers, and
+magazines. Roles remain available while labor is sufficient; shortages raise
+wages and lower rents through supply and demand.
+
+Track every shop's daily and monthly budget: consumables and operating resources,
+payroll for employees, owners, and managers, and expected additional payments
+from Pablo Corp. Compare inflows with resources and payroll; owners retain the
+remaining profit. Restroom supplies include paper, towels, chemicals, mops, and
+rags.
+
+NPCs have routines and family obligations that shape their work and choices.
+They can get sick, marry, feel sadness or depression, and commit suicide, among
+other human life events. NPCs walking around can talk about their routines,
+shift trades, and gossip through in-world dialogue boxes.
+
+Shop work should be more difficult than ordinary labor, and players can help.
+Keep a continuing need for shop workers available. Some businesses may remain
+short-staffed for months or employ incompetent NPCs who are later fired, leaving
+the shop short-staffed again.
+
+**Why:** the user wants 24/7 businesses with budgeted overlap, variable staffing
+demand, player-help opportunities, ongoing worker openings, and realistic labor
+shortages, alongside NPC personal obligations and wellbeing.
+
+**How to apply:** model each location's shift coverage and each employee's
+routine, family obligations, and competence together. Keep staffing levels
+business-specific, allow long vacancies and repeated firings, and make the
+maximum four-shift staffing example affordable to the shop. Keep handoffs,
+trades, and life events visible through walking NPC dialogue.
+
+## Shop storage and shipping
+
+Each business needs its own storage room, sized to the scale of its business
+space. Staff manually restock from shipments supplied by shipping companies;
+shipments arrive at the shipping dock and are delivered to each business
+throughout the day. The delivery process should be animated. Staff place
+supplier orders when stock is needed. Shops pay shipping companies for those
+orders, and shipping companies use the money to procure goods from outside the
+building; keep this order flow economically balanced. Wholesale rates plus
+delivery fees should be tunable and respond to supply and demand. Tower funds
+provide each shop's initial working capital. FIAT buying power follows the live
+Bitcoin market multiplier already used by the game's commerce pricing.
+
+**Why:** the user specified the manual restocking and dock-to-store flow, then
+clarified that staff orders trigger shipments and shops pay shipping companies,
+which in turn purchase goods from outside the building. The user also selected
+supply-and-demand pricing and initial working capital from Tower funds.
+The user further clarified that FIAT's purchasing power is based on Bitcoin and
+must influence supply-and-demand commerce.
+
+**How to apply:** connect per-business storage capacity and stock to a visible
+shipping-dock-to-store delivery flow; do not model restocking as an instant
+inventory refill. Settle supplier orders as explicit shop expenses and shipper
+income, then represent outside procurement as a distinct cost so the shipping
+company's economy depends on real order volume. Keep wholesale rates,
+delivery fees, and starting capital configurable so the market can be balanced
+without rewriting settlement logic. Apply the same live BTC multiplier used by
+existing game commerce to FIAT-denominated supplier quotes.
+
+Scarce shop goods have per-item, per-shop supplier reorder cooldowns: rare is
+7 days, very rare is 14 days, and legendary is 30 days. Common and expensive
+goods have no rarity-based cooldown.
+
+**Why:** The user specified that rare items must not be restocked daily and
+confirmed the tiered intervals.
+
+**How to apply:** Measure cooldown from the most recent non-cancelled supplier
+order for that same shop and item. Enforce it inside the order transaction so
+concurrent requests cannot evade scarcity; don't apply it to manual shelf moves.
+
+A player purchase does not trigger immediate replenishment. Common items are
+the only goods prioritized for restocking; display refreshes must report actual
+shelf quantities without causing a supplier order or refill.
+
+**Why:** the user clarified that a sale should not automatically refill a shelf
+and that only common items have replenishment priority.
+
+**How to apply:** keep inventory reads and display refreshes side-effect-free.
+Do not tie purchase completion to a restock action; preserve the existing
+rarity-based supplier cooldowns for other items.
+
+Established Pablo Corp shops, companies, and systems should have room to hire
+NPC staff. Workers vary in speed, productivity, and attendance; some are lazy,
+miss work, or steal from their own shops. Poor service can push clients toward
+alternatives. Players can create lower-priced competitors and change the
+server's direction, but unfair competition can invite sabotage. Rival companies
+need meetings and accords so they can coexist.
+
+**Why:** the user described imperfect workers, customer-driven alternatives,
+player-created competition, sabotage risk, and agreements as core parts of a
+human-feeling server economy. The user also clarified that the economy must
+already operate among NPCs before a player joins; the player is an outlier, not
+the required trigger for NPC business activity.
+
+**How to apply:** model staff quality and reliability as visible, persistent
+business factors; let service outcomes shape customer demand; keep player
+competition consequential, and make sabotage a risk of unfair conduct rather
+than an automatic response to competition. Support explicit rival agreements.
+NPC business orders, dispatch, delivery, staffing, and settlement must continue
+without player presence or interaction.
+
+When shop employees participate in the NPC mod, at least half of each shop's
+employees should be part of the mod while the other half continue working so the
+shop remains available and can sell to players.
+
+**Why:** The user specified that mod participation must not leave a shop without
+enough staff to stay open and serve player customers.
+
+**How to apply:** Track mod participation and operating coverage per shop. Keep
+at least half of employees in the mod while retaining the remaining half on
+shop operations; do not let mod activity suspend sales or service.
+
+Public maintenance payouts are issued by receptionist Mila from the game reward
+pool. Private organization work is paid by that organization's receptionist only
+after verified completion. These payer roles do not create separate assistant
+backends.
+
+**Why:** the user assigned the public and private maintenance payment roles.
+
+**How to apply:** record the named receptionist as the payment agent, but settle
+money from the authoritative public pool or the owning organization's funds.
+
+## NPCs as purposeful automation characters
+
+NPCs should extend existing API automations rather than use separate game-only
+assistant backends. Fraction the curated workforce into named specialist NPCs with
+a unique identity, story, purpose, job, destination or route, and bounded authority.
+Pablo Corp's rental roster may grow into many such characters, not generic background
+headcount. The Prime office secretary is the explicit all-skills/all-automations
+exception, but must still reuse the existing automation systems.
+
+All NPCs have unique personalities, for better or worse. Personality should
+distinguish individuals beyond their names, jobs, and skill profiles.
+
+Only 5% of NPCs can be recruited. A player needs sufficient reputation with the
+individual NPC, and each recruit is unique based on their skills. Recruitable
+NPCs have extensive dialogue and backstories, plus unique powers the player can
+use.
+
+**Why:** the user wants recruits to be rare, earned through NPC-specific
+reputation, differentiated by skill, and developed with substantial story
+content and player-usable powers. All NPCs should have individual personalities,
+including strengths and flaws.
+
+**How to apply:** keep recruitability within the 5% limit, check reputation with
+the specific NPC, and make each recruit's skill profile meaningful and unique.
+Give NPCs consistent individual personalities that can help or hinder them.
+Develop recruitable characters with extensive dialogue/backstories and unique
+powers available for player use.
+
+Recruitment is earned and memorable. Once recruited, an NPC remains with the
+player and their organization permanently. Dismissal changes their active
+assignment; it does not remove them from the organization. They return to an
+organizational role that fits their skills. Recruited NPCs can fill roles in the
+paid automation suite and increase the speed of Pablo Prime automation. These
+effects must remain balanced, controlled, and accurate.
+
+**Why:** the user wants recruitment to create lasting relationships and
+organization membership, with dismissed NPCs continuing useful work and
+contributing to paid automation.
+
+**How to apply:** treat dismissal as reassignment, not deletion or release to
+another player. Match each NPC to skill-appropriate organization work and make
+measured, bounded changes to Pablo Prime automation speed.
+
+Recruited NPCs can build and repair organization property, open small kiosks or
+shops within their organization's offices and floors, and take service roles
+such as chauffeurs or butlers escorting people from elevators to office doors.
+Elevators are a core part of Tower movement and access, not background scenery.
+They should have a wise, important attendant NPC, with the role covered across
+all four shifts.
+
+**Why:** the user wants recruited NPCs to contribute to the physical and
+commercial life of their organization, and elevators to have a wise attendant.
+
+**How to apply:** keep construction, repairs, and shops within organization
+property and appropriate NPC skills. Treat chauffeur, butler, and elevator
+attendant as purposeful NPC roles with visible in-world behavior.
+
+NPC-operated businesses may grow into
+specialized sellers and develop improved versions of their products; do not imply
+that this progression is active until it has a real simulation.
+
+**Why:** the user wants NPCs to be useful characters with purpose and ongoing
+activity, not decorative population. They also require API automations to be
+fractioned into narrow roles so each NPC can only do its job and innovate within
+that scope.
+
+**How to apply:** reuse the corresponding API automation as the source of truth
+for each NPC's bounded work; keep identity, job, goal, and route connected.
+Structure business stock with stable product families and version metadata so
+future NPC growth can build on it, while clearly distinguishing data readiness
+from live behavior. Keep each NPC's tools and decisions limited to its own job
+and improvement domain.
+
+## Pablo Corp workforce rentals and Prime secretary
+
+Game-world NPC hires cost a signing bonus plus a recurring daily rate. The
+minimum-wage benchmark for NPCs and humans is USD-equivalent $1/hour: a 12-hour
+workday is $12/day, paid in game FIAT (ƒ12/day).
+
+Pablo Corp owns the Tower and a curated roster of named, costumed specialist NPCs
+included with PABLO PRIME's browser-side workforce access. Each roster character
+is unique: only one exists and can be rented by one organization at a time;
+in-game organizations hire specialists for their particular strengths at a
+steep price. NPCs may be working, unemployed, sick, displaced by a business
+disaster, or starting their own businesses; they should autonomously pursue
+wealth and compete with players and each other.
+
+A PABLO PRIME Stripe subscription automatically triggers an elaborate elevator
+cutscene delivering one distinctive secretary to the subscriber's office. This
+secretary combines the available skills and automations, with a unique name and
+costume; the secretary is included in the Prime package, with no separate setup
+fee. She is a physical office worker: for an automation, she walks to relevant
+objects and the terminal and visibly works there. Players access and configure
+her skills through the game terminal's Automations section, parallel to the
+browser surface. Reuse the same server-side automations and reflect their actual
+run state and duration; do not simulate instant work or invent a fixed AI delay.
+When the player is away, she acts as an office manager; where a human office
+manager is assigned, she supports that person with their work rather than
+replacing them.
+Without Prime, players ask the receptionist which Pixel Agent or NPC is
+available for work. Hiring and construction organizations are subject to
+regulations.
+
+## Secretary-led office command and delegation
+
+The secretary is the unified interface to SALARYMAN's technology and automation
+services. Real human employees can issue commands from their office terminals;
+the secretary identifies available capabilities, performs the work, and can
+coordinate or delegate suitable subtasks to NPC staff hired by the organization.
+She runs operations when the owner or human management is away, while also
+helping human managers learn how to use her and the available tools.
+
+Each human employee needs an individual desk, chair, and computer terminal, but
+the organization owner must purchase these furnishings; they are not provisioned
+automatically. Furnishings and their customizations cost in-game money.
+Organization systems and automation configurations are shared across members;
+a task submitted from any member's purchased terminal can be routed to the
+secretary and her hired NPC support staff.
+
+NPCs hired to support this work receive a one-time signing bonus and recurring
+daily pay under a fixed-term contract lasting weeks or months. This is
+pay-as-you-go employment: organizations must keep funds available for payroll.
+Unfunded obligations can lead to debt collection and organization shutdown.
+Keep payroll obligations distinct from daily tax assessments, even if future
+collections share infrastructure.
+
+**Why:** The user wants actual human office workers to get work done through
+commands, the secretary to coordinate human and NPC labor, and NPC employment
+to create persistent financial obligations with consequences.
+
+**How to apply:** Route commands through real, existing capabilities; retain
+approval, permissions, and execution status. Let the secretary coordinate NPCs
+without turning them into generic duplicate agents. Track signing bonuses,
+contract terms, daily wages, and available organization funds separately from
+taxes; do not assume a specific collections grace period for payroll.
+
+**Why:** The user explicitly distinguishes paid game NPC labor, Pablo Corp's
+exclusive specialist rentals, Prime-triggered secretary onboarding, and an
+in-world secretary that physically performs real automation work and supports
+the human office manager when the player is away.
+
+**How to apply:** Keep individual hiring costs and NPC rental exclusivity in the
+game economy; gate the automatic all-skills secretary and online workforce
+access on the existing Prime subscription, with no extra secretary fee. Drive
+office movement/status from real automation activity and share the browser
+backend; never create a parallel pretend execution loop. Never allow concurrent
+rentals of the same specialist. Pay the wage floor in FIAT.
+
+## Fish pets and unique companions
+
+Fish live in tanks, not as followers; tanks are furniture/decor that can be moved
+around within a room. Fish are chosen and purchased individually, using real-world
+species with prices that reflect the species.
+Dogs and cats may follow their owner. Each character can have at most one unique
+NPC companion or assistant, with no duplicates; companions may follow and unlock
+task automations as the game progresses.
+
+**Why:** The user explicitly distinguished tank-based fish from following animal
+companions and defined the one-unique-companion-per-character progression rule.
+
+**How to apply:** Keep fish placement and care attached to their room's aquarium
+state. Enforce companion uniqueness per character, and expose automation only as
+the companion's progression unlocks it.
+
+All living beings in the SALARYMAN ecosystem—including players, NPCs, and pets—
+share survival-health concerns: disease, illness, fatigue, stress, poison,
+nursing/care, and possible death or lethal harm.
+
+**Why:** The user explicitly wants a sandbox survival office sim RPG MMO where
+health consequences apply to all living beings, not only the player.
+
+**How to apply:** See [Ecosystem condition, survival, and maintenance](asset-decay-scope.md)
+for differentiated human, replicant, and pet needs, and for how health fits into
+the wider world-condition system.

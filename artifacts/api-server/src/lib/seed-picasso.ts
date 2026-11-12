@@ -1,6 +1,6 @@
 import { db, organizationsTable, orgMembersTable, usersTable, salarymanSavesTable, adminAuditLogTable } from "@workspace/db";
 import { eq, sql, and, inArray } from "drizzle-orm";
-import { isPicassoOrgMemberEmail } from "./plan";
+import { isFeatureOnlyTesterUser, isFreeFeatureTesterEmail, isPicassoOrgMemberEmail } from "./plan";
 import { assignGuildRole, removeGuildRole } from "./discord-auth";
 
 const PICASSO_ORG_NAME = "PICASSO";
@@ -9,9 +9,8 @@ const PICASSO_ADMIN_FIAT = 999_999_999;
 
 /**
  * Ensure the PICASSO org exists, is flagged as a developer org, and that
- * every email on PICASSO_ORG_MEMBER_EMAILS (a strict subset of the broader
- * owner-email list — testers like kozzy2k11 are NOT included) is stitched
- * in as an active member with the `owner` role. This is what makes the
+ * every email on PICASSO_ORG_MEMBER_EMAILS is stitched in as an active
+ * member with the `owner` role. This is what makes the
  * org membership and the isOwnerEmail bypass agree for actual Picasso
  * staff — without it, a staff email would unlock all features (via
  * plan.ts) but the org's member list would still show them as missing,
@@ -57,6 +56,7 @@ export async function seedPicassoOrg(): Promise<void> {
     console.log(`[Picasso Seed] Created Picasso developer org (id=${org.id}).`);
   }
 
+  await removeFeatureOnlyTesterMemberships(orgId);
   await ensureAdminMemberships(orgId);
 
   // Apply perks (one-time fiat + Discord admin role) to ALL active PICASSO org
@@ -68,6 +68,68 @@ export async function seedPicassoOrg(): Promise<void> {
   // Flush any pending fiat grants for users who now have a save but didn't
   // have one the last time this ran.
   await flushPendingAdminFiatGrants();
+}
+
+/**
+ * Feature-only testers must never inherit Picasso org-owner permissions.
+ * Remove any stale membership from earlier configurations and cancel only
+ * pending admin-fiats; already-settled game balances are left untouched.
+ */
+async function removeFeatureOnlyTesterMemberships(orgId: number): Promise<void> {
+  const users = await db
+    .select({ id: usersTable.id, email: usersTable.email })
+    .from(usersTable);
+  const testerIds = users.filter(user => isFreeFeatureTesterEmail(user.email)).map(user => user.id);
+  if (testerIds.length === 0) return;
+
+  const memberships = await db
+    .select({ userId: orgMembersTable.userId })
+    .from(orgMembersTable)
+    .where(and(
+      eq(orgMembersTable.orgId, orgId),
+      inArray(orgMembersTable.userId, testerIds),
+    ));
+
+  if (memberships.length > 0) {
+    await db
+      .delete(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, orgId),
+        inArray(orgMembersTable.userId, testerIds),
+      ));
+    for (const { userId } of memberships) {
+      await removeAdminDiscordRole(userId);
+    }
+  }
+
+  await db
+    .update(organizationsTable)
+    .set({ ownerUserId: "system" })
+    .where(and(
+      eq(organizationsTable.id, orgId),
+      inArray(organizationsTable.ownerUserId, testerIds),
+    ));
+
+  await db
+    .update(usersTable)
+    .set({ currentOrgId: null })
+    .where(and(
+      eq(usersTable.currentOrgId, String(orgId)),
+      inArray(usersTable.id, testerIds),
+    ));
+
+  await db
+    .update(adminAuditLogTable)
+    .set({ details: "cancelled: feature-only tester" })
+    .where(and(
+      eq(adminAuditLogTable.action, "picasso_admin_fiat_grant"),
+      inArray(adminAuditLogTable.targetId, testerIds),
+      sql`${adminAuditLogTable.details} = 'pending'`,
+    ));
+
+  if (memberships.length > 0) {
+    console.log(`[Picasso Seed] Removed ${memberships.length} stale feature-only tester membership(s).`);
+  }
 }
 
 /**
@@ -95,8 +157,7 @@ async function applyPerksToAllPicassoOrgOwners(orgId: number): Promise<void> {
 
 /**
  * Look up every user whose email is on the PICASSO_ORG_MEMBER_EMAILS list
- * (a strict subset of the owner-email list — testers like kozzy2k11 are
- * NOT included) and make sure they're an active `owner` member of the
+ * and make sure they're an active `owner` member of the
  * Picasso org. New Picasso staff member? Add their email to
  * PICASSO_ORG_MEMBER_EMAILS in plan.ts and the next boot picks them up.
  *
@@ -182,6 +243,7 @@ async function ensureAdminMemberships(orgId: number): Promise<void> {
  * admin_audit_log marker and will never be re-applied once delivered.
  */
 export async function grantPicassoAdminPerks(userId: string): Promise<void> {
+  if (await isFeatureOnlyTesterUser(userId)) return;
   await grantAdminFiat(userId);
   await assignAdminDiscordRole(userId);
 }
@@ -196,6 +258,18 @@ export async function grantPicassoAdminPerks(userId: string): Promise<void> {
  * Callers (boot-time seed + flushPendingAdminFiatGrants) handle both paths.
  */
 async function grantAdminFiat(userId: string): Promise<void> {
+  if (await isFeatureOnlyTesterUser(userId)) {
+    await db
+      .update(adminAuditLogTable)
+      .set({ details: "cancelled: feature-only tester" })
+      .where(and(
+        eq(adminAuditLogTable.action, "picasso_admin_fiat_grant"),
+        eq(adminAuditLogTable.targetId, userId),
+        sql`${adminAuditLogTable.details} = 'pending'`,
+      ));
+    return;
+  }
+
   // Check for an existing non-pending grant marker.
   const existing = await db
     .select({ id: adminAuditLogTable.id, details: adminAuditLogTable.details })

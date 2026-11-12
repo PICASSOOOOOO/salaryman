@@ -4,6 +4,7 @@ import {
   type ActiveCall, ENDED_STATUSES, callStatusToSignalLevel,
 } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
 import { disconnectLocalDeviceCalls } from '@/lib/twilio-device-bridge';
 import { reconcilePolledCalls } from '@/lib/phone-outbound';
 import { setPhoneBusy } from '@/lib/phone-busy';
@@ -33,6 +34,7 @@ export function useActiveCallContext() {
 }
 
 export function ActiveCallProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(() => loadActiveCalls());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -76,10 +78,21 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
         if (!r.ok) return;
         const d = await r.json();
         if (d.statuses) {
-          setActiveCalls(prev => reconcilePolledCalls(prev, d.statuses, ENDED_STATUSES).map(ac => ({
-            ...ac,
-            signalLevel: callStatusToSignalLevel(ac.status),
-          })));
+          setActiveCalls(prev => {
+            const next = reconcilePolledCalls(prev, d.statuses, ENDED_STATUSES).map(ac => ({
+              ...ac,
+              signalLevel: callStatusToSignalLevel(ac.status),
+            }));
+            const hadLiveCalls = prev.some(c => !ENDED_STATUSES.includes(c.status));
+            const hasLiveCalls = next.some(c => !ENDED_STATUSES.includes(c.status));
+            if (hadLiveCalls && !hasLiveCalls) {
+              // Twilio can finish the PSTN leg remotely without emitting a
+              // browser Call disconnect event. Explicitly release WebRTC so
+              // conference/hold audio cannot continue after the call ends.
+              disconnectLocalDeviceCalls();
+            }
+            return next;
+          });
         }
       } catch (e) {
         console.warn('[ActiveCallContext] poll error:', e instanceof Error ? e.message : e);
@@ -91,6 +104,15 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
 
   const liveCount = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length;
 
+  // A browser can retain stale call metadata after a session ends. Never poll
+  // protected Twilio endpoints for that anonymous state, and clear the stale
+  // local snapshot so it cannot leak into the next account on this device.
+  useEffect(() => {
+    if (authLoading || isAuthenticated) return;
+    stopPolling();
+    setActiveCalls([]);
+  }, [authLoading, isAuthenticated, stopPolling]);
+
   // Phone takes precedence over the media player. Whenever any call is live,
   // tell the global phone-busy bus so the music player pauses.
   useEffect(() => {
@@ -99,12 +121,12 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
   }, [liveCount]);
 
   useEffect(() => {
-    if (liveCount > 0 && !timerRef.current) {
+    if (!authLoading && isAuthenticated && liveCount > 0 && !timerRef.current) {
       startPolling();
-    } else if (liveCount === 0 && timerRef.current) {
+    } else if ((!isAuthenticated || liveCount === 0) && timerRef.current) {
       stopPolling();
     }
-  }, [liveCount, startPolling, stopPolling]);
+  }, [authLoading, isAuthenticated, liveCount, startPolling, stopPolling]);
 
   useEffect(() => {
     return stopPolling;
@@ -176,6 +198,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       // immediately even if the API call is slow.
       const wasLastLive = activeCallsRef.current.filter(c => !ENDED_STATUSES.includes(c.status)).length <= 1;
       if (wasLastLive) disconnectLocalDeviceCalls();
+      setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
       const r = await apiFetch(`/api/twilio/hangup/${sid}`, { method: 'POST' });
       if (r.ok) {
         setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
@@ -193,14 +216,12 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
     if (sids.length === 0) return { ok: true };
     // Always disconnect the local WebRTC leg on hangup-all.
     disconnectLocalDeviceCalls();
+    setActiveCalls(prev => prev.map(c => ({ ...c, status: 'completed' })));
     try {
       const r = await apiFetch('/api/twilio/hangup-all', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ callSids: sids }),
       });
-      if (r.ok) {
-        setActiveCalls(prev => prev.map(c => ({ ...c, status: 'completed' })));
-      }
       return handleResponse(r, 'hangup-all');
     } catch (e) {
       const error = e instanceof Error ? e.message : 'Network error';

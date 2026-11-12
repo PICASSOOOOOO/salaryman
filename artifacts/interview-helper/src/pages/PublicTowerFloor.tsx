@@ -12,6 +12,7 @@ import { TowerLifeHub } from "@/components/TowerLifeHub";
 import { useAuth } from "@/hooks/use-auth";
 import { getAmbianceEnabled, getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
 import { getTowerAmbientOccupants, TOWER_BUSINESSES, TOWER_RESIDENTS } from "@/lib/tower-life";
+import { useTowerResidentPresence } from "@/lib/use-tower-resident-presence";
 import { getTowerSpaceArtUrl, type TowerSpaceArtKind } from "@/lib/tower-space-art";
 
 type FloorNumber = 2 | 3 | 4;
@@ -44,6 +45,8 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
     () => getPublicFloorOfficeLayout(getActiveCityId() === "huda_city" ? "huda_city" : "minx_city", floor),
     [floor],
   );
+  const cityId = getActiveCityId() === "huda_city" ? "huda_city" : "minx_city";
+  const residentPresence = useTowerResidentPresence(cityId, floor);
   const floorPath = floor === 2 ? "/tower/mezzanine" : floor === 3 ? "/tower/rest" : "/tower/security";
   const spaceArt: TowerSpaceArtKind = floor === 2 ? "mezzanine" : floor === 3 ? "rest" : "security";
 
@@ -245,7 +248,7 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
            hallwaySignage={floor === 2 ? "PUBLIC TERMINALS · CLASSIFIEDS" : floor === 3 ? "REST WARD · OBSERVATION" : "SECURITY · CUSTODY"}
           suppressLabels={window.innerWidth < 680} frozen={!!panel}
           playerName={mezzanine ? "CAFE GUEST" : "PATIENT"}
-           ambientOccupants={getTowerAmbientOccupants(floor)}
+            ambientOccupants={getTowerAmbientOccupants(floor, residentPresence)}
            onAmbientInteract={(occupant) => void talkToResident(occupant)}
         />
       </main>
@@ -267,14 +270,14 @@ export default function PublicTowerFloor({ floor }: { floor: FloorNumber }) {
           </div>
           {panel === "terminal" && <div className="p-6 space-y-4">
              <img src={`${import.meta.env.BASE_URL}pixel-agents/shadow-tower/public-terminal.png`} alt="Shadow Tower public terminal" className="mx-auto h-36 w-full max-w-sm object-contain [image-rendering:pixelated]" />
-             <p className="text-[10px] font-bold tracking-[.18em] text-zinc-500">PUBLIC CLASSIFIEDS · PHONE SYSTEMS · OPEN ACCESS</p>
+             <p className="text-[10px] font-bold tracking-[.18em] text-zinc-500">PUBLIC CLASSIFIEDS · CALLL HOME · OPEN ACCESS</p>
             <div className="border border-emerald-400/25 bg-emerald-400/5 p-4">
               <strong className="text-emerald-300">FREE PUBLIC COMPUTER ACCESS</strong>
-             <p className="text-xs text-zinc-500 mt-1">Browse Tower Life, use the work board, or open the phone system from any public terminal.</p>
+             <p className="text-xs text-zinc-500 mt-1">Browse Tower Life, use the work board, or open CALLL HOME from any public terminal.</p>
             </div>
              <div className="grid gap-2 sm:grid-cols-2">
                <Link href="/console" className="block w-full bg-cyan-300 text-black text-center font-black py-3 transition hover:bg-cyan-200 active:scale-[.99]">ALL SYSTEMS TERMINAL</Link>
-               <Link href="/phone?from=public-terminal" className="block w-full border border-emerald-300/50 bg-emerald-300/10 text-center font-black py-3 text-emerald-100 transition hover:bg-emerald-300/20 active:scale-[.99]">PHONE SYSTEM</Link>
+               <Link href="/phone?from=public-terminal" className="block w-full border border-emerald-300/50 bg-emerald-300/10 text-center font-black py-3 text-emerald-100 transition hover:bg-emerald-300/20 active:scale-[.99]">CALLL HOME</Link>
              </div>
              <TowerLifeHub compact cityLabel={getActiveCityName().toUpperCase()} floorLabel="PUBLIC TERMINAL · CLASSIFIEDS" />
           </div>}

@@ -19,7 +19,6 @@ describe("getModuleForPath — office module (MODULES[1])", () => {
     "/office/some-sub",
     "/game/economy",
     "/game/bank",
-    "/game/character",
     "/game/settings",
   ];
 
@@ -45,7 +44,6 @@ describe("getModuleForPath — office module (MODULES[1])", () => {
     const subPaths = OFFICE_MODULE.subs.map((s) => s.path);
     expect(subPaths).toContain("/game/economy");
     expect(subPaths).toContain("/game/bank");
-    expect(subPaths).toContain("/game/character");
     expect(subPaths).toContain("/game/settings");
     expect(subPaths).toContain("/vending?from=office");
     expect(subPaths).toContain("/store/realty?from=office");
@@ -84,7 +82,7 @@ describe("retired gameplay routes in App.tsx", () => {
 
 // ─── 3. Shared desktop/mobile primary navigation ─────────────────────────────
 
-describe("PRIMARY_NAV_ITEMS — exactly one OFFICE tab", () => {
+describe("PRIMARY_NAV_ITEMS — desktop client entry", () => {
   it("contains exactly one entry with id 'office'", () => {
     const officeEntries = PRIMARY_NAV_ITEMS.filter(
       (item) => item.id === "office",
@@ -95,13 +93,13 @@ describe("PRIMARY_NAV_ITEMS — exactly one OFFICE tab", () => {
     ).toBe(1);
   });
 
-  it("the office tab has the emerald accent (distinguishes it visually)", () => {
+  it("uses the green desktop-client accent", () => {
     const office = PRIMARY_NAV_ITEMS.find((item) => item.id === "office");
-    expect(office?.accent).toBe("emerald");
+    expect(office?.accent).toBe("green");
   });
 
-  it("the office tab routes to /office", () => {
+  it("routes browser navigation to the desktop download", () => {
     const office = PRIMARY_NAV_ITEMS.find((item) => item.id === "office");
-    expect(office?.path).toBe("/office");
+    expect(office?.path).toBe("/desktop");
   });
 });

@@ -24,6 +24,7 @@ import {
   businessTransactionsTable,
   salarymanSeasonsTable,
   usageMetersTable,
+  towerShopStaffAssignmentsTable,
   USAGE_KINDS,
   USAGE_LIMITS,
   type UsageKind,
@@ -32,10 +33,19 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql, ilike, or, count, gte, gt, inArray } from "drizzle-orm";
 import twilio from "twilio";
+import {
+  AssignTowerShopStaffBody,
+  AssignTowerShopStaffResponse,
+  ListTowerShopStaffResponse,
+  RevokeTowerShopStaffParams,
+  RevokeTowerShopStaffResponse,
+  TOWER_BUSINESS_STOCK_LINES,
+} from "@workspace/api-zod";
 import { isOwnerEmail, isPicassoOrgMemberEmail, isPicassoOrgOwner } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
 import { captureLegacyRecoverySnapshots } from "../lib/legacy-recovery";
 import { SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getOnlinePlayers } from "../worldServer";
+import { runUnpaidAlphaReset } from "../lib/user-data-retention";
 
 // Estimated USD unit cost of each metered, money-costing action. These are
 // deliberate estimates (Twilio voice/SMS + LLM/TTS spend) surfaced to Picasso
@@ -45,6 +55,14 @@ const COST_RATES_USD: Record<UsageKind, number> = {
   voice_minutes: 0.05,
   ai_messages: 0.01,
   sms_count: 0.01,
+  prep_interview: 0.01,
+  prep_meeting: 0.01,
+  prep_pitch: 0.01,
+  prep_presentation: 0.01,
+  prep_management: 0.01,
+  prep_hiring: 0.01,
+  prep_firing: 0.01,
+  prep_difficult_conversation: 0.01,
 };
 
 function usagePeriod(override?: string): string {
@@ -84,6 +102,21 @@ function toE164Loose(input: string | null | undefined): string | null {
 
 const router = Router();
 
+const TOWER_SHOP_STAFF_SHOPS = Array.from(
+  TOWER_BUSINESS_STOCK_LINES.reduce((shops, line) => {
+    if (!line.sellerBusinessKey || line.itemIds.length === 0 || shops.has(line.sellerBusinessKey)) {
+      return shops;
+    }
+    shops.set(line.sellerBusinessKey, {
+      businessKey: line.sellerBusinessKey,
+      name: line.sellerName ?? line.sellerBusinessKey,
+      locationLabel: line.sellerLocationLabel ?? "Tower",
+    });
+    return shops;
+  }, new Map<string, { businessKey: string; name: string; locationLabel: string }>())
+    .values(),
+);
+
 function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -122,6 +155,126 @@ async function logAudit(adminId: string, action: string, targetType: string, tar
     await db.insert(adminAuditLogTable).values({ adminId, action, targetType, targetId, details });
   } catch {}
 }
+
+router.get("/admin/tower-shop-staff", async (req: Request, res: Response): Promise<void> => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  try {
+    const rows = await db.select({
+      businessKey: towerShopStaffAssignmentsTable.businessKey,
+      userId: towerShopStaffAssignmentsTable.userId,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      assignedByUserId: towerShopStaffAssignmentsTable.assignedByUserId,
+      assignedAt: towerShopStaffAssignmentsTable.assignedAt,
+    }).from(towerShopStaffAssignmentsTable)
+      .innerJoin(usersTable, eq(usersTable.id, towerShopStaffAssignmentsTable.userId))
+      .orderBy(towerShopStaffAssignmentsTable.businessKey, usersTable.email);
+    const response = {
+      shops: TOWER_SHOP_STAFF_SHOPS,
+      assignments: rows.map((row) => ({
+        ...row,
+        assignedAt: row.assignedAt.toISOString(),
+      })),
+    };
+    res.json(ListTowerShopStaffResponse.parse(response));
+  } catch (error) {
+    req.log.error({ error }, "Could not list Tower shop staff assignments");
+    res.status(500).json({ error: "Could not load Tower shop staff." });
+  }
+});
+
+router.post("/admin/tower-shop-staff", async (req: Request, res: Response): Promise<void> => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const parsed = AssignTowerShopStaffBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Choose a valid shop and account email." });
+    return;
+  }
+  const businessKey = parsed.data.businessKey.trim();
+  const email = parsed.data.email.trim();
+  if (!TOWER_SHOP_STAFF_SHOPS.some((shop) => shop.businessKey === businessKey)) {
+    res.status(400).json({ error: "Choose a shop that sells restockable items." });
+    return;
+  }
+
+  try {
+    const [user] = await db.select({
+      id: usersTable.id,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+    }).from(usersTable).where(ilike(usersTable.email, email)).limit(1);
+    if (!user) {
+      res.status(404).json({ error: "No SALARYMAN account uses that email." });
+      return;
+    }
+
+    const [created] = await db.insert(towerShopStaffAssignmentsTable).values({
+      businessKey,
+      userId: user.id,
+      assignedByUserId: req.user!.id,
+    }).onConflictDoNothing().returning();
+    const [assignment] = created
+      ? [created]
+      : await db.select().from(towerShopStaffAssignmentsTable).where(and(
+        eq(towerShopStaffAssignmentsTable.businessKey, businessKey),
+        eq(towerShopStaffAssignmentsTable.userId, user.id),
+      )).limit(1);
+    if (!assignment) {
+      res.status(500).json({ error: "Could not save the shop staff assignment." });
+      return;
+    }
+    if (created) {
+      await logAudit(req.user!.id, "tower_shop_staff_assign", "tower_shop", businessKey, `userId=${user.id}`);
+    }
+    res.json(AssignTowerShopStaffResponse.parse({
+      ok: true,
+      assignment: {
+        businessKey,
+        userId: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        assignedByUserId: assignment.assignedByUserId,
+        assignedAt: assignment.assignedAt.toISOString(),
+      },
+    }));
+  } catch (error) {
+    req.log.error({ error, businessKey }, "Could not assign Tower shop staff");
+    res.status(500).json({ error: "Could not assign shop staff." });
+  }
+});
+
+router.delete("/admin/tower-shop-staff/:businessKey/:userId", async (req: Request, res: Response): Promise<void> => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const parsed = RevokeTowerShopStaffParams.safeParse(req.params);
+  if (!parsed.success || !TOWER_SHOP_STAFF_SHOPS.some((shop) => shop.businessKey === parsed.data.businessKey)) {
+    res.status(400).json({ error: "Choose a valid shop and user." });
+    return;
+  }
+  try {
+    const [removed] = await db.delete(towerShopStaffAssignmentsTable).where(and(
+      eq(towerShopStaffAssignmentsTable.businessKey, parsed.data.businessKey),
+      eq(towerShopStaffAssignmentsTable.userId, parsed.data.userId),
+    )).returning({ userId: towerShopStaffAssignmentsTable.userId });
+    if (!removed) {
+      res.status(404).json({ error: "Shop staff assignment not found." });
+      return;
+    }
+    await logAudit(
+      req.user!.id,
+      "tower_shop_staff_revoke",
+      "tower_shop",
+      parsed.data.businessKey,
+      `userId=${removed.userId}`,
+    );
+    res.json(RevokeTowerShopStaffResponse.parse({ ok: true }));
+  } catch (error) {
+    req.log.error({ error, businessKey: parsed.data.businessKey }, "Could not revoke Tower shop staff");
+    res.status(500).json({ error: "Could not remove shop staff." });
+  }
+});
 
 // ── Executive cost & realm monitoring (Picasso executives only) ───────────────
 
@@ -421,75 +574,24 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "target must be 'saves' | 'features' | 'all' | 'world'" });
   }
 
-  // FULL FRESH START — wipe ALL game progress so the entire player base
-  // (admins included) replays onboarding from the very start.
-  // Logins (users, user_google_links), billing/subscriptions (user_tiers,
-  // user_features, feature_trials, pledge_purchases, usage_meters, pablo_tax_*),
-  // moderation (bans, flagged_users), the tester program, and all world
-  // catalog/seed tables are intentionally preserved so nobody is locked out
-  // and the world still exists to be re-onboarded into.
-  // The founding Picasso org (and any developer org) is PRESERVED — owner
-  // instruction: never delete Picasso. Every OTHER org is deleted, which
-  // cascades to its org_members/invites/partnerships/feature_grants/door_locks/
-  // chat_channels/tickets (+ticket_comments). The Picasso org keeps its members,
-  // grants, and locks.
-  // Every other table here keys players by a plain varchar user_id (no FK),
-  // so order is unconstrained; run as one transaction for all-or-nothing.
+  // The development Alpha reset clears unpaid player/workspace data only.
+  // Payment history, identity, login, billing, moderation, support, and audit
+  // records are retained. Paid accounts and any organization connected to a
+  // paid account are excluded; the founding Picasso/developer orgs are kept.
   if (target === "world") {
-    const FRESH_START_TABLES = [
-      "salaryman_saves",
-      "world_businesses",
-      "business_transactions",
-      "business_snapshots",
-      "player_profiles",
-      "player_inventory",
-      "player_loadout",
-      "player_ledger",
-      "player_cosmetics",
-      "player_crypto_balance",
-      "crypto_purchases",
-      "player_exploration",
-      "user_discovered_subway_stations",
-      "subway_trips",
-      "salaryman_player_pass",
-      "salaryman_player_missions",
-      "bank_accounts",
-      "bank_transactions",
-      "addresses",
-      "world_build_contributions",
-      "world_build_plans",
-      "colleagues",
-      "pablo_memories",
-      "pablo_commands",
-      "user_memory",
-    ] as const;
-    const counts: Record<string, number> = {};
-    await db.transaction(async (tx) => {
-      await captureLegacyRecoverySnapshots(tx, `world:${randomUUID()}`);
-      for (const t of FRESH_START_TABLES) {
-        const r = await tx.execute(sql.raw(`DELETE FROM "${t}"`));
-        counts[t] = (r as { rowCount?: number }).rowCount ?? 0;
-      }
-      // Delete every org EXCEPT the founding Picasso org / any developer org.
-      // Cascades clean up the deleted orgs' members/grants/locks/chat/tickets.
-      const orgRes = await tx.execute(sql.raw(
-        `DELETE FROM "organizations" WHERE "is_developer" = false ` +
-        `AND lower("name") NOT IN ('picasso','picassoo','picasso ai','picasso ai llc','picassoo.ai')`,
-      ));
-      counts["organizations"] = (orgRes as { rowCount?: number }).rowCount ?? 0;
-      // Clear dangling profile pointers — player_profiles is wiped above, so any
-      // surviving users.active_profile_id would make derivePlayerName() fail-closed.
-      await tx.execute(sql.raw(`UPDATE "users" SET "active_profile_id" = NULL`));
-    });
+    if (isPublishedProduction()) {
+      return res.status(403).json({ error: "The Alpha world reset is available only in the development deployment" });
+    }
+    const { userCount, protectedUserCount, counts } = await runUnpaidAlphaReset();
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     await logAudit(
       req.user!.id,
       "bulk_reset",
       "system",
       "world",
-      `FULL FRESH START — ${total} rows wiped across ${FRESH_START_TABLES.length} tables (all game progress + every org). Logins/billing/catalog preserved.`,
+      `Development Alpha reset — ${total} data rows cleared for ${userCount} unpaid accounts; ${protectedUserCount} paid or paid-org accounts preserved.`,
     );
-    return res.json({ ok: true, target, total, counts });
+    return res.json({ ok: true, target, total, resetUserCount: userCount, protectedUserCount, counts });
   }
 
   // Resolve owner user IDs so we never wipe the admins doing the testing.
@@ -570,7 +672,7 @@ const USER_OWNER_COLUMNS = [
 const ORG_OWNER_COLUMNS = ["org_id", "organization_id"];
 
 function isPublishedProduction(): boolean {
-  return process.env.NODE_ENV === "production" && Boolean(process.env.REPLIT_DEPLOYMENT_URL);
+  return process.env.NODE_ENV === "production" || Boolean(process.env.REPLIT_DEPLOYMENT_URL);
 }
 
 function pgLiteral(value: string): string {
@@ -701,7 +803,7 @@ router.post("/admin/production-user-reset", async (req: Request, res: Response) 
  * via the existing `feature_trials` table with a 100-year expiration.
  * Listed grouped by email so admins can toggle individual features off.
  */
-const ALL_FEATURE_KEYS = ["live_listen", "screen_scan", "say_this", "phone_system", "claw_bot"] as const;
+const ALL_FEATURE_KEYS = ["live_listen", "screen_scan", "say_this", "phone_system", "phone_advanced", "claw_bot"] as const;
 
 router.get("/admin/email-grants", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;

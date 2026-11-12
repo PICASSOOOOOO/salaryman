@@ -10,6 +10,8 @@ export const mockState = {
   conferenceGroupSid: "CFgroup0000000000000000000000000000",
   createdCallSid: "CAcreated000000000000000000000000000",
   createdStatus: "queued",
+  conferenceFriendlyName: "",
+  employeeCallSid: "",
 };
 
 // Build a fake `twilio` module. `import twilio from "twilio"` resolves to the
@@ -17,9 +19,17 @@ export const mockState = {
 // carries `.jwt` and `.validateRequest`. The same `client` instance is returned
 // on every call, so all spies are shared and assertable across requests.
 export function makeTwilioMock() {
+  let createdCallSequence = 0;
   const participantUpdate = vi.fn().mockResolvedValue({});
   const participantsCallable: any = vi.fn(() => ({ update: participantUpdate }));
-  participantsCallable.list = vi.fn(async () => [{ callSid: mockState.callSid, muted: false, hold: false }]);
+  const participantCreate = vi.fn(async (options: Record<string, unknown>) => ({
+    callSid: "CAsupervisor00000000000000000000000",
+    ...options,
+  }));
+  participantsCallable.list = vi.fn(async () => [
+    { callSid: mockState.employeeCallSid || mockState.callSid, to: "client:employee", muted: false, hold: false },
+  ]);
+  participantsCallable.create = participantCreate;
 
   const conferenceUpdate = vi.fn().mockResolvedValue({});
   const conferenceFetch = vi.fn().mockResolvedValue({ sid: "CFx", status: "in-progress" });
@@ -28,7 +38,9 @@ export function makeTwilioMock() {
     update: conferenceUpdate,
     fetch: conferenceFetch,
   }));
-  conferencesCallable.list = vi.fn(async () => []);
+  conferencesCallable.list = vi.fn(async () => mockState.conferenceFriendlyName
+    ? [{ sid: "CFsupervised", friendlyName: mockState.conferenceFriendlyName, status: "in-progress" }]
+    : []);
   conferencesCallable.create = vi.fn().mockResolvedValue({ sid: "CFnew" });
 
   const callFetch = vi.fn(async () => ({
@@ -41,7 +53,16 @@ export function makeTwilioMock() {
   }));
   const callUpdate = vi.fn().mockResolvedValue({ sid: mockState.callSid, status: "completed" });
   const callsCallable: any = vi.fn(() => ({ fetch: callFetch, update: callUpdate }));
-  callsCallable.create = vi.fn(async () => ({ sid: mockState.createdCallSid, status: mockState.createdStatus }));
+  // A real Twilio account returns a fresh CallSid for every create. Keep the
+  // latest SID in shared state so webhook tests can exercise the matching call.
+  callsCallable.create = vi.fn(async () => {
+    const callNumber = ++createdCallSequence;
+    const sid = callNumber === 1
+      ? mockState.createdCallSid
+      : `CAcreated${String(callNumber).padStart(27, "0")}`;
+    mockState.createdCallSid = sid;
+    return { sid, status: mockState.createdStatus };
+  });
 
   const incomingList = vi.fn(async () => []);
   const incomingRemove = vi.fn(async () => true);
@@ -123,6 +144,7 @@ export function makeTwilioMock() {
     callUpdate,
     callFetch,
     participantUpdate,
+    participantCreate,
     participantsList: participantsCallable.list,
     conferencesList: conferencesCallable.list,
     conferenceUpdate,

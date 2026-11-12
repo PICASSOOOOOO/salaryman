@@ -1,46 +1,61 @@
-import { useEffect, useState } from "react";
-import { ArrowRight, Download, ExternalLink, Headphones, Laptop, MessageSquare, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Download, Laptop, X } from "lucide-react";
 import { Link } from "wouter";
 import { apiFetch, apiUrl } from "@/lib/api-client";
+import { trackEvent } from "@/lib/analytics";
 import "./desktop-download.css";
 
 type DesktopPlatform = "windows" | "macos" | "linux" | "other";
 
 function detectDesktopPlatform(): DesktopPlatform {
-  const platform = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
-  if (platform.includes("win")) return "windows";
-  if (platform.includes("mac")) return "macos";
-  if (platform.includes("linux") && !platform.includes("android")) return "linux";
+  const userAgent = navigator.userAgent.toLowerCase();
+  const platform = navigator.platform.toLowerCase();
+  const touchMac = platform.includes("mac") && navigator.maxTouchPoints > 1;
+  if (
+    touchMac
+    || /android|iphone|ipad|ipod|mobile|tablet/.test(userAgent)
+  ) return "other";
+  if (platform.includes("win") || userAgent.includes("windows")) return "windows";
+  if (platform.includes("mac") || userAgent.includes("macintosh")) return "macos";
+  if (platform.includes("linux")) return "linux";
   return "other";
 }
 
 const platforms = [
   {
+    id: "windows",
     name: "Windows",
     detail: "Windows 10+ · x64",
-    command: "Native package pending",
+    command: "Extract → double-click START-SALARYMAN.cmd",
     tone: "lime",
-    status: "pending",
+    archiveName: "salaryman-office-windows-x86_64.zip",
   },
   {
+    id: "macos",
     name: "macOS",
-    detail: "macOS 12+ · Apple Silicon / Intel",
-    command: "Native package pending",
+    detail: "macOS 12+ · Apple Silicon",
+    command: "Extract → open SALARYMAN Office.app",
     tone: "aqua",
-    status: "pending",
+    archiveName: "salaryman-office-macos-arm64.zip",
   },
   {
+    id: "linux",
     name: "Linux",
     detail: "Ubuntu 22.04+ · x64",
     command: "Extract → double-click START-SALARYMAN",
     tone: "sun",
-    status: "available",
+    archiveName: "salaryman-office-linux-x86_64.tar.gz",
   },
 ] as const;
+
+type AvailablePlatform = Exclude<DesktopPlatform, "other">;
 
 export default function DesktopDownload() {
   const [downloadAllowed, setDownloadAllowed] = useState(false);
   const [clientPlatform, setClientPlatform] = useState<DesktopPlatform>("other");
+  const [availablePlatforms, setAvailablePlatforms] = useState<AvailablePlatform[]>([]);
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
+  const heroGameplayVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setClientPlatform(detectDesktopPlatform());
@@ -48,8 +63,11 @@ export default function DesktopDownload() {
     apiFetch("/api/desktop/access")
       .then(async (response) => {
         if (!response.ok) return;
-        const result = await response.json() as { allowed?: boolean };
-        if (!cancelled) setDownloadAllowed(result.allowed === true);
+        const result = await response.json() as { allowed?: boolean; availablePlatforms?: AvailablePlatform[] };
+        if (!cancelled) {
+          setDownloadAllowed(result.allowed === true);
+          setAvailablePlatforms(result.availablePlatforms ?? []);
+        }
       })
       .catch(() => {});
     return () => {
@@ -57,136 +75,201 @@ export default function DesktopDownload() {
     };
   }, []);
 
-  const downloadHref = apiUrl("/api/desktop/download?platform=linux");
-  const linuxDownloadAvailable = downloadAllowed && clientPlatform === "linux";
-  const platformMessage = clientPlatform === "windows"
-    ? "Windows client not published yet. The Linux package will not run on Windows."
-    : clientPlatform === "macos"
-      ? "macOS client not published yet. The Linux package will not run on a Mac."
-      : clientPlatform === "linux"
-        ? "Linux: extract the download, then double-click START-SALARYMAN. No Docker required."
-        : "A native package for this operating system is not published yet.";
+  useEffect(() => {
+    const video = heroGameplayVideoRef.current;
+    if (!video) return;
+
+    const resumeGameplay = () => {
+      video.muted = true;
+      video.defaultMuted = true;
+      void video.play().catch(() => {
+        // Browser data-saver and battery policies may still require a manual play.
+      });
+    };
+
+    resumeGameplay();
+    video.addEventListener("canplay", resumeGameplay);
+    window.addEventListener("pageshow", resumeGameplay);
+    return () => {
+      video.removeEventListener("canplay", resumeGameplay);
+      window.removeEventListener("pageshow", resumeGameplay);
+    };
+  }, []);
+
+  const clientBuildAvailable = clientPlatform !== "other"
+    && downloadAllowed
+    && availablePlatforms.includes(clientPlatform);
+  const clientRelease = clientPlatform === "other"
+    ? undefined
+    : platforms.find((platform) => platform.id === clientPlatform);
+  const downloadHref = clientRelease
+    ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
+    : "";
+  const gameplayVideoHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261029.mp4");
+  const gameplayDetailVideoHref = gameplayVideoHref;
+  const gameplayPosterHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261029.jpg");
+  const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
+  const platformMessage = clientPlatform === "other"
+    ? "Computer only · macOS, Windows, or Linux · no phone app"
+    : !downloadAllowed
+      ? "Desktop alpha · approved testers"
+      : !clientBuildAvailable
+        ? `${clientRelease?.name ?? "Desktop"} build unavailable`
+        : `${clientRelease?.name} build ready`;
+  const displayedPlatforms = availablePlatforms.length > 0
+    ? platforms.filter((platform) => availablePlatforms.includes(platform.id))
+    : platforms;
 
   return (
     <main className="desktop-download">
-      <header className="desktop-download-topbar">
-        <Link href="/" className="desktop-download-brand" aria-label="SALARYMAN home">
-          <span className="desktop-download-mark">SM</span>
-          <span>SALARYMAN</span>
-        </Link>
-        <nav className="desktop-download-nav" aria-label="Desktop client navigation">
-          <a href="#client">CLIENT</a>
-          <a href="#connection">CONNECTION</a>
-          <Link href="/phone">PHONE SYSTEM</Link>
-          <Link href="/settings">SETTINGS</Link>
-        </nav>
-      </header>
-
       <section className="desktop-download-hero" id="client">
         <div className="desktop-download-hero-copy">
-          <p className="desktop-download-eyebrow">FREE DESKTOP CLIENT / OFFICE ECOLOGY</p>
-          <h1>Run the office<br /><em>where you work.</em></h1>
+          <p className="desktop-download-eyebrow">DESKTOP OS ONLY / MACOS · WINDOWS · LINUX / NO PHONE APP</p>
+          <h1>A living office.<br /><em>Inside SALARYMAN OS.</em></h1>
           <p className="desktop-download-lede">
-            A native office client for focused work away from the browser.
+            The browser is built for professional workflows. SALARYMAN OS is bringing the full SALARYMAN toolkit into native gameplay screens, starting with a free office simulation.
           </p>
           <div className="desktop-download-actions">
-            {linuxDownloadAvailable ? (
-              <a className="desktop-download-primary" href={downloadHref} download="salaryman-office-linux-x86_64.tar.gz">
-                <Download size={16} aria-hidden /> Download Linux client <ArrowRight size={15} aria-hidden />
+            {clientBuildAvailable && clientRelease ? (
+              <a className="desktop-download-primary" href={downloadHref} download={clientRelease.archiveName} data-testid="link-download-detected-desktop-client" onClick={() => trackEvent("desktop_download_started", { platform: clientRelease.id })}>
+                <Download size={16} aria-hidden /> Download {clientRelease.name} desktop alpha <ArrowRight size={15} aria-hidden />
               </a>
             ) : downloadAllowed ? (
-              <span className="desktop-download-locked"><Laptop size={15} aria-hidden /> Native client unavailable for this device</span>
+              <button className="desktop-download-primary" type="button" onClick={() => setDownloadsOpen(true)} data-testid="link-choose-desktop-build">
+                <Download size={16} aria-hidden /> Choose desktop download <ArrowRight size={15} aria-hidden />
+              </button>
             ) : (
-              <span className="desktop-download-locked"><ShieldCheck size={15} aria-hidden /> Admin / moderator test access</span>
+              <button
+                className="desktop-download-primary"
+                type="button"
+                onClick={() => setDownloadsOpen(true)}
+                data-testid="link-sign-in-download-gameplay-alpha"
+              >
+                <Download size={16} aria-hidden /> Desktop downloads <ArrowRight size={15} aria-hidden />
+              </button>
             )}
-            <Link className="desktop-download-secondary" href="/device-link?mode=desktop">
-              <ShieldCheck size={15} aria-hidden /> Connect a desktop
-            </Link>
           </div>
           <p className="desktop-download-note">
             {platformMessage}
           </p>
         </div>
-        <div className="desktop-download-stage" aria-label="Desktop office preview">
-          <div className="desktop-game-capture">
+        <figure className="desktop-download-gameplay">
+          <video
+            ref={heroGameplayVideoRef}
+            controls
+            muted
+            autoPlay
+            loop
+            playsInline
+            preload="metadata"
+            src={gameplayVideoHref}
+            poster={gameplayPosterHref}
+            aria-label="Current Godot development gameplay, reduced-speed capture"
+          />
+          <span className="desktop-download-promo-tag">GODOT DEVELOPMENT GAMEPLAY</span>
+          <figcaption>
+             Live Godot client with Python simulation · short excerpt at one-third speed.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section className="desktop-download-promo" aria-labelledby="desktop-team-title">
+        <div className="desktop-download-section-heading">
+          <p className="desktop-download-eyebrow">A GAME-NATIVE WAY TO EXPLORE WORK</p>
+          <h2 id="desktop-team-title">Meet the office from the inside.</h2>
+          <p>
+            Enter the Tower, meet its characters, and explore connected systems through native game screens—not browser pages dressed up as gameplay.
+          </p>
+        </div>
+
+        <div className="desktop-download-footage-grid">
+          <figure className="desktop-download-footage desktop-download-footage-wide">
             <video
-              className="desktop-game-capture-video"
-              src={`${import.meta.env.BASE_URL}brand/desktop/salaryman-pygame-gameplay.mp4`}
-              autoPlay
               muted
+              autoPlay
               loop
               playsInline
               preload="metadata"
+              src={gameplayDetailVideoHref}
+              poster={gameplayPosterHref}
+              controls
+              aria-label="Godot Tower lobby movement, reduced-speed development capture"
             />
-            <div className="desktop-game-capture-label">DIRECT CAPTURE / PYGAME CLIENT / FLOOR 01</div>
-          </div>
+            <figcaption><span>01</span><strong>GODOT TOWER LOBBY</strong><small>Current development capture, repeated here for detail. This is not a verified release build.</small></figcaption>
+          </figure>
+          <article className="desktop-download-signal-card">
+            <span>FREE GAME FEATURE</span>
+            <strong>EXPLORE.<br />DISCOVER.<br />WORK A NEW WAY.</strong>
+            <p>The office simulation is free. SALARYMAN OS is being built to bring professional tools into game-native screens.</p>
+            <div aria-hidden>
+              <i>YOU</i><b />
+              <i>TEAM</i><b />
+              <i>PABLO</i>
+            </div>
+          </article>
         </div>
       </section>
 
-      <section className="desktop-download-platforms" id="install">
-        <div className="desktop-download-section-heading">
-          <div>
-            <p className="desktop-download-eyebrow">NATIVE CLIENT AVAILABILITY</p>
-            <h2>Use the build for your operating system.</h2>
-          </div>
-          <p>The client and simulation contract stay the same on every operating system. Native packages are built on their target OS.</p>
+      <section className="desktop-download-final-cta">
+        <div>
+          <p className="desktop-download-eyebrow">THE OFFICE IS OPEN</p>
+          <h2>Step into the office.</h2>
         </div>
-        <div className="desktop-download-platform-grid">
-          {platforms.map((platform) => (
-            <article className={`desktop-download-platform ${platform.tone}`} key={platform.name}>
-              <div className="desktop-download-platform-icon"><Laptop size={19} aria-hidden /></div>
-              <h3>{platform.name}</h3>
-              <p>{platform.detail}</p>
-              <code>{platform.command}</code>
-              {platform.name === "Linux" && linuxDownloadAvailable ? (
-                <a href={downloadHref} download="salaryman-office-linux-x86_64.tar.gz">
-                  Download package <ArrowRight size={14} aria-hidden />
-                </a>
-              ) : (
-                <span className="desktop-download-platform-locked">
-                  {platform.name === "Linux"
-                    ? clientPlatform === "linux"
-                      ? "Admin / moderator access required"
-                      : "Linux only — unavailable on this device"
-                    : "Native build not published yet"}
-                </span>
-              )}
-            </article>
-          ))}
-        </div>
-        <p className="desktop-download-build-note" id="builds">
-          Linux setup: extract the archive, open its folder, and run START-SALARYMAN.
-          If prompted, choose Run or Allow Launching. macOS and Windows builds must be
-          produced and smoke-tested on their target operating systems because PyInstaller
-          does not cross-compile.
-        </p>
-      </section>
-
-      <section className="desktop-download-connection" id="connection">
-        <div className="desktop-download-connection-copy">
-          <p className="desktop-download-eyebrow">THE DESKTOP IS A CLIENT / NOT A SECOND DATABASE</p>
-          <h2>Bring the SALARYMAN tools with you.</h2>
-          <p>
-            Pair once in the browser, then let the desktop client request scoped office,
-            finance, employee, COMMS, notification, and document snapshots from SALARYMAN.
-            Server-owned balances and phone actions stay authoritative.
-          </p>
-          <Link className="desktop-download-primary" href="/device-link?mode=desktop">
-            <ShieldCheck size={16} aria-hidden /> Open secure pairing <ArrowRight size={15} aria-hidden />
-          </Link>
-        </div>
-        <div className="desktop-download-connection-grid">
-          <div><MessageSquare size={18} aria-hidden /><strong>COMMS</strong><span>Messages and notifications stay live.</span></div>
-          <div><Headphones size={18} aria-hidden /><strong>PHONE SYSTEM</strong><span>Open the browser call surface for live audio.</span></div>
-          <div><ShieldCheck size={18} aria-hidden /><strong>SCOPED ACCESS</strong><span>Revoke the desktop from account settings.</span></div>
-        </div>
+        <button className="desktop-download-primary" type="button" onClick={() => setDownloadsOpen(true)}>
+          <Download size={16} aria-hidden /> DESKTOP DOWNLOADS <ArrowRight size={15} aria-hidden />
+        </button>
       </section>
 
       <footer className="desktop-download-footer">
-        <span>DESKTOP OFFICE / 01</span>
-        <span>THE WEB REMAINS THE CONTROL PLANE</span>
-        <Link href="/">RETURN TO PABLO <ArrowRight size={13} aria-hidden /></Link>
+        <span>SALARYMAN / PICASSO AI LLC</span>
+        <Link href="/">BACK TO SALARYMAN</Link>
       </footer>
+      {downloadsOpen && (
+        <div className="desktop-download-modal-backdrop" role="presentation" onMouseDown={() => setDownloadsOpen(false)}>
+          <section
+            className="desktop-download-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="desktop-download-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <span>COMPUTER ONLY · NO PHONE APP</span>
+                <h2 id="desktop-download-modal-title">Choose a build.</h2>
+              </div>
+              <button type="button" onClick={() => setDownloadsOpen(false)} aria-label="Close downloads">
+                <X size={19} aria-hidden />
+              </button>
+            </header>
+            <div className="desktop-download-platform-grid">
+              {displayedPlatforms.map((platform) => (
+                <article className="desktop-download-platform" key={platform.name}>
+                  <div className="desktop-download-platform-icon"><Laptop size={19} aria-hidden /></div>
+                  <div className="desktop-download-platform-copy">
+                    <h3>{platform.name}</h3>
+                    <p>{platform.detail}</p>
+                  </div>
+                  {downloadAllowed && availablePlatforms.includes(platform.id) ? (
+                    <a href={apiUrl(`/api/desktop/download?platform=${platform.id}`)} download={platform.archiveName} data-testid={`link-download-${platform.id}-desktop-client`} onClick={() => trackEvent("desktop_download_started", { platform: platform.id })}>
+                      Download <ArrowRight size={14} aria-hidden />
+                    </a>
+                   ) : downloadAllowed ? (
+                     <span className="desktop-download-platform-locked">
+                       {platform.id === "macos" ? "Awaiting verified, signed release" : "Awaiting verified release"}
+                     </span>
+                   ) : (
+                     <Link className="desktop-download-platform-locked" href="/sign-in?returnTo=/desktop">
+                      Sign in <ArrowRight size={14} aria-hidden />
+                    </Link>
+                  )}
+                </article>
+              ))}
+            </div>
+            <p>Extract the package, then open START-SALARYMAN.</p>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

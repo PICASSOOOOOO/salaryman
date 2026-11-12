@@ -7,7 +7,7 @@ export function GlobalMusicMiniIndicator() {
   const [loc] = useLocation();
 
   // Don't render on the jukebox page itself
-  if (loc.startsWith("/creative/music")) return null;
+  if (loc === "/hummingbird" || loc.startsWith("/creative/music")) return null;
   // Only show when something is loaded (playing or paused mid-track)
   if (!current) return null;
 
@@ -65,7 +65,7 @@ export function GlobalMusicMiniIndicator() {
         {repeat === "one" ? <Repeat1 className="w-3 h-3" /> : <Repeat className="w-3 h-3" />}
       </button>
       <Link
-        href="/creative/music"
+        href="/hummingbird"
         className="flex items-center gap-1.5 text-zinc-200 hover:text-white max-w-[200px] truncate"
       >
         <Music2 className="w-3 h-3 text-purple-300 shrink-0" />

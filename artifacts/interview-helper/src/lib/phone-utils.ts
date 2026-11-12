@@ -21,8 +21,18 @@ export interface CRMContact {
   name: string;
   phone: string;
   email: string;
+  address?: string;
+  age?: string;
+  ethnicity?: string;
   hometown: string;
+  timezone?: string;
+  kids?: string;
+  bio?: string;
+  tag?: string;
+  dealStage?: string;
+  dealValue?: number | null;
   company?: string;
+  createdAt?: string;
 }
 
 export interface ActiveCall {
@@ -74,6 +84,7 @@ export interface CallRecord {
   callType?: string;
   transcript?: string | null;
   summary?: string | null;
+  transcriptEventsJson?: string;
   notes?: string | null;
   calendarEventId?: number | null;
   contactId?: number | null;

@@ -5,12 +5,14 @@ export * from "./playable-properties";
 export * from "./shadow-tower";
 export * from "./property-market";
 export * from "./tower-commerce";
+export * from "./tower-floor-stock";
 export * from "./city-time";
+export * from "./ecosystem-condition";
 export {
   type AuthorizationSessionHeaderParameter,
   type AuthUser,
   type AuthUserEnvelope,
-  type CreateOpenaiConversationBody as CreateOpenaiConversationBodyType,
+  type OpenaiConversationInput as CreateOpenaiConversationBodyType,
   type ErrorEnvelope,
   type HealthStatus,
   type LogoutSuccess,
@@ -20,7 +22,10 @@ export {
   type OpenaiConversationWithMessages,
   type OpenaiError,
   type OpenaiMessage,
-  type SendOpenaiMessageBody as SendOpenaiMessageBodyType,
-  type SolveInterviewQuestionBody as SolveInterviewQuestionBodyType,
-  SolveInterviewQuestionBodyMode,
+  type OpenaiMessageInput as SendOpenaiMessageBodyType,
+  type InterviewQuestionInput as SolveInterviewQuestionBodyType,
+  InterviewQuestionInputMode as SolveInterviewQuestionBodyMode,
 } from "./generated/types";
+export * as generatedTypes from "./generated/types";
+export type { GetSecureCallRecordingParams } from "./generated/types";
+export * from './generated/types';

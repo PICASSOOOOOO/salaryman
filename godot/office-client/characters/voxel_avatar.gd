@@ -1,0 +1,304 @@
+extends RefCounted
+## Rebuilds the visible avatar as a rigged, block-built character.
+
+const COLORS := {
+	"skin": "#d58c68",
+	"skin_shadow": "#b96f50",
+	"hair": "#4a2c20",
+	"hair_light": "#68402b",
+	"hair_dark": "#321f1a",
+	"jacket": "#174b86",
+	"jacket_light": "#2465a5",
+	"jacket_shadow": "#103a6b",
+	"shirt": "#f4f0e7",
+	"tie": "#17191c",
+	"pants": "#28292b",
+	"pants_highlight": "#343638",
+	"pants_shadow": "#202123",
+	"shoe": "#151719",
+	"shoe_highlight": "#292b2d",
+	"eye": "#202124",
+	"eye_white": "#fffaf0",
+	"button": "#b7a98a",
+}
+const NPC_WARDROBE_PRESETS := ["reference", "open_collar", "charcoal_suit"]
+static func apply(model: Node3D, wardrobe: Dictionary = {}) -> void:
+	if model.has_meta("voxel_avatar_built"):
+		set_wardrobe(model, wardrobe)
+		return
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		(node as MeshInstance3D).visible = false
+	var skeletons := model.find_children("*", "Skeleton3D", true, false)
+	if skeletons.is_empty():
+		push_error("Voxel avatar needs the source animated Skeleton3D.")
+		return
+	var skeleton := skeletons[0] as Skeleton3D
+	_add_box(skeleton, "root", Vector3(0, 0.205, 0), Vector3(0.115, 0.105, 0.09), "pants", "waist")
+	for side in [-1.0, 1.0]:
+		var x: float = side * 0.034
+		var limb_bone := "leg-left" if side > 0 else "leg-right"
+		var arm_bone := "arm-left" if side > 0 else "arm-right"
+		_add_box(skeleton, limb_bone, Vector3(x, 0.112, 0), Vector3(0.05, 0.22, 0.057), "pants", "trouser")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.152, 0.031), Vector3(0.032, 0.11, 0.009), "pants_highlight", "trouser-front-panel")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.075, 0.031), Vector3(0.052, 0.012, 0.01), "pants_shadow", "trouser-knee-fold")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.013, 0.029), Vector3(0.055, 0.022, 0.063), "pants_shadow", "trouser-cuff")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.018, 0.018), Vector3(0.058, 0.032, 0.092), "shoe", "shoe")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.025, 0.067), Vector3(0.052, 0.018, 0.034), "shoe_highlight", "shoe-toe")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.039, 0.038), Vector3(0.025, 0.006, 0.035), "shoe_highlight", "shoe-lace")
+		_add_box(skeleton, limb_bone, Vector3(x, 0.008, 0.048), Vector3(0.058, 0.012, 0.066), "shoe", "shoe-sole")
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.244, 0), Vector3(0.041, 0.164, 0.048), "shirt", "shirt-sleeve")
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.244, 0), Vector3(0.048, 0.17, 0.057), "jacket", "sleeve")
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.287, 0.03), Vector3(0.035, 0.075, 0.009), "jacket_light", "sleeve-panel")
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.154, 0.005), Vector3(0.038, 0.034, 0.045), "skin", "hand")
+	_add_box(skeleton, "root", Vector3(0, 0.205, 0.002), Vector3(0.095, 0.045, 0.073), "pants", "belt")
+	_add_box(skeleton, "root", Vector3(0, 0.205, 0.041), Vector3(0.025, 0.018, 0.006), "shirt", "buckle")
+	_add_box(skeleton, "torso", Vector3(0, 0.283, 0), Vector3(0.136, 0.145, 0.076), "shirt", "shirt-torso")
+	_add_box(skeleton, "torso", Vector3(0, 0.283, 0), Vector3(0.16, 0.16, 0.086), "jacket", "blazer")
+	_add_box(skeleton, "torso", Vector3(-0.052, 0.342, 0), Vector3(0.07, 0.054, 0.092), "jacket_light", "left-shoulder")
+	_add_box(skeleton, "torso", Vector3(0.052, 0.342, 0), Vector3(0.07, 0.054, 0.092), "jacket_light", "right-shoulder")
+	_add_box(skeleton, "torso", Vector3(-0.07, 0.286, 0.018), Vector3(0.019, 0.13, 0.071), "jacket_shadow", "left-jacket-side")
+	_add_box(skeleton, "torso", Vector3(0.07, 0.286, 0.018), Vector3(0.019, 0.13, 0.071), "jacket_light", "right-jacket-edge")
+	_add_box(skeleton, "torso", Vector3(0, 0.211, 0), Vector3(0.145, 0.034, 0.088), "jacket_shadow", "jacket-hem")
+	_add_box(skeleton, "torso", Vector3(0, 0.285, 0.045), Vector3(0.05, 0.15, 0.01), "shirt", "shirt-front")
+	_add_box(skeleton, "torso", Vector3(0, 0.262, 0.052), Vector3(0.024, 0.105, 0.012), "tie", "tie")
+	_add_box(skeleton, "torso", Vector3(0, 0.333, 0.055), Vector3(0.026, 0.022, 0.018), "tie", "tie-knot")
+	_add_box(skeleton, "torso", Vector3(0, 0.35, 0.047), Vector3(0.064, 0.022, 0.021), "shirt", "collar")
+	_add_box(skeleton, "torso", Vector3(-0.019, 0.34, 0.056), Vector3(0.021, 0.031, 0.016), "shirt", "left-collar-point")
+	_add_box(skeleton, "torso", Vector3(0.019, 0.34, 0.056), Vector3(0.021, 0.031, 0.016), "shirt", "right-collar-point")
+	_add_box(skeleton, "torso", Vector3(-0.052, 0.309, 0.044), Vector3(0.028, 0.022, 0.006), "jacket_shadow", "jacket-pocket")
+	_add_box(skeleton, "torso", Vector3(-0.052, 0.321, 0.045), Vector3(0.03, 0.004, 0.007), "jacket_light", "pocket-welt")
+	_add_box(skeleton, "torso", Vector3(0.056, 0.307, 0.046), Vector3(0.025, 0.02, 0.006), "jacket_shadow", "lower-jacket-pocket")
+	for button_y in [0.305, 0.282, 0.259]:
+		_add_box(skeleton, "torso", Vector3(0.043, button_y, 0.045), Vector3(0.006, 0.006, 0.004), "button", "jacket-button")
+	_add_box(skeleton, "head", Vector3(0, 0.399, 0.052), Vector3(0.08, 0.085, 0.054), "skin", "face")
+	_add_box(skeleton, "head", Vector3(0, 0.421, 0.006), Vector3(0.082, 0.045, 0.065), "hair", "hair-cap")
+	_add_box(skeleton, "head", Vector3(0, 0.385, 0.067), Vector3(0.08, 0.018, 0.028), "hair", "fringe")
+	for side in [-1.0, 1.0]:
+		_add_box(skeleton, "head", Vector3(side * 0.039, 0.397, 0.006), Vector3(0.014, 0.032, 0.045), "hair", "side-lock")
+		_add_box(skeleton, "head", Vector3(side * 0.041, 0.398, 0.048), Vector3(0.012, 0.024, 0.018), "skin", "ear")
+	_add_face_texture(skeleton)
+	# Stepped blocks give the hair and shoulders the chunky silhouette in the reference.
+	_add_box(skeleton, "head", Vector3(-0.02, 0.447, 0.004), Vector3(0.032, 0.012, 0.05), "hair_light", "hair-step")
+	_add_box(skeleton, "head", Vector3(0.021, 0.444, 0.014), Vector3(0.028, 0.012, 0.032), "hair_dark", "hair-step-shadow")
+	_add_box(skeleton, "head", Vector3(-0.043, 0.424, 0.004), Vector3(0.012, 0.024, 0.042), "hair_dark", "hair-side-shadow")
+	_add_box(skeleton, "head", Vector3(0.02, 0.438, 0.035), Vector3(0.027, 0.012, 0.026), "hair_light", "hair-lock")
+	_add_box(skeleton, "head", Vector3(-0.018, 0.432, 0.048), Vector3(0.023, 0.011, 0.022), "hair", "hair-lock")
+	# Layered swept fringe, crown ridges, and nape blocks follow the reference's
+	# distinct voxel clumps instead of reading as one flat cap.
+	_add_box(skeleton, "head", Vector3(0.025, 0.423, 0.052), Vector3(0.029, 0.022, 0.022), "hair", "front-swept-lock")
+	_add_box(skeleton, "head", Vector3(-0.012, 0.419, 0.059), Vector3(0.025, 0.02, 0.018), "hair_light", "front-highlight-lock")
+	_add_box(skeleton, "head", Vector3(0.048, 0.414, 0.022), Vector3(0.012, 0.034, 0.039), "hair_dark", "right-temple-lock")
+	_add_box(skeleton, "head", Vector3(-0.049, 0.414, 0.021), Vector3(0.012, 0.034, 0.039), "hair_light", "left-temple-lock")
+	_add_box(skeleton, "head", Vector3(-0.026, 0.448, 0.005), Vector3(0.027, 0.01, 0.048), "hair_light", "crown-ridge")
+	_add_box(skeleton, "head", Vector3(0.024, 0.448, 0.004), Vector3(0.026, 0.01, 0.047), "hair_dark", "crown-part")
+	_add_box(skeleton, "head", Vector3(0, 0.405, -0.034), Vector3(0.064, 0.038, 0.023), "hair_dark", "back-hair")
+	_add_box(skeleton, "head", Vector3(0, 0.385, -0.019), Vector3(0.058, 0.016, 0.022), "hair", "nape")
+	_add_box(skeleton, "torso", Vector3(-0.058, 0.359, 0.022), Vector3(0.032, 0.022, 0.09), "jacket_light", "left-lapel")
+	_add_box(skeleton, "torso", Vector3(0.058, 0.359, 0.022), Vector3(0.032, 0.022, 0.09), "jacket_light", "right-lapel")
+	_add_box(skeleton, "torso", Vector3(-0.07, 0.335, 0.032), Vector3(0.025, 0.054, 0.014), "jacket_shadow", "lapel-shadow")
+	for side in [-1.0, 1.0]:
+		var arm_bone := "arm-left" if side > 0 else "arm-right"
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.172, 0.03), Vector3(0.049, 0.018, 0.064), "shirt", "shirt-cuff")
+		_add_box(skeleton, arm_bone, Vector3(side * 0.102, 0.185, 0.03), Vector3(0.05, 0.012, 0.065), "jacket_shadow", "sleeve-cuff")
+	model.set_meta("voxel_avatar_built", true)
+	set_wardrobe(model, wardrobe)
+
+
+## Wardrobe values are keyed by garment slot. Each slot accepts a color string
+## or {"color": "#hex", "visible": true/false}; omitted slots use the base outfit.
+static func set_wardrobe(model: Node3D, wardrobe: Dictionary) -> void:
+	model.set_meta("voxel_wardrobe", wardrobe.duplicate(true))
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var part := node as MeshInstance3D
+		if not part.has_meta("wardrobe_slot"):
+			continue
+		var slot: String = part.get_meta("wardrobe_slot")
+		var option: Variant = wardrobe.get(slot, {})
+		var color_value: Variant = option
+		var part_visible := true
+		if option is Dictionary:
+			color_value = option.get("color", "")
+			part_visible = bool(option.get("visible", true))
+		part.visible = part_visible
+		var original_color: Color = part.get_meta("wardrobe_base_color")
+		var base_color := _wardrobe_slot_default_color(slot)
+		if color_value is Color:
+			base_color = color_value
+		elif color_value is String and not color_value.is_empty():
+			if Color.html_is_valid(color_value):
+				base_color = Color(color_value)
+			else:
+				push_warning("Ignoring invalid wardrobe color for slot '%s': %s" % [slot, color_value])
+		var color_key: String = part.get_meta("wardrobe_color_key")
+		var material := part.material_override as StandardMaterial3D
+		material.albedo_color = (
+			_shade_wardrobe_color(slot, color_key, base_color)
+			if color_value is Color or (color_value is String and not color_value.is_empty())
+			else original_color
+		)
+
+
+static func wardrobe_preset(preset_name: String) -> Dictionary:
+	match preset_name:
+		"reference":
+			return {}
+		"open_collar":
+			return {"tie": {"visible": false}}
+		"shirt_only":
+			return {
+				"jacket": {"visible": false},
+				"tie": {"visible": false},
+			}
+		"charcoal_suit":
+			return {
+				"jacket": {"color": "#303944"},
+				"tie": {"color": "#732f36"},
+				"pants": {"color": "#25272a"},
+			}
+		_:
+			push_error("Unknown avatar wardrobe preset: " + preset_name)
+			return {}
+
+
+static func wardrobe_for_npc(identity: String, wardrobe_override: Variant = null) -> Dictionary:
+	if wardrobe_override is Dictionary:
+		return wardrobe_override.duplicate(true)
+	if wardrobe_override is String and not wardrobe_override.is_empty():
+		return wardrobe_preset(wardrobe_override)
+	if wardrobe_override != null:
+		push_error("NPC wardrobe must be a preset name or a garment-slot dictionary.")
+		return {}
+	if identity.strip_edges().is_empty():
+		push_error("An NPC identity is required for a stable wardrobe choice.")
+		return {}
+	var preset_index := posmod(identity.hash(), NPC_WARDROBE_PRESETS.size())
+	return wardrobe_preset(NPC_WARDROBE_PRESETS[preset_index])
+
+
+static func _wardrobe_slot_for_color(color_key: String) -> String:
+	if color_key.begins_with("jacket") or color_key == "button":
+		return "jacket"
+	if color_key == "shirt":
+		return "shirt"
+	if color_key == "tie":
+		return "tie"
+	if color_key.begins_with("pants") or color_key == "buckle":
+		return "pants"
+	if color_key.begins_with("shoe"):
+		return "shoes"
+	return ""
+
+
+static func _wardrobe_slot_default_color(slot: String) -> Color:
+	var color_key: String = {
+		"jacket": "jacket",
+		"shirt": "shirt",
+		"tie": "tie",
+		"pants": "pants",
+		"shoes": "shoe",
+	}.get(slot, "")
+	return Color(COLORS[color_key]) if not color_key.is_empty() else Color.WHITE
+
+
+static func _shade_wardrobe_color(slot: String, color_key: String, base_color: Color) -> Color:
+	if color_key.ends_with("_light") or color_key == "pants_highlight" or color_key == "shoe_highlight":
+		return base_color.lightened(0.16 if slot == "jacket" else 0.11)
+	if color_key.ends_with("_shadow") or color_key == "pants_shadow":
+		return base_color.darkened(0.22)
+	return base_color
+
+
+static func _add_face_texture(skeleton: Skeleton3D) -> void:
+	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	image.fill(Color("#d58c68"))
+	_fill_rect(image, 0, 0, 12, 64, Color("#c77e60"))
+	_fill_rect(image, 52, 0, 64, 64, Color("#c77e60"))
+	_fill_rect(image, 0, 48, 64, 64, Color("#c77e60"))
+	_fill_rect(image, 8, 8, 56, 20, Color("#f0bb91"))
+	for eye_x in [14, 38]:
+		_fill_rect(image, eye_x - 5, 24, eye_x + 5, 29, Color("#fff7e8"))
+		_fill_rect(image, eye_x - 1, 24, eye_x + 3, 30, Color("#252327"))
+		_fill_rect(image, eye_x, 25, eye_x + 1, 26, Color("#fff7e8"))
+	# Thick stepped brows and small nose/mouth pixels keep the face legible at
+	# gameplay scale without glasses or an oversized cartoon expression.
+	_fill_rect(image, 8, 20, 21, 23, Color("#4a2c20"))
+	_fill_rect(image, 32, 20, 45, 23, Color("#4a2c20"))
+	_fill_rect(image, 28, 30, 34, 36, Color("#e5a17b"))
+	_fill_rect(image, 31, 35, 36, 38, Color("#b96f50"))
+	_fill_rect(image, 29, 37, 34, 39, Color("#f0bb91"))
+	_fill_rect(image, 25, 44, 39, 46, Color("#8e4c43"))
+	_fill_rect(image, 28, 46, 36, 47, Color("#fff0df"))
+	_fill_rect(image, 20, 48, 44, 53, Color("#b96f50"))
+	_fill_rect(image, 10, 32, 13, 36, Color("#e7a27d"))
+	_fill_rect(image, 42, 32, 45, 36, Color("#e7a27d"))
+	var texture := ImageTexture.create_from_image(image)
+	var bone_index := skeleton.find_bone("head")
+	if bone_index < 0:
+		return
+	var attachment := BoneAttachment3D.new()
+	attachment.name = "Voxel_FaceDetails"
+	attachment.bone_name = "head"
+	skeleton.add_child(attachment)
+	var face := MeshInstance3D.new()
+	face.name = "PixelFace"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.062, 0.058)
+	face.mesh = quad
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = texture
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	face.material_override = material
+	var target := Transform3D(Basis.IDENTITY, Vector3(0, 0.411, 0.081))
+	face.transform = skeleton.get_bone_global_rest(bone_index).affine_inverse() * target
+	attachment.add_child(face)
+
+
+static func _fill_rect(image: Image, x0: int, y0: int, x1: int, y1: int, color: Color) -> void:
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			image.set_pixel(x, y, color)
+
+
+static func _add_box(
+	skeleton: Skeleton3D,
+	bone_name: String,
+	center: Vector3,
+	size: Vector3,
+	color_key: String,
+	part_name: String
+) -> void:
+	var bone_index := skeleton.find_bone(bone_name)
+	if bone_index < 0:
+		return
+	var shape_scale := Vector3(0.67, 1.0, 0.85)
+	if bone_name == "head":
+		shape_scale.x = 0.9
+		shape_scale.z = 1.0
+	center *= shape_scale
+	size *= shape_scale
+	if bone_name == "head":
+		center.y += 0.012
+		size *= Vector3(0.86, 0.7, 0.9)
+	var attachment := BoneAttachment3D.new()
+	attachment.name = "Voxel_" + part_name
+	attachment.bone_name = bone_name
+	skeleton.add_child(attachment)
+	var part := MeshInstance3D.new()
+	part.name = part_name
+	var box := BoxMesh.new()
+	box.size = size
+	part.mesh = box
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(COLORS[color_key])
+	material.roughness = 0.92
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	part.material_override = material
+	var wardrobe_slot := _wardrobe_slot_for_color(color_key)
+	if not wardrobe_slot.is_empty():
+		part.set_meta("wardrobe_slot", wardrobe_slot)
+		part.set_meta("wardrobe_color_key", color_key)
+		part.set_meta("wardrobe_base_color", Color(COLORS[color_key]))
+	var target := Transform3D(Basis.IDENTITY, center)
+	part.transform = skeleton.get_bone_global_rest(bone_index).affine_inverse() * target
+	attachment.add_child(part)

@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import {
   Loader2, Check, Shield, Sword, Sparkles, Cpu, Wand2, Heart, Dumbbell, Shirt,
-  ShoppingBag, Archive, Coins, CreditCard, X, ChevronRight, Battery,
+  ShoppingBag, Archive, Coins, X, ChevronRight, Battery,
 } from "lucide-react";
 
 const ACCENT = "#38bdf8"; // CRT cyan
@@ -146,6 +146,10 @@ export default function Armory() {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string>("");
   const [storedIds, setStoredIds] = useState<Set<string>>(new Set());
+  const [publicStoredIds, setPublicStoredIds] = useState<Set<string>>(new Set());
+  const [publicStoredQuantities, setPublicStoredQuantities] = useState<Record<string, number>>({});
+  const [capacity, setCapacity] = useState({ usedSlots: 0, capacity: 24 });
+  const [publicLockerCapacity, setPublicLockerCapacity] = useState({ usedSlots: 0, capacity: 12 });
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [installTargets, setInstallTargets] = useState<InstallTarget[]>([]);
   const [installed, setInstalled] = useState<InstalledRow[]>([]);
@@ -168,13 +172,15 @@ export default function Armory() {
         reqs.push(apiFetch(`/api/items/storage?slot=${slot}`));
         reqs.push(apiFetch(`/api/items/install-targets?slot=${slot}`));
         reqs.push(apiFetch(`/api/items/installed?slot=${slot}`));
+        reqs.push(apiFetch(`/api/items/public-locker?slot=${slot}`));
       }
-      const [catRes, invRes, loadoutRes, storageRes, targetsRes, installedRes] = await Promise.all(reqs);
+      const [catRes, invRes, loadoutRes, storageRes, targetsRes, installedRes, publicLockerRes] = await Promise.all(reqs);
       const cat = await catRes.json();
       setCatalog(cat.items ?? []);
       if (invRes && invRes.ok) {
         const inv = await invRes.json();
         setOwnedIds(new Set<string>(inv.itemIds ?? []));
+        setCapacity({ usedSlots: Number(inv.usedSlots ?? inv.rows?.length ?? 0), capacity: Number(inv.capacity ?? 24) });
         const qty: Record<string, number> = {};
         for (const r of (inv.rows ?? []) as Array<{ itemId: string; quantity: number }>) {
           qty[r.itemId] = r.quantity;
@@ -198,6 +204,14 @@ export default function Armory() {
       if (installedRes && installedRes.ok) {
         const ins = await installedRes.json();
         setInstalled(ins.rows ?? []);
+      }
+      if (publicLockerRes && publicLockerRes.ok) {
+        const locker = await publicLockerRes.json();
+        setPublicStoredIds(new Set<string>(locker.itemIds ?? []));
+        const publicQty: Record<string, number> = {};
+        for (const row of locker.rows ?? []) publicQty[row.itemId] = Number(row.quantity ?? 1);
+        setPublicStoredQuantities(publicQty);
+        setPublicLockerCapacity({ usedSlots: Number(locker.usedSlots ?? 0), capacity: Number(locker.capacity ?? 12) });
       }
     } catch {
       /* ignore */
@@ -256,37 +270,6 @@ export default function Armory() {
         setNotice(`Not enough florins — need ${fmtFiat(data.required)} (you have ${fmtFiat(data.spendable ?? 0)}).`);
       } else {
         setNotice(data.error ?? "Purchase failed.");
-      }
-    } catch {
-      setNotice("Network error — try again.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const buyCard = async (item: CatalogItem) => {
-    if (!isAuthenticated) {
-      window.location.href = apiUrl("/auth/login");
-      return;
-    }
-    setBusy(item.id);
-    setNotice("");
-    try {
-      const res = await apiFetch("/api/items/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: item.id, slot }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      if (data.owned) {
-        setOwnedIds((prev) => new Set(prev).add(item.id));
-        setNotice(`${item.name} already owned.`);
-      } else {
-        setNotice(data.error ?? "Card checkout is unavailable right now.");
       }
     } catch {
       setNotice("Network error — try again.");
@@ -396,6 +379,28 @@ export default function Armory() {
     }
   };
 
+  const movePublicLocker = async (item: CatalogItem, action: "deposit" | "withdraw") => {
+    const key = `public-${action}:${item.id}`;
+    setBusy(key);
+    setNotice("");
+    try {
+      const res = await apiFetch(`/api/items/public-locker/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, slot }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        await load();
+        setNotice(action === "deposit" ? `${item.name} stored securely in your public locker.` : `${item.name} withdrawn from your public locker.`);
+      } else setNotice(data.error ?? "Locker action failed.");
+    } catch {
+      setNotice("Network error — try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const install = async (item: CatalogItem, target: InstallTarget) => {
     setBusy(`install:${item.id}`);
     setNotice("");
@@ -464,6 +469,28 @@ export default function Armory() {
     }
   };
 
+  const sellToShop = async (item: CatalogItem) => {
+    setBusy(`sell:${item.id}`);
+    setNotice("");
+    try {
+      const res = await apiFetch("/api/items/sell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, slot, qty: 1 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setNotice(data.error ?? "Could not sell item.");
+      else {
+        await load();
+        setNotice(`${item.name} sold to a shop for ${fmtFiat(data.payoutFiat)}.`);
+      }
+    } catch {
+      setNotice("Network error — try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const types = useMemo(() => {
     const set = new Set<string>();
     for (const it of catalog) set.add(it.type);
@@ -493,6 +520,10 @@ export default function Armory() {
   const storedItems = useMemo(
     () => catalog.filter((i) => storedIds.has(i.id) && !i.consumable),
     [catalog, storedIds],
+  );
+  const publicStoredItems = useMemo(
+    () => catalog.filter((i) => publicStoredIds.has(i.id)),
+    [catalog, publicStoredIds],
   );
 
   return (
@@ -611,6 +642,9 @@ export default function Armory() {
               </section>
             ) : (
             <>
+            <div className="mb-5 flex items-center justify-between rounded border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-cyan-100">
+              <span>Carried capacity</span><strong>{capacity.usedSlots}/{capacity.capacity} slots</strong>
+            </div>
             {/* Equipped loadout strip */}
             <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-slate-400">Equipped</h2>
             {Object.keys(loadout).length === 0 ? (
@@ -704,13 +738,29 @@ export default function Armory() {
                         <div className="text-center text-[10px] text-slate-500">Placed item (not equippable)</div>
                       )}
                       {!isEquipped && (
-                        <button
-                          onClick={() => deposit(item)}
-                          disabled={busy === `store:${item.id}`}
-                          className="mt-1.5 flex w-full items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 disabled:opacity-50"
-                        >
-                          {busy === `store:${item.id}` ? "..." : <>Store in home locker <Archive className="h-3 w-3" /></>}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => sellToShop(item)}
+                            disabled={busy === `sell:${item.id}`}
+                            className="mt-2 w-full rounded border border-emerald-800 py-1.5 text-[10px] font-bold text-emerald-300 disabled:opacity-50"
+                          >
+                            {busy === `sell:${item.id}` ? "SELLING…" : "SELL TO SHOP"}
+                          </button>
+                          <button
+                            onClick={() => deposit(item)}
+                            disabled={busy === `store:${item.id}`}
+                            className="mt-1.5 flex w-full items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 disabled:opacity-50"
+                          >
+                            {busy === `store:${item.id}` ? "..." : <>Store in home locker <Archive className="h-3 w-3" /></>}
+                          </button>
+                          <button
+                            onClick={() => movePublicLocker(item, "deposit")}
+                            disabled={busy === `public-deposit:${item.id}`}
+                            className="mt-1 flex w-full items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 disabled:opacity-50"
+                          >
+                            {busy === `public-deposit:${item.id}` ? "..." : "Store in secure public locker"}
+                          </button>
+                        </>
                       )}
                     </div>
                   );
@@ -794,6 +844,20 @@ export default function Armory() {
                       ) : (
                         <div className="text-center text-[10px] text-slate-500">Crafting material (not installable)</div>
                       )}
+                      <button
+                        onClick={() => movePublicLocker(item, "deposit")}
+                        disabled={busy === `public-deposit:${item.id}`}
+                        className="mt-2 w-full rounded border border-white/10 py-1.5 text-[10px] text-slate-400 hover:text-slate-200 disabled:opacity-50"
+                      >
+                        {busy === `public-deposit:${item.id}` ? "STORING…" : "STORE STACK IN SECURE PUBLIC LOCKER"}
+                      </button>
+                      <button
+                        onClick={() => sellToShop(item)}
+                        disabled={busy === `sell:${item.id}`}
+                        className="mt-1 w-full rounded border border-emerald-800 py-1.5 text-[10px] font-bold text-emerald-300 disabled:opacity-50"
+                      >
+                        {busy === `sell:${item.id}` ? "SELLING…" : "SELL 1 TO SHOP"}
+                      </button>
                     </div>
                   );
                 })}
@@ -872,6 +936,37 @@ export default function Armory() {
                 ))}
               </div>
             )}
+            <h2 className="mb-2 mt-8 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-400">
+              <Archive className="h-3.5 w-3.5" /> Secure Public Locker ({publicLockerCapacity.usedSlots}/{publicLockerCapacity.capacity})
+            </h2>
+            <p className="mb-3 max-w-prose text-[11px] text-slate-500">
+              Publicly located, but private to your character. Other players cannot view, withdraw, or break into these items.
+            </p>
+            {publicStoredItems.length === 0 ? (
+              <p className="text-xs text-slate-500">Your secure public locker is empty.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {publicStoredItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border p-3" style={{ borderColor: "#1e293b", background: "#0a0f17" }}>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="text-xl">{item.icon}</span>
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-semibold">{item.name}</div>
+                        <div className="text-[10px] text-slate-500">×{publicStoredQuantities[item.id] ?? 1}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => movePublicLocker(item, "withdraw")}
+                      disabled={busy === `public-withdraw:${item.id}`}
+                      className="rounded border px-2 py-1 text-[10px] font-bold text-cyan-200 disabled:opacity-50"
+                      style={{ borderColor: `${ACCENT}66` }}
+                    >
+                      {busy === `public-withdraw:${item.id}` ? "…" : "TAKE"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             </>
             )}
           </div>
@@ -911,7 +1006,6 @@ export default function Armory() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 text-sm font-semibold">
                           {item.name}
-                          {item.priceUsd != null && <Sparkles className="h-3 w-3 shrink-0" style={{ color: "#fbbf24" }} />}
                           {item.consumable && heldQty > 0 && (
                             <span className="ml-auto rounded px-1.5 py-0.5 font-mono text-[10px] font-bold" style={{ background: `${ACCENT}1a`, color: ACCENT }}>
                               ×{heldQty}
@@ -952,16 +1046,6 @@ export default function Armory() {
                               </>
                             )}
                           </button>
-                          {item.priceUsd != null && (
-                            <button
-                              onClick={() => buyCard(item)}
-                              disabled={busy === item.id}
-                              className="flex items-center justify-center gap-1.5 rounded border py-1.5 text-xs font-bold disabled:opacity-50"
-                              style={{ borderColor: "#fbbf24", color: "#fbbf24" }}
-                            >
-                              <CreditCard className="h-3.5 w-3.5" /> ${item.priceUsd} card
-                            </button>
-                          )}
                         </div>
                       )}
                       {owned && item.equipSlot && (

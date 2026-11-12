@@ -89,6 +89,19 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+    // Organization documents are served only through the connector route that
+    // checks the live organization grant. This generic object route is public.
+    if (
+      wildcardPath === "organization-documents" ||
+      wildcardPath.startsWith("organization-documents/") ||
+      wildcardPath === "organization-document-staging" ||
+      wildcardPath.startsWith("organization-document-staging/") ||
+      wildcardPath === "1999-emulator-saves" ||
+      wildcardPath.startsWith("1999-emulator-saves/")
+    ) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 

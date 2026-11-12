@@ -20,6 +20,8 @@ export interface ChatMessage {
   attachmentMimeType?: string | null;
   attachmentSizeBytes?: number | null;
   createdAt: string;
+  /** Local-only marker used while the HTTP send is being persisted. */
+  pending?: boolean;
 }
 
 interface ChannelMeta {
@@ -27,6 +29,8 @@ interface ChannelMeta {
   pabloChannelId: number | null;
   companyChannelId: number | null;
   companyName: string | null;
+  orgChannels: Array<{ channelId: number; name: string; isDefault: boolean }>;
+  canManageOrgChannels: boolean;
   privateChannels: Array<{
     channelId: number;
     otherUser: {
@@ -49,12 +53,14 @@ interface ChatState {
   totalUnread: number;
 }
 
-type SendFn = (channelId: number, content: string, attachmentFileId?: number) => void;
+type SendFn = (channelId: number, content: string, attachmentFileId?: number) => Promise<boolean>;
 type MarkReadFn = (channelId: number, lastMessageId: number) => void;
 type MarkAllReadFn = () => Promise<void>;
 type LoadHistoryFn = (channelId: number, before?: number) => Promise<boolean>;
 type StartPrivateFn = (targetUserId: string) => Promise<number | null>;
-type SendToPabloFn = (content: string) => Promise<void>;
+type SendToPabloFn = (content: string, uploadFile?: File) => Promise<boolean>;
+
+export const CHAT_SEND_TIMEOUT_MS = 15_000;
 
 interface UseChatSocket extends ChatState {
   send: SendFn;
@@ -64,6 +70,16 @@ interface UseChatSocket extends ChatState {
   startPrivateChat: StartPrivateFn;
   sendToPablo: SendToPabloFn;
   refreshChannels: () => Promise<void>;
+}
+
+async function chatFetch(path: string, options: Parameters<typeof apiFetch>[1] = {}): Promise<Response> {
+  // Clerk can report an authenticated browser a moment before the API session
+  // cookie is visible to the server. Keep the first request from redirecting,
+  // then retry once before treating the send/read as a real failure.
+  const first = await apiFetch(path, { ...options, skipSessionExpiryRedirect: true });
+  if (first.status !== 401) return first;
+  await new Promise(resolve => setTimeout(resolve, 250));
+  return apiFetch(path, options);
 }
 
 export function useChatSocket(): UseChatSocket {
@@ -85,13 +101,32 @@ export function useChatSocket(): UseChatSocket {
   const MAX_RETRIES = 10;
   const BASE_DELAY = 2000;
 
-  const appendMessage = useCallback((msg: ChatMessage) => {
+  const appendMessage = useCallback((msg: ChatMessage, countUnread = true) => {
     setState(prev => {
       const channelMsgs = prev.messages[msg.channelId] ?? [];
       if (channelMsgs.find(m => m.id === msg.id)) return prev;
+      // The sender gets an optimistic local bubble before the POST completes.
+      // Replace that bubble with the authoritative server row when either the
+      // POST response or the WebSocket broadcast arrives. This prevents a
+      // duplicate when both transports deliver the same persisted message.
+      const pendingIndex = !msg.pending && msg.senderUserId === user?.id
+        ? channelMsgs.findIndex(m =>
+            m.pending &&
+            m.senderUserId === msg.senderUserId &&
+            m.content === msg.content &&
+            (m.attachmentFileId ?? null) === (msg.attachmentFileId ?? null)
+          )
+        : -1;
+      if (pendingIndex >= 0) {
+        const updated = [...channelMsgs];
+        updated[pendingIndex] = msg;
+        return { ...prev, messages: { ...prev.messages, [msg.channelId]: updated } };
+      }
       const updated = [...channelMsgs, msg];
       const newUnread = { ...prev.unreadCounts };
-      newUnread[msg.channelId] = (newUnread[msg.channelId] ?? 0) + 1;
+      if (countUnread) {
+        newUnread[msg.channelId] = (newUnread[msg.channelId] ?? 0) + 1;
+      }
       return {
         ...prev,
         messages: { ...prev.messages, [msg.channelId]: updated },
@@ -99,12 +134,23 @@ export function useChatSocket(): UseChatSocket {
         totalUnread: Object.values(newUnread).reduce((a, b) => a + b, 0),
       };
     });
+  }, [user?.id]);
+
+  const removePendingMessage = useCallback((channelId: number, content: string, attachmentFileId?: number) => {
+    setState(prev => {
+      const existing = prev.messages[channelId] ?? [];
+      const updated = existing.filter(msg =>
+        !(msg.pending && msg.content === content && (msg.attachmentFileId ?? null) === (attachmentFileId ?? null))
+      );
+      if (updated.length === existing.length) return prev;
+      return { ...prev, messages: { ...prev.messages, [channelId]: updated } };
+    });
   }, []);
 
   const refreshChannels = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const res = await apiFetch('/api/chat/channels', { credentials: "include" });
+      const res = await chatFetch('/api/chat/channels', { credentials: "include" });
       if (!res.ok) return;
       const data: ChannelMeta = await res.json();
       setState(prev => ({
@@ -214,25 +260,87 @@ export function useChatSocket(): UseChatSocket {
     };
   }, [isAuthenticated, user, connect]);
 
-  const send: SendFn = useCallback((channelId, content, attachmentFileId) => {
-    const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
+  // Pablo is a normal chat channel on the server. Subscribe whenever its
+  // metadata arrives, and again after a reconnect, so channel events follow
+  // the same live Comms path as the other chat tabs.
+  useEffect(() => {
+    const channelId = state.channelMeta?.pabloChannelId;
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "send_message", channelId, content, ...(hasAttachment ? { attachmentFileId } : {}) }));
-      return;
+    if (!state.connected || channelId == null || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "subscribe", channelId }));
+  }, [state.connected, state.channelMeta?.pabloChannelId]);
+
+  // Private channels are returned in the metadata snapshot, but the server
+  // only auto-subscribes the global/company channels during connection. Join
+  // every known DM here so an open Comms screen receives messages immediately,
+  // even before the user clicks that particular thread.
+  useEffect(() => {
+    const ws = wsRef.current;
+    const privateChannels = state.channelMeta?.privateChannels ?? [];
+    if (!state.connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    for (const channel of privateChannels) {
+      ws.send(JSON.stringify({ type: "subscribe", channelId: channel.channelId }));
     }
-    apiFetch(`/api/chat/channels/${channelId}/send`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ content, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
-    }).then(async res => {
+  }, [state.connected, state.channelMeta?.privateChannels]);
+
+  useEffect(() => {
+    const ws = wsRef.current;
+    const orgChannels = state.channelMeta?.orgChannels ?? [];
+    if (!state.connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+    for (const channel of orgChannels) ws.send(JSON.stringify({ type: "subscribe", channelId: channel.channelId }));
+  }, [state.connected, state.channelMeta?.orgChannels]);
+
+  const send: SendFn = useCallback(async (channelId, content, attachmentFileId) => {
+    const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
+    const trimmed = content.trim();
+    if (!trimmed && !hasAttachment) return false;
+
+    const optimistic: ChatMessage = {
+      id: -Date.now(),
+      channelId,
+      senderUserId: user?.id ?? null,
+      senderName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || (user as any)?.username || "You",
+      senderProfileImageUrl: (user as any)?.profileImageUrl ?? null,
+      isBot: false,
+      content: trimmed,
+      attachmentFileId: hasAttachment ? attachmentFileId : null,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    };
+    appendMessage(optimistic, false);
+
+    // Use the request/response transport for outgoing messages. The previous
+    // WebSocket-only path had no acknowledgement, so a slow insert looked like
+    // a dropped message and the composer cleared before delivery was known.
+    // Bound the wait so an unresponsive request cannot leave the composer
+    // disabled forever. The timeout aborts the browser request, not server work.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CHAT_SEND_TIMEOUT_MS);
+    try {
+      const res = await chatFetch(`/api/chat/channels/${channelId}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        signal: controller.signal,
+        body: JSON.stringify({ content: trimmed, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
+      });
       if (res.ok) {
         const data = await res.json();
-        if (data.message) appendMessage(data.message);
+        if (data.message) {
+          appendMessage(data.message);
+          return true;
+        }
+        removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
+      } else {
+        removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
       }
-    }).catch(() => {});
-  }, [appendMessage]);
+    } catch {
+      removePendingMessage(channelId, trimmed, hasAttachment ? attachmentFileId : undefined);
+    } finally {
+      clearTimeout(timeout);
+    }
+    return false;
+  }, [appendMessage, removePendingMessage, user]);
 
   const markRead: MarkReadFn = useCallback((channelId, lastMessageId) => {
     const ws = wsRef.current;
@@ -284,7 +392,7 @@ export function useChatSocket(): UseChatSocket {
     try {
       const params = new URLSearchParams({ limit: "50" });
       if (before) params.set("before", String(before));
-      const res = await apiFetch(
+      const res = await chatFetch(
         `/api/chat/channels/${channelId}/messages?${params}`,
         { credentials: "include" }
       );
@@ -306,7 +414,7 @@ export function useChatSocket(): UseChatSocket {
 
   const startPrivateChat: StartPrivateFn = useCallback(async (targetUserId) => {
     try {
-      const res = await apiFetch('/api/chat/private', {
+      const res = await chatFetch('/api/chat/private', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -325,7 +433,7 @@ export function useChatSocket(): UseChatSocket {
     }
   }, [refreshChannels]);
 
-  const sendToPablo: SendToPabloFn = useCallback(async (content) => {
+  const sendToPablo: SendToPabloFn = useCallback(async (content, uploadFile) => {
     try {
       const pabloChannelId = state.channelMeta?.pabloChannelId ?? null;
       const existingMsgs = pabloChannelId ? state.messages[pabloChannelId] ?? [] : [];
@@ -335,13 +443,22 @@ export function useChatSocket(): UseChatSocket {
         isBot: m.isBot,
       }));
 
-      const res = await apiFetch('/api/chat/pablo/message', {
+      const body = uploadFile
+        ? (() => {
+            const form = new FormData();
+            form.append("content", content);
+            form.append("context", JSON.stringify(context));
+            form.append("file", uploadFile, uploadFile.name);
+            return form;
+          })()
+        : JSON.stringify({ content, context });
+      const res = await chatFetch('/api/chat/pablo/message', {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        ...(uploadFile ? {} : { headers: { "Content-Type": "application/json" } }),
         credentials: "include",
-        body: JSON.stringify({ content, context }),
+        body,
       });
-      if (!res.ok) return;
+      if (!res.ok) return false;
       // This raw fetch bypasses apiFetch, so trigger the delayed HUD refresh
       // ourselves: Pablo chat is billed via the fire-and-forget Pablo-Tax meter,
       // whose ƒ draw commits just after this response.
@@ -349,7 +466,10 @@ export function useChatSocket(): UseChatSocket {
       const data = await res.json();
       if (data.userMessage) appendMessage(data.userMessage);
       if (data.pabloMessage) appendMessage(data.pabloMessage);
-    } catch {}
+      return Boolean(data.userMessage || data.pabloMessage);
+    } catch {
+      return false;
+    }
   }, [appendMessage, state.channelMeta, state.messages]);
 
   return { ...state, send, markRead, markAllRead, loadHistory, startPrivateChat, sendToPablo, refreshChannels };

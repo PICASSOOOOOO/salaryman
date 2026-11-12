@@ -14,12 +14,12 @@ import { spendFiat } from "./fiat-wallet";
  * Pablo Tax engine.
  *
  * Every API call we run on a user's behalf is charged here at a 300%
- * markup ($1 cost → $4 charged). PABLO PRIME ($149/mo) is treated as a
- * pre-paid credit — Prime subscribers get the first $149 of marked-up
+ * markup ($1 cost → $4 charged). PABLO PRIME ($100/mo) is treated as a
+ * pre-paid credit — Prime subscribers get the first $100 of marked-up
  * usage free per month. Once accruedCents - prepaid >= NEXT_BILL_THRESHOLD
  * ($20), we trigger the billing waterfall:
  *
- *   1. ƒ FIAT (in-game wallet, $1 = ƒ100) — only EARNED ƒ counts (the
+ *   1. ƒ FIAT (in-game wallet, $1 = ƒ1,000) — only EARNED ƒ counts (the
  *      starting onboarding grant is quarantined, see player_ledger).
  *   2. Gold balance (in-game, $1 = 0.005 oz)
  *   3. USD via Stripe (requires saved payment method)
@@ -32,12 +32,12 @@ import { spendFiat } from "./fiat-wallet";
  */
 
 export const PABLO_TAX_MARKUP = 4; // 300% markup → 4× cost
-export const PRIME_MONTHLY_BUDGET_CENTS = 14_900; // $149
+export const PRIME_MONTHLY_BUDGET_CENTS = 10_000; // $100
 export const NEXT_BILL_THRESHOLD_CENTS = 2_000; // $20 increments
 
-// Conversion rates — keep in sync with client. $1 = ƒ100 = 0.1 GOLD.
-export const USD_PER_FIAT_CENTS = 1; // ƒ1 = $0.01 = 1¢ → 100¢ ⇒ ƒ100
-export const FIAT_PER_USD = 100;
+// Conversion rates — keep in sync with client. $1 = ƒ1,000 = 0.1 GOLD.
+export const USD_PER_FIAT_CENTS = 0.1; // ƒ1 = $0.001 = 0.1¢ → 100¢ ⇒ ƒ1,000
+export const FIAT_PER_USD = 1_000;
 export const GOLD_OZ_PER_USD = 0.1;
 
 export type ApiKind = "image" | "music" | "chat" | "bot" | "voice" | "sms" | "stripe" | "tax" | "other";
@@ -383,7 +383,7 @@ export async function getPabloTaxSnapshot(userId: string) {
  * hard-block" the billing model promises: a non-Prime user who has already
  * accrued >= one unpaid $20 increment (the waterfall couldn't cover it from
  * earned ƒ / gold / Stripe) is blocked from kicking off MORE paid calls
- * until they top up, settle, or upgrade. Prime users (prepaid $149/mo) and
+ * until they top up, settle, or upgrade. Prime users (prepaid $100/mo) and
  * solvent users always pass.
  *
  * This is the AWAITED pre-check that must run BEFORE an expensive provider

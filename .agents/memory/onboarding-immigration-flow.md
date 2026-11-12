@@ -1,0 +1,66 @@
+---
+name: SALARYMAN receptionist-first onboarding
+description: First-time registration, housing, and the lockdown finale all happen inside the Shadow Tower lobby.
+---
+
+New players animate through the Shadow Tower's front door into a busy lobby with
+a visible reception line. They may enter the line or not, but the lockdown still
+happens and they find themselves locked inside. Keep the arrival physical and
+diegetic rather than fading directly into the lobby.
+Reception is the onboarding authority and runs the full character and business intake in
+lobby dialogue boxes. It assigns a free hostel bed on the player's chosen hostel floor and
+free access to the Floor 2 Computer Cafe terminal.
+
+**Why:** The intended first experience is being processed as a person inside the building,
+not being sent straight into an immigration form. The first-time sequence ends with a loud
+red-alert lockdown: the exterior doors seal and the player remains in the Tower until further
+notice, with reception available for questions.
+
+**How to apply:** Route uncleared authenticated players to Tower reception. Keep reception
+visual. Do not mention visas or immigration anywhere in this sequence, and do not cut away
+to another room for the intake. Keep the lobby visible beneath the character/business form,
+housing choice, history briefing, and lockdown alert. Lobby people and interactable objects
+should use rendered art assets rather than generic placeholder shapes where an asset exists.
+
+The registration request made at reception must remain server-authoritative and create the
+onboarding-complete row before setting the local tutorial flag. This keeps returning-device
+hydration consistent.
+
+Fresh-start reconciliation must fail closed: protected routes and lobby access stay held until
+the server returns a successful, well-formed save list. Network, non-OK, or malformed responses
+must never trust stale local completion flags or clear local state.
+
+**Why:** Development/world resets can leave old browser onboarding flags behind; allowing those
+flags through when the authoritative read fails lets a reset account bypass reception.
+
+**How to apply:** Only a verified empty save list may clear local tutorial/building progress, and
+only a verified save-list response may release protected-route or lobby reconciliation gates.
+
+Reception registration is the mandatory onboarding path. Everyone must
+register there before exploring beyond the lobby, including people who are
+unemployed. Unregistered entrants are stopped by security or kept out by locked
+doors; registration is a building-security gate, not an employment requirement.
+Unregistered entrants cannot use free lobby features before registering.
+Reception is the in-world equivalent of signing in to use SALARYMAN: it
+identifies the person but does not require organization membership or a job.
+Provide an express line for identity and building registration. NPCs usually
+use it so their queue does not bore a new player.
+
+**Why:** new players are strangers on arrival; reception registration lets
+building security know who entered. The user wants this for security, regardless
+of employment status, and an unemployed person must be able to register without
+joining an organization. NPCs should use the quick line to keep a new user's
+reception wait engaging.
+
+**How to apply:** make receptionist registration mandatory, with no alternate
+onboarding path that grants building access. Require account sign-in and
+reception registration, but do not require an org. Register and identify
+entrants at reception before granting access to lobby features or any other part
+of the building. Use the express line primarily to move NPC registration along
+without delaying new users. Use security or locked doors to deny unregistered
+entry, with server-authoritative checks rather than relying only on visible door
+state. Make onboarding prompts frequent and obvious, especially around the
+lockdown and mandatory reception registration, but keep them non-obtrusive.
+Action modules should show the next required step and action without getting in
+the player's way, using a contextual E prompt so players can join what is
+happening in the scene.

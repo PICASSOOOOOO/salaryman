@@ -2,6 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 import {
+  db,
+  autopilotActivityLogTable,
+  AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+  AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
+  AUTOPILOT_PRIME_AUTO_START_DOMAINS,
   AUTOPILOT_DEFAULT_MARKETING_TONE,
   AUTOPILOT_MAX_MARKETING_TOPICS,
   AUTOPILOT_MAX_MARKETING_TOPIC_LEN,
@@ -13,7 +18,7 @@ import {
   setAuthed,
   createUser,
   createOrg,
-  createBot,
+  createWorkspaceProject,
   getStoredConfig,
   cleanupTestData,
 } from "./helpers/autopilotTestApp";
@@ -69,16 +74,14 @@ describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
     expect(stored?.enabled).toBe(false);
   });
 
-  it("toggling enabled alone preserves the bot, caps and prefs already saved", async () => {
+  it("toggling enabled alone preserves caps and prefs without a bot assignment", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
     actAs(owner);
 
     // Seed a fully-configured, enabled domain.
     await request(app).put("/api/autopilot/marketing").send({
       enabled: true,
-      botId,
       cadenceMinutes: 60,
       maxActionsPerTick: 10,
       budgetCapCents: 100000,
@@ -90,19 +93,25 @@ describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.config.enabled).toBe(false);
-    expect(res.body.config.botId).toBe(botId);
+    expect(res.body.config.botId).toBeNull();
     expect(res.body.config.cadenceMinutes).toBe(60);
     expect(res.body.config.maxActionsPerTick).toBe(10);
     expect(res.body.config.budgetCapCents).toBe(100000);
-    expect(res.body.config.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(res.body.config.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"], generateImages: false,
+    });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
 
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored?.enabled).toBe(false);
-    expect(stored?.botId).toBe(botId);
+    expect(stored?.botId).toBeNull();
     expect(stored?.cadenceMinutes).toBe(60);
     expect(stored?.maxActionsPerTick).toBe(10);
     expect(stored?.budgetCapCents).toBe(100000);
-    expect(stored?.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 
   it("a save that omits enabled leaves the stored on/off state unchanged", async () => {
@@ -178,13 +187,15 @@ describe("PUT /api/autopilot/:domain — marketing pref sanitization", () => {
     const prefs = res.body.config.prefs;
     expect(prefs.platforms).toEqual(["twitter", "linkedin"]);
     expect(prefs.tone).toBe(AUTOPILOT_DEFAULT_MARKETING_TONE);
+    expect(prefs.generateImages).toBe(false);
+    expect(prefs).not.toHaveProperty("imageGenerationApprovedBy");
     expect(prefs.topics[0]).toBe("Summer sale");
     expect(prefs.topics).toHaveLength(AUTOPILOT_MAX_MARKETING_TOPICS);
     expect(prefs.topics.every((t: string) => t.length > 0 && t.length <= AUTOPILOT_MAX_MARKETING_TOPIC_LEN)).toBe(true);
 
     // What landed in the database matches the sanitized response, not the raw body.
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual(prefs);
+    expect(stored?.prefs).toEqual({ ...prefs, imageGenerationApprovedBy: null });
   });
 
   it("keeps a valid allow-list, tone and topics intact", async () => {
@@ -201,9 +212,14 @@ describe("PUT /api/autopilot/:domain — marketing pref sanitization", () => {
       platforms: ["bluesky", "linkedin"],
       tone: "playful",
       topics: ["Launch"],
+      generateImages: false,
     });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual({ platforms: ["bluesky", "linkedin"], tone: "playful", topics: ["Launch"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["bluesky", "linkedin"], tone: "playful", topics: ["Launch"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 });
 
@@ -228,9 +244,14 @@ describe("PUT /api/autopilot/:domain — partial merge over stored prefs", () =>
       platforms: ["twitter", "instagram"],
       tone: "witty",
       topics: ["Hiring", "Product"],
+      generateImages: false,
     });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual({ platforms: ["twitter", "instagram"], tone: "witty", topics: ["Hiring", "Product"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["twitter", "instagram"], tone: "witty", topics: ["Hiring", "Product"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 
   it("a platforms-only update preserves the previously-saved tone and topics", async () => {
@@ -251,7 +272,9 @@ describe("PUT /api/autopilot/:domain — partial merge over stored prefs", () =>
       platforms: ["linkedin", "bluesky"],
       tone: "playful",
       topics: ["Sale"],
+      generateImages: false,
     });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
   });
 });
 
@@ -391,14 +414,20 @@ describe("PUT /api/autopilot/:domain — scheduling caps clamping", () => {
     expect(res.body.config.cadenceMinutes).toBe(60);
     expect(res.body.config.maxActionsPerTick).toBe(25);
     expect(res.body.config.budgetCapCents).toBe(500000);
-    expect(res.body.config.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(res.body.config.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"], generateImages: false,
+    });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
 
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored?.enabled).toBe(true);
     expect(stored?.cadenceMinutes).toBe(60);
     expect(stored?.maxActionsPerTick).toBe(25);
     expect(stored?.budgetCapCents).toBe(500000);
-    expect(stored?.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
   });
 });
 
@@ -473,9 +502,47 @@ describe("PUT /api/autopilot/:domain — permission gating (autopilot.manage)", 
       .send({ prefs: { platforms: ["linkedin"], tone: "professional", topics: ["Update"] } });
 
     expect(res.status).toBe(200);
-    expect(res.body.config.prefs).toEqual({ platforms: ["linkedin"], tone: "professional", topics: ["Update"] });
+    expect(res.body.config.prefs).toEqual({
+      platforms: ["linkedin"], tone: "professional", topics: ["Update"], generateImages: false,
+    });
+    expect(res.body.config.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.prefs).toEqual({ platforms: ["linkedin"], tone: "professional", topics: ["Update"] });
+    expect(stored?.prefs).toEqual({
+      platforms: ["linkedin"], tone: "professional", topics: ["Update"],
+      generateImages: false, imageGenerationApprovedBy: null,
+    });
+  });
+
+  it("requires finance.manage for accounting changes but lets an autopilot manager pause the workflow", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+
+    actAs(owner);
+    const ownerSave = await request(app).put("/api/autopilot/accounting").send({
+      enabled: true,
+      prefs: { payroll: true, billPayments: true },
+    });
+    expect(ownerSave.status).toBe(200);
+
+    actAs(manager);
+    const prefsAttempt = await request(app).put("/api/autopilot/accounting").send({
+      prefs: { payroll: false },
+    });
+    expect(prefsAttempt.status).toBe(403);
+    expect(prefsAttempt.body.error).toMatch(/finance manager/i);
+    expect((await getStoredConfig(orgId, "accounting"))?.prefs).toMatchObject({
+      payroll: true,
+      billPayments: true,
+    });
+
+    const pause = await request(app).put("/api/autopilot/accounting").send({ enabled: false });
+    expect(pause.status).toBe(200);
+    expect(pause.body.config.enabled).toBe(false);
+
+    const enableAttempt = await request(app).put("/api/autopilot/accounting").send({ enabled: true });
+    expect(enableAttempt.status).toBe(403);
+    expect((await getStoredConfig(orgId, "accounting"))?.enabled).toBe(false);
   });
 
   it("404 when the caller has no organization", async () => {
@@ -486,82 +553,153 @@ describe("PUT /api/autopilot/:domain — permission gating (autopilot.manage)", 
   });
 });
 
-describe("PUT /api/autopilot/:domain — bot assignment (cross-org hijack guard)", () => {
-  it("assigns a bot owned by the caller's own org → 200, botId persisted", async () => {
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
-    actAs(owner);
-
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId });
-
-    expect(res.status).toBe(200);
-    expect(res.body.config.botId).toBe(botId);
-    const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.botId).toBe(botId);
-  });
-
-  it("400 when botId is not a finite number", async () => {
+describe("PUT /api/autopilot/:domain — no bot assignment", () => {
+  it("rejects the legacy botId field and does not write a config", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
     actAs(owner);
 
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId: "not-a-number" });
+    const res = await request(app).put("/api/autopilot/marketing").send({ botId: null });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Invalid botId/);
+    expect(res.body.error).toMatch(/Pablo Prime owns automation/);
     const stored = await getStoredConfig(orgId, "marketing");
     expect(stored).toBeNull();
   });
+});
 
-  it("400 'Bot not found' for a non-existent botId", async () => {
+describe("Creative Work owner project targeting", () => {
+  it("requires a project before enabling and clamps its schedule to once daily", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
     actAs(owner);
 
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId: 2_000_000_000 });
+    const missingTarget = await request(app).put("/api/autopilot/creative_work").send({ enabled: true });
+    expect(missingTarget.status).toBe(400);
+    expect(await getStoredConfig(orgId, "creative_work")).toBeNull();
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Bot not found/);
-    const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored).toBeNull();
+    const projectId = await createWorkspaceProject(owner.id);
+    const enabled = await request(app).put("/api/autopilot/creative_work").send({
+      enabled: true,
+      cadenceMinutes: 5,
+      prefs: { projectId },
+    });
+
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.config.enabled).toBe(true);
+    expect(enabled.body.config.cadenceMinutes).toBe(AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES);
+    expect(enabled.body.config.prefs).toEqual({ projectId, focus: "" });
+    expect((await getStoredConfig(orgId, "creative_work"))?.prefs).toEqual({ projectId, focus: "" });
   });
 
-  it("400 when the bot belongs to a different org (cross-org hijack attempt)", async () => {
-    // Victim org owns a bot; attacker (a separate org owner) tries to assign it.
-    const victim = await createUser();
-    const victimOrgId = await createOrg(victim.id);
-    const victimBotId = await createBot({ orgId: victimOrgId, ownerId: victim.id });
-
-    const attacker = await createUser();
-    const attackerOrgId = await createOrg(attacker.id);
-    actAs(attacker);
-
-    const res = await request(app).put("/api/autopilot/marketing").send({ botId: victimBotId });
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/does not belong to this organization/);
-    // Nothing was written for the attacker's org.
-    const stored = await getStoredConfig(attackerOrgId, "marketing");
-    expect(stored).toBeNull();
-  });
-
-  it("botId: null clears a previously-assigned bot", async () => {
+  it("rejects a project that is not owned by the organization owner", async () => {
     const owner = await createUser();
+    const otherUser = await createUser();
     const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
+    const otherProjectId = await createWorkspaceProject(otherUser.id);
     actAs(owner);
 
-    // Assign first.
-    const assign = await request(app).put("/api/autopilot/marketing").send({ botId });
-    expect(assign.status).toBe(200);
-    expect(assign.body.config.botId).toBe(botId);
+    const res = await request(app).put("/api/autopilot/creative_work").send({
+      prefs: { projectId: otherProjectId },
+    });
 
-    // Then clear.
-    const clear = await request(app).put("/api/autopilot/marketing").send({ botId: null });
-    expect(clear.status).toBe(200);
-    expect(clear.body.config.botId).toBeNull();
-    const stored = await getStoredConfig(orgId, "marketing");
-    expect(stored?.botId).toBeNull();
+    expect(res.status).toBe(400);
+    expect(await getStoredConfig(orgId, "creative_work")).toBeNull();
+  });
+
+  it("hides the private target and denies configuration to organization managers", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+    const projectId = await createWorkspaceProject(owner.id);
+    actAs(owner);
+    await request(app).put("/api/autopilot/creative_work").send({
+      enabled: true,
+      prefs: { projectId },
+    });
+
+    actAs(manager);
+    const view = await request(app).get("/api/autopilot");
+    expect(view.status).toBe(200);
+    expect(view.body.creative).toEqual({ canManage: false, projects: [] });
+    expect(view.body.domains.find((domain: { domain: string }) => domain.domain === "creative_work").prefs).toEqual({});
+
+    const update = await request(app).put("/api/autopilot/creative_work").send({ enabled: false });
+    expect(update.status).toBe(403);
+    expect((await getStoredConfig(orgId, "creative_work"))?.enabled).toBe(true);
+  });
+});
+
+describe("Market Research owner scope and opt-in configuration", () => {
+  it("requires a topic and forces a daily cadence without adding the domain to Prime auto-start", async () => {
+    expect(AUTOPILOT_PRIME_AUTO_START_DOMAINS).toEqual(["business_ops", "marketing", "crm_calls", "accounting"]);
+    expect(AUTOPILOT_PRIME_AUTO_START_DOMAINS).not.toContain("market_research");
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const missingTopic = await request(app).put("/api/autopilot/market_research").send({ enabled: true });
+    expect(missingTopic.status).toBe(400);
+    expect(await getStoredConfig(orgId, "market_research")).toBeNull();
+
+    const enabled = await request(app).put("/api/autopilot/market_research").send({
+      enabled: true,
+      cadenceMinutes: 5,
+      prefs: { subject: "  Clinic payroll software ", region: " Vietnam ", competitors: " A, B " },
+    });
+
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.config.enabled).toBe(true);
+    expect(enabled.body.config.cadenceMinutes).toBe(AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES);
+    expect(enabled.body.config.prefs).toEqual({
+      subject: "Clinic payroll software",
+      region: "Vietnam",
+      competitors: "A, B",
+      autoInvestigateRecentCalls: false,
+    });
+    expect((await getStoredConfig(orgId, "market_research"))?.enabled).toBe(true);
+  });
+
+  it("keeps scope and report details private from managers while the owner can review them", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+    actAs(owner);
+    await request(app).put("/api/autopilot/market_research").send({
+      enabled: true,
+      prefs: { subject: "Private market scope" },
+    });
+    await db.insert(autopilotActivityLogTable).values({
+      orgId,
+      domain: "market_research",
+      action: "research_brief",
+      summary: "A private sourced brief.",
+      outcome: "success",
+      detail: {
+        report: "Owner-only research text.",
+        sources: [{ title: "Source", url: "https://example.com" }],
+      },
+    });
+
+    actAs(manager);
+    const managerView = await request(app).get("/api/autopilot");
+    expect(managerView.status).toBe(200);
+    expect(managerView.body.marketResearch).toEqual({ canManage: false });
+    expect(managerView.body.domains.find((row: { domain: string }) => row.domain === "market_research").prefs).toEqual({});
+    expect(managerView.body.activity.some((row: { domain: string }) => row.domain === "market_research")).toBe(false);
+
+    const managerFeed = await request(app).get("/api/autopilot/activity?domain=market_research");
+    expect(managerFeed.status).toBe(200);
+    expect(managerFeed.body.activity).toEqual([]);
+    const managerUpdate = await request(app).put("/api/autopilot/market_research").send({ enabled: false });
+    expect(managerUpdate.status).toBe(403);
+
+    actAs(owner);
+    const ownerView = await request(app).get("/api/autopilot");
+    expect(ownerView.body.domains.find((row: { domain: string }) => row.domain === "market_research").prefs.subject)
+      .toBe("Private market scope");
+    expect(ownerView.body.activity.some((row: { domain: string; detail?: { report?: string } }) =>
+      row.domain === "market_research" && row.detail?.report === "Owner-only research text.",
+    )).toBe(true);
   });
 });

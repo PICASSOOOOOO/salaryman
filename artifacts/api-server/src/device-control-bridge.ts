@@ -2,7 +2,7 @@ import type { IncomingMessage, Server } from "node:http";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 import { and, eq } from "drizzle-orm";
 import { db, deviceLinkEventsTable, deviceLinksTable } from "@workspace/db";
-import { resolveClerkWebSocketUser } from "./lib/clerk-websocket-auth";
+import { resolveWebSocketUser } from "./lib/replit-websocket-auth";
 
 export const DEVICE_CONTROL_PATH = "/ws/device-control";
 const MAX_MESSAGE_BYTES = 32 * 1024;
@@ -57,7 +57,7 @@ export function setupDeviceControlBridge(server: Server): void {
   });
 
   wss.on("connection", async (ws, req: IncomingMessage) => {
-    const user = await resolveClerkWebSocketUser(req);
+    const user = await resolveWebSocketUser(req);
     const url = new URL(req.url ?? "", "http://localhost");
     const linkId = url.pathname.slice(`${DEVICE_CONTROL_PATH}/`.length);
     const role = url.searchParams.get("role");

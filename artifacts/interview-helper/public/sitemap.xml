@@ -1,82 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://salaryman.replit.app/</loc>
+    <loc>https://salaryman.io/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/pricing</loc>
+    <loc>https://salaryman.io/pablo</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/upgrade</loc>
+    <loc>https://salaryman.io/pricing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/pledge</loc>
+    <loc>https://salaryman.io/upgrade</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/pledge/agents</loc>
+    <loc>https://salaryman.io/pledge</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://salaryman.io/pledge/agents</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/investors</loc>
+    <loc>https://salaryman.io/investors</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/alpha</loc>
+    <loc>https://salaryman.io/alpha</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal</loc>
+    <loc>https://salaryman.io/legal</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/terms</loc>
+    <loc>https://salaryman.io/legal/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/privacy</loc>
+    <loc>https://salaryman.io/legal/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/contact</loc>
+    <loc>https://salaryman.io/legal/contact</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/refunds</loc>
+    <loc>https://salaryman.io/legal/refunds</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/returns</loc>
+    <loc>https://salaryman.io/legal/returns</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/cancellation</loc>
+    <loc>https://salaryman.io/legal/cancellation</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/promotions</loc>
+    <loc>https://salaryman.io/legal/promotions</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://salaryman.replit.app/legal/restrictions</loc>
+    <loc>https://salaryman.io/legal/restrictions</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>

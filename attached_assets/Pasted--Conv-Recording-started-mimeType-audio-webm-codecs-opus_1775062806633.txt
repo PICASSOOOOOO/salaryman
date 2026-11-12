@@ -1,0 +1,50 @@
+[Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-Bh68qbyA.js:1 [Conv] onstop: 8 chunks, totalSize=2051
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Sending raw WebM to server for transcription...
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Transcription: ""
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-Bh68qbyA.js:1 [Conv] onstop: 8 chunks, totalSize=47129
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Sending raw WebM to server for transcription...
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Transcription: ""
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Empty transcript, restarting listener
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-Bh68qbyA.js:1 [Conv] onstop: 8 chunks, totalSize=97585
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Sending raw WebM to server for transcription...
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Transcription: ""
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-Bh68qbyA.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error
+use-voice-conversation-Bh68qbyA.js:1 [Conv] onstop: conv mode inactive, skipping
+index-DFVEclGr.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-DFVEclGr.js:9
+(anonymous) @ index-DFVEclGr.js:9Understand this error

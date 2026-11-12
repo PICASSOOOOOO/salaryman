@@ -4,6 +4,7 @@ import { Presentation, ChevronLeft, ChevronRight, Maximize2, Minimize2, Loader2,
 import { useFeatureState } from '@/hooks/use-feature-state';
 import { useNavBarVisibility } from '@/hooks/use-navbar-visibility';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 export function PresentationTool() {
   const { presentation: p } = useFeatureState();
@@ -130,7 +131,9 @@ export function PresentationTool() {
 
                   {p.showScript && (
                     <div className="bg-sky-500/8 border border-sky-500/20 rounded-xl p-4">
-                      <p className="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-2">{PABLO_PRODUCTS.SAY_THIS.name}</p>
+                      <p className="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-2">
+                        {getDefaultBoomerMode() ? "SAY THIS" : PABLO_PRODUCTS.SAY_THIS.name}
+                      </p>
                       <p className="text-sm text-sky-200 leading-relaxed">{slide.say_this}</p>
                     </div>
                   )}

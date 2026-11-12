@@ -1,11 +1,11 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage, Server } from 'http';
-import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
-import { eq, and, sql } from 'drizzle-orm';
+import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable, hasRoleAccess, type OrgRole } from '@workspace/db';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import { resolveChatAttachment, type ResolvedAttachment } from './lib/chat-attachments';
-import { resolveClerkWebSocketUser } from './lib/clerk-websocket-auth';
+import { resolveWebSocketUser } from './lib/replit-websocket-auth';
 async function resolveSessionUserId(req: IncomingMessage): Promise<string | null> {
-  return (await resolveClerkWebSocketUser(req))?.id ?? null;
+  return (await resolveWebSocketUser(req))?.id ?? null;
 }
 
 interface ChatClient {
@@ -111,6 +111,7 @@ async function getOrCreateCompanyChannel(orgId: number, orgName: string): Promis
     .select()
     .from(chatChannelsTable)
     .where(and(eq(chatChannelsTable.type, 'company'), eq(chatChannelsTable.orgId, orgId)))
+    .orderBy(asc(chatChannelsTable.id))
     .limit(1);
   if (existing[0]) return existing[0].id;
   const [ch] = await db
@@ -296,6 +297,48 @@ export function broadcastLeadEvent(orgId: number, event: { type: string; [key: s
   }
 }
 
+/**
+ * Fan out authoritative office movement through the authenticated org socket.
+ * Management movement is only visible to management; staff movement is visible
+ * to active org coworkers and management. Never trust a browser-supplied role.
+ */
+export async function broadcastOfficePresence(event: {
+  orgId: number;
+  userId: string;
+  roomKey: string;
+  floorNumber: number;
+  x: number;
+  y: number;
+  action: string;
+  observedAt: string;
+}) {
+  const [org] = await db.select({ ownerUserId: organizationsTable.ownerUserId })
+    .from(organizationsTable).where(eq(organizationsTable.id, event.orgId)).limit(1);
+  const members = await db.select({
+    userId: orgMembersTable.userId,
+    role: orgMembersTable.role,
+  }).from(orgMembersTable).where(and(
+    eq(orgMembersTable.orgId, event.orgId),
+    eq(orgMembersTable.status, 'active'),
+  ));
+  const roles = new Map<string, OrgRole>(members.map((member) => [
+    member.userId,
+    member.role as OrgRole,
+  ]));
+  if (org?.ownerUserId) roles.set(org.ownerUserId, 'owner');
+  const actorRole = roles.get(event.userId);
+  if (!actorRole) return;
+  const actorIsManagement = hasRoleAccess(actorRole, 'manager');
+  const payload = JSON.stringify({ type: 'office_presence', ...event });
+  for (const client of clientsByOrg.get(event.orgId) ?? []) {
+    const viewerRole = roles.get(client.userId);
+    if (!viewerRole) continue;
+    const viewerIsManagement = hasRoleAccess(viewerRole, 'manager');
+    if (actorIsManagement && !viewerIsManagement) continue;
+    sendSerialized(client.ws, payload);
+  }
+}
+
 export function setupChatServer(server: Server) {
   const wss = new WebSocketServer({ noServer: true });
 
@@ -324,7 +367,11 @@ export function setupChatServer(server: Server) {
       const membership = await db.select().from(orgMembersTable)
         .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, 'active')))
         .limit(1);
-      if (membership.length === 0) {
+      const [org] = membership.length === 0
+        ? await db.select({ ownerUserId: organizationsTable.ownerUserId })
+          .from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1)
+        : [];
+      if (membership.length === 0 && org?.ownerUserId !== userId) {
         orgId = null;
       }
     }

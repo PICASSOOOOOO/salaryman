@@ -6,8 +6,16 @@ import {
   organizationsTable,
   orgMembersTable,
   autopilotConfigsTable,
+  autopilotReviewItemsTable,
   botsTable,
+  businessTasksTable,
+  callHistoryTable,
+  crmActivitiesTable,
+  leadRecordsTable,
   userFeaturesTable,
+  worldBusinessesTable,
+  projectsTable,
+  notesTable,
   type OrgRole,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
@@ -34,6 +42,8 @@ export function setAuthed(authed: boolean) {
 const createdUserIds: string[] = [];
 const createdOrgIds: number[] = [];
 const createdBotIds: number[] = [];
+const createdBusinessIds: number[] = [];
+const createdProjectIds: number[] = [];
 
 // Build an Express app that mirrors the real mount: the autopilot router lives
 // under "/api" (its own paths are "/autopilot/..."). A middleware injects the
@@ -65,6 +75,17 @@ export async function createUser(): Promise<{ id: string; email: string }> {
     grantedBy: "stripe-test",
     stripeSubscriptionId: `sub_test_${suffix}`,
   });
+  const [onboarding] = await db.insert(worldBusinessesTable).values({
+    userId: row.id,
+    playerName: `autopilot-${suffix}`,
+    businessType: "unemployed",
+    contactEmail: row.email ?? email,
+    meta: {
+      source: "browser_onboarding",
+      contactPhone: "+15550001111",
+    },
+  }).returning({ id: worldBusinessesTable.id });
+  createdBusinessIds.push(onboarding.id);
   return { id: row.id, email: row.email ?? email };
 }
 
@@ -100,6 +121,20 @@ export async function createOrg(
   return org.id;
 }
 
+export async function createWorkspaceProject(userId: string): Promise<number> {
+  const [project] = await db
+    .insert(projectsTable)
+    .values({
+      userId,
+      name: `Creative test project ${randomUUID().slice(0, 8)}`,
+      type: "general",
+      description: "A private project used by the Creative Work autopilot tests.",
+    })
+    .returning({ id: projectsTable.id });
+  createdProjectIds.push(project.id);
+  return project.id;
+}
+
 // Seed a bot row. Defaults the owner to the org's owner and ties it to `orgId`
 // so the cross-org assignment guard can be exercised: a bot belonging to a
 // *different* org must be rejected by PUT /api/autopilot/:domain.
@@ -131,20 +166,34 @@ export async function getStoredConfig(orgId: number, domain: string) {
 }
 
 export async function cleanupTestData() {
+  if (createdProjectIds.length) {
+    await db.delete(notesTable).where(inArray(notesTable.projectId, createdProjectIds));
+    await db.delete(projectsTable).where(inArray(projectsTable.id, createdProjectIds));
+  }
   if (createdBotIds.length) {
     await db.delete(botsTable).where(inArray(botsTable.id, createdBotIds));
   }
   for (const orgId of createdOrgIds) {
+    await db.delete(autopilotReviewItemsTable).where(eq(autopilotReviewItemsTable.orgId, orgId));
+    await db.delete(crmActivitiesTable).where(eq(crmActivitiesTable.orgId, orgId));
+    await db.delete(callHistoryTable).where(eq(callHistoryTable.orgId, orgId));
+    await db.delete(leadRecordsTable).where(eq(leadRecordsTable.orgId, orgId));
     await db.delete(autopilotConfigsTable).where(eq(autopilotConfigsTable.orgId, orgId));
     // Cascades org members and org permissions.
     await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
   }
   if (createdUserIds.length) {
+    await db.delete(businessTasksTable).where(inArray(businessTasksTable.userId, createdUserIds));
     await db.delete(userFeaturesTable).where(inArray(userFeaturesTable.userId, createdUserIds));
     await db.delete(orgMembersTable).where(inArray(orgMembersTable.userId, createdUserIds));
     await db.delete(usersTable).where(inArray(usersTable.id, createdUserIds));
   }
+  if (createdBusinessIds.length) {
+    await db.delete(worldBusinessesTable).where(inArray(worldBusinessesTable.id, createdBusinessIds));
+  }
   createdUserIds.length = 0;
   createdOrgIds.length = 0;
   createdBotIds.length = 0;
+  createdBusinessIds.length = 0;
+  createdProjectIds.length = 0;
 }

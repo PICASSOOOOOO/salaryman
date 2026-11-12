@@ -11,31 +11,31 @@
     monospace;
   --font-display: "Syne", "DM Sans", "Noto Sans", sans-serif;
 
-  /* SALARYMAN — ink, oxidized copper, and signal cyan. */
-  --color-background: hsl(216 28% 7%);
-  --color-foreground: hsl(40 22% 91%);
+  /* Browser/control-plane default: cream paper and black ink. */
+  --color-background: #FAFAF7;
+  --color-foreground: #000000;
 
-  --color-card: hsl(216 24% 10%);
-  --color-card-foreground: hsl(40 22% 91%);
+  --color-card: #FFFCF5;
+  --color-card-foreground: #000000;
 
-  --color-popover: hsl(216 24% 11%);
-  --color-popover-foreground: hsl(40 22% 91%);
+  --color-popover: #FFFCF5;
+  --color-popover-foreground: #000000;
 
-  --color-border: hsl(210 17% 22%);
-  --color-input: hsl(216 23% 12%);
-  --color-ring: hsl(186 75% 54%);
+  --color-border: #D8D1C3;
+  --color-input: #FFFCF5;
+  --color-ring: #000000;
 
-  --color-primary: hsl(186 75% 54%);
-  --color-primary-foreground: hsl(216 28% 7%);
+  --color-primary: #000000;
+  --color-primary-foreground: #FAFAF7;
 
-  --color-secondary: hsl(216 18% 17%);
-  --color-secondary-foreground: hsl(210 14% 73%);
+  --color-secondary: #EEE8DC;
+  --color-secondary-foreground: #000000;
 
-  --color-muted: hsl(216 18% 14%);
-  --color-muted-foreground: hsl(212 12% 56%);
+  --color-muted: #EEE8DC;
+  --color-muted-foreground: #6C665C;
 
-  --color-accent: hsl(35 77% 63%);
-  --color-accent-foreground: hsl(216 28% 7%);
+  --color-accent: #EEE8DC;
+  --color-accent-foreground: #000000;
 
   --color-destructive: hsl(2 61% 56%);
   --color-destructive-foreground: hsl(40 22% 91%);
@@ -47,7 +47,7 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --salary-ink: 8 15 22;
   --salary-panel: 13 24 32;
   --salary-paper: 229 220 198;
@@ -59,9 +59,6 @@
   --device-link-line: 38 52 54;
   --device-link-signal: 181 230 87;
   --device-link-warm: 225 169 93;
-  /* Fallout-style readable floor: bump root rem so every size unit scales up app-wide.
-     Default browser = 16px; we bump to 19px so .5rem → 9.5px, 1rem → 19px, etc. */
-  font-size: 19px;
   /* FAB safe-zone: pages with a persistent bottom action bar set this so the
      floating action buttons (chat FAB, audio control) lift above the bar.
      Default 0px = no offset. */
@@ -90,6 +87,24 @@
 
 /* Game routes retain their comfortable reading scale without imposing a retro display face. */
 body.game-route {
+  color-scheme: dark;
+  --color-background: hsl(216 28% 7%);
+  --color-foreground: hsl(40 22% 91%);
+  --color-card: hsl(216 24% 10%);
+  --color-card-foreground: hsl(40 22% 91%);
+  --color-popover: hsl(216 24% 11%);
+  --color-popover-foreground: hsl(40 22% 91%);
+  --color-border: hsl(210 17% 22%);
+  --color-input: hsl(216 23% 12%);
+  --color-ring: hsl(186 75% 54%);
+  --color-primary: hsl(186 75% 54%);
+  --color-primary-foreground: hsl(216 28% 7%);
+  --color-secondary: hsl(216 18% 17%);
+  --color-secondary-foreground: hsl(210 14% 73%);
+  --color-muted: hsl(216 18% 14%);
+  --color-muted-foreground: hsl(212 12% 56%);
+  --color-accent: hsl(35 77% 63%);
+  --color-accent-foreground: hsl(216 28% 7%);
   font-size: 1.05rem;
   line-height: 1.45;
   font-family: var(--font-sans);
@@ -139,6 +154,7 @@ body:not(.game-route) .rounded-lg {
     overflow-x: hidden;
   }
   #root {
+    min-width: 0;
     min-height: var(--app-viewport-height, 100dvh);
   }
   body {
@@ -147,18 +163,8 @@ body:not(.game-route) .rounded-lg {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: hsl(225 12% 7%);
-    background-image:
-      radial-gradient(
-        ellipse at 50% 0%,
-        rgba(56, 189, 248, 0.03) 0%,
-        transparent 55%
-      ),
-      radial-gradient(
-        ellipse at 80% 100%,
-        rgba(139, 92, 246, 0.015) 0%,
-        transparent 45%
-      );
+    background-color: #FAFAF7;
+    background-image: none;
     /* App-like feel on mobile: kill rubber-band, suppress tap highlight,
        and stop iOS Safari from auto-zooming form inputs <16px. */
     overscroll-behavior-y: none;
@@ -223,9 +229,7 @@ body:not(.game-route) .rounded-lg {
     text-transform: uppercase;
   }
 
-  /* Pablo's fullscreen header has several compact actions sharing one phone
-     row. Keep their visual footprint small; the control lane still remains
-     easy to tap through the dedicated mobile target class. */
+  /* Pablo's header shares the same fixed app chrome footprint. */
   .pablo-header-action {
     min-height: 30px;
     min-width: 30px;
@@ -259,16 +263,25 @@ body:not(.game-route) .rounded-lg {
       min-width: 36px;
       padding-inline: 0.4rem;
     }
-    .pablo-mobile-secondary {
-      display: none !important;
-    }
     .pablo-download-label {
       display: none;
     }
     .pablo-download-control {
-      min-width: 36px !important;
-      width: 36px;
+      min-width: 48px !important;
+      width: 48px;
       padding-inline: 0.4rem;
+    }
+    .pablo-brand-wordmark {
+      display: block;
+      max-width: 64px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pablo-header {
+      min-height: 44px;
+      padding-top: 0 !important;
+      padding-bottom: 0.25rem !important;
     }
     .pablo-vision-trigger {
       display: none !important;
@@ -276,16 +289,245 @@ body:not(.game-route) .rounded-lg {
     .mobile-scroll-region {
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
       scrollbar-width: none;
     }
     .mobile-scroll-region::-webkit-scrollbar {
       display: none;
     }
+
+    /* Backdrop blur is expensive on older mobile GPUs and is decorative here.
+       Keep the dark surfaces opaque enough to preserve contrast without making
+       scrolling and keyboard interactions repaint the whole nebula. */
+    .pablo-terminal .backdrop-blur,
+    .pablo-terminal .backdrop-blur-md {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+  }
+
+  /* The terminal sits between the shared fixed top and bottom app bars. */
+  .pablo-terminal {
+    --pablo-bottom-space: 5.25rem;
+  }
+
+  .pablo-text-form {
+    bottom: 2rem !important;
+    width: min(100%, 44rem);
+    padding-inline: max(1.25rem, var(--app-safe-left)) max(1.25rem, var(--app-safe-right));
+  }
+
+  .pablo-text-form input {
+    min-height: 48px;
+    padding-block: 0.75rem;
+  }
+
+  .pablo-text-form button {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .pablo-voice-controls {
+    bottom: 2rem !important;
+  }
+
+  .pablo-idle {
+    bottom: 5.25rem;
+  }
+
+  .pablo-conversation {
+    bottom: 6.25rem !important;
+  }
+
+  /* Very small phones keep the full action set available without letting the
+     wordmark squeeze the tap targets. */
+  @media (max-width: 359px) {
+    .pablo-header {
+      gap: 0.25rem;
+      padding-inline: 0.25rem;
+    }
+
+    .pablo-brand-wordmark,
+    .pablo-start-work-label,
+    .pablo-mode-label,
+    .pablo-chat-label {
+      display: none;
+    }
+
+    .pablo-header > .flex.items-center.gap-1\.5 {
+      gap: 0.25rem;
+    }
+
+    .pablo-header-action.mobile-tap-target {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
+    }
+
+    .pablo-controls-menu > .pablo-header-action {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
+    }
+
+    .pablo-chat-control {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
+    }
+
+    .pablo-controls-chevron {
+      display: none;
+    }
+
+    .pablo-text-form {
+      padding-inline: 0.75rem;
+    }
   }
 
   @media (max-width: 420px) {
     .pablo-brand-wordmark {
+      display: inline;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pablo-header {
+      padding-inline: max(0.75rem, var(--app-safe-left)) max(0.75rem, var(--app-safe-right));
+    }
+
+    /* Keep the same controls available as desktop, but use the shared compact
+       icon treatment before the phone keyboard and safe-area margins consume
+       the header lane. */
+    .pablo-start-work-label,
+    .pablo-mode-label,
+    .pablo-chat-label {
       display: none;
+    }
+
+    .pablo-header > .flex.items-center.gap-1\.5 {
+      gap: 0.25rem;
+    }
+
+    .pablo-header-action.mobile-tap-target,
+    .pablo-controls-menu > .pablo-header-action,
+    .pablo-chat-control {
+      width: 36px;
+      min-width: 36px;
+      padding-inline: 0;
+    }
+
+    .pablo-terminal {
+      --pablo-bottom-space: 5.5rem;
+    }
+
+    .pablo-text-form {
+      bottom: calc(3rem + var(--app-safe-bottom, 0px)) !important;
+      gap: 0.625rem;
+      padding-inline: max(1.25rem, var(--app-safe-left)) max(1.25rem, var(--app-safe-right));
+    }
+
+    .pablo-text-form input {
+      min-height: 52px;
+      border-radius: 0.875rem;
+      padding-inline: 1rem;
+    }
+
+    .pablo-text-form button {
+      min-height: 52px;
+      min-width: 52px;
+      border-radius: 0.875rem;
+    }
+
+    .pablo-voice-controls {
+      bottom: calc(3rem + var(--app-safe-bottom, 0px)) !important;
+      padding-inline: 1.25rem;
+    }
+
+    .pablo-voice-controls button {
+      min-height: 48px;
+      padding-inline: 1.25rem;
+    }
+
+    .pablo-idle {
+      bottom: 5.75rem;
+      padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+    }
+
+    .pablo-conversation {
+      bottom: calc(8.5rem + var(--app-safe-bottom, 0px)) !important;
+      max-height: 38dvh;
+      padding-inline: max(1rem, var(--app-safe-left)) max(1rem, var(--app-safe-right));
+    }
+  }
+
+  @media (max-width: 639px) and (orientation: landscape) {
+    .pablo-terminal {
+      --pablo-bottom-space: 4.5rem;
+    }
+
+    .pablo-header {
+      min-height: 40px;
+    }
+
+    .pablo-text-form {
+      bottom: 1.5rem !important;
+    }
+
+    .pablo-text-form input,
+    .pablo-text-form button {
+      min-height: 42px;
+    }
+
+    .pablo-voice-controls {
+      bottom: 1.5rem !important;
+    }
+
+    .pablo-voice-controls button {
+      min-height: 42px;
+      padding-block: 0.5rem;
+    }
+
+    .pablo-idle {
+      bottom: 4.75rem;
+    }
+
+    .pablo-conversation {
+      bottom: 5.5rem !important;
+      max-height: 32dvh;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .pablo-header {
+      min-height: 48px;
+      padding-inline: 1.25rem;
+    }
+
+    .pablo-header-action {
+      min-height: 36px;
+      min-width: 36px;
+      padding-inline: 0.75rem;
+    }
+
+    .pablo-text-form {
+      bottom: 2rem !important;
+      padding-inline: 1.75rem;
+    }
+
+    .pablo-voice-controls {
+      bottom: 2rem !important;
+    }
+
+    .pablo-idle {
+      bottom: 6rem;
+    }
+
+    .pablo-conversation {
+      bottom: 7rem !important;
+      max-height: 44dvh;
     }
   }
 
@@ -437,6 +679,104 @@ body:not(.game-route) .rounded-lg {
   }
 }
 
+.app-route-surface {
+  min-width: 0;
+  animation: app-route-enter 180ms ease-out both;
+  transform-origin: top center;
+}
+
+@keyframes app-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-loading-screen {
+  min-height: var(--app-viewport-height, 100dvh);
+  display: grid;
+  place-items: center;
+  background: #fafaf7;
+  color: #000;
+  font-family: var(--font-sans);
+}
+
+.app-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+  padding: 1.5rem;
+}
+
+.app-loading-signal {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  height: 18px;
+}
+
+.app-loading-signal span {
+  width: 4px;
+  height: 8px;
+  background: #000;
+  animation: app-signal 900ms ease-in-out infinite;
+}
+
+.app-loading-signal span:nth-child(2) {
+  height: 12px;
+  animation-delay: 100ms;
+}
+
+.app-loading-signal span:nth-child(3) {
+  height: 16px;
+  animation-delay: 200ms;
+}
+
+.app-loading-signal span:nth-child(4) {
+  height: 10px;
+  animation-delay: 300ms;
+}
+
+@keyframes app-signal {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scaleY(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.app-loading-label,
+.app-loading-detail {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.app-loading-label {
+  font-size: 0.68rem;
+}
+
+.app-loading-detail {
+  color: rgba(0, 0, 0, 0.48);
+  font-size: 0.52rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-route-surface,
+  .app-loading-signal span {
+    animation: none;
+  }
+}
+
 .cursor-blink::after {
   content: "_";
   animation: cursor-blink 1s step-end infinite;
@@ -505,10 +845,14 @@ header {
 /* Shared light mobile chrome. Keep every route on one stable header instead
    of letting each module invent its own dark, oversized toolbar. */
 .mobile-app-nav,
+.mobile-app-nav-top,
+.mobile-app-nav-bottom,
 .mobile-app-subnav {
-  color: #172e43;
-  background: #fff;
-  border-color: #d9e4ea;
+  color: #102b20;
+  background: rgba(250, 250, 247, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(207, 228, 214, 0.6);
 }
 
 .mobile-brand-row,
@@ -523,7 +867,7 @@ header {
 .mobile-brand-row {
   min-height: 48px;
   justify-content: flex-end;
-  border-bottom: 1px solid #edf2f5;
+  border-bottom: 1px solid #dcece1;
 }
 
 .mobile-account-actions {
@@ -578,7 +922,7 @@ header {
 .mobile-primary-row {
   min-height: 46px;
   gap: 2px;
-  border-bottom: 1px solid #d9e4ea;
+  border-bottom: 1px solid #cfe4d6;
 }
 
 .mobile-primary-scroll,
@@ -619,9 +963,9 @@ header {
 }
 
 .mobile-primary-item.is-active {
-  color: #155b86;
-  background: #e6f2f9;
-  border-color: #c9e2ef;
+  color: #0b6b3a;
+  background: #eaf8ef;
+  border-color: #9fd0ae;
 }
 
 .mobile-more-anchor {
@@ -792,15 +1136,17 @@ header {
 @media (min-width: 640px) {
   .desktop-app-nav {
     color: #172e43 !important;
-    background: #fff !important;
-    border-color: #d9e4ea !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-color: rgba(217, 228, 234, 0.6) !important;
   }
 
   .desktop-app-nav > div,
   .desktop-app-nav .bg-\[\#0a0a0b\],
   .desktop-app-nav .bg-\[\#0d0e12\] {
-    background: #fff !important;
-    border-color: #edf2f5 !important;
+    background: transparent !important;
+    border-color: rgba(237, 242, 245, 0.6) !important;
   }
 
   .desktop-app-nav .text-zinc-100,
@@ -858,17 +1204,6 @@ header {
   }
 }
 
-/* Short landscape phone/PWA viewports need the icon-first chrome even when
-   their CSS width crosses Tailwind's tablet breakpoint. */
-@media (min-width: 640px) and (min-height: 501px) {
-  .desktop-app-nav {
-    display: block;
-  }
-  .mobile-app-nav {
-    display: none;
-  }
-}
-
 /* Keep compact landscape phones on the same readable, single-column canvas.
    The PWA manifest requests portrait; this is the safe browser fallback when
    the device has not honored that request yet. */
@@ -900,14 +1235,14 @@ body.workspace-light {
   --color-popover-foreground: hsl(0 0% 7%);
   --color-border: hsl(0 0% 18%);
   --color-input: hsl(42 100% 97%);
-  --color-ring: hsl(0 0% 0%);
+  --color-ring: hsl(145 81% 24%);
   --color-primary: hsl(0 0% 0%);
   --color-primary-foreground: hsl(0 0% 100%);
   --color-secondary: hsl(42 100% 97%);
   --color-secondary-foreground: hsl(0 0% 0%);
   --color-muted: hsl(42 100% 97%);
   --color-muted-foreground: hsl(0 0% 0%);
-  --color-accent: hsl(0 0% 0%);
+  --color-accent: hsl(145 81% 24%);
   --color-accent-foreground: hsl(0 0% 100%);
   --color-destructive: hsl(2 61% 56%);
   --color-destructive-foreground: hsl(0 0% 100%);
@@ -915,54 +1250,356 @@ body.workspace-light {
   --salary-panel: 255 250 240;
   --salary-paper: 255 250 240;
   --salary-copper: 0 0 0;
-  --salary-signal: 0 0 0;
+  --salary-signal: 11 107 58;
   background: #fffaf0;
   color: #111111;
-  background-image: none;
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+}
+
+body.workspace-light #root::before,
+body.workspace-light #root::after {
+  content: none;
+  display: none;
+}
+
+@keyframes workspace-nebula-1 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(2%, 3%) scale(1.05) rotate(1deg); }
+  100% { transform: translate(-2%, 1%) scale(0.95) rotate(-1deg); }
+}
+
+@keyframes workspace-nebula-2 {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(-3%, -2%) scale(1.02) rotate(-1deg); }
+  100% { transform: translate(1%, -4%) scale(1.06) rotate(1deg); }
+}
+
+.salaryman-active-tab {
+  background: linear-gradient(135deg, #00FF41, #38e860);
+  background-size: 200% 200%;
+  animation: bg-pan 3s ease infinite alternate;
+  color: black;
+  font-weight: bold;
+}
+
+.salaryman-active-icon {
+  color: #00FF41;
+  animation: pulse-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0% { filter: drop-shadow(0 0 2px rgba(0,255,65,0.4)); transform: scale(1); }
+  100% { filter: drop-shadow(0 0 6px rgba(0,255,65,0.8)); transform: scale(1.05); }
+}
+
+@keyframes bg-pan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.workspace-light #root::before,
+  body.workspace-light #root::after {
+    animation: none !important;
+  }
+}
+
+/* Hide injected Replit badges/widgets */
+replit-app-badge,
+replit-badge,
+replit-agent-inbox-widget,
+replit-feedback-widget,
+replit-feedback-button,
+replit-feedback,
+#replit-badge,
+.replit-badge,
+[data-replit-badge],
+[data-replit-feedback],
+[data-replit-feedback-widget],
+[id*="replit-feedback" i],
+[class*="replit-feedback" i],
+[id*="replit-badge" i],
+[class*="replit-badge" i],
+[aria-label*="Replit" i],
+iframe[src*="replit.com"],
+iframe[src*="feedback"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.mobile-menu-trigger {
+  display: inline-flex;
+  min-width: 72px;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: #111;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: 700 9px/1 var(--font-sans);
+  letter-spacing: .08em;
+}
+
+.mobile-menu-trigger.is-open {
+  color: #fff;
+  background: #111;
+  border-color: #111;
+}
+
+.calll-home-mark-box {
+  display: inline-flex;
+  width: 112px;
+  height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #111;
+  border-radius: 3px;
+}
+
+.calll-home-mark-box img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.mobile-menu-trigger span {
+  white-space: nowrap;
+}
+
+@media (max-width: 340px) {
+  .mobile-app-nav-top {
+    padding-inline: 4px !important;
+  }
+
+  .mobile-app-nav-top > .flex.items-center.gap-1.overflow-hidden {
+    padding-right: 0 !important;
+  }
+
+  .mobile-header-actions {
+    gap: 0 !important;
+  }
+
+  .mobile-menu-trigger {
+    min-width: 44px;
+    padding-inline: 8px;
+  }
+
+  .mobile-menu-trigger span {
+    display: none;
+  }
+
+  #mobile-features-menu .grid {
+    grid-template-columns: 1fr;
+  }
+
+  #mobile-features-menu {
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  body.workspace-light #root::after {
+    display: none;
+  }
+
+  body.workspace-light #root::before {
+    inset: -8%;
+    animation-duration: 42s;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(167, 139, 250, 0.16) 0%, transparent 48%),
+      radial-gradient(circle at 85% 78%, rgba(0, 184, 92, 0.1) 0%, transparent 52%);
+  }
 }
 
 body.workspace-light #root {
-  background: #fffaf0;
+  background: transparent !important;
   color: #111111;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+html:has(body.workspace-light) {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
 }
 
 /* Absolute browser-wide readability contract. No web route or nested widget
    may introduce a black/dark panel. Media pixels are left untouched. */
-body.workspace-light *:not(img):not(video):not(canvas):not(svg):not(path),
+body.workspace-light *:not(img):not(video):not(canvas):not(svg):not(path):not(circle):not(rect):not(polygon):not(polyline):not(line),
 body.workspace-light *::before,
 body.workspace-light *::after {
+  background-color: transparent;
+}
+
+body.workspace-light :where(h1, h2, h3, h4, p, span, label, button, input, textarea, select, option, a, div) {
+  color: inherit;
+}
+
+body.workspace-light {
+  --color-background: 42 100% 97%;
+  --color-foreground: 0 0% 0%;
+  --color-card: 42 100% 97%;
+  --color-card-foreground: 0 0% 0%;
+  --color-popover: 42 100% 97%;
+  --color-popover-foreground: 0 0% 0%;
+  --color-border: 0 0% 90%;
+  --color-primary: 135 100% 40%;
+  --color-primary-foreground: 0 0% 0%;
+  --color-muted: 42 100% 94%;
+  --color-muted-foreground: 0 0% 40%;
+
+  background-color: #FAFAF7 !important;
+  color: #000000 !important;
+}
+
+body.workspace-light #root {
+  background: transparent !important;
+  color: #000000 !important;
+}
+
+/* One navigation contract at every viewport size. The phone composition is the
+   canonical browser chrome; desktop must not silently switch to a second nav
+   component or hide the primary tabs behind a different START WORK menu. */
+.desktop-app-nav {
+  display: none !important;
+}
+.mobile-app-nav-top {
+  display: flex !important;
+}
+.mobile-app-nav-bottom {
+  display: block !important;
+}
+.mobile-app-subnav {
+  display: flex !important;
+}
+.app-chrome {
+  position: static;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body.workspace-light #root {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+body.workspace-light.has-subnav #root {
+  padding-top: calc(96px + env(safe-area-inset-top, 0px));
+}
+.abandonment-banner {
+  position: static !important;
+  z-index: auto !important;
+  margin: 0 8px 8px;
+  border-width: 1px;
+  border-radius: 4px;
+}
+.adsense-banner {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 24px auto 0;
+  padding: 30px 24px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-top: 1px solid #dedbd4;
+  color: #77736c;
+}
+.adsense-banner ins {
+  display: block;
+  width: 100%;
+  max-width: 728px;
+  margin-inline: auto;
+}
+.adsense-banner-label {
+  position: absolute;
+  top: 8px;
+  right: 24px;
+  font: 8px/1 sans-serif;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+@media (max-width: 767px) {
+  .adsense-banner {
+    margin-top: 20px;
+    padding: 26px 16px max(20px, env(safe-area-inset-bottom, 0px));
+  }
+  .adsense-banner-label {
+    right: 16px;
+  }
+}
+@media (min-width: 768px) {
+  .adsense-banner {
+    margin-top: 32px;
+  }
+}
+.mobile-active-call-bar {
+  margin-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* OrbitArtwork is still a light browser surface, but its stacked decorative
+   layers must remain transparent or the global reset paints over the SVG. */
+body.workspace-light .sm-orbit-art,
+body.workspace-light .sm-orbit-art *,
+body.workspace-light .sm-orbit-art::before,
+body.workspace-light .sm-orbit-art::after,
+body.workspace-light .sm-orbit-art *::before,
+body.workspace-light .sm-orbit-art *::after {
+  background-color: transparent !important;
+}
+
+body.workspace-light .sm-orbit-art {
   background-color: #fffaf0 !important;
-  background-image: none !important;
-  color: #050505 !important;
-  border-color: #222222 !important;
-  text-shadow: none !important;
-}
-
-body.workspace-light :where(h1, h2, h3, h4, p, span, label, button, input, textarea, select, option, a) {
-  color: #050505 !important;
-  -webkit-text-fill-color: #050505 !important;
-  opacity: 1 !important;
-}
-
-body.workspace-light :where(input, textarea)::placeholder {
-  color: #2b2b2b !important;
-  -webkit-text-fill-color: #2b2b2b !important;
-  opacity: 1 !important;
+  background-image: radial-gradient(circle at 51% 50%, #dff3e8 0, #fffaf0 42%, #f7f1e7 100%) !important;
 }
 
 body.workspace-light main,
 body.workspace-light [class~="min-h-screen"],
 body.workspace-light [class~="min-h-\[100dvh\]"] {
-  background-color: #fffaf0 !important;
+  background-color: transparent !important;
   background-image: none !important;
 }
 
 body.workspace-light .desktop-download {
-  background: #fff;
+  background: transparent !important;
 }
 
 body.workspace-light .app-chrome {
-  background: #fffaf0;
+  background: rgba(250, 250, 247, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 body.workspace-light .app-control {
@@ -1115,16 +1752,16 @@ body.workspace-light .desktop-app-nav {
 body.workspace-light .mobile-primary-item.is-active,
 body.workspace-light .mobile-subnav-item.is-active,
 body.workspace-light .mobile-more-item.is-active {
-  color: #0f5ea8 !important;
-  background: #eaf2fb !important;
-  border-color: #a9c7e5 !important;
+  color: #0b6b3a !important;
+  background: #eaf8ef !important;
+  border-color: #9fd0ae !important;
 }
 
 body.workspace-light .mobile-account-button:active,
 body.workspace-light .mobile-back-button:active,
 body.workspace-light .mobile-more-item:active {
-  color: #0f5ea8 !important;
-  background: #eaf2fb !important;
+  color: #0b6b3a !important;
+  background: #eaf8ef !important;
 }
 
 body.workspace-light .desktop-app-nav .text-zinc-100,
@@ -1186,6 +1823,55 @@ body.workspace-light .desktop-download-mark {
   background: #eaf8ef;
 }
 
+/* Calendar is a browser workspace surface, not a game screen. The legacy
+   calendar component still carries dark inline tokens, so keep the light
+   contract authoritative until those tokens are removed. */
+body.workspace-light .calendar-page {
+  color: #111 !important;
+  background: #fffaf0 !important;
+  font-family: var(--font-sans) !important;
+}
+
+body.workspace-light .calendar-page .calendar-surface,
+body.workspace-light .calendar-page .calendar-surface[style] {
+  color: #111 !important;
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 28px rgba(23, 54, 74, .08) !important;
+}
+
+body.workspace-light .calendar-page :where(input, textarea, select) {
+  color: #111 !important;
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  color-scheme: light !important;
+}
+
+body.workspace-light .calendar-page :where(button) {
+  color: #111 !important;
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.workspace-light .calendar-page :where(button:hover, button:focus-visible) {
+  background: #eaf8ef !important;
+  border-color: #187c4e !important;
+}
+
+body.workspace-light .calendar-page :where(h1, h2, h3, p, span, label, div) {
+  text-shadow: none !important;
+}
+
+@media (max-width: 340px) {
+  body.workspace-light .calendar-page {
+    min-height: calc(100dvh - 3.5rem) !important;
+  }
+
+  body.workspace-light .calendar-page > :where(div) {
+    max-width: 100%;
+  }
+}
+
 body.workspace-light .desktop-download-eyebrow,
 body.workspace-light .desktop-download-hero h1 em,
 body.workspace-light .desktop-download-nav a:hover,
@@ -1194,12 +1880,52 @@ body.workspace-light .desktop-download-footer a:hover {
 }
 
 body.workspace-light .desktop-download-primary {
-  background: #187c4e;
+  background: linear-gradient(135deg, #187c4e, #33d18a);
+  background-size: 200% 200%;
+  animation: download-btn-pan 3s ease infinite alternate;
   box-shadow: 0 12px 30px rgba(24, 124, 78, .16);
 }
 
 body.workspace-light .desktop-download-primary:hover {
-  background: #12623d;
+  background: linear-gradient(135deg, #12623d, #259e66);
+  background-size: 200% 200%;
+  animation: download-btn-pan 3s ease infinite alternate;
+}
+
+/* Matrix green is a signal color on the web, not a dark theme. */
+body.workspace-light :where(a, button, input, select, textarea):focus-visible {
+  outline-color: #0b6b3a !important;
+}
+
+body.workspace-light ::selection {
+  color: #fffaf0;
+  background: #0b6b3a;
+}
+
+body.workspace-light .sm-kicker,
+body.workspace-light .sm-hero h1 span,
+body.workspace-light .sm-menu svg,
+body.workspace-light .sm-secondary,
+body.workspace-light .sm-desktop-download {
+  color: #0b6b3a !important;
+}
+
+body.workspace-light .sm-status {
+  background: #18a957 !important;
+  box-shadow: 0 0 0 5px rgb(24 169 87 / 12%) !important;
+}
+
+body.workspace-light .sm-primary {
+  color: #0b6b3a !important;
+  background: #eaf8ef !important;
+  border: 1px solid #9fd0ae !important;
+  box-shadow: 0 10px 22px rgb(11 107 58 / 10%) !important;
+}
+
+body.workspace-light .sm-primary:hover {
+  color: #fffaf0 !important;
+  background: #0b6b3a !important;
+  border-color: #0b6b3a !important;
 }
 
 body.workspace-light .desktop-download-secondary {
@@ -1741,6 +2467,223 @@ html.low-gfx .bg-gradient-to-bl {
 html.low-gfx canvas[data-gfx="heavy"] {
   display: none !important;
 }
+
+/* ─── Responsive shell contract ────────────────────────────────────────────
+   Mobile keeps the compact top + bottom route controls. Desktop uses the same
+   destinations in one top row so a phone-sized fixed footer never consumes
+   usable workspace height or covers page actions. This block intentionally
+   stays at the end of the file because the workspace-light compatibility rules
+   above normalize the same selectors. */
+:root {
+  --pablo-shell-bottom-space: 7rem;
+}
+
+@media (max-width: 767px) {
+  body.workspace-light #root {
+    padding-bottom: 0;
+  }
+
+  .desktop-app-nav {
+    display: none !important;
+  }
+
+  .mobile-app-nav-bottom {
+    display: none !important;
+  }
+
+  :root {
+    --pablo-shell-bottom-space: 3.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  body.workspace-light #root {
+    padding-bottom: 0;
+  }
+
+  .mobile-app-nav-top,
+  .mobile-app-nav-bottom {
+    display: none !important;
+  }
+
+  .desktop-app-nav {
+    display: flex !important;
+    min-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+  }
+
+  :root {
+    --pablo-shell-bottom-space: 3.5rem;
+  }
+}
+
+/* workspace-light intentionally normalizes legacy dark controls. Pablo is an
+   immersive exception, so these semantic hooks keep its interactive surfaces
+   dark, legible, and visually grouped with the nebula on every viewport. */
+body.workspace-light .pablo-terminal {
+  isolation: isolate;
+}
+
+body.workspace-light .pablo-terminal .pablo-brand-wordmark {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-action {
+  color: rgba(248, 244, 255, 0.96) !important;
+  background-color: rgba(10, 7, 22, 0.74) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-action:hover,
+body.workspace-light .pablo-terminal .pablo-action:focus-visible {
+  color: #ffffff !important;
+  background-color: rgba(36, 19, 67, 0.9) !important;
+  border-color: rgba(216, 180, 254, 0.75) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-overlay {
+  color: #f8fafc !important;
+  background-color: rgba(8, 5, 18, 0.78) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-100,
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-200 {
+  color: #f8fafc !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-500,
+body.workspace-light .pablo-terminal .pablo-overlay .text-zinc-600 {
+  color: rgba(226, 232, 240, 0.62) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-input {
+  color: #17111f !important;
+  background-color: rgba(255, 252, 245, 0.97) !important;
+  border-color: rgba(23, 17, 31, 0.7) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-input::placeholder {
+  color: rgba(23, 17, 31, 0.52) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-send-button {
+  color: #ffffff !important;
+  background-color: #7c3aed !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-send-button:hover,
+body.workspace-light .pablo-terminal .pablo-send-button:focus-visible {
+  background-color: #6d28d9 !important;
+}
+
+body.workspace-light .pablo-terminal .pablo-talk-button {
+  color: #fff7ff !important;
+  background-color: rgba(157, 23, 77, 0.52) !important;
+}
+
+body.workspace-light .pablo-popover {
+  color: #f8fafc !important;
+  background-color: rgba(9, 8, 18, 0.97) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.workspace-light .pablo-popover * {
+  color: inherit;
+}
+
+/* Pablo's controls belong to the browser chrome, not the nebula. The rail is
+   intentionally a single shared target for phone and desktop so the action
+   order never changes with viewport size. */
+.pablo-control-rail {
+  min-height: 3rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+}
+
+.pablo-control-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.pablo-control-rail .pablo-header {
+  min-height: 3rem;
+  flex: 0 0 auto;
+}
+
+body.workspace-light .pablo-control-rail .pablo-action {
+  color: #17111f !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(23, 17, 31, 0.22) !important;
+  box-shadow: 0 1px 2px rgba(23, 17, 31, 0.08);
+}
+
+body.workspace-light .pablo-control-rail .pablo-action:hover,
+body.workspace-light .pablo-control-rail .pablo-action:focus-visible {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  border-color: rgba(23, 17, 31, 0.52) !important;
+}
+
+.pablo-control-rail .pablo-popover {
+  color: #f8fafc !important;
+  background-color: rgba(9, 8, 18, 0.98) !important;
+}
+
+@media (max-width: 420px) {
+  .pablo-control-rail {
+    min-height: 3.25rem;
+  }
+
+  .pablo-control-rail .pablo-header {
+    min-height: 3.25rem;
+    padding-inline: 0.5rem;
+  }
+
+  .pablo-control-rail .pablo-header-action.mobile-tap-target,
+  .pablo-control-rail .pablo-controls-menu > .pablo-header-action {
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding-inline: 0;
+  }
+}
+
+/* Landscape phones can report a desktop-sized CSS width. Their short
+   viewport still needs the mobile bottom controls and the shorter spacing
+   contract, otherwise the top nav consumes the whole useful height. */
+@media (min-width: 768px) and (max-height: 600px) {
+  body.workspace-light #root {
+    padding-bottom: 0;
+  }
+
+  .desktop-app-nav {
+    display: none !important;
+  }
+
+  .mobile-app-nav-top,
+  .mobile-app-nav-bottom {
+    display: none !important;
+  }
+
+  :root {
+    --pablo-shell-bottom-space: 3.5rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .desktop-app-nav .desktop-primary-label {
+    display: none;
+  }
+
+  .desktop-app-nav nav {
+    gap: 0.25rem;
+  }
+
+  .desktop-app-nav nav > button {
+    min-width: 2.75rem;
+    padding-inline: 0.65rem;
+  }
+}
 /* ── Large-text terminal mode ─────────────────────────────────────────────── */
 .boomer-terminal {
   font-family: var(--font-sans) !important;
@@ -1752,4 +2695,70 @@ html.low-gfx canvas[data-gfx="heavy"] {
 }
 .boomer-terminal * {
   -webkit-backdrop-filter: none !important;
+}
+
+/* Pixel Agents is a browser control-plane surface, not a downloadable-game
+   screen. Keep its existing component structure and behavior, but normalize
+   the visual language to the same cream/black workspace shell. */
+.autopilot-page {
+  border-left: 1px solid #e5ded2;
+  border-right: 1px solid #e5ded2;
+}
+
+.autopilot-page .bg-black,
+.autopilot-page .bg-\[\#0c1018\],
+.autopilot-page .bg-\[\#080c12\] {
+  background-color: #fffdf8 !important;
+}
+
+.autopilot-page .bg-cyan-500\/\[0\.04\],
+.autopilot-page .bg-cyan-500\/10,
+.autopilot-page .bg-green-500\/10,
+.autopilot-page .bg-red-500\/10,
+.autopilot-page .bg-amber-500\/10,
+.autopilot-page .bg-cyan-500\/20 {
+  background-color: #f4efe5 !important;
+}
+
+.autopilot-page [class*="border-cyan-500"],
+.autopilot-page [class*="border-green-500"],
+.autopilot-page [class*="border-red-500"],
+.autopilot-page [class*="border-amber-500"] {
+  border-color: #d8d0c3 !important;
+}
+
+.autopilot-page [class*="text-cyan-"],
+.autopilot-page [class*="text-violet-"],
+.autopilot-page [class*="text-green-"],
+.autopilot-page [class*="text-red-"],
+.autopilot-page [class*="text-amber-"] {
+  color: #5f594f !important;
+}
+
+.autopilot-page h1,
+.autopilot-page h2,
+.autopilot-page h3 {
+  color: #111111 !important;
+  text-shadow: none !important;
+}
+
+.autopilot-page p,
+.autopilot-page label,
+.autopilot-page span {
+  text-shadow: none !important;
+}
+
+.autopilot-page select,
+.autopilot-page input {
+  background: #fffdf8 !important;
+  border-color: #cfc6b7 !important;
+  color: #111111 !important;
+}
+
+.autopilot-page button:hover {
+  background-color: #f0eadf !important;
+}
+
+.autopilot-page .animate-pulse {
+  animation-duration: 2.5s;
 }

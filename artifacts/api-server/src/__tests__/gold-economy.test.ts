@@ -56,15 +56,15 @@ beforeEach(clean);
 afterAll(clean);
 
 describe("live GOLD quote math", () => {
-  it("uses the canonical ƒ100 = 0.1 GOLD = $1 rail", () => {
-    expect(FIAT_PER_GOLD).toBe(1_000);
+  it("uses the canonical ƒ1,000 = 0.1 GOLD = $1 rail", () => {
+    expect(FIAT_PER_GOLD).toBe(10_000);
     expect(buildGoldQuote("buy", 1)).toMatchObject({
       goldTenths: 1,
-      grossFiat: 100,
-      feeFiat: 2,
-      settledFiat: 102,
+      grossFiat: 1_000,
+      feeFiat: 20,
+      settledFiat: 1_020,
     });
-    expect(buildGoldQuote("sell", 1).settledFiat).toBe(98);
+    expect(buildGoldQuote("sell", 1).settledFiat).toBe(980);
   });
 
   it("derives the BTC amount worth $1 from live BTC/USD", () => {
@@ -83,7 +83,7 @@ describe("live GOLD quote math", () => {
 
 describe("authoritative GOLD settlement", () => {
   it("settles once and replays the same idempotency key without minting", async () => {
-    await db.insert(bankAccountsTable).values({ userId: USER, kind: "checking", label: "CHECKING", balance: 1_000 });
+    await db.insert(bankAccountsTable).values({ userId: USER, kind: "checking", label: "CHECKING", balance: 2_000 });
     const quote = await seedQuote("buy", 1);
     const body = { slot: 0, quoteId: quote.id, idempotencyKey: "same-request-123" };
     const first = await request(app).post("/economy/gold/convert").send(body);
@@ -97,7 +97,7 @@ describe("authoritative GOLD settlement", () => {
   });
 
   it("allows only one of two concurrent executions of the same quote", async () => {
-    await db.insert(bankAccountsTable).values({ userId: USER, kind: "checking", label: "CHECKING", balance: 1_000 });
+    await db.insert(bankAccountsTable).values({ userId: USER, kind: "checking", label: "CHECKING", balance: 2_000 });
     const quote = await seedQuote("buy", 1);
     const [a, b] = await Promise.all([
       request(app).post("/economy/gold/convert").send({ slot: 0, quoteId: quote.id, idempotencyKey: "concurrent-request-a" }),

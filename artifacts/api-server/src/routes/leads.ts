@@ -5,12 +5,16 @@ import {
   leadNotesTable,
   leadImportsTable,
   orgMembersTable,
+  organizationsTable,
   callHistoryTable,
   usersTable,
+  crmCustomFieldsTable,
   type LeadRecord,
 } from "@workspace/db";
 import { eq, and, or, ilike, desc } from "drizzle-orm";
 import { broadcastLeadEvent } from "../chatServer";
+import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
+import { createLeadNote } from "../lib/crm-lead-notes";
 import multer from "multer";
 import ExcelJS from "exceljs";
 import { Readable } from "node:stream";
@@ -153,12 +157,49 @@ function getAuthUserName(req: Request): string {
 }
 
 async function getCallerOrgRole(userId: string): Promise<{ orgId: number; role: string } | null> {
+  const orgId = await resolveCurrentOrgId(userId);
+  if (!orgId) return null;
   const rows = await db
     .select()
     .from(orgMembersTable)
-    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
-  if (rows.length === 0) return null;
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")));
+  if (rows.length === 0) {
+    const [owned] = await db.select({ id: organizationsTable.id })
+      .from(organizationsTable)
+      .where(and(eq(organizationsTable.id, orgId), eq(organizationsTable.ownerUserId, userId))).limit(1);
+    if (owned) return { orgId: owned.id, role: "owner" };
+    return null;
+  }
   return { orgId: rows[0].orgId, role: rows[0].role };
+}
+
+async function requireCrmAccess(userId: string, permission: "crm.view" | "crm.edit"): Promise<boolean> {
+  const membership = await getCallerOrgRole(userId);
+  return !!membership && (await canDoInOrg(userId, membership.orgId, permission)).allowed;
+}
+
+async function validateCustomFields(orgId: number, input: unknown): Promise<{ value?: Record<string, unknown>; error?: string }> {
+  if (input === undefined) return { value: undefined };
+  if (!input || typeof input !== "object" || Array.isArray(input)) return { error: "customFieldsJson must be an object" };
+  const fields = await db.select().from(crmCustomFieldsTable).where(and(eq(crmCustomFieldsTable.orgId, orgId), eq(crmCustomFieldsTable.archived, false)));
+  const allowed = new Map(fields.map((f) => [f.fieldKey, f]));
+  const value = input as Record<string, unknown>;
+  for (const field of fields) {
+    if (field.required && (value[field.fieldKey] === undefined || value[field.fieldKey] === null || value[field.fieldKey] === "")) {
+      return { error: `Required custom field missing: ${field.fieldKey}` };
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const field = allowed.get(key);
+    if (!field) return { error: `Unknown or archived custom field: ${key}` };
+    const v = value[key];
+    if (v === null || v === "") continue;
+    if (field.fieldType === "number" && !Number.isFinite(Number(v))) return { error: `${key} must be a number` };
+    if (field.fieldType === "boolean" && !["true", "false", true, false].includes(v as any)) return { error: `${key} must be boolean` };
+    if (field.fieldType === "date" && Number.isNaN(new Date(String(v)).getTime())) return { error: `${key} must be a date` };
+    if (field.fieldType === "select" && !(field.optionsJson ?? []).includes(String(v))) return { error: `${key} must be one of the configured options` };
+  }
+  return { value };
 }
 
 function isAdmin(role: string): boolean {
@@ -281,6 +322,7 @@ router.get("/leads/export/csv", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to export leads" }); return; }
 
   // Optional ?business=Acme filter so an org can export leads for a single
@@ -308,6 +350,7 @@ router.get("/leads/export/xlsx", async (req: Request, res: Response) => {
   if (!userId) { res.status(401).json({ error: "Login required" }); return; }
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to export leads" }); return; }
 
   const businessFilter = typeof req.query.business === "string" ? req.query.business.trim() : "";
@@ -382,6 +425,7 @@ router.get("/leads/imports", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.view"))) { res.status(403).json({ error: "CRM view permission required" }); return; }
 
   const imports = await db.select().from(leadImportsTable).where(eq(leadImportsTable.orgId, membership.orgId)).orderBy(desc(leadImportsTable.createdAt));
   res.json({ imports });
@@ -393,6 +437,7 @@ router.get("/leads", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "You must be part of an organization to access leads" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.view"))) { res.status(403).json({ error: "CRM view permission required" }); return; }
 
   const { search, status, assignedTo } = req.query as { search?: string; status?: string; assignedTo?: string };
 
@@ -444,6 +489,7 @@ router.get("/leads/members", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.view"))) { res.status(403).json({ error: "CRM view permission required" }); return; }
 
   const members = await db.select({
     userId: orgMembersTable.userId,
@@ -463,6 +509,7 @@ router.get("/leads/:id", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.view"))) { res.status(403).json({ error: "CRM view permission required" }); return; }
 
   const leadId = parseInt(paramStr(req.params.id));
   if (isNaN(leadId)) { res.status(400).json({ error: "Invalid lead ID" }); return; }
@@ -481,7 +528,10 @@ router.get("/leads/:id", async (req: Request, res: Response) => {
     phoneVariants.push(normalizedPhone.slice(-10));
   }
   const callHistory = lead.phone ? await db.select().from(callHistoryTable).where(
-    or(...phoneVariants.map(p => eq(callHistoryTable.recipientNumber, p)))
+    and(
+      eq(callHistoryTable.orgId, membership.orgId),
+      or(...phoneVariants.map(p => eq(callHistoryTable.recipientNumber, p))),
+    )
   ).orderBy(desc(callHistoryTable.startedAt)).limit(20) : [];
 
   res.json({ lead, notes, callHistory, role: membership.role });
@@ -493,12 +543,15 @@ router.post("/leads", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
 
-  const { name, phone, email, company, jobTitle, source, status, assignedUserId } = req.body ?? {};
+  const { name, phone, email, company, jobTitle, source, status, assignedUserId, customFieldsJson } = req.body ?? {};
   if (!name || typeof name !== "string" || name.trim().length < 1) {
     res.status(400).json({ error: "Lead name is required" }); return;
   }
 
+  const customFields = await validateCustomFields(membership.orgId, customFieldsJson);
+  if (customFields.error) { res.status(400).json({ error: customFields.error }); return; }
   const [lead] = await db.insert(leadRecordsTable).values({
     orgId: membership.orgId,
     name: String(name).trim(),
@@ -511,6 +564,7 @@ router.post("/leads", async (req: Request, res: Response) => {
     assignedUserId: assignedUserId || null,
     createdByUserId: userId,
     isLocked: false,
+    customFieldsJson: customFields.value,
   }).returning();
 
   broadcastLeadEvent(membership.orgId, { type: 'lead_created', lead });
@@ -523,6 +577,7 @@ router.patch("/leads/:id", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
 
   const leadId = parseInt(paramStr(req.params.id));
   if (isNaN(leadId)) { res.status(400).json({ error: "Invalid lead ID" }); return; }
@@ -534,7 +589,7 @@ router.patch("/leads/:id", async (req: Request, res: Response) => {
   const admin = isAdmin(membership.role);
 
   if (!admin) {
-    const allowedFields = ["status"];
+    const allowedFields = ["status", "customFieldsJson"];
     const attempted = Object.keys(body).filter(k => !allowedFields.includes(k));
     if (attempted.length > 0) {
       res.status(403).json({ error: "Regular users can only update lead status. Use notes to add updates." });
@@ -543,6 +598,11 @@ router.patch("/leads/:id", async (req: Request, res: Response) => {
   }
 
   const updates: Partial<LeadRecord> = {};
+  if (body.customFieldsJson !== undefined || existing.customFieldsJson) {
+    const customFields = await validateCustomFields(membership.orgId, { ...(existing.customFieldsJson ?? {}), ...(body.customFieldsJson ?? {}) });
+    if (customFields.error) { res.status(400).json({ error: customFields.error }); return; }
+    updates.customFieldsJson = customFields.value;
+  }
   if (admin) {
     if (body.name !== undefined) updates.name = String(body.name).trim();
     if (body.phone !== undefined) updates.phone = String(body.phone).trim();
@@ -574,6 +634,7 @@ router.delete("/leads/:id", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to delete leads" }); return; }
 
   const leadId = parseInt(paramStr(req.params.id));
@@ -593,6 +654,7 @@ router.post("/leads/:id/notes", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
 
   const leadId = parseInt(paramStr(req.params.id));
   if (isNaN(leadId)) { res.status(400).json({ error: "Invalid lead ID" }); return; }
@@ -606,14 +668,66 @@ router.post("/leads/:id/notes", async (req: Request, res: Response) => {
   }
 
   const userName = getAuthUserName(req);
-  const [created] = await db.insert(leadNotesTable).values({
+  const created = await createLeadNote({
     leadId,
     userId,
-    userName,
+    userName: userName ?? "Team member",
     note: note.trim(),
-  }).returning();
+  });
 
   res.json({ note: created });
+});
+
+router.patch("/leads/:id/notes/:noteId/review", async (req: Request, res: Response) => {
+  const userId = getAuthUserId(req);
+  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
+
+  const membership = await getCallerOrgRole(userId);
+  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!isAdmin(membership.role)) { res.status(403).json({ error: "Owner or manager access required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
+
+  const leadId = Number(paramStr(req.params.id));
+  const noteId = Number(paramStr(req.params.noteId));
+  if (!Number.isSafeInteger(leadId) || leadId <= 0 || !Number.isSafeInteger(noteId) || noteId <= 0) {
+    res.status(400).json({ error: "Invalid lead or note ID" });
+    return;
+  }
+
+  const reviewStatus = req.body?.reviewStatus;
+  if (reviewStatus !== "reviewed" && reviewStatus !== "dismissed") {
+    res.status(400).json({ error: "Review status must be reviewed or dismissed" });
+    return;
+  }
+
+  const [lead] = await db.select({ id: leadRecordsTable.id })
+    .from(leadRecordsTable)
+    .where(and(eq(leadRecordsTable.id, leadId), eq(leadRecordsTable.orgId, membership.orgId)))
+    .limit(1);
+  if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
+
+  const [note] = await db.select().from(leadNotesTable).where(and(
+    eq(leadNotesTable.id, noteId),
+    eq(leadNotesTable.leadId, leadId),
+  )).limit(1);
+  if (!note) { res.status(404).json({ error: "Lead note not found" }); return; }
+  if (!["needs_review", "reviewed", "dismissed"].includes(note.reviewStatus)) {
+    res.status(400).json({ error: "This CRM note does not require research review" });
+    return;
+  }
+
+  const [updated] = await db.update(leadNotesTable).set({
+    reviewStatus,
+    reviewedByUserId: userId,
+    reviewedAt: new Date(),
+  }).where(and(
+    eq(leadNotesTable.id, noteId),
+    eq(leadNotesTable.leadId, leadId),
+  )).returning();
+  if (!updated) { res.status(404).json({ error: "Lead note not found" }); return; }
+
+  broadcastLeadEvent(membership.orgId, { type: "lead_note_reviewed", leadId, note: updated });
+  res.json({ note: updated });
 });
 
 /**
@@ -629,6 +743,7 @@ router.post("/leads/import-file", sheetUpload.single("file"), async (req: Reques
   if (!userId) { res.status(401).json({ error: "Login required" }); return; }
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to import leads" }); return; }
 
   const file = (req as any).file as { buffer: Buffer; mimetype: string; originalname: string } | undefined;
@@ -724,6 +839,7 @@ router.post("/leads/import", async (req: Request, res: Response) => {
 
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!(await requireCrmAccess(userId, "crm.edit"))) { res.status(403).json({ error: "CRM edit permission required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to import leads" }); return; }
 
   const { leads, fileName, csvText } = req.body ?? {};

@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, Settings2, MessageSquare, Hash } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, Settings2, MessageSquare, Hash, PhoneIncoming } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { slate, warning } from '@/lib/phone-utils';
@@ -9,6 +9,12 @@ import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
+import { useLocation } from 'wouter';
+import {
+  classifyPhoneSystemResponse,
+  getPhoneSystemStatusRetryDelay,
+  type PhoneSystemStatus,
+} from '@/lib/phone-system-status';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
 const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
@@ -63,9 +69,19 @@ function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode:
   );
 }
 
-function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: AiSubMode; setAiSubMode: (m: AiSubMode) => void }) {
+function TabContent({
+  tab,
+  aiSubMode,
+  setAiSubMode,
+  systemStatus,
+}: {
+  tab: TabKey;
+  aiSubMode: AiSubMode;
+  setAiSubMode: (m: AiSubMode) => void;
+  systemStatus: PhoneSystemStatus;
+}) {
   switch (tab) {
-    case 'cmd': return <PhoneCommandCenter />;
+    case 'cmd': return <PhoneCommandCenter systemStatus={systemStatus} />;
     case 'contacts': return <PhoneContactsPage />;
     case 'dial': return <PhoneDialerPage />;
     case 'live': return <PhoneActivePage />;
@@ -128,12 +144,14 @@ export default function CalllHomePage() {
     };
   }, [showTabSettings]);
 
-  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'restricted' | 'unconfigured'>('checking');
+  const [systemStatus, setSystemStatus] = useState<PhoneSystemStatus>('checking');
+  const [statusRetryKey, setStatusRetryKey] = useState(0);
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
   const { openPledgePopup } = usePledgePopup();
-  const { deviceState, deviceError, ensureDeviceReady, reconnect } = useTwilioDeviceContext();
+  const { deviceState, deviceError, ensureDeviceReady, reconnect, incomingCall, acceptIncomingCall, rejectIncomingCall } = useTwilioDeviceContext();
+  const [, navigate] = useLocation();
 
   const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
   const telephonyLocked = !hasPhoneAccess;
@@ -141,25 +159,59 @@ export default function CalllHomePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
-    if (!hasPhoneAccess || planLoading) return;
-    apiFetch(apiUrl('twilio/system-status'), { credentials: 'include' })
-      .then(r => {
-        if (r.ok) {
-          setSystemStatus('online');
-          return;
-        }
-        return r.json().catch(() => ({})).then(data => {
-          if (r.status === 403 && data.code === 'TWILIO_ORG_RESTRICTED') {
-            setSystemStatus('restricted');
-          } else if (r.status === 403) {
-            setSystemStatus('no_subscription');
-          } else {
-            setSystemStatus('unconfigured');
-          }
+    if (authLoading || !isAuthenticated) return;
+    if (planLoading) return;
+    if (!hasPhoneAccess) {
+      setSystemStatus('no_subscription');
+      navigate('/pricing');
+      return;
+    }
+
+    let stopped = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let activeController: AbortController | null = null;
+    let retryAttempt = 0;
+
+    const scheduleRetry = () => {
+      const delay = getPhoneSystemStatusRetryDelay(retryAttempt);
+      retryAttempt += 1;
+      retryTimer = setTimeout(() => void checkStatus(false), delay);
+    };
+
+    const checkStatus = async (showChecking: boolean) => {
+      if (showChecking) setSystemStatus('checking');
+      const controller = new AbortController();
+      activeController = controller;
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const response = await apiFetch(apiUrl('twilio/system-status'), {
+          credentials: 'include',
+          signal: controller.signal,
+          skipSessionExpiryRedirect: true,
         });
-      })
-      .catch(() => setSystemStatus('unconfigured'));
-  }, [apiUrl, hasPhoneAccess, planLoading]);
+        const payload = response.ok ? null : await response.json().catch(() => null);
+        const result = classifyPhoneSystemResponse(response.status, payload);
+        if (stopped) return;
+        setSystemStatus(result.status);
+        if (result.status === 'no_subscription') navigate('/pricing');
+        if (result.retry) scheduleRetry();
+      } catch {
+        if (stopped) return;
+        setSystemStatus('unavailable');
+        scheduleRetry();
+      } finally {
+        clearTimeout(timeout);
+        if (activeController === controller) activeController = null;
+      }
+    };
+
+    void checkStatus(true);
+    return () => {
+      stopped = true;
+      activeController?.abort();
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [apiUrl, authLoading, hasPhoneAccess, isAuthenticated, navigate, planLoading, statusRetryKey]);
 
   useEffect(() => {
     if (!hasPhoneAccess || planLoading || systemStatus !== 'online') return;
@@ -178,7 +230,7 @@ export default function CalllHomePage() {
     return <div style={{ minHeight: 'var(--app-viewport-height, 100dvh)', background: '#fffaf0', display: 'grid', placeItems: 'center', color: '#050505' }}>RESTORING SESSION...</div>;
   }
   if (!isAuthenticated) {
-    return <SignInPage context="Salaryman credentials required. PHONE SYSTEM access locked." />;
+    return <SignInPage context="Salaryman credentials required. CALLL HOME access locked." />;
   }
 
   if (planLoading) {
@@ -212,15 +264,20 @@ export default function CalllHomePage() {
         <div className="calll-home-status" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '8px 0', borderBottom: `1px solid ${slate(0.08)}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="calll-home-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Phone size={18} style={{ color: slate(0.7) }} />
-            <img
-              src={`${BASE}brand/callhome/calll-home-brush.png`}
-              alt="CALLL HOME"
-              style={{ height: 18, width: 'auto', opacity: 0.7, filter: 'brightness(1.8) saturate(0)' }}
-            />
+            <span className="calll-home-mark-box">
+              <img src={`${BASE}brand/callhome/calll-home-logo-2.png`} alt="CALLL HOME" />
+            </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="calll-home-connection" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <a
+                href={`${BASE}phone/mesh`}
+                className="border border-black/30 px-2 py-1 text-[0.45rem] font-bold tracking-widest hover:bg-black hover:text-white"
+                title="Free Meshtastic radio bridge"
+              >
+                MESH · FREE
+              </a>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',
@@ -232,22 +289,59 @@ export default function CalllHomePage() {
               </span>
             </div>
              {systemStatus === 'online' && deviceState !== 'ready' && (
-               <button type="button" onClick={() => void reconnect()} disabled={deviceState === 'initializing'}>
-                 {deviceState === 'initializing' ? 'CONNECTING' : 'RECONNECT'}
+               <button
+                 type="button"
+                 onClick={() => void reconnect()}
+                 disabled={deviceState === 'initializing'}
+                 aria-label={deviceState === 'initializing' ? 'Phone is connecting' : 'Reconnect browser phone'}
+               >
+                 {deviceState === 'initializing' ? '…' : 'RECONNECT'}
                </button>
              )}
           </div>
         </div>
 
-        {systemStatus === 'unconfigured' && (
+        {incomingCall && (
+          <div role="alert" aria-live="assertive" style={{
+            margin: '10px 0', padding: '10px 12px', border: '1px solid rgba(15,15,15,0.18)',
+            borderRadius: 7, background: '#fff', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <PhoneIncoming size={15} />
+              <span style={{ fontSize: '0.58rem', letterSpacing: '0.08em' }}>
+                {incomingCall.parameters?.From?.startsWith('client:') ? 'TEAM CALL INCOMING' : 'INCOMING CALL'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button type="button" onClick={rejectIncomingCall} aria-label="Reject incoming CALLL HOME call"
+                style={{ border: '1px solid #9d3636', borderRadius: 5, padding: '7px 10px', background: '#fff', color: '#8f2929', fontSize: '0.48rem', cursor: 'pointer' }}>
+                DECLINE
+              </button>
+              <button type="button" onClick={acceptIncomingCall} aria-label="Answer incoming CALLL HOME call"
+                style={{ border: '1px solid #111', borderRadius: 5, padding: '7px 10px', background: '#111', color: '#fff', fontSize: '0.48rem', cursor: 'pointer' }}>
+                ANSWER
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(systemStatus === 'unconfigured' || systemStatus === 'unavailable') && (
           <div style={{
             margin: '8px 0', padding: '8px 14px',
             background: slate(0.02),
             border: `1px solid ${warning(0.2)}`, borderRadius: 6,
             fontSize: '0.48rem', color: warning(0.7), letterSpacing: '0.08em',
-            display: 'flex', alignItems: 'center', gap: 8 }}>
+            display: 'flex', alignItems: 'center', gap: 8 }} role="status" aria-live="polite">
             <AlertTriangle size={12} />
-            Phone service is temporarily unavailable. The system will keep trying to reconnect.
+            <span style={{ flex: 1 }}>Phone service is temporarily unavailable. The system will keep trying to reconnect.</span>
+            <button
+              type="button"
+              onClick={() => setStatusRetryKey(value => value + 1)}
+              style={{ border: `1px solid ${warning(0.28)}`, borderRadius: 4, padding: '5px 7px', background: 'transparent', color: warning(0.9), fontSize: '0.45rem', letterSpacing: '0.08em' }}
+            >
+              RETRY
+            </button>
           </div>
         )}
         {systemStatus === 'no_subscription' && (
@@ -411,12 +505,12 @@ export default function CalllHomePage() {
                     <div style={{ fontSize: '0.55rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 22 }}>
                       Phone features require access.
                     </div>
-                    <button onClick={() => openPledgePopup({ reason: 'Unlock the Phone System with a Stripe-backed pass or PABLO PRIME.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
+                    <button onClick={() => openPledgePopup({ reason: 'View CALLL HOME pricing.' })} style={{ padding: '11px 22px', fontSize: '0.58rem', letterSpacing: '0.14em', background: slate(0.04), border: `1px solid ${warning(0.35)}`, color: warning(0.9), borderRadius: 8, cursor: 'pointer' }}>
                       VIEW PHONE ACCESS OPTIONS
                     </button>
                   </div>
                 ) : (
-                  <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} />
+                  <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} systemStatus={systemStatus} />
                 )}
               </Suspense>
             </CalllHomeProvider>
@@ -431,14 +525,34 @@ export default function CalllHomePage() {
         .calll-home-shell { padding-left: max(12px, var(--app-safe-left)); padding-right: max(12px, var(--app-safe-right)); }
         @media (max-width: 640px) {
           .calll-home-status {
-            align-items: flex-start !important;
+            width: 100%;
+            min-width: 0;
+            align-items: center !important;
             gap: 8px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
           }
           .calll-home-status > div {
             min-width: 0;
-            flex-wrap: wrap;
             gap: 8px !important;
+          }
+          .calll-home-brand {
+            flex: 1 1 auto;
+            overflow: hidden;
+          }
+          .calll-home-brand img {
+            max-width: 100%;
+            object-fit: contain;
+          }
+          .calll-home-connection {
+            flex: 0 1 auto;
+            justify-content: flex-end;
+          }
+          .calll-home-connection span {
+            display: block;
+            max-width: 8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
            .calll-home-tabs {
              display: grid !important;
@@ -447,12 +561,28 @@ export default function CalllHomePage() {
             padding: 6px !important;
           }
           .calll-home-tabs > button {
-             width: 100%;
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
             min-height: 44px !important;
           }
           .calll-home-tabs > div:last-child {
              grid-column: 1 / -1;
              margin-left: 0 !important;
+          }
+          .calll-home-tabs > div:last-child > button {
+            width: 100%;
+            justify-content: flex-start;
+          }
+        }
+        @media (max-width: 360px) {
+          .calll-home-connection {
+            max-width: 46%;
+          }
+          .calll-home-connection > button {
+            padding-inline: 6px !important;
+            min-width: 0 !important;
           }
         }
         @media (prefers-reduced-motion: reduce) {

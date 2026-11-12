@@ -1,26 +1,27 @@
 import { apiFetch } from '@/lib/api-client';
 import { motion } from "framer-motion";
-import { Check, ChevronRight, Loader2, Sparkles, Bot, Phone } from "lucide-react";
+import { Check, ChevronRight, Loader2, Sparkles, Bot, Phone, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlan, invalidatePlanCache } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
+import { trackEvent } from "@/lib/analytics";
 
-// Paid services are deliberately separate: Automation Pixel Agents and the
-// Twilio-backed Phone System each require their own USD subscription.
+// Paid services are deliberately separate: Pixel Agents and the
+// Twilio-backed CALLL HOME each require their own USD subscription.
 const BOT_CATEGORIES = [
-  { name: "CORE COMMAND", count: 3, agents: "Pablo · Jean Claw · Rick", color: "#06b6d4" },
-  { name: "THE ACADEMY", count: 1, agents: "Kenji Prime", color: "#22d3ee" },
-  { name: "FINANCE DESK", count: 1, agents: "Viktor Prime", color: "#a3e635" },
-  { name: "CREATIVE STUDIO", count: 4, agents: "Terrence · Vivian · Regina · Deepa", color: "#f472b6" },
+  { name: "ASSISTANTS", count: 3, agents: "Pablo · Jean Claw · Rick", color: "#06b6d4" },
+  { name: "LEARNING", count: 1, agents: "Kenji Prime", color: "#22d3ee" },
+  { name: "FINANCE", count: 1, agents: "Viktor Prime", color: "#a3e635" },
+  { name: "CREATIVE", count: 4, agents: "Terrence · Vivian · Regina · Deepa", color: "#f472b6" },
 ];
 
 const PRIME_FEATURES = [
-  "ECHO-7 · LIVE LISTEN — REAL-TIME AUDIO INTERCEPT",
-  "OPTIC-9 · SCREEN SCAN — READS YOUR SCREEN",
-  "VOX-4 · SAY THIS — LIVE SPEECH COACHING",
+  "LIVE LISTEN — REAL-TIME AUDIO HELP",
+  "SCREEN SCAN — READS YOUR SCREEN",
+  "SAY THIS — LIVE SPEECH COACHING",
   "PIXEL AGENTS · 9 CURATED AGENTS · 4 TEAMS",
-  "BOT-TO-BOT CHAINING · COMMAND CENTER",
+  "AGENT WORKFLOWS · ONE CONTROL CENTER",
   "ALL FUTURE BOTS & TOOLS INCLUDED",
   "CUSTOMIZE OFFICE · BUSINESS · DIGITAL LIFE",
   "PRIORITY PROCESSING · UNLIMITED TASKS",
@@ -32,6 +33,7 @@ export default function Pricing() {
   const { features, isOwner, loading } = usePlan();
   const [location, navigate] = useLocation();
   const [checkoutFeature, setCheckoutFeature] = useState<"claw_bot" | "phone_system" | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -42,6 +44,7 @@ export default function Pricing() {
   }, [location]);
 
   const checkoutSuccess = new URLSearchParams(window.location.search).get("checkout") === "success";
+  const checkoutCancelled = new URLSearchParams(window.location.search).get("checkout") === "cancel";
 
   if (loading) {
     return (
@@ -57,6 +60,7 @@ export default function Pricing() {
   const startCheckout = async (feature: "claw_bot" | "phone_system") => {
     if (!isAuthenticated) { login(); return; }
     setCheckoutFeature(feature);
+    setCheckoutError(null);
     try {
       const response = await apiFetch('/api/stripe/create-checkout-session', {
         method: "POST",
@@ -66,7 +70,10 @@ export default function Pricing() {
       });
       const body = await response.json().catch(() => ({})) as { url?: string; error?: string };
       if (!response.ok || !body.url) throw new Error(body.error || "Checkout unavailable");
+      trackEvent("paid_service_checkout_started", { feature });
       window.location.assign(body.url);
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "Checkout unavailable. Please try again.");
     } finally {
       setCheckoutFeature(null);
     }
@@ -119,6 +126,31 @@ export default function Pricing() {
           </motion.div>
         )}
 
+        {checkoutCancelled && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="mb-8 rounded-xl border border-white/15 px-6 py-4 flex items-center gap-3"
+            style={{ background: "rgba(148,163,184,0.08)" }}>
+            <AlertCircle className="w-5 h-5 text-slate-400" />
+            <div>
+              <p className="text-sm font-bold text-white">CHECKOUT CANCELLED</p>
+              <p style={{ fontSize: 11, color: "#94a3b8" }}>No charge was made. You can subscribe whenever you are ready.</p>
+            </div>
+          </motion.div>
+        )}
+
+        {checkoutError && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            role="alert"
+            className="mb-8 rounded-xl border border-red-500/30 px-6 py-4 flex items-center gap-3"
+            style={{ background: "rgba(239,68,68,0.08)" }}>
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-white">CHECKOUT UNAVAILABLE</p>
+              <p style={{ fontSize: 11, color: "#fca5a5" }}>{checkoutError}</p>
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="rounded-2xl border relative overflow-hidden mb-8"
@@ -146,16 +178,16 @@ export default function Pricing() {
                 </div>
                 <div>
                   <h2 style={{ fontFamily: "var(--font-sans)", fontSize: 32, letterSpacing: "0.06em", color: "#ef4444", lineHeight: 1 }}>
-                    AUTOMATION PIXEL AGENTS
+                    PIXEL AGENTS
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
-                    A curated nine-agent automation workforce managed across four teams. Includes automation tools, bot chaining, and business workflows. The Twilio Phone System is billed separately.
+                    A curated nine-agent workforce managed across four teams. Includes bot chaining and business workflows. CALLL HOME is billed separately.
                   </p>
                 </div>
               </div>
               <div className="flex flex-col items-end shrink-0">
                 <div className="flex items-baseline gap-1">
-                  <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: "var(--font-sans)" }}>$149</span>
+                    <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: "var(--font-sans)" }}>$100</span>
                   <span style={{ fontSize: 13, color: "#64748b" }}>/MO</span>
                 </div>
               </div>
@@ -224,14 +256,18 @@ export default function Pricing() {
                 <Phone className="w-6 h-6 text-sky-300" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-sky-300">TWILIO PHONE SYSTEM</h2>
+                <img
+                  src={`${import.meta.env.BASE_URL}brand/callhome/calll-home-logo-2.png`}
+                  alt="CALLL HOME"
+                  className="h-10 w-32 object-contain object-left"
+                />
                 <p className="mt-1 text-xs text-slate-400 max-w-xl">
-                  Business calling, SMS, phone numbers, call campaigns, recordings, and the AI secretary. Locked until this separate USD subscription is active.
+                  Basic business calling and two-way SMS, connected to your CRM. Automated/predictive dialing and SMS marketing are reserved for Custom terms.
                 </p>
               </div>
             </div>
             <div className="shrink-0 sm:text-right">
-              <div><span className="text-4xl font-extrabold text-sky-300">$95</span><span className="text-xs text-slate-500">/MO USD</span></div>
+              <div><span className="text-4xl font-extrabold text-sky-300">$50</span><span className="text-xs text-slate-500">/MO USD</span></div>
               {phoneActive ? (
                 <div className="mt-2 text-sm font-bold text-emerald-400">ACTIVE</div>
               ) : (
@@ -262,6 +298,7 @@ export default function Pricing() {
               "DOCUMENTS & INVOICES",
               "SALARYMAN MMO ACCESS",
               "INTERVIEW PREP TOOLS",
+              "INTERNAL COMMS + MESHTASTIC BRIDGE",
             ].map((perk) => (
               <div key={perk} className="flex items-center gap-2">
                 <Check className="w-3 h-3 text-sky-400/50 shrink-0" />

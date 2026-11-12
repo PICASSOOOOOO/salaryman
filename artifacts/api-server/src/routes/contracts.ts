@@ -1,8 +1,64 @@
 import { Router, type Request, type Response, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
+import { db, contractsTable } from "@workspace/db";
+import { and, desc, eq } from "drizzle-orm";
 
 const router: IRouter = Router();
+const LEGAL_META_PREFIX = "__SALARYMAN_LEGAL_META__";
+
+interface LegalContractMeta {
+  clientEmail: string;
+  country: string;
+  governingLaw: string;
+  deliveryMethod: string;
+  deliveryReference: string;
+  sentAt: string | null;
+  extraInstructions: string;
+}
+
+function getLegalMeta(value: string): LegalContractMeta {
+  if (!value.startsWith(LEGAL_META_PREFIX)) {
+    return {
+      clientEmail: "",
+      country: "",
+      governingLaw: "",
+      deliveryMethod: "not_sent",
+      deliveryReference: "",
+      sentAt: null,
+      extraInstructions: value,
+    };
+  }
+  try {
+    const parsed = JSON.parse(value.slice(LEGAL_META_PREFIX.length)) as Partial<LegalContractMeta>;
+    return {
+      clientEmail: typeof parsed.clientEmail === "string" ? parsed.clientEmail : "",
+      country: typeof parsed.country === "string" ? parsed.country : "",
+      governingLaw: typeof parsed.governingLaw === "string" ? parsed.governingLaw : "",
+      deliveryMethod: typeof parsed.deliveryMethod === "string" ? parsed.deliveryMethod : "not_sent",
+      deliveryReference: typeof parsed.deliveryReference === "string" ? parsed.deliveryReference : "",
+      sentAt: typeof parsed.sentAt === "string" ? parsed.sentAt : null,
+      extraInstructions: typeof parsed.extraInstructions === "string" ? parsed.extraInstructions : "",
+    };
+  } catch {
+    return getLegalMeta("");
+  }
+}
+
+function toSavedContract(row: typeof contractsTable.$inferSelect) {
+  const meta = getLegalMeta(row.extraClauses);
+  return {
+    ...row,
+    clientEmail: meta.clientEmail,
+    country: meta.country,
+    jurisdiction: meta.governingLaw || row.jurisdiction,
+    summary: row.scope,
+    documentText: row.terms,
+    deliveryMethod: meta.deliveryMethod,
+    deliveryReference: meta.deliveryReference,
+    sentAt: meta.sentAt,
+  };
+}
 
 const CONTRACT_TYPES = {
   nda: {
@@ -162,6 +218,101 @@ router.get("/business/contracts/types", (_req: Request, res: Response): void => 
   });
 });
 
+router.get("/business/contracts/saved", async (req: Request, res: Response): Promise<void> => {
+  if (!req.isAuthenticated() || !req.user?.id) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const contracts = await db.select().from(contractsTable)
+    .where(eq(contractsTable.userId, req.user.id))
+    .orderBy(desc(contractsTable.createdAt))
+    .limit(50);
+  res.json({ contracts: contracts.map(toSavedContract) });
+});
+
+router.post("/business/contracts/save", async (req: Request, res: Response): Promise<void> => {
+  if (!req.isAuthenticated() || !req.user?.id) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const body = req.body ?? {};
+  const type = typeof body.type === "string" ? body.type : "";
+  const def = CONTRACT_TYPES[type as ContractType];
+  const partyA = typeof body.partyA === "string" ? body.partyA.trim().slice(0, 300) : "";
+  const partyB = typeof body.partyB === "string" ? body.partyB.trim().slice(0, 300) : "";
+  const documentText = typeof body.documentText === "string" ? body.documentText.trim() : "";
+  const clientEmail = typeof body.clientEmail === "string" ? body.clientEmail.trim().slice(0, 300) : "";
+  const country = typeof body.country === "string" ? body.country.trim().slice(0, 100) : "";
+  const jurisdiction = typeof body.governingLaw === "string" ? body.governingLaw.trim().slice(0, 200) : "";
+  const summary = typeof body.summary === "string" ? body.summary.trim().slice(0, 6000) : "";
+  if (!def || !partyA || !partyB || !documentText || !country) {
+    res.status(400).json({ error: "Contract type, both parties, country, and generated contract text are required." });
+    return;
+  }
+  if (documentText.length > 60_000) {
+    res.status(413).json({ error: "Contract too long (60k character max)." });
+    return;
+  }
+  const [contract] = await db.insert(contractsTable).values({
+    userId: req.user.id,
+    templateType: type,
+    partyA,
+    partyB,
+    startDate: typeof body.effectiveDate === "string" ? body.effectiveDate.slice(0, 20) : "",
+    terms: documentText,
+    scope: summary,
+    jurisdiction: [country, jurisdiction].filter(Boolean).join(" — ").slice(0, 200),
+    extraClauses: `${LEGAL_META_PREFIX}${JSON.stringify({
+      clientEmail,
+      country,
+      governingLaw: jurisdiction,
+      deliveryMethod: "not_sent",
+      deliveryReference: "",
+      sentAt: null,
+      extraInstructions: typeof body.extraInstructions === "string" ? body.extraInstructions.slice(0, 10_000) : "",
+    } satisfies LegalContractMeta)}`,
+    status: "draft",
+  }).returning();
+  res.status(201).json({ contract: toSavedContract(contract) });
+});
+
+router.post("/business/contracts/saved/:id/delivery", async (req: Request, res: Response): Promise<void> => {
+  if (!req.isAuthenticated() || !req.user?.id) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const id = Number(req.params.id);
+  const method = typeof req.body?.method === "string" ? req.body.method.trim().slice(0, 60) : "";
+  const reference = typeof req.body?.reference === "string" ? req.body.reference.trim().slice(0, 2000) : "";
+  if (!Number.isSafeInteger(id) || id <= 0 || !method || method === "not_sent") {
+    res.status(400).json({ error: "A valid contract and delivery method are required." });
+    return;
+  }
+  const [before] = await db.select().from(contractsTable)
+    .where(and(eq(contractsTable.id, id), eq(contractsTable.userId, req.user.id)))
+    .limit(1);
+  if (!before) {
+    res.status(404).json({ error: "Contract not found." });
+    return;
+  }
+  const meta = getLegalMeta(before.extraClauses);
+  const [contract] = await db.update(contractsTable).set({
+    extraClauses: `${LEGAL_META_PREFIX}${JSON.stringify({
+      ...meta,
+      deliveryMethod: method,
+      deliveryReference: reference,
+      sentAt: new Date().toISOString(),
+    })}`,
+    status: "sent",
+    updatedAt: new Date(),
+  }).where(and(eq(contractsTable.id, id), eq(contractsTable.userId, req.user.id))).returning();
+  if (!contract) {
+    res.status(404).json({ error: "Contract not found." });
+    return;
+  }
+  res.json({ contract: toSavedContract(contract) });
+});
+
 router.post("/business/contracts/draft", async (req: Request, res: Response): Promise<void> => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -173,6 +324,7 @@ router.post("/business/contracts/draft", async (req: Request, res: Response): Pr
     partyA,
     partyB,
     governingLaw,
+    country,
     effectiveDate,
     terms,
     extraInstructions,
@@ -191,7 +343,12 @@ router.post("/business/contracts/draft", async (req: Request, res: Response): Pr
     return;
   }
 
-  const jurisdiction = String(governingLaw ?? "").trim() || "Delaware, USA";
+  const countryName = String(country ?? "").trim();
+  if (!countryName || countryName.length > 100) {
+    res.status(400).json({ error: "Country is required for a jurisdiction-aware draft." });
+    return;
+  }
+  const jurisdiction = String(governingLaw ?? "").trim().slice(0, 200);
   const effective = String(effectiveDate ?? "").trim() || new Date().toISOString().slice(0, 10);
   const userTerms = String(terms ?? "").trim();
   const extras = String(extraInstructions ?? "").trim();
@@ -210,25 +367,26 @@ router.post("/business/contracts/draft", async (req: Request, res: Response): Pr
   try {
     const sectionList = def.sections.map((s, i) => `  ${i + 1}. ${s}`).join("\n");
 
-    const system = `You are a senior US business attorney drafting a ${def.label} for two parties. You write clear, enforceable, plain-English contracts that hold up in court. You know UCC Article 2, the Restatement (Second) of Contracts, common-law agency, the federal Defend Trade Secrets Act, state non-compete enforceability variance (CA/ND/OK ban most non-competes; FTC's 2024 rule was struck down — DO NOT cite it as binding), AAA and JAMS arbitration rules, and standard reps & warranties practice.
+    const system = `You are a legal-document drafting assistant preparing a ${def.label} for two parties. You are not a lawyer and must not claim the draft is enforceable, legally sufficient, or attorney-approved. Draft a practical, neutral first draft using the country and jurisdiction supplied. Do not invent statutes, cite rules you cannot verify, or imply that one country's template works elsewhere. If the requested country requires specialized local counsel or the relevant law is uncertain, flag that clearly for attorney review.
 
-Output a complete, signature-ready contract. Use Markdown headings (##) for each section. Number all sections and subsections. Use defined terms in Title Case (e.g., "Effective Date", "Confidential Information") and capitalize them consistently after definition. Include clear, specific language — no placeholder brackets unless the user did not supply a fact, in which case use [BRACKETED PLACEHOLDER] so the user knows to fill it in.
+Begin with a "Plain-language summary" section (3–6 sentences that explains the deal, key obligations, and unresolved details), followed by a complete draft for review and signature preparation. Use Markdown headings (##) for each section. Number all sections and subsections. Use defined terms consistently. Mark unsupplied facts with [BRACKETED PLACEHOLDER].
 
 Always end with:
-1. A "Notice" section warning the parties this is an AI-generated draft, not legal advice, and recommending review by a licensed attorney in the relevant jurisdiction before execution.
+1. A "Notice" section stating this is an AI-generated draft and not legal advice, and recommending review by a qualified lawyer in the relevant jurisdiction before signature.
 2. Signature blocks for both parties (name, title, date).
 
 Required sections for this ${def.label}:
 ${sectionList}
 
-Tone: professional, neutral, drafted to be fair to both parties unless the user instructed otherwise. Avoid one-sided clauses (excessive indemnification, unbounded liability) without flagging the imbalance in a "Negotiation Notes" appendix at the end.`;
+Tone: professional and neutral. Flag jurisdiction-dependent clauses and material unresolved terms in "Negotiation Notes"; do not describe the draft as ready for execution without lawyer review.`;
 
     const userMsg = `Draft a ${def.label}.
 
 Party A: ${partyAName}
 Party B: ${partyBName}
 Effective Date: ${effective}
-Governing Law / Venue: ${jurisdiction}
+Country: ${countryName}
+State / Province / Territory / Governing Law / Venue (if supplied): ${jurisdiction || "[NOT SPECIFIED — flag for review]"}
 
 Key business terms supplied by the user:
 ${userTerms || "(none — use reasonable industry-standard defaults and mark unsupplied facts with [BRACKETED PLACEHOLDERS])"}

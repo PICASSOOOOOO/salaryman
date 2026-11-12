@@ -63,7 +63,7 @@ describe("authoritative world economy location gates", () => {
       durationMs: STANDARD_SHIFT_MS,
       cooldownMs: 10_000,
     });
-    expect(MINIMUM_WAGE_FIAT_PER_HOUR).toBe(300);
+    expect(MINIMUM_WAGE_FIAT_PER_HOUR).toBe(3_000);
     expect(STANDARD_SHIFT_MS).toBe(60_000);
   });
 

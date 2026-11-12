@@ -78,6 +78,7 @@ async function deleteExpiredRecordings(now: Date): Promise<number> {
       id: callHistoryTable.id,
       recordingUrl: callHistoryTable.recordingUrl,
       recordingSid: callHistoryTable.recordingSid,
+      recordingRetainUntil: callHistoryTable.recordingRetainUntil,
     })
     .from(callHistoryTable)
     .where(and(
@@ -92,19 +93,41 @@ async function deleteExpiredRecordings(now: Date): Promise<number> {
   const twilioClient = accountSid && authToken ? twilio(accountSid, authToken) : null;
 
   let deleted = 0;
+  const processedObjects = new Set<string>();
+  const processedTwilioRecordings = new Set<string>();
   for (const row of rows) {
     if (row.recordingUrl?.startsWith("/objects/")) {
+      if (processedObjects.has(row.recordingUrl)) continue;
+      const references = await db.select({
+        id: callHistoryTable.id,
+        recordingRetainUntil: callHistoryTable.recordingRetainUntil,
+      }).from(callHistoryTable).where(eq(callHistoryTable.recordingUrl, row.recordingUrl));
+      if (references.some((reference) =>
+        !reference.recordingRetainUntil || reference.recordingRetainUntil > now,
+      )) continue;
       const removed = await objectStorage.deleteObject(row.recordingUrl);
       if (!removed) continue;
+      await db.update(callHistoryTable)
+        .set({ recordingUrl: null, recordingSid: null })
+        .where(eq(callHistoryTable.recordingUrl, row.recordingUrl));
+      processedObjects.add(row.recordingUrl);
     } else if (row.recordingSid && twilioClient) {
+      if (processedTwilioRecordings.has(row.recordingSid)) continue;
+      const references = await db.select({
+        id: callHistoryTable.id,
+        recordingRetainUntil: callHistoryTable.recordingRetainUntil,
+      }).from(callHistoryTable).where(eq(callHistoryTable.recordingSid, row.recordingSid));
+      if (references.some((reference) =>
+        !reference.recordingRetainUntil || reference.recordingRetainUntil > now,
+      )) continue;
       await twilioClient.recordings(row.recordingSid).remove();
+      await db.update(callHistoryTable)
+        .set({ recordingUrl: null, recordingSid: null })
+        .where(eq(callHistoryTable.recordingSid, row.recordingSid));
+      processedTwilioRecordings.add(row.recordingSid);
     } else {
       continue;
     }
-    await db
-      .update(callHistoryTable)
-      .set({ recordingUrl: null, recordingSid: null })
-      .where(eq(callHistoryTable.id, row.id));
     deleted++;
   }
   return deleted;

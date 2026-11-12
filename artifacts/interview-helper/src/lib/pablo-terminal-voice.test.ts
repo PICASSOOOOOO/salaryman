@@ -8,13 +8,17 @@ const terminal = readFileSync(
 );
 
 describe("Pablo terminal voice routing", () => {
+  it("lets the first real user gesture own the audio unlock", () => {
+    expect(terminal).toContain("armAudioAutoUnlock();");
+    expect(terminal).not.toMatch(/\bunlockAudio\s*\(/);
+  });
+
   it("explicitly requests Pablo instead of relying on the generic TTS voice", () => {
     expect(terminal).toContain(
       'const PABLO_TTS_OPTIONS = { character: "PABLO" } as const;',
     );
-    expect(terminal).toContain(
-      'personaRef.current === "mila" ? "MILA" : "PABLO"',
-    );
+    expect(terminal).not.toContain('personaRef.current === "mila"');
+    expect(terminal).toContain("PABLO_TTS_OPTIONS,");
 
     const directPabloCalls = terminal.match(/PABLO_TTS_OPTIONS/g) ?? [];
     expect(directPabloCalls.length).toBeGreaterThan(10);

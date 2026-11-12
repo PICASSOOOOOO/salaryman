@@ -1,20 +1,9 @@
-import { useState } from "react";
-import { Check, MessageSquare, ShieldCheck } from "lucide-react";
+import { MessageSquare, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 
 const TWILIO_NUMBER = "+18882307698";
 
 export default function SmsOptIn() {
-  const [agreed, setAgreed] = useState(false);
-  const [started, setStarted] = useState(false);
-
-  const startSmsOptIn = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!agreed) return;
-    setStarted(true);
-    window.location.href = `sms:${TWILIO_NUMBER}?body=START`;
-  };
-
   return (
     <main className="min-h-screen bg-[#09090b] text-zinc-200">
       <div className="pointer-events-none fixed inset-0 z-0">
@@ -43,51 +32,39 @@ export default function SmsOptIn() {
             Enable SALARYMAN text messages
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400">
-            Receive important account, phone-system, and service updates by SMS from SALARYMAN.
-            Message frequency varies based on your activity and settings.
+            Opt in to recurring automated informational text messages from SALARYMAN about
+            account activity, CALLL HOME, and service updates. Message frequency varies based
+            on your activity and settings.
           </p>
 
-          {started ? (
-            <div className="mt-8 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] p-4 text-sm leading-6 text-emerald-200">
-              <div className="flex items-start gap-3">
-                <Check className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                <p>
-                  Your SMS app should now be ready with the word <strong>START</strong>.
-                  Send that message to finish confirming your opt-in.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={startSmsOptIn} className="mt-8">
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 transition-colors hover:border-sky-400/30">
-                <input
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={(event) => setAgreed(event.target.checked)}
-                  className="mt-1 h-4 w-4 accent-sky-400"
-                />
-                <span className="text-sm leading-6 text-zinc-300">
-                  I agree to receive recurring automated text messages from SALARYMAN at the
-                  mobile number I use to send the confirmation. Consent is not a condition of
-                  purchasing anything.
-                </span>
-              </label>
-
-              <button
-                type="submit"
-                disabled={!agreed}
-                className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-sky-400 px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Continue to SMS confirmation
-              </button>
-            </form>
-          )}
+          <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+            <p className="text-sm leading-6 text-zinc-300">
+              To opt in, text <strong>START</strong> from your mobile phone to{" "}
+              <strong>{TWILIO_NUMBER}</strong>. Sending START is your consent to recurring
+              automated informational messages from SALARYMAN. Consent is optional and is not
+              a condition of purchase.
+            </p>
+            <a
+              href={`sms:${TWILIO_NUMBER}?body=START`}
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-sky-400 px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-sky-300"
+            >
+              Open a text message
+            </a>
+            <p className="mt-4 text-xs leading-5 text-zinc-500">
+              Your SMS app may open with START ready to send. Review and send the message to
+              finish enrollment.
+            </p>
+          </div>
 
           <div className="mt-7 flex gap-3 border-t border-zinc-800 pt-6 text-xs leading-6 text-zinc-500">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sky-400/70" aria-hidden="true" />
             <p>
               Message and data rates may apply. Reply <strong className="text-zinc-300">STOP</strong> to
-              opt out or <strong className="text-zinc-300">HELP</strong> for help. See our{" "}
+              opt out or <strong className="text-zinc-300">HELP</strong> for help. You can also use{" "}
+              our <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/legal/contact">
+                Contact Us form
+              </a>
+              . See our{" "}
               <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/legal/privacy">
                 Privacy Policy
               </a>{" "}

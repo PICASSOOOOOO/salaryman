@@ -71,7 +71,7 @@ const STATIC_BODY = {
       </div>
       <div style="border:2px solid #7c3aed;border-radius:12px;padding:28px">
         ${badge("#7c3aed","PABLO PRIME")}
-        <div style="font-size:2rem;font-weight:700;margin:16px 0 4px">$149 <span style="font-size:1rem;font-weight:400;color:#a1a1aa">/month</span></div>
+        <div style="font-size:2rem;font-weight:700;margin:16px 0 4px">$100 <span style="font-size:1rem;font-weight:400;color:#a1a1aa">/month</span></div>
         <p style="color:#a1a1aa;font-size:.9rem">Cancel anytime · no contracts</p>
         ${UL([
           "Everything in Free",
@@ -108,7 +108,7 @@ const STATIC_BODY = {
 
   "/pledge/agents": () => `
     ${H1("Pixel Agents — 9 Curated AI Agents")}
-    ${P("The Pixel Agents are SALARYMAN's specialist AI workforce — nine curated agents organized across Core Command, The Academy, Finance Desk, and Creative Studio. Available with a Pablo Prime subscription at $149/month.")}
+    ${P("The Pixel Agents are SALARYMAN's specialist AI workforce — nine curated agents organized across Core Command, The Academy, Finance Desk, and Creative Studio. Available with a PABLO PRIME subscription at $100/month.")}
     ${H2("AGENT DIVISIONS")}
     ${UL([
       "Core Command — Pablo, Jean Claw, and Rick",
@@ -140,7 +140,7 @@ const STATIC_BODY = {
     ${UL([
       "Nine curated AI Pixel Agents organized across Core Command, The Academy, Finance Desk, and Creative Studio",
       "Free tier with Pablo AI assistant — no credit card, no friction entry",
-      "Pablo Prime subscription at $149/month with unlimited access to all agents and tools",
+      "PABLO PRIME subscription at $100/month with access to the curated workforce and automation tools",
       "Full business stack: CRM, phone system, hiring, invoicing, payroll, and creative suite",
       "AI phone system with outbound call agent, AI secretary, and unlimited SMS campaigns",
       "Virtual city-game environment for team collaboration and platform engagement",
@@ -167,6 +167,15 @@ const STATIC_BODY = {
     ${P("For questions not covered in the documents above, use the contact page to reach the team.")}
   `,
 
+  "/sms-opt-in": () => `
+    ${H1("Enable SALARYMAN text messages")}
+    ${P("SALARYMAN Text Updates sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. Message frequency varies based on account activity and settings.")}
+    <p style="color:#a1a1aa;margin:0 0 16px"><input type="checkbox" aria-label="Optional consent to receive SALARYMAN text messages" /> I agree to receive recurring automated text messages from SALARYMAN at the mobile number I use to send the confirmation. Consent is optional and is not a condition of purchase.</p>
+    ${P("To enroll, select the optional checkbox, continue to the SMS confirmation, and send the prefilled START message from your mobile number to +18882307698.")}
+    <p style="color:#a1a1aa;margin:0 0 16px">Message and data rates may apply. Reply STOP to opt out or HELP for help. For support, use our <a href="/legal/contact" style="color:#38bdf8">Contact Us form</a>.</p>
+    <p>${A("/legal/privacy","Privacy Policy")} &nbsp;·&nbsp; ${A("/legal/terms","Terms of Service")}</p>
+  `,
+
   "/legal/terms": () => `
     ${H1("Terms of Service")}
     ${P("These Terms of Service govern your use of the SALARYMAN platform operated by Picasso AI. By accessing or using SALARYMAN, you agree to be bound by these terms.")}
@@ -180,7 +189,11 @@ const STATIC_BODY = {
       "Pixel Agents and AI tools must not be used to generate harmful, illegal, or deceptive content",
     ])}
     ${H2("SUBSCRIPTIONS")}
-    ${P("The free tier gives you access to Pablo and core tools. The Pablo Prime subscription ($149/month) grants access to all Pixel Agents and premium features. Subscriptions renew monthly until cancelled.")}
+    ${P("The free tier gives you access to Pablo and core tools. PABLO PRIME ($100/month) grants access to Pixel Agents and automation tools. CALLL HOME is a separate $50/month subscription. Subscriptions renew monthly until cancelled.")}
+    ${H2("SMS MESSAGING PROGRAM")}
+    ${P("SALARYMAN Text Updates sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. To opt in, select the optional checkbox on the SMS opt-in page and send START from your mobile number. Consent is not a condition of purchase.")}
+    ${P("Message frequency varies. Message and data rates may apply. Reply STOP to cancel or HELP for help. Customer care is available through the Contact Us page. Wireless carriers are not liable for delayed or undelivered messages.")}
+    <p>${A("/sms-opt-in","SMS opt-in page")} &nbsp;·&nbsp; ${A("/legal/contact","Contact Us")}</p>
     ${H2("INTELLECTUAL PROPERTY")}
     ${P("SALARYMAN, Picasso AI, Pablo, Jean Claw, and Pixel Agents are trademarks of Picasso AI. Content you create using the platform remains your property.")}
     <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/privacy","Privacy Policy")}</p>
@@ -205,6 +218,11 @@ const STATIC_BODY = {
       "To communicate service updates, support responses, and relevant announcements",
       "To maintain platform security and prevent abuse",
     ])}
+    ${H2("SUPPORT REQUESTS")}
+    ${P("Support and investor inquiries submitted through the Contact Us and Investors forms are routed through Resend to authorized SALARYMAN project owners for review and response.")}
+    ${H2("SMS AND CONSENT DATA")}
+    ${P("Recurring SALARYMAN text messages are informational updates about account activity, CALLL HOME, and service updates. Message frequency varies; message and data rates may apply. Reply STOP to opt out or HELP for help.")}
+    ${P("All the above categories exclude text messaging originator opt-in data and consent; this information won’t be shared with any third parties.")}
     ${H2("YOUR RIGHTS")}
     ${P("You may request access to, correction of, or deletion of your personal data at any time. Contact us through the contact page to make a data request.")}
     ${H2("DATA RETENTION")}
@@ -216,7 +234,7 @@ const STATIC_BODY = {
     ${H1("Contact Picasso AI")}
     ${P("Get in touch with the SALARYMAN team for support, partnerships, press inquiries, and general questions.")}
     ${H2("SUPPORT")}
-    ${P("For platform support and account questions, use the contact form inside the SALARYMAN platform or reach us through Pablo — type 'I need help' to get started.")}
+    <p style="color:#a1a1aa;margin:0 0 16px">For platform support and account questions, use the <a href="/legal/contact" style="color:#38bdf8">SALARYMAN Contact Us form</a>.</p>
     ${H2("PARTNERSHIPS")}
     ${P("Interested in partnering with Picasso AI or integrating with the SALARYMAN platform? Reach out through the investor contact form on the investors page.")}
     ${H2("PRESS & MEDIA")}
@@ -288,7 +306,7 @@ const STATIC_BODY = {
       "Picasso AI reserves the right to verify eligibility before applying promotional pricing",
     ])}
     ${H2("DURATION & EXPIRY")}
-    ${P("Promotional pricing applies for the duration specified in the offer. After the promotional period, the standard subscription rate of $149/month applies unless you cancel before renewal.")}
+    ${P("Promotional pricing applies for the duration specified in the offer. After the promotional period, the standard subscription rate of $100/month applies unless you cancel before renewal.")}
     ${H2("MODIFICATION")}
     ${P("Picasso AI reserves the right to modify or discontinue promotional offers at any time without prior notice. Active promotional subscriptions are honoured for their committed term.")}
     <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/pricing","Current Pricing")}</p>

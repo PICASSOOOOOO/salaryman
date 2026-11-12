@@ -11,7 +11,7 @@ vi.mock("../lib/plan", () => ({
   grantFeature: vi.fn(),
   revokeFeatureBySubscription: vi.fn(),
   FEATURE_CATALOG: {
-    claw_bot: { name: "Automation Pixel Agents", price: 149 },
+    claw_bot: { name: "Automation Pixel Agents", price: 100 },
   },
   isUsdPaidFeature: (value: string) => value === "claw_bot" || value === "phone_system",
   resolveFeatureKey: (value: string) => value === "claw_bot" ? "claw_bot" : undefined,

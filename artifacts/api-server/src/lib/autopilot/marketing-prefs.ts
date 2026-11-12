@@ -21,6 +21,7 @@ const TONES = AUTOPILOT_MARKETING_TONES as readonly string[];
  *   • platforms — only known social platforms, de-duped (empty = no restriction)
  *   • tone      — only an allowed tone, else the default
  *   • topics    — trimmed, non-empty, capped in count and length
+ *   • generated images — disabled unless explicitly enabled by the org owner
  */
 export function sanitizeMarketingPrefs(raw: unknown): MarketingAutopilotPrefs {
   const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -40,12 +41,24 @@ export function sanitizeMarketingPrefs(raw: unknown): MarketingAutopilotPrefs {
         .map((t) => t.slice(0, AUTOPILOT_MAX_MARKETING_TOPIC_LEN))
     : [];
 
-  return { platforms, tone, topics };
+  return {
+    platforms,
+    tone,
+    topics,
+    generateImages: obj.generateImages === true,
+    imageGenerationApprovedBy:
+      typeof obj.imageGenerationApprovedBy === "string" ? obj.imageGenerationApprovedBy : null,
+  };
 }
 
 /** Read normalized marketing prefs from a stored config's `prefs` jsonb. */
 export function readMarketingPrefs(prefs: unknown): MarketingAutopilotPrefs {
   return sanitizeMarketingPrefs(prefs);
+}
+
+/** Only the current owner can authorize image generation against their battery. */
+export function isMarketingImageGenerationApproved(prefs: MarketingAutopilotPrefs, ownerId: string): boolean {
+  return prefs.generateImages && Boolean(ownerId) && prefs.imageGenerationApprovedBy === ownerId;
 }
 
 /**

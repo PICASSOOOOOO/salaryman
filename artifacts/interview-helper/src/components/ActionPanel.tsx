@@ -4,6 +4,7 @@ import type { InterviewMode } from '@/hooks/use-interview';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { useTranslation } from 'react-i18next';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 interface ActionPanelProps {
   onAction: (mode: InterviewMode) => void;
@@ -71,7 +72,7 @@ const actionDefs = [
   },
 ];
 
-export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerMode = false }: ActionPanelProps) {
+export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerMode = getDefaultBoomerMode() }: ActionPanelProps) {
   const { openPledgePopup } = usePledgePopup();
   const { t } = useTranslation();
 

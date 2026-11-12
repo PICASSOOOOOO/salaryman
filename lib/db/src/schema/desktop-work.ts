@@ -22,6 +22,8 @@ export const desktopWorkLeasesTable = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     maxMinutes: integer("max_minutes").notNull().default(480),
     consumedMinutes: integer("consumed_minutes").notNull().default(0),
+    verifiedSeconds: integer("verified_seconds").notNull().default(0),
+    presenceLastSeenAt: timestamp("presence_last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

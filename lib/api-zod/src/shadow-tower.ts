@@ -29,6 +29,7 @@ const footprintSchema = z.object({
   x: z.number().int().nonnegative(), y: z.number().int().nonnegative(),
   cols: z.number().int().positive(), rows: z.number().int().positive(),
 }).strict();
+const SHADOW_TOWER_UNIT_LIMIT = 4;
 const shadowTowerDoorSchema = z.object({
   side: z.enum(["top", "bottom", "left", "right"]),
   at: z.number().int().nonnegative(),
@@ -60,6 +61,31 @@ export const shadowTowerPlanSchema = z.object({
 }).strict();
 export type ShadowTowerPlan = z.infer<typeof shadowTowerPlanSchema>;
 
+/**
+ * Player-authored furniture is a separate layer from the protected floor plan.
+ * Coordinates use the shared floor grid; unitNumber scopes each placement to a
+ * specific suite so rentals and owned offices can share the same contract.
+ */
+export const shadowTowerCustomOfficeLayoutSchema = z.object({
+  version: z.literal(1),
+  placements: z.array(z.object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/),
+    unitNumber: z.number().int().min(1).max(SHADOW_TOWER_UNIT_LIMIT),
+    kind: z.enum(["desk", "plant", "storage", "divider"]),
+    col: z.number().int().nonnegative(),
+    row: z.number().int().nonnegative(),
+    rotation: z.union([z.literal(0), z.literal(90)]).default(0),
+  }).strict()).max(32),
+}).strict();
+export type ShadowTowerCustomOfficeLayout = z.infer<typeof shadowTowerCustomOfficeLayoutSchema>;
+
+const CUSTOM_OFFICE_FURNITURE_SIZE = {
+  desk: { cols: 2, rows: 1 },
+  plant: { cols: 1, rows: 1 },
+  storage: { cols: 2, rows: 1 },
+  divider: { cols: 3, rows: 1 },
+} as const;
+
 export const shadowTowerListingSchema = z.object({
   archetype: z.enum(SHADOW_TOWER_ARCHETYPES),
   title: z.string().min(1), subtitle: z.string().min(1), capacity: z.number().int().positive(),
@@ -76,8 +102,11 @@ export const SHADOW_TOWER_LISTINGS: Record<ShadowTowerArchetype, ShadowTowerList
 /** The real-estate shell is deliberately independent of the playable tile map. */
 export const SHADOW_TOWER_FLOOR_ENVELOPE = { widthPixels: 100_000, heightPixels: 100_000, squareMeters: 10_000 } as const;
 export const SHADOW_TOWER_MIN_OFFICE_UNITS = 1;
-export const SHADOW_TOWER_MAX_OFFICE_UNITS = 4;
-export const SHADOW_TOWER_RESERVED_FLOORS = [1, 2, 3, 4, 40, 52, 65, 66, 67] as const;
+export const SHADOW_TOWER_MAX_OFFICE_UNITS = SHADOW_TOWER_UNIT_LIMIT;
+export const SHADOW_TOWER_RESERVED_FLOORS = [
+  1, 2, 3, 4,
+  55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
+] as const;
 
 export const SHADOW_TOWER_FIAT_PER_SQUARE_METER: Record<ShadowTowerArchetype, Record<"own" | "lease", number>> = {
   founder_team: { own: 24, lease: 1.2 },
@@ -98,7 +127,7 @@ export const shadowTowerHallwaySchema = z.object({
 export type ShadowTowerHallway = z.infer<typeof shadowTowerHallwaySchema>;
 
 export function isCommercialShadowTowerFloor(floorNumber: number) {
-  return Number.isInteger(floorNumber) && floorNumber >= 5 && floorNumber <= 64
+  return Number.isInteger(floorNumber) && floorNumber >= 5 && floorNumber <= 54
     && !(SHADOW_TOWER_RESERVED_FLOORS as readonly number[]).includes(floorNumber);
 }
 
@@ -121,10 +150,28 @@ export function quoteShadowTowerFloor(archetype: ShadowTowerArchetype, floorNumb
 export type ShadowTowerOfficeGeometry = {
   unitNumber: number; xPixels: number; yPixels: number; widthPixels: number; heightPixels: number; squareMeters: number;
 };
-/** Equal vertical strips cover the entire canonical envelope without gaps or overflow. */
+/**
+ * Commercial addresses are laid out as four large rectangular suites around a
+ * cross-shaped circulation hall. The real-estate envelope remains a square
+ * meter accounting surface, while the pixel coordinates describe the
+ * walkable/visual plan. Keep the one-to-three legacy subdivisions stable for
+ * already-settled floors.
+ */
 export function getShadowTowerOfficeUnitGeometry(officeCount: number): ShadowTowerOfficeGeometry[] {
   if (!Number.isInteger(officeCount) || officeCount < SHADOW_TOWER_MIN_OFFICE_UNITS || officeCount > SHADOW_TOWER_MAX_OFFICE_UNITS) {
     throw new Error("officeCount must be between 1 and 4");
+  }
+  if (officeCount === 4) {
+    const suites = [
+      { xPixels: 4_000, yPixels: 4_000, widthPixels: 42_000, heightPixels: 42_000 },
+      { xPixels: 54_000, yPixels: 4_000, widthPixels: 42_000, heightPixels: 42_000 },
+      { xPixels: 4_000, yPixels: 54_000, widthPixels: 42_000, heightPixels: 42_000 },
+      { xPixels: 54_000, yPixels: 54_000, widthPixels: 42_000, heightPixels: 42_000 },
+    ];
+    return suites.map((suite, index) => ({
+      unitNumber: index + 1, ...suite,
+      squareMeters: SHADOW_TOWER_FLOOR_ENVELOPE.squareMeters / 4,
+    }));
   }
   const width = SHADOW_TOWER_FLOOR_ENVELOPE.widthPixels / officeCount;
   return Array.from({ length: officeCount }, (_, index) => ({
@@ -168,17 +215,23 @@ function terminalObjects(upgrades: readonly string[]) {
 }
 
 function officeUnitObjects(count: number, floorNumber: number) {
-  // The elevator hall occupies the west-side circulation core. Suites run
-  // continuously along the north perimeter instead of floating in the room.
-  const suiteStart = 4;
-  const suiteWidth = Math.floor(26 / count);
-  return Array.from({ length: count }, (_, index) => ({
+  // Four large suites sit around a connected cross hallway. The elevator
+  // landing is west of the hall; each suite has a single door into circulation.
+  const suitePlans = [
+    { x: 4, y: 1, cols: 12, rows: 8, side: "bottom" as const },
+    { x: 20, y: 1, cols: 12, rows: 8, side: "bottom" as const },
+    { x: 4, y: 15, cols: 12, rows: 8, side: "top" as const },
+    { x: 20, y: 15, cols: 12, rows: 8, side: "top" as const },
+  ];
+  return suitePlans.slice(0, count).map((suite, index) => ({
     id: `office-address-${floorNumber}-${String(index + 1).padStart(2, "0")}`,
     kind: "office_unit" as const,
-    footprint: rect(suiteStart + index * suiteWidth, 0, suiteWidth, 7),
+    footprint: rect(suite.x, suite.y, suite.cols, suite.rows),
     door: {
-      side: "bottom" as const,
-      at: suiteStart + index * suiteWidth + Math.max(0, Math.floor((suiteWidth - 2) / 2)),
+      side: suite.side,
+      at: suite.side === "bottom"
+        ? suite.x + Math.floor((suite.cols - 2) / 2)
+        : suite.x + Math.floor((suite.cols - 2) / 2),
       span: 2,
       access: "password" as const,
     },
@@ -193,22 +246,22 @@ export function getShadowTowerPlan(city: ShadowTowerCity, floorNumber: number, a
   const suites = officeUnitObjects(suiteCount, floorNumber);
   const executiveSuite = suites[0];
   const plan: ShadowTowerPlan = {
-    floorType: "office", city, floorNumber, archetype, cols: 30, rows: archetype === "company" ? 18 : 16, spawn: { x: 3, y: 10 },
+    floorType: "office", city, floorNumber, archetype, cols: 36, rows: 24, spawn: { x: 3, y: 12 },
     objects: [
-      { id: "elevator", kind: "elevator", footprint: rect(0, 1, 2, 2), interactive: true },
-      { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 0, 4, 8), interactive: false },
+      { id: "elevator", kind: "elevator", footprint: rect(1, 10, 2, 2), interactive: true },
+      { id: "elevator-hall", kind: "elevator_hall", footprint: rect(0, 8, 5, 8), interactive: false },
       ...suites,
       // Suite 1 is the furnished executive office assigned to the founder.
       { id: "executive-desk", kind: "executive_desk" as const, footprint: rect(executiveSuite.footprint.x + 2, 5, 2, 1), interactive: false },
       { id: "executive-terminal", kind: "terminal" as const, footprint: rect(executiveSuite.footprint.x + 5, 5, 1, 1), interactive: true },
       // Additional desks and terminals are separate vending-machine fit-outs.
       ...(enabledUpgrades.includes("extra_workstations")
-        ? workstationObjects(4, 6, 9)
-        : workstationObjects(enabledUpgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length, 6, 9)),
+        ? workstationObjects(4, 6, 3)
+        : workstationObjects(enabledUpgrades.filter((upgrade) => /^extra_desk(?:_[2-4])?$/.test(upgrade)).length, 6, 3)),
       ...terminalObjects(enabledUpgrades),
       { id: "atm", kind: "atm", footprint: rect(2, 13, 1, 1), interactive: true },
-      { id: "vending", kind: "vending_machine", footprint: rect(27, 11, 1, 1), interactive: true },
-      { id: "stairs", kind: "stairs", footprint: rect(27, 13, 2, 2), interactive: true },
+      { id: "vending", kind: "vending_machine", footprint: rect(31, 11, 1, 1), interactive: true },
+      { id: "stairs", kind: "stairs", footprint: rect(33, 19, 2, 2), interactive: true },
     ],
     upgrades: enabledUpgrades, collisionFootprints: [],
   };
@@ -357,6 +410,66 @@ function occupiedCells(footprint: z.infer<typeof footprintSchema>) {
   const cells: string[] = [];
   for (let x = footprint.x; x < footprint.x + footprint.cols; x++) for (let y = footprint.y; y < footprint.y + footprint.rows; y++) cells.push(`${x},${y}`);
   return cells;
+}
+
+/** Validate player furniture without allowing it to alter the server-owned shell. */
+export function validateShadowTowerCustomOfficeLayout(
+  plan: ShadowTowerPlan,
+  value: unknown,
+): { ok: true; layout: ShadowTowerCustomOfficeLayout } | { ok: false; errors: string[] } {
+  const parsed = shadowTowerCustomOfficeLayoutSchema.safeParse(value);
+  if (!parsed.success) return { ok: false, errors: parsed.error.issues.map((issue) => issue.message) };
+  const layout = parsed.data;
+  const suites = plan.objects.filter((object) => object.kind === "office_unit").sort((a, b) => a.id.localeCompare(b.id));
+  const errors: string[] = [];
+  const occupied = new Set<string>();
+  const ids = new Set<string>();
+
+  for (const item of layout.placements) {
+    if (ids.has(item.id)) errors.push(`${item.id} is duplicated`);
+    ids.add(item.id);
+    const suite = suites[item.unitNumber - 1];
+    if (!suite) {
+      errors.push(`${item.id} references a missing office unit`);
+      continue;
+    }
+    const base = CUSTOM_OFFICE_FURNITURE_SIZE[item.kind];
+    const cols = item.rotation === 90 ? base.rows : base.cols;
+    const rows = item.rotation === 90 ? base.cols : base.rows;
+    const fp = { x: item.col, y: item.row, cols, rows };
+    if (fp.x < suite.footprint.x + 1 || fp.y < suite.footprint.y + 1
+      || fp.x + fp.cols > suite.footprint.x + suite.footprint.cols - 1
+      || fp.y + fp.rows > suite.footprint.y + suite.footprint.rows - 1) {
+      errors.push(`${item.id} must stay inside office unit ${item.unitNumber}`);
+      continue;
+    }
+
+    const itemCells = occupiedCells(fp);
+    const reservedCells = new Set(plan.collisionFootprints.flatMap(occupiedCells));
+    const door = suite.door;
+    if (door) {
+      const doorX = door.side === "left" ? suite.footprint.x
+        : door.side === "right" ? suite.footprint.x + suite.footprint.cols - 1 : door.at;
+      const doorY = door.side === "top" ? suite.footprint.y
+        : door.side === "bottom" ? suite.footprint.y + suite.footprint.rows - 1 : door.at;
+      for (let dx = 0; dx < door.span; dx++) {
+        for (let dy = 1; dy <= 2; dy++) {
+          const x = door.side === "left" ? doorX + dy : door.side === "right" ? doorX - dy : doorX + dx;
+          const y = door.side === "top" ? doorY + dy : door.side === "bottom" ? doorY - dy : doorY + dx;
+          reservedCells.add(`${x},${y}`);
+        }
+      }
+    }
+    if (itemCells.some((cell) => reservedCells.has(cell))) {
+      errors.push(`${item.id} overlaps fixed furniture or the office entrance`);
+    }
+    if (itemCells.some((cell) => occupied.has(cell))) {
+      errors.push(`${item.id} overlaps another custom placement`);
+    }
+    itemCells.forEach((cell) => occupied.add(cell));
+  }
+
+  return errors.length ? { ok: false, errors } : { ok: true, layout };
 }
 
 /** Rejects visual-only geometry, footprint drift, bad numbered identity, and unreachable interactions. */
@@ -544,42 +657,48 @@ export function getShadowTowerCommercialTenants(floorNumber: number): ShadowTowe
   const businesses = TOWER_INFRASTRUCTURE_BUSINESSES.filter((business) =>
     business.coverage === "single_suite" && businessFloorNumber(business) === floorNumber,
   );
-  return businesses.map((business, index) => {
-    const unitNumber = index + 1;
-    const unitCol = 5 + (unitNumber - 1) * 12;
-    const residentId = 1400 + TOWER_INFRASTRUCTURE_BUSINESSES.indexOf(business);
-    const residentName = `${business.name} OPERATOR`;
-    return {
-      business,
-      businessKey: business.key,
-      floorNumber,
-      unitNumber,
-      fitoutKind: resolveBusinessFloorKind(business.category),
-      fitout: BUSINESS_FLOOR_TEMPLATES[resolveBusinessFloorKind(business.category)],
-      resident: {
-        id: residentId,
-        name: residentName,
-        role: `${business.category.toUpperCase()} · ${business.operatorCode}`,
-        color: business.color,
-        logo: business.logo,
-        col: unitCol,
-        row: 8,
-        path: [
-          { col: unitCol, row: 8 },
-          { col: Math.min(unitCol + 3, 26), row: 8 },
-          { col: Math.min(unitCol + 3, 26), row: 12 },
-          { col: unitCol, row: 12 },
-        ],
-        speed: 0.12 + (residentId % 7) * 0.025,
-      },
-      service: {
-        label: business.service,
-        description: business.ad,
-        settlementPath: "/business/services",
-      },
-      conversation: getTowerBusinessConversation(business)!,
-    };
-  });
+  return businesses.map((business, index) =>
+    createShadowTowerServiceTenant(business, floorNumber, index + 1),
+  );
+}
+
+function createShadowTowerServiceTenant(
+  business: TowerInfrastructureBusiness,
+  floorNumber: number,
+  unitNumber: number,
+): ShadowTowerCommercialTenant {
+  const unitCol = 5 + (unitNumber - 1) * 12;
+  const residentId = 1400 + TOWER_INFRASTRUCTURE_BUSINESSES.indexOf(business);
+  return {
+    business,
+    businessKey: business.key,
+    floorNumber,
+    unitNumber,
+    fitoutKind: resolveBusinessFloorKind(business.category),
+    fitout: BUSINESS_FLOOR_TEMPLATES[resolveBusinessFloorKind(business.category)],
+    resident: {
+      id: residentId,
+      name: `${business.name} OPERATOR`,
+      role: `${business.category.toUpperCase()} · ${business.operatorCode}`,
+      color: business.color,
+      logo: business.logo,
+      col: unitCol,
+      row: 8,
+      path: [
+        { col: unitCol, row: 8 },
+        { col: Math.min(unitCol + 3, 26), row: 8 },
+        { col: Math.min(unitCol + 3, 26), row: 12 },
+        { col: unitCol, row: 12 },
+      ],
+      speed: 0.12 + (residentId % 7) * 0.025,
+    },
+    service: {
+      label: business.service,
+      description: business.ad,
+      settlementPath: "/business/services",
+    },
+    conversation: getTowerBusinessConversation(business)!,
+  };
 }
 
 /**
@@ -592,8 +711,20 @@ export function getShadowTowerServiceTenant(businessKey: string): ShadowTowerCom
   if (!business || business.coverage !== "single_suite") return null;
   const placement = getTowerBusinessPlacement(business);
   if (placement?.floorNumber == null || placement.unitNumber == null) return null;
-  return getShadowTowerCommercialTenants(placement.floorNumber)
-    .find((tenant) => tenant.businessKey === business.key) ?? null;
+  const commercialTenant = getShadowTowerCommercialTenants(placement.floorNumber)
+    .find((tenant) => tenant.businessKey === business.key);
+  if (commercialTenant) return commercialTenant;
+
+  // F2–F4 remain construction sites; only their explicitly operational,
+  // named businesses may expose their own service board before fit-out is done.
+  if (
+    placement.floorNumber >= 2
+    && placement.floorNumber <= 4
+    && business.physicalState === "operational"
+  ) {
+    return createShadowTowerServiceTenant(business, placement.floorNumber, placement.unitNumber);
+  }
+  return null;
 }
 
 export type ShadowTowerCommercialFloor = {

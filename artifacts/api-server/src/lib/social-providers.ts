@@ -1,3 +1,5 @@
+import { publishOAuthPost } from "./social-oauth-publishers";
+
 // ─── Social providers ────────────────────────────────────────────────────────
 // Real connection + publish layer behind the Marketing Command Center. Each
 // platform is a provider with a common interface. Providers fall into two camps:
@@ -169,16 +171,26 @@ function oauthProvider(
   charLimit: number,
   connectHint: string,
 ): SocialProviderDef {
+  const customerConfiguredOAuth = ["facebook", "instagram", "threads", "tiktok", "youtube"].includes(id);
   return {
     id,
     label,
     authType: "oauth",
-    available: false,
+    available: customerConfiguredOAuth,
     requiresAppConfig: true,
-    appConfigEnv,
+    appConfigEnv: customerConfiguredOAuth ? [] : appConfigEnv,
     charLimit,
-    credentialFields: [],
-    connectHint,
+    credentialFields: [
+      { key: "clientId", label: id === "tiktok" ? "Client key" : "App / client ID", type: "text" },
+      { key: "clientSecret", label: "App / client secret", type: "password" },
+    ],
+    connectHint: customerConfiguredOAuth
+      ? "Use your own platform developer app. Add the callback URL shown below to that app, then enter its client ID and secret."
+      : connectHint,
+    ...(customerConfiguredOAuth
+      ? { publish: (creds: Record<string, string>, input: ProviderPublishInput) =>
+          publishOAuthPost(id as "facebook" | "instagram" | "threads" | "tiktok" | "youtube", creds, input) }
+      : {}),
   };
 }
 

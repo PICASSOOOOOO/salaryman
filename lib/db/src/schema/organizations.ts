@@ -3,10 +3,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 
-export const RESERVED_ORG_NAMES = ["picasso", "picassoo", "picasso ai", "picasso ai llc", "picassoo.ai"];
+// Business names are user-selectable. Normalization and the existing
+// case-insensitive uniqueness check prevent accidental duplicates without
+// maintaining a hidden allow/deny list.
+export const RESERVED_ORG_NAMES: string[] = [];
 
-export function isReservedOrgName(name: string): boolean {
-  return RESERVED_ORG_NAMES.includes(normalizeOrgName(name).toLowerCase());
+/** @deprecated Kept as a compatibility export; no business name is reserved. */
+export function isReservedOrgName(_name: string): boolean {
+  return false;
 }
 
 export function normalizeOrgName(name: string): string {
@@ -33,6 +37,10 @@ export const organizationsTable = pgTable("organizations", {
   entityType: varchar("entity_type", { length: 80 }),
   ownerUserId: varchar("owner_user_id").notNull(),
   stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
+  billingPlan: varchar("billing_plan", { length: 20 }).notNull().default("free"),
+  stripePlanSubscriptionId: varchar("stripe_plan_subscription_id", { length: 100 }),
+  // Keep paid organization data protected even after its Stripe subscription ends.
+  hasPaidHistory: boolean("has_paid_history").notNull().default(false),
   isDeveloper: boolean("is_developer").notNull().default(false),
   adultContentEnabled: boolean("adult_content_enabled").notNull().default(false),
   isEducation: boolean("is_education").notNull().default(false),
@@ -118,6 +126,9 @@ export const orgMembersTable = pgTable(
     department: varchar("department", { length: 100 }),
     spawnLocation: varchar("spawn_location", { length: 100 }),
     featureBilling: varchar("feature_billing", { length: 20 }).notNull().default("individual"),
+    seatBilling: varchar("seat_billing", { length: 20 }).notNull().default("individual"),
+    seatStatus: varchar("seat_status", { length: 20 }).notNull().default("not_required"),
+    stripeSeatSubscriptionId: varchar("stripe_seat_subscription_id", { length: 100 }),
     status: varchar("status", { length: 20 }).notNull().default("invited"),
     invitedByUserId: varchar("invited_by_user_id"),
     title: varchar("title", { length: 200 }),
@@ -166,6 +177,7 @@ export const orgInvitesTable = pgTable("org_invites", {
   offeredTitle: varchar("offered_title", { length: 200 }),
   offeredDepartment: varchar("offered_department", { length: 120 }),
   offeredMemberType: varchar("offered_member_type", { length: 20 }),
+  offeredSeatBilling: varchar("offered_seat_billing", { length: 20 }).notNull().default("individual"),
   offeredSalary: integer("offered_salary"),
   offerMessage: text("offer_message"),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
@@ -259,6 +271,11 @@ export const ORG_PERMISSION_KEYS = [
   "autopilot.manage",
   "website.manage",
   "org.settings",
+  "phone.supervise",
+  "custom_apps.view",
+  "custom_apps.edit",
+  "custom_apps.manage",
+  "storage.access",
 ] as const;
 export type OrgPermissionKey = (typeof ORG_PERMISSION_KEYS)[number];
 
@@ -277,9 +294,14 @@ export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; desc
   "members.view": { label: "View roster", description: "See the full list of organization members.", group: "People" },
   "members.manage": { label: "Manage members", description: "Invite, remove and change roles of members.", group: "People" },
   "billing.manage": { label: "Manage billing", description: "Manage subscriptions, plans and payment methods.", group: "Admin" },
-  "autopilot.manage": { label: "Manage autopilot", description: "Assign bots to domains and turn autopilot on or off.", group: "Admin" },
+  "autopilot.manage": { label: "Manage autopilot", description: "Manage scheduled workflows and their settings.", group: "Admin" },
   "website.manage": { label: "Manage public website", description: "Connect a Framer site and manage the org's public SALARYMAN-hosted site.", group: "Admin" },
   "org.settings": { label: "Edit settings & permissions", description: "Change org settings and edit this permissions matrix.", group: "Admin" },
+  "phone.supervise": { label: "Supervise organization calls", description: "View employee call details, transcripts, and connection health; join active calls to listen or privately coach.", group: "Phone" },
+  "custom_apps.view": { label: "View custom apps", description: "Open published custom pages and read their organization records.", group: "Apps" },
+  "custom_apps.edit": { label: "Edit custom app records", description: "Create, update, and delete records in published custom pages.", group: "Apps" },
+  "custom_apps.manage": { label: "Manage custom apps", description: "Create, edit, publish, and delete organization custom pages.", group: "Apps" },
+  "storage.access": { label: "Access org storage", description: "Deposit and withdraw equipment from the shared organization storage room.", group: "Operations" },
 };
 
 // Sensible defaults applied when an org has not customized a key.
@@ -296,6 +318,11 @@ export const DEFAULT_PERMISSION_MIN_ROLE: Record<OrgPermissionKey, OrgRole> = {
   "autopilot.manage": "manager",
   "website.manage": "manager",
   "org.settings": "ceo",
+  "phone.supervise": "manager",
+  "custom_apps.view": "specialist",
+  "custom_apps.edit": "specialist",
+  "custom_apps.manage": "manager",
+  "storage.access": "specialist",
 };
 
 export const orgPermissionsTable = pgTable(

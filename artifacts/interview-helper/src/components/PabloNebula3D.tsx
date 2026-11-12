@@ -102,19 +102,79 @@ function webglAvailable(): boolean {
 function NebulaFallback2D({ status, size, variant, animate = true }: { status: NebulaStatus; size: number; variant: NebulaVariant; animate?: boolean }) {
   const c = variant.fallback[status] ?? variant.fallback.idle;
   const pulseSpeed = status === "listening" ? "1.4s" : status === "speaking" ? "1.8s" : status === "thinking" ? "2.2s" : "3.5s";
+  const driftSpeed = status === "listening" ? "9s" : status === "speaking" ? "7s" : "14s";
+  const clouds = [
+    { left: "12%", top: "20%", color: c.halo, opacity: 0.34, delay: "0s" },
+    { left: "56%", top: "16%", color: c.core, opacity: 0.28, delay: "-4s" },
+    { left: "30%", top: "58%", color: c.ring, opacity: 0.38, delay: "-8s" },
+  ];
   return (
-    <div style={{ width: size, height: size, position: "relative" }} aria-label="Pablo nebula (2D fallback)">
+    <div
+      style={{
+        width: size,
+        height: size,
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "50%",
+        background: [
+          `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 16%, transparent 48%)`,
+          `radial-gradient(ellipse at 20% 70%, ${c.ring} 0%, transparent 55%)`,
+          `radial-gradient(ellipse at 82% 28%, ${c.halo} 0%, transparent 52%)`,
+        ].join(","),
+      }}
+      aria-label="Pablo nebula (2D fallback)"
+    >
       <div style={{
         position: "absolute", inset: 0, borderRadius: "50%",
-        background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 28%, ${c.ring} 55%, transparent 78%)`,
-        filter: "blur(2px)",
+        background: `conic-gradient(from 20deg at 50% 50%, transparent, ${c.halo}55, transparent 28%, ${c.core}44, transparent 62%, ${c.ring}66, transparent)`,
+        filter: animate ? "blur(12px)" : "blur(6px)",
         // When the user has prefers-reduced-motion the orb is fully static —
         // otherwise we'd be honoring "reduce motion" by swapping a moving
         // shader for a slightly slower-moving CSS pulse, which isn't really
         // honoring it at all.
         animation: animate ? `pablo-pulse ${pulseSpeed} ease-in-out infinite` : "none",
       }} />
-      <style>{`@keyframes pablo-pulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.05); opacity: 1; } }`}</style>
+      {clouds.map((cloud) => (
+        <div
+          key={`${cloud.left}-${cloud.top}`}
+          style={{
+            position: "absolute",
+            left: cloud.left,
+            top: cloud.top,
+            width: "56%",
+            height: "42%",
+            borderRadius: "50%",
+            background: `radial-gradient(ellipse, ${cloud.color} 0%, transparent 72%)`,
+            opacity: cloud.opacity,
+            filter: animate ? "blur(18px)" : "blur(10px)",
+            mixBlendMode: "screen",
+            animation: animate ? `pablo-nebula-drift ${driftSpeed} ease-in-out infinite alternate` : "none",
+            animationDelay: cloud.delay,
+          }}
+        />
+      ))}
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.16, mixBlendMode: "screen" }}
+      >
+        <filter id="pablo-fallback-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="7" />
+          <feColorMatrix values="1 0 0 0 0  0 1 0 0 0.1  0 0 1 0 0.35  0 0 0 0.8 0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#pablo-fallback-noise)" />
+      </svg>
+      <style>{`
+        @keyframes pablo-pulse {
+          0%,100% { transform: scale(1) rotate(0deg); opacity: 0.82; }
+          50% { transform: scale(1.06) rotate(8deg); opacity: 1; }
+        }
+        @keyframes pablo-nebula-drift {
+          0% { transform: translate3d(-8%, 5%, 0) scale(0.92) rotate(-8deg); }
+          100% { transform: translate3d(10%, -8%, 0) scale(1.14) rotate(12deg); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -224,7 +284,7 @@ const WAVE_FRAGMENT = /* glsl */ `
   }
 `;
 
-function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaVariant }) {
+function WaveField({ status, variant, animate = true }: { status: NebulaStatus; variant: NebulaVariant; animate?: boolean }) {
   const { size, set, invalidate } = useThree();
   const palette = variant.palette[status] ?? variant.palette.idle;
   const dyn = STATUS_DYNAMICS[status];
@@ -241,7 +301,7 @@ function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaV
     if (typeof document === "undefined") return;
     const apply = () => {
       const hidden = document.hidden;
-      set({ frameloop: hidden ? "never" : "always" });
+      set({ frameloop: hidden || !animate ? "never" : "always" });
       if (!hidden) invalidate();
     };
     apply(); // sync to current state at mount
@@ -251,7 +311,7 @@ function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaV
       // Restore the default in case some other consumer takes over.
       set({ frameloop: "always" });
     };
-  }, [set, invalidate]);
+  }, [set, invalidate, animate]);
 
   // Targets we lerp the uniforms toward so emotion (and persona) changes glide
   // instead of popping. Refs so we don't re-allocate the vector each frame.
@@ -300,6 +360,7 @@ function WaveField({ status, variant }: { status: NebulaStatus; variant: NebulaV
   }, [size.width, size.height, material]);
 
   useFrame((_, delta) => {
+    if (!animate) return;
     // No need to gate on visibility here — the visibilitychange effect above
     // flips R3F's frameloop to 'never' when the tab is hidden, so useFrame
     // doesn't fire at all in that case.
@@ -373,14 +434,16 @@ export function PabloNebula3D({
     return window.innerWidth < 640 ? [1, 1.25] : [1, 2];
   }, []);
 
-  if (hasWebGL === false || contextLost || reduceMotion || lowGfx) {
+  if (hasWebGL === false || contextLost || lowGfx) {
     // When the user has prefers-reduced-motion the fallback orb stops pulsing
     // entirely — otherwise we'd be replacing one moving thing with another,
     // which doesn't actually honor the OS preference.
     return <NebulaFallback2D status={status} size={size} variant={variant} animate={!reduceMotion} />;
   }
   if (hasWebGL === null) {
-    return <div style={{ width: size, height: size }} />;
+    // Capability detection is asynchronous. Keep the visible fallback mounted
+    // during that frame instead of presenting a blank square on slower devices.
+    return <NebulaFallback2D status={status} size={size} variant={variant} animate={!reduceMotion} />;
   }
 
   return (
@@ -425,7 +488,7 @@ export function PabloNebula3D({
           }}
         >
           <Suspense fallback={null}>
-            <WaveField status={status} variant={variant} />
+            <WaveField status={status} variant={variant} animate={!reduceMotion} />
           </Suspense>
         </Canvas>
       </div>

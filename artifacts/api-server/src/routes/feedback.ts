@@ -87,6 +87,7 @@ async function getOwnerUserIds(): Promise<string[]> {
 // Lazy import to keep this route's hot path import-free until needed.
 import { classifyNoise } from "../lib/feedback-noise";
 import { sendDailyDigestIfDue } from "../lib/feedback-digest";
+import { syncFeedbackReportById, syncFeedbackReportToGithub } from "../lib/github-feedback";
 
 router.post("/feedback/error-report", async (req, res) => {
   try {
@@ -177,6 +178,10 @@ router.post("/feedback/error-report", async (req, res) => {
     const upsertRow = (upserted as unknown as { rows: Array<{ id: number; occurrence_count: number; inserted: boolean }> }).rows[0];
     const row = { id: upsertRow.id, occurrenceCount: upsertRow.occurrence_count };
     const isNewRow = upsertRow.inserted;
+    let githubSync: Awaited<ReturnType<typeof syncFeedbackReportById>> | undefined;
+    if (isNewRow) {
+      githubSync = await syncFeedbackReportById(row.id);
+    }
 
     // Notification fan-out: log-scale milestones (1, 10, 100, 1k, 10k…).
     // First occurrence ALWAYS notifies. Subsequent notifications taper
@@ -215,6 +220,7 @@ router.post("/feedback/error-report", async (req, res) => {
       id: row.id,
       deduped: !isNewRow,
       occurrenceCount: row.occurrenceCount,
+      githubSync,
     });
   } catch (e) {
     console.error("[Error Report] Failed to record:", e);
@@ -312,7 +318,8 @@ router.post("/feedback", async (req, res) => {
       }
     }
 
-    res.status(201).json({ report: row, devTask });
+    const githubSync = await syncFeedbackReportToGithub(row);
+    res.status(201).json({ report: row, devTask, githubSync });
   } catch (e) {
     console.error("Failed to submit feedback:", e);
     res.status(500).json({ error: "Failed to submit feedback" });
@@ -419,6 +426,24 @@ router.patch("/feedback/:id", async (req, res) => {
   } catch (e) {
     console.error("Failed to update feedback:", e);
     res.status(500).json({ error: "Failed to update feedback" });
+  }
+});
+
+router.post("/feedback/:id/github-sync", async (req, res) => {
+  if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Sign in required" }); return; }
+  if (!isAdmin(req)) { res.status(403).json({ error: "Admin only" }); return; }
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid report id" }); return; }
+    const githubSync = await syncFeedbackReportById(id);
+    if (githubSync.status === "failed") {
+      res.status(502).json({ error: githubSync.error ?? "GitHub sync failed", githubSync });
+      return;
+    }
+    res.json({ githubSync });
+  } catch (e) {
+    console.error("[Feedback] Manual GitHub sync failed:", e);
+    res.status(500).json({ error: "GitHub sync failed" });
   }
 });
 

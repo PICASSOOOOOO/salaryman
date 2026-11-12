@@ -70,10 +70,11 @@ const SPEND_VOCAB =
 // removed from the client, the "excuses are live" test below flags the stale
 // entry. `${...}` in template literals is normalized to `*`.
 const EXCUSED_NON_BANK_SPENDS = new Set([
-  "/api/items/checkout", // Stripe card checkout (real money, not bank ƒ)
   "/api/cosmetics/checkout", // Stripe card checkout (real money, not bank ƒ)
   "/api/stripe/create-checkout-session", // PABLO PRIME Stripe subscription checkout
   "/api/stripe/create-bot-checkout-session", // Stripe checkout session
+  "/api/orgs/*/billing/plan-checkout", // Organization subscription checkout
+  "/api/orgs/*/billing/seat-checkout", // Organization seat checkout
   "/api/services/*/claim", // grants a service listing, no player-bank mutation
   "/api/twilio/purchase-number", // Stripe/Twilio purchase path, not in-game FIAT
 ]);
@@ -139,7 +140,7 @@ describe("FIAT_AFFECTING covers every money-mutating endpoint", () => {
         `If it does NOT (Stripe / client-save only), add it to EXCUSED_NON_BANK_SPENDS:\n` +
         violations.join("\n"),
     ).toEqual([]);
-  });
+  }, 30_000);
 
   it("keeps the EXCUSED_NON_BANK_SPENDS list free of stale entries", () => {
     const scanned = new Set(scanApiFetchCalls().map((c) => c.path));

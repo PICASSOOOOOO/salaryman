@@ -1,10 +1,10 @@
 // Pure intent detectors for the LOGGED-OUT pre-onboarding chat funnel in
-// PabloTerminal. Extracted as helpers so the regex-heavy buying-signal logic
-// can be unit-tested without mounting the whole terminal component.
+// PabloTerminal. Extracted as helpers so the regex-heavy intent logic can be
+// unit-tested without mounting the whole terminal component.
 //
-// These only ever run while interviewPhaseRef.current === 'chatting' (the
-// visitor has not authed yet). When one fires, Pablo pivots the visitor into
-// intake (ask name -> OAuth) instead of letting the free-chat LLM answer.
+// These run while interviewPhaseRef.current === 'chatting' (the visitor has
+// not authed yet). Readiness starts account intake; cost curiosity is answered
+// publicly and must not itself collect identity or provision an account.
 
 // Visitor signaling they're ready to step inside / sign up. Conservative on
 // purpose — a casual "ok" mid-question must NOT drop them out of the chat.
@@ -23,9 +23,9 @@ export function isReadyToEnter(text: string): boolean {
   return READY_TO_ENTER_RE.test(t);
 }
 
-// Cost / "is it free" curiosity — for a logged-out visitor these are BUYING
-// SIGNALS, not idle questions. We reassure ("walking in is free") and pivot to
-// intake rather than risk losing them to a free-chat tangent.
+// Cost / "is it free" curiosity. The client answers these in public chat
+// without starting account intake; only an explicit non-Pablo feature request
+// or signup intent should lead to identity collection.
 // Tightened so "how much"/"pay" only match WITH a product/cost object, to
 // avoid hijacking ordinary chat like "how much time…" / "I have to pay rent".
 export const COST_CURIOUS_RE =
@@ -35,24 +35,3 @@ export function isCostCurious(text: string): boolean {
   return COST_CURIOUS_RE.test(text.trim());
 }
 
-// "Show me your papers" admittance — the city-state immigration framing.
-// A visitor offering / presenting their papers (or mirroring the guard's
-// "show me your papers" line) is signalling they want to be processed in.
-// Treated the same as readiness: pivot to intake, or — for a returning
-// visitor we already have on file — straight to the sign-in choice.
-export const SHOW_PAPERS_RE =
-  /\b((here('?s|\s+is|\s+are)|these\s+are|i('?ve|\s+have)(\s+got)?|got|check|see|review|take|look\s+at|process|stamp|verify)\s+(my\s+|the\s+)?(papers|documents?|paperwork|credentials|id|identification|passport)|(show|showing)\s+(you\s+)?(my\s+|the\s+)?(papers|documents?|paperwork|credentials|id|identification|passport)|(show|check)\s+me\s+(your|the|my)\s+(papers|documents?|paperwork|id|passport)|my\s+(papers|documents?|paperwork|id)\s+(are\s+|is\s+)?(ready|here)|(papers|paperwork|documents?)\s+(are\s+)?ready|(ready|here)\s+with\s+my\s+(papers|documents?|paperwork|id))\b/i;
-
-// Refusal / lack forms that mention papers but are NOT an admittance signal:
-// "I don't have papers", "no documents", "lost my id".
-const NEGATED_PAPERS_RE =
-  /\b(no|don'?t\s+have|do\s+not\s+have|without|missing|lost|haven'?t\s+got)\s+(any\s+|my\s+|the\s+)?(papers|documents?|paperwork|credentials|id|identification|passport)\b/i;
-
-export function isShowPapers(text: string): boolean {
-  const t = text.trim();
-  if (NEGATED_PAPERS_RE.test(t)) return false;
-  // Bare "papers" / "my papers" typed alone at the front door is a strong
-  // admittance signal in this immigration framing.
-  if (/^(my\s+)?papers[!.?]*$/i.test(t)) return true;
-  return SHOW_PAPERS_RE.test(t);
-}

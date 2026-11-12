@@ -30,8 +30,8 @@ export function PhonePageLayout({
   if (insideHub) {
     return (
       <div style={{ padding: '16px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="phone-page-title-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div className="phone-page-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {icon && (
               <div style={{
                 width: 36, height: 36, borderRadius: 8,
@@ -41,14 +41,14 @@ export function PhonePageLayout({
                 {icon}
               </div>
             )}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h2 style={{ fontSize: '0.9rem', letterSpacing: '0.2em', color: slate(0.85), margin: 0, fontWeight: 'normal', textTransform: 'uppercase' }}>
                 {title}
               </h2>
-              {subtitle && <p style={{ margin: '3px 0 0', fontSize: '0.7rem', color: '#050505', lineHeight: 1.45 }}>{subtitle}</p>}
+              {subtitle && <p style={{ margin: '3px 0 0', fontSize: '0.7rem', color: slate(0.62), lineHeight: 1.45 }}>{subtitle}</p>}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="phone-page-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {statusLine && <div style={{ fontSize: '0.7rem' }}>{statusLine}</div>}
             {actions && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>{actions}</div>}
           </div>
@@ -72,12 +72,14 @@ export function PhonePageLayout({
        paddingRight: 'var(--app-safe-right)' }}>
 
       <div className="phone-page-shell" style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{
+        <div className="phone-page-status-row" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: 'max(6px, env(safe-area-inset-top, 0px)) 0 6px', borderBottom: `1px solid ${slate(0.06)}`,
           fontSize: '0.45rem', color: slate(0.55), letterSpacing: '0.2em' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <img src={`${BASE}brand/callhome/calll-home-brush.png`} alt="CALLL HOME" style={{ height: 16, width: 'auto', opacity: 0.55, filter: 'brightness(2) saturate(0)' }} />
+          <div className="phone-page-status-brand" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span className="calll-home-mark-box">
+              <img src={`${BASE}brand/callhome/calll-home-logo-2.png`} alt="CALLL HOME" />
+            </span>
             <span style={{ color: slate(0.55) }}>│</span>
             <span>ALPHA {__BUILD_VERSION__}</span>
             <span style={{ color: slate(0.55) }}>│</span>
@@ -86,15 +88,15 @@ export function PhonePageLayout({
               <span style={{ color: slate(0.55) }}>SYSTEM ONLINE</span>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="phone-page-status-meta" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {statusLine}
             <span style={{ color: slate(0.55), fontVariantNumeric: 'tabular-nums' }}>{clock}</span>
           </div>
         </div>
 
         <div style={{ padding: '24px 0 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="phone-page-title-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div className="phone-page-title" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               {icon && (
                 <div style={{
                   width: 52, height: 52, borderRadius: 10,
@@ -110,7 +112,7 @@ export function PhonePageLayout({
                   {icon}
                 </div>
               )}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <h1 style={{
                   fontSize: '1.3rem', letterSpacing: '0.25em', color: slate(0.95), margin: 0,
                   fontWeight: 'normal', textTransform: 'uppercase',
@@ -118,13 +120,13 @@ export function PhonePageLayout({
                   {title}
                 </h1>
                 {subtitle && (
-                  <p style={{ margin: '5px 0 0', fontSize: '0.72rem', color: '#050505', lineHeight: 1.45 }}>
+                  <p style={{ margin: '5px 0 0', fontSize: '0.72rem', color: slate(0.62), lineHeight: 1.45 }}>
                     {subtitle}
                   </p>
                 )}
               </div>
             </div>
-            {actions && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>{actions}</div>}
+            {actions && <div className="phone-page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>{actions}</div>}
           </div>
         </div>
 
@@ -137,17 +139,56 @@ export function PhonePageLayout({
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }
         .phone-page-shell { padding: 0 clamp(12px, 4vw, 24px); }
         @media (max-width: 640px) {
-          .phone-page-shell > div:first-child {
+          .phone-page-shell,
+          .phone-page-title-row,
+          .phone-page-title,
+          .phone-page-actions,
+          .phone-page-status-row,
+          .phone-page-status-brand,
+          .phone-page-status-meta {
+            min-width: 0;
+            max-width: 100%;
+          }
+          .phone-page-status-row,
+          .phone-page-title-row {
+            flex-wrap: wrap;
+            row-gap: 8px;
+          }
+          .phone-page-status-brand {
+            flex: 1 1 100%;
+            gap: 8px !important;
             overflow: hidden;
           }
-          .phone-page-shell > div:first-child > div:first-child {
-            min-width: 0;
+          .phone-page-status-brand > span:nth-of-type(2),
+          .phone-page-status-brand > div {
+            display: none;
+          }
+          .phone-page-status-meta {
+            width: 100%;
+            justify-content: space-between;
             gap: 8px !important;
+          }
+          .phone-page-title {
+            flex: 1 1 12rem;
+          }
+          .phone-page-title > div:last-child {
+            min-width: 0;
+          }
+          .phone-page-title p,
+          .phone-page-actions {
+            overflow-wrap: anywhere;
+          }
+          .phone-page-actions {
+            width: 100%;
           }
           .phone-page-shell h1 {
             font-size: 1rem !important;
             letter-spacing: 0.14em !important;
             overflow-wrap: anywhere;
+          }
+          .phone-page-actions > * {
+            min-width: 0;
+            max-width: 100%;
           }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -308,12 +349,14 @@ export function MiniWaveform({ active, color: c, bars = 5 }: { active?: boolean;
 
 export function SignalMeter({ level, max = 5, color: c }: { level: number; max?: number; color?: (o: number) => string }) {
   const col = c || slate;
+  const safeMax = Math.max(1, max);
+  const divisor = Math.max(1, safeMax - 1);
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 14 }}>
-      {Array.from({ length: max }).map((_, i) => (
+      {Array.from({ length: safeMax }).map((_, i) => (
         <div key={i} style={{
           width: 4,
-          height: `${30 + (i * 70 / (max - 1))}%`,
+          height: `${30 + (i * 70 / divisor)}%`,
           borderRadius: 1,
           background: i < level ? col(0.7) : col(0.1),
           transition: 'background 0.2s ease' }} />

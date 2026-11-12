@@ -29,6 +29,32 @@ system where it runs:
 Build each target on that target operating system. PyInstaller does not produce
 portable Windows/macOS/Linux binaries from one host.
 
+## Unified desktop publishing
+
+The manual **Build and publish native desktop clients** workflow builds and
+smoke-tests macOS, Windows, and Linux packages together. It always leaves the
+three platform archives as workflow artifacts. When an itch.io target is
+provided, the same workflow also pushes installable platform channels to itch.io
+with Butler:
+
+- `osx`
+- `windows`
+- `linux`
+
+Leave the itch.io target empty to build without publishing. Once the itch.io
+project page exists, provide its lowercase `account/project` target and add
+`BUTLER_API_KEY` as a GitHub Actions secret. The game remains free; this workflow
+does not set a price.
+
+## Twitch watch path
+
+Twitch is a live-broadcast destination, not a desktop package channel. The
+intended path is an organization-opt-in public office feed that can be shared
+and captured as an OBS browser source. It must show anonymous game avatars and
+movement, include only game sound effects and stereo music, and exclude private
+messages and conversations. That public feed and its audio output are not yet
+implemented; the desktop release workflow does not publish a Twitch stream.
+
 The macOS build is packaged as a `.app` inside a `.zip` archive. Run
 `./launch-salaryman-office.sh` after extraction; it opens the app bundle with
 macOS's native launcher. The Pygame UI selects Inter, Helvetica Neue, Arial, or

@@ -16,6 +16,7 @@ type DeviceLinkRecord = {
   mobileName?: string;
   mobile_name?: string;
   createdAt?: string;
+  hasDesktopCredential?: boolean;
   [key: string]: unknown;
 };
 
@@ -243,6 +244,52 @@ function DesktopMode() {
     }
   }
 
+  async function downloadGameLinkFile() {
+    const id = linkId(currentLink);
+    if (!id || !isLinked) return;
+    if (
+      currentLink?.hasDesktopCredential
+      && !window.confirm("This replaces the existing desktop API credential. Any older game link file will stop working. Continue?")
+    ) return;
+
+    setWorking(true);
+    setError("");
+    setNotice("");
+    try {
+      const payload = await readApi<{
+        credential?: string;
+        link?: DeviceLinkRecord;
+      }>(`/api/device-links/${encodeURIComponent(id)}/desktop-credential`, { method: "POST" });
+      if (!payload.credential) throw new Error("The desktop credential was not returned.");
+
+      const file = new Blob([JSON.stringify({
+        version: 1,
+        serverUrl: window.location.origin,
+        deviceId: desktopDeviceId,
+        credential: payload.credential,
+      }, null, 2)], { type: "application/json" });
+      const objectUrl = URL.createObjectURL(file);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = "salaryman-desktop-link.json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+
+      if (payload.link) {
+        setLinks((previous) => previous.map((link) =>
+          linkId(link) === id ? payload.link! : link
+        ));
+      }
+      setNotice("Private game link downloaded. Move it to ~/.salaryman/desktop-link.json on the game computer.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not download the game link.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function copyCode() {
     if (!code) return;
     try {
@@ -317,6 +364,16 @@ function DesktopMode() {
                     </div>
                   )}
                   {!isLinked && <p className="device-link-notice">Waiting for a phone nearby. Approval is required on the phone before the remote activates.</p>}
+                  {isLinked && (
+                    <button
+                      className="device-link-primary"
+                      onClick={downloadGameLinkFile}
+                      disabled={working}
+                      data-testid="button-download-game-link"
+                    >
+                      <Monitor size={13} aria-hidden /> {working ? "preparing link" : "download game link"}
+                    </button>
+                  )}
                   <div className="device-link-meta">
                     <div><span className="device-link-meta-label">desktop</span><p>{String(currentLink.desktopName ?? currentLink.desktop_name ?? desktopName)}</p></div>
                     <div><span className="device-link-meta-label">mobile</span><p>{String(currentLink.mobileName ?? currentLink.mobile_name ?? "not approved")}</p></div>

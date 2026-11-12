@@ -1,0 +1,37 @@
+### CORE FEATURES TO BUILD:
+1. **AI-Driven Calls (PABLO Role):**
+   - Autonomous outbound calls using a voice synthesis API (e.g., ElevenLabs). Handle inbound calls naturally.
+   - Intake and log data from calls directly into the CRM in real-time.
+   - Qualify leads based on scripts or key questions and automatically transfer them to the right team member (via Twilio API).
+   - Transcribe calls with Whisper AI and attach transcripts to the lead’s CRM profile.
+
+2. **Enterprise CRM (Team Collaboration):**
+   - Create a **secure, locked CRM database** where:
+       - Admins can **upload CSV files** of leads.
+       - Leads can only be viewed and updated by regular users (no deleting or downloading unless admin).
+       - Each lead has contact info, call logs, timestamps, transcripts, and user-created notes.
+       - Allow real-time updates so multiple users in the enterprise can share lead progress instantly.
+   - Role-based access:
+       - **Admins**: Full privileges (upload/edit/delete/download data).
+       - **Users**: Can view and update data but NOT delete or download.
+   - Build-in fields for custom company details (e.g., User Title, Company, Salary, “Net Worth from All Companies”).
+
+3. **Infinite Scalability (Multi-Company Support):**
+   - Design the system to support users working for multiple companies simultaneously.
+   - Each user profile shows:
+       - Real-time salary totals across ALL companies they’re affiliated with.
+       - Performance stats/metrics for individual or company-wide results.
+   - Include trading data from external platforms under the same "Minx City" dashboard banner.
+
+4. **Infinite Canvas and Modular Expansion:**
+   - Use the **infinite canvas** to visually design how Pablo’s voice calling system connects to the CRM and user workflows.
+   - Additionally, leave placeholder modules for adding **job matching bots, smart assistants**, or **email responders** to expand Salaryman in future updates.
+
+---
+
+### TECH STACK:
+- **Backend**: FastAPI (primary framework) + Python 3.11
+- **Database**: Use **SQLite for development** → PostgreSQL for production
+- **APIs to Integrate**:
+   - **ElevenLabs API**: Natural voice synthesis
+   - **Twilio API**: Phone call handling, SMS, and call transfers

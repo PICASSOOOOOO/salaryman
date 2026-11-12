@@ -226,8 +226,8 @@ export default function MusicJukebox() {
       )}
 
       <header className="max-w-5xl mx-auto px-4 sm:px-6 mb-6 flex items-start justify-between">
-        <Link href="/creative/darkroom" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mt-2">
-          <ChevronLeft className="w-4 h-4" /> CREATIVE
+        <Link href="/pablo" className="flex items-center gap-1.5 text-zinc-600 hover:text-black text-xs font-sans tracking-wide mt-2">
+          <ChevronLeft className="w-4 h-4" /> BACK
         </Link>
         <div className="flex flex-col items-center gap-1">
           <HummingbirdIcon size={48} color="#c084fc" />
@@ -294,11 +294,10 @@ export default function MusicJukebox() {
             </p>
           </div>
 
-          {/* Load from Media Library — pulls any audio file that's already in
-              the user's media library / vault and registers it as a track. */}
+          {/* Load from Data Vault — pulls an audio file already in the user's vault. */}
           <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
             <h2 className="text-[10px] font-mono tracking-[0.25em] text-emerald-300 mb-2 flex items-center gap-1.5">
-              <FolderOpen className="w-3 h-3" /> MEDIA LIBRARY
+              <FolderOpen className="w-3 h-3" /> DATA VAULT
             </h2>
             {!libOpen ? (
               <button

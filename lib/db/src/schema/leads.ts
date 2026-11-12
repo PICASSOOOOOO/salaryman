@@ -1,9 +1,10 @@
-import { pgTable, serial, varchar, integer, timestamp, text, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, text, boolean, index, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const LEAD_STATUSES = ["new", "contacted", "qualified", "proposal", "closed_won", "closed_lost"] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
+export type LeadNoteReviewStatus = "not_required" | "needs_review" | "reviewed" | "dismissed";
 
 export const leadImportsTable = pgTable("lead_imports", {
   id: serial("id").primaryKey(),
@@ -36,6 +37,7 @@ export const leadRecordsTable = pgTable("lead_records", {
   status: varchar("status", { length: 32 }).notNull().default("new"),
   assignedUserId: varchar("assigned_user_id", { length: 256 }),
   pabloNotesJson: text("pablo_notes_json"),
+  customFieldsJson: jsonb("custom_fields_json").$type<Record<string, unknown>>().notNull().default({}),
   lastCalledAt: timestamp("last_called_at", { withTimezone: true }),
   callCount: integer("call_count").notNull().default(0),
   createdByUserId: varchar("created_by_user_id", { length: 256 }).notNull(),
@@ -58,6 +60,9 @@ export const leadNotesTable = pgTable("lead_notes", {
   userId: varchar("user_id", { length: 256 }).notNull(),
   userName: varchar("user_name", { length: 128 }),
   note: text("note").notNull(),
+  reviewStatus: varchar("review_status", { length: 24 }).$type<LeadNoteReviewStatus>().notNull().default("not_required"),
+  reviewedByUserId: varchar("reviewed_by_user_id", { length: 256 }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("lead_notes_lead_id_idx").on(t.leadId),

@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "javascript", "python-3.11", "postgresql-16"]
+modules = ["nodejs-24", "javascript", "python-3.11", "postgresql-16", "rust-stable"]
 
           [[artifacts]]
           id = "artifacts/api-server"
@@ -9,6 +9,7 @@ modules = ["nodejs-24", "javascript", "python-3.11", "postgresql-16"]
           [deployment]
           router = "application"
           deploymentTarget = "vm"
+ignorePorts = false
 
           [deployment.build]
           args = ["pnpm", "run", "build:prepublish"]
@@ -112,6 +113,11 @@ STRIPE_PRICE_BOT_INK_9 = "price_1TiwLhPuaB9oFoK5e4Pjse3i"
 STRIPE_PRICE_BOT_RECRUIT_8 = "price_1TiwLhPuaB9oFoK5iSwQRE1g"
 STRIPE_PRICE_PLEDGE_TERM_PABLO_PASS = "price_1TiwLiPuaB9oFoK54nISmAyw"
 STRIPE_PRICE_PLEDGE_TERM_PHONE_PASS = "price_1TiwLiPuaB9oFoK5GB0ScFbT"
+VITE_ADSENSE_SLOT_ID = "6667899945"
+SALARYMAN_FREE_FEATURE_EMAILS = "pamw.innerlighthealth@gmail.com"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-72d80d45-9792-4279-b730-a825bfea9680"
 
 [[ports]]
 localPort = 8080
@@ -132,7 +138,4 @@ externalPort = 3000
 [[ports]]
 localPort = 21130
 externalPort = 3002
-
-[objectStorage]
-defaultBucketID = "replit-objstore-72d80d45-9792-4279-b730-a825bfea9680"
         

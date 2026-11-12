@@ -1,0 +1,67 @@
+{
+  "version": 2,
+  "seed": 1999,
+  "heightAmplitude": 0.12,
+  "facades": [
+    {
+      "id": "west-view",
+      "side": "west",
+      "depth": 72,
+      "setback": 1.25,
+      "treeRows": [
+        {"depth": 8, "spacing": 31},
+        {"depth": 35, "spacing": 56}
+      ],
+      "buildingRows": [
+        {
+          "id": "midrise",
+          "depth": 22,
+          "spacing": 58,
+          "density": 0.82,
+          "heightRange": [8, 21],
+          "depthRange": [10, 15],
+          "frontageRange": [13, 20]
+        },
+        {
+          "id": "skyline",
+          "depth": 50,
+          "spacing": 76,
+          "density": 0.92,
+          "heightRange": [18, 40],
+          "depthRange": [15, 21],
+          "frontageRange": [18, 30]
+        }
+      ]
+    },
+    {
+      "id": "east-view",
+      "side": "east",
+      "depth": 72,
+      "setback": 1.25,
+      "treeRows": [
+        {"depth": 9, "spacing": 34},
+        {"depth": 36, "spacing": 59}
+      ],
+      "buildingRows": [
+        {
+          "id": "midrise",
+          "depth": 24,
+          "spacing": 62,
+          "density": 0.86,
+          "heightRange": [9, 23],
+          "depthRange": [11, 16],
+          "frontageRange": [14, 22]
+        },
+        {
+          "id": "skyline",
+          "depth": 51,
+          "spacing": 78,
+          "density": 0.9,
+          "heightRange": [19, 42],
+          "depthRange": [16, 22],
+          "frontageRange": [18, 30]
+        }
+      ]
+    }
+  ]
+}

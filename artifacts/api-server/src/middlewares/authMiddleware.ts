@@ -1,8 +1,15 @@
-import { type Request, type Response, type NextFunction } from "express";
-import { getAuth } from "@clerk/express";
+import { type NextFunction, type Request, type Response } from "express";
+import * as oidc from "openid-client";
+import { and, eq, sql } from "drizzle-orm";
 import { db, orgMembersTable, usersTable, type User as DbUser } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
-import { screenEmail, logLoginAttempt, flagUser } from "../lib/email-security";
+import {
+  clearSession,
+  getOidcConfig,
+  getSession,
+  getSessionId,
+  updateSession,
+  type SessionData,
+} from "../lib/replit-auth";
 import { reconcileReferralInvites } from "../routes/referrals";
 
 declare global {
@@ -19,12 +26,6 @@ declare global {
       user: User;
     }
   }
-}
-
-function normalizedEmail(value: unknown): string | null {
-  return typeof value === "string" && value.trim()
-    ? value.trim().toLowerCase()
-    : null;
 }
 
 async function reconcilePendingMembers(user: DbUser): Promise<void> {
@@ -50,58 +51,71 @@ async function reconcilePendingMembers(user: DbUser): Promise<void> {
   }
 }
 
-async function resolveDbUser(req: Request): Promise<DbUser | undefined> {
-  const auth = getAuth(req);
-  const claims = (auth.sessionClaims ?? {}) as Record<string, unknown>;
-  // userId is the old Replit subject for migrated accounts. auth.userId is only
-  // the fallback Clerk-native ID for users created after this migration.
-  const bridgeId = typeof claims.userId === "string" ? claims.userId : auth.userId;
-  if (!bridgeId) return undefined;
-  const email = normalizedEmail(claims.email);
-  let [user] = await db.select().from(usersTable).where(eq(usersTable.id, bridgeId)).limit(1);
-  if (user) return user;
-
-  const screening = await screenEmail(email);
-  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip ?? null;
-  if (!screening.allowed) {
-    await logLoginAttempt(email, ip, true, screening.reason);
-    console.warn(`[Auth] Blocked JIT provisioning for ${email}: ${screening.reason}`);
-    return undefined;
-  }
-  const [inserted] = await db.insert(usersTable).values({
-    id: bridgeId, email,
-    firstName: typeof claims.firstName === "string" ? claims.firstName : null,
-    lastName: typeof claims.lastName === "string" ? claims.lastName : null,
-  }).onConflictDoNothing().returning();
-  user = inserted;
-  if (!user) {
-    [user] = await db.select().from(usersTable).where(eq(usersTable.id, bridgeId)).limit(1);
-  }
-  if (user) {
-    await logLoginAttempt(email, ip, false, null);
-    await reconcilePendingMembers(user);
-    await reconcileReferralInvites(user, { isNew: !!inserted });
-    if (screening.severity === "flag") {
-      await flagUser(user.id, email, "suspicious_email", screening.reason);
-    }
-  }
-  return user;
+async function resolveLocalUser(session: SessionData): Promise<DbUser | undefined> {
+  const email = session.user.email?.trim().toLowerCase();
+  const [byId] = await db.select().from(usersTable).where(eq(usersTable.id, session.user.id)).limit(1);
+  if (byId) return byId;
+  if (!email) return undefined;
+  const [byEmail] = await db.select().from(usersTable)
+    .where(sql`lower(${usersTable.email}) = ${email}`)
+    .limit(1);
+  return byEmail;
 }
 
-export async function authMiddleware(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+async function refreshIfExpired(sid: string, session: SessionData): Promise<SessionData | null> {
+  const now = Math.floor(Date.now() / 1000);
+  if (!session.expires_at || now <= session.expires_at) return session;
+  if (!session.refresh_token) return null;
+  try {
+    const config = await getOidcConfig();
+    const tokens = await oidc.refreshTokenGrant(config, session.refresh_token);
+    session.access_token = tokens.access_token;
+    session.refresh_token = tokens.refresh_token ?? session.refresh_token;
+    session.expires_at = tokens.expiresIn() ? now + tokens.expiresIn()! : session.expires_at;
+    await updateSession(sid, session);
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   req.isAuthenticated = function (this: Request) {
     return this.dbUser != null;
   } as Request["isAuthenticated"];
+
+  const sid = getSessionId(req);
+  if (!sid) {
+    next();
+    return;
+  }
+
   try {
-    const user = await resolveDbUser(req);
-    if (user) {
-      req.dbUser = user;
-      req.user = user;
+    const session = await getSession(sid);
+    if (!session?.user?.id) {
+      await clearSession(res, sid);
+      next();
+      return;
     }
+
+    const refreshed = await refreshIfExpired(sid, session);
+    if (!refreshed) {
+      await clearSession(res, sid);
+      next();
+      return;
+    }
+
+    const user = await resolveLocalUser(refreshed);
+    if (!user) {
+      await clearSession(res, sid);
+      next();
+      return;
+    }
+
+    req.dbUser = user;
+    req.user = user;
+    void reconcilePendingMembers(user).catch(() => {});
+    void reconcileReferralInvites(user, { isNew: false }).catch(() => {});
     next();
   } catch (error) {
     next(error);

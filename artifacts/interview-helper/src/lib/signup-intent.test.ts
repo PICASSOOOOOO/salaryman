@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isReadyToEnter, isCostCurious, isShowPapers } from "./signup-intent";
+import { isReadyToEnter, isCostCurious } from "./signup-intent";
 
 describe("isReadyToEnter — readiness / sign-up buying signals", () => {
   const positives = [
@@ -49,7 +49,7 @@ describe("isReadyToEnter — readiness / sign-up buying signals", () => {
   }
 });
 
-describe("isCostCurious — cost / 'is it free' buying signals", () => {
+describe("isCostCurious — cost / 'is it free' questions", () => {
   const positives = [
     "is it free?",
     "is this free",
@@ -95,48 +95,3 @@ describe("isCostCurious — cost / 'is it free' buying signals", () => {
   }
 });
 
-describe("isShowPapers — immigration 'papers' admittance signal", () => {
-  const positives = [
-    "here are my papers",
-    "here's my paperwork",
-    "I have my papers",
-    "I've got my documents",
-    "check my papers",
-    "process my paperwork",
-    "stamp my papers",
-    "verify my id",
-    "show you my papers",
-    "let me show you my papers",
-    "show me your papers",
-    "my papers are ready",
-    "papers ready",
-    "ready with my papers",
-    "papers",
-    "my papers",
-    "papers!",
-    "take my passport",
-    "here is my identification",
-  ];
-  for (const t of positives) {
-    it(`positive: ${JSON.stringify(t)}`, () => {
-      expect(isShowPapers(t)).toBe(true);
-    });
-  }
-
-  const negatives = [
-    "I don't have papers",
-    "no documents",
-    "I lost my id",
-    "without my paperwork",
-    "I haven't got my passport",
-    "tell me about the research papers",
-    "what is a salaryman?",
-    "hello",
-    "how much does it cost",
-  ];
-  for (const t of negatives) {
-    it(`negative: ${JSON.stringify(t)}`, () => {
-      expect(isShowPapers(t)).toBe(false);
-    });
-  }
-});

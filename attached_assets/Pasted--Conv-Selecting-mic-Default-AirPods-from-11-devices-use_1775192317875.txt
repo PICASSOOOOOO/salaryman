@@ -1,0 +1,24 @@
+[Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-CetIsTQf.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-CetIsTQf.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-yOIPK_Xt.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-yOIPK_Xt.js:9
+(anonymous) @ index-yOIPK_Xt.js:9Understand this error
+use-voice-conversation-CetIsTQf.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-CetIsTQf.js:1 [Conv] onstop: 8 chunks, totalSize=102963
+use-voice-conversation-CetIsTQf.js:1 [Conv] Sending audio to server for transcription...
+use-voice-conversation-CetIsTQf.js:1 [Conv] Transcription: "Hello."
+use-voice-conversation-CetIsTQf.js:1 [Conv] Sending to advisor: "Hello...."
+MarkdownRenderer-B56j7qY6.js:6  POST https://salaryman.replit.app/api/interview/advisor 400 (Bad Request)
+(anonymous) @ MarkdownRenderer-B56j7qY6.js:6
+(anonymous) @ use-voice-conversation-CetIsTQf.js:1
+Promise.then
+C.onstop @ use-voice-conversation-CetIsTQf.js:1Understand this error
+use-voice-conversation-CetIsTQf.js:1 [Conv] Advisor response: "..." (0 chars)
+use-voice-conversation-CetIsTQf.js:1 [Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+index-yOIPK_Xt.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-yOIPK_Xt.js:9
+(anonymous) @ index-yOIPK_Xt.js:9Understand this error
+use-voice-conversation-CetIsTQf.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-CetIsTQf.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+use-voice-conversation-CetIsTQf.js:1 [Conv] onstop: conv mode inactive, skipping

@@ -4,6 +4,8 @@ import { slate, warning, formatPhone } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { invalidateCommsSummary } from '@/hooks/use-comms-summary';
+import type { CountryCode } from 'libphonenumber-js/max';
+import { PhoneCountrySelect } from './PhoneCountrySelect';
 
 interface SmsConversation {
   id: number;
@@ -33,6 +35,7 @@ function formatTime(iso: string) {
 
 export default function PhoneSmsPage() {
   const isMobile = useIsMobile();
+  const BASE = import.meta.env.BASE_URL;
 
   const [conversations, setConversations] = useState<SmsConversation[]>([]);
   const [activeConv, setActiveConv] = useState<SmsConversation | null>(null);
@@ -42,34 +45,61 @@ export default function PhoneSmsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [newPhone, setNewPhone] = useState('');
+  const [newPhoneCountry, setNewPhoneCountry] = useState<CountryCode>('US');
   const [newName, setNewName] = useState('');
   const [showNewConv, setShowNewConv] = useState(false);
+  const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   const loadConversations = useCallback(async () => {
     try {
-      const r = await apiFetch('/api/sms/conversations');
-      if (r.ok) { const d = await r.json(); setConversations(d.conversations || []); }
-    } catch {}
+      const r = await apiFetch(apiUrl('sms/conversations'));
+      if (!r.ok) throw new Error(`Could not load SMS threads (${r.status})`);
+      const d = await r.json();
+      setConversations(d.conversations || []);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load SMS threads');
+    }
     setLoading(false);
-  }, []);
+  }, [apiUrl]);
 
   const loadMessages = useCallback(async (convId: number) => {
     setLoadingMsgs(true);
     try {
-      const r = await apiFetch(`/api/sms/conversations/${convId}/messages`);
-      if (r.ok) {
-        const d = await r.json();
-        setMessages(d.messages || []);
-        invalidateCommsSummary();
-      }
-    } catch {}
+      const r = await apiFetch(apiUrl(`sms/conversations/${convId}/messages`));
+      if (!r.ok) throw new Error(`Could not load messages (${r.status})`);
+      const d = await r.json();
+      setMessages(d.messages || []);
+      setError('');
+      invalidateCommsSummary();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load messages');
+    }
     setLoadingMsgs(false);
-  }, []);
+  }, [apiUrl]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // Poll for new inbound texts (and Mila auto-replies) so threads stay live.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const phone = params.get('to');
+    if (!phone) return;
+    setNewPhone(phone);
+    setNewName(params.get('name') || phone);
+    setShowNewConv(true);
+    params.delete('to');
+    params.delete('name');
+    const query = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
+    );
+  }, []);
+
+  // Poll for new inbound texts and Pablo's replies so threads stay live.
   useEffect(() => {
     const id = setInterval(loadConversations, 15000);
     return () => clearInterval(id);
@@ -90,18 +120,22 @@ export default function PhoneSmsPage() {
     if (!newMsg.trim() || !activeConv) return;
     setSending(true);
     const body = newMsg.trim();
-    setNewMsg('');
     try {
-      const r = await apiFetch('/api/sms/send', {
+      const r = await apiFetch(apiUrl('sms/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: activeConv.contactPhone, body, contactName: activeConv.contactName }) });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `Message failed (${r.status})`);
       if (r.ok && d.message) {
         setMessages(prev => [...prev, d.message]);
         setConversations(prev => prev.map(c => c.id === activeConv.id ? { ...c, lastMessageAt: new Date().toISOString() } : c));
+        setNewMsg('');
+        setError('');
       }
-    } catch {}
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Message failed. Your draft was preserved.');
+    }
     setSending(false);
   }
 
@@ -109,11 +143,12 @@ export default function PhoneSmsPage() {
     if (!newPhone.trim() || !newMsg.trim()) return;
     setSending(true);
     try {
-      const r = await apiFetch('/api/sms/send', {
+      const r = await apiFetch(apiUrl('sms/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: newPhone, body: newMsg, contactName: newName || newPhone }) });
-      const d = await r.json();
+        body: JSON.stringify({ phone: newPhone, countryCode: newPhoneCountry, body: newMsg, contactName: newName || newPhone }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `Message failed (${r.status})`);
       if (r.ok) {
         setShowNewConv(false);
         setNewPhone('');
@@ -121,8 +156,11 @@ export default function PhoneSmsPage() {
         setNewMsg('');
         await loadConversations();
         if (d.conversation) setActiveConv(d.conversation);
+        setError('');
       }
-    } catch {}
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Message failed. Your draft was preserved.');
+    }
     setSending(false);
   }
 
@@ -136,7 +174,8 @@ export default function PhoneSmsPage() {
     <div style={{
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
-      height: isMobile ? 720 : 600,
+      height: isMobile ? 'calc(var(--app-viewport-height, 100dvh) - 180px)' : 600,
+      minHeight: isMobile ? 0 : undefined,
       border: `1px solid ${slate(0.1)}`,
       borderRadius: 8,
       overflow: 'hidden',
@@ -146,7 +185,7 @@ export default function PhoneSmsPage() {
       {/* Conversation list */}
       <div style={{
         width: isMobile ? '100%' : 260,
-        height: isMobile ? 220 : 'auto',
+        height: isMobile ? 'min(220px, 28dvh)' : 'auto',
         borderRight: isMobile ? 'none' : `1px solid ${slate(0.1)}`,
         borderBottom: isMobile ? `1px solid ${slate(0.1)}` : 'none',
         display: 'flex',
@@ -169,6 +208,11 @@ export default function PhoneSmsPage() {
             <Plus size={12} />
           </button>
         </div>
+        {error && (
+          <div role="alert" style={{ padding: '8px 12px', borderBottom: `1px solid ${warning(0.25)}`, fontSize: '0.48rem', lineHeight: 1.45 }}>
+            {error}
+          </div>
+        )}
         {loading ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Loader2 size={16} style={{ color: slate(0.55), animation: 'spin 1s linear infinite' }} />
@@ -176,7 +220,7 @@ export default function PhoneSmsPage() {
         ) : conversations.length === 0 ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, textAlign: 'center' }}>
             <MessageSquare size={28} style={{ color: slate(0.55) }} />
-            <p style={{ fontSize: '0.48rem', color: slate(0.55), lineHeight: 1.6 }}>No threads yet. Inbound texts and Mila's replies appear here.</p>
+            <p style={{ fontSize: '0.48rem', color: slate(0.55), lineHeight: 1.6 }}>No threads yet. Inbound texts and Pablo's replies appear here.</p>
           </div>
         ) : (
           <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -234,7 +278,10 @@ export default function PhoneSmsPage() {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.42rem', color: slate(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>PHONE NUMBER *</label>
-              <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+1 555 000 1234" data-testid="input-sms-phone" style={inputStyle} />
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '180px 1fr', gap: 8 }}>
+                <PhoneCountrySelect value={newPhoneCountry} onChange={setNewPhoneCountry} />
+                <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="555 000 1234" data-testid="input-sms-phone" style={inputStyle} />
+              </div>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.42rem', color: slate(0.5), letterSpacing: '0.15em', marginBottom: 4 }}>CONTACT NAME</label>
@@ -286,7 +333,7 @@ export default function PhoneSmsPage() {
                         borderBottomLeftRadius: outbound ? 10 : 2 }}>
                         <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.body}</div>
                         <div style={{ fontSize: '0.4rem', color: slate(0.55), marginTop: 4, textAlign: 'right' }}>
-                          {outbound ? 'MILA · ' : ''}{formatTime(msg.createdAt)}
+                          {outbound ? 'PABLO · ' : ''}{formatTime(msg.createdAt)}
                         </div>
                       </div>
                     </div>

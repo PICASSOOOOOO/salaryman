@@ -1,21 +1,15 @@
 // @vitest-environment jsdom
 //
-// Guards the session-expiry redirect in `apiFetch`. When a background API call
-// comes back 401 it usually means the session lapsed, so the handler bounces the
-// visitor to /pablo?returnTo=<path> to sign in and return. BUT on public /
-// anonymous routes a 401 is EXPECTED (the visitor simply isn't signed in) and
-// must NOT hijack navigation — otherwise the public scroll-cinematic landing at
-// "/" never renders because a background 401 jumps straight to /pablo.
+// Guards the sign-in redirect in `apiFetch`. Background 401 reads must not force
+// guests to sign in; writes or explicitly opted-in feature reads may preserve the
+// current destination when authentication is required.
 //
 // Contract:
-//   1. A 401 on a genuinely protected page (e.g. /office, /business) →
-//      redirect to /pablo?returnTo=<encoded path+search>.
-//   2. A 401 on a public route ("/", "/pablo", "/immigration", "/sms-opt-in",
-//      auth pages and their
-//      subpaths) → NO redirect.
-//   3. A 401 on the auth-polling skip paths (/auth/user, /auth/providers) →
-//      NO redirect (regardless of current page).
-//   4. A non-401 response → NO redirect.
+//   1. A default GET 401 → NO redirect.
+//   2. A write 401 on a protected feature → redirect with returnTo.
+//   3. An explicitly opted-in GET 401 → redirect with returnTo.
+//   4. A 401 on public/auth routes or auth-polling skip paths → NO redirect.
+//   5. A non-401 response → NO redirect.
 //
 // The module holds a one-shot `_sessionExpiredRedirecting` latch that survives
 // the page lifetime, so each test re-imports the module fresh via resetModules.
@@ -64,15 +58,33 @@ afterEach(() => {
   });
 });
 
-describe("apiFetch session-expiry redirect", () => {
-  it("redirects to /pablo?returnTo=<path> on a 401 from a protected page", async () => {
+describe("apiFetch unauthorized redirect", () => {
+  it("redirects after a rejected write and preserves the current route", async () => {
     setLocation("/office", "?tab=desk");
     global.fetch = vi.fn(() => Promise.resolve(status401()));
     const apiFetch = await freshApiFetch();
-    await settle(apiFetch("/api/business/summary"));
+    await settle(apiFetch("/api/business/summary", { method: "POST" }));
     expect(replaceMock).toHaveBeenCalledTimes(1);
     expect(replaceMock).toHaveBeenCalledWith(
-      `/pablo?returnTo=${encodeURIComponent("/office?tab=desk")}`,
+      `/sign-in?returnTo=${encodeURIComponent("/office?tab=desk")}`,
+    );
+  });
+
+  it("does NOT redirect after a background GET 401 on a non-public route", async () => {
+    setLocation("/business", "?tab=overview");
+    global.fetch = vi.fn(() => Promise.resolve(status401()));
+    const apiFetch = await freshApiFetch();
+    await settle(apiFetch("/api/business/summary"));
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("redirects a GET only when its feature opts in", async () => {
+    setLocation("/business/status", "?tab=overview");
+    global.fetch = vi.fn(() => Promise.resolve(status401()));
+    const apiFetch = await freshApiFetch();
+    await settle(apiFetch("/api/business/status", { redirectOnUnauthorized: true }));
+    expect(replaceMock).toHaveBeenCalledWith(
+      `/sign-in?returnTo=${encodeURIComponent("/business/status?tab=overview")}`,
     );
   });
 
@@ -87,10 +99,13 @@ describe("apiFetch session-expiry redirect", () => {
   it("does NOT redirect on a 401 while already on a public or auth route", async () => {
     for (const path of [
       "/pablo",
-      "/immigration",
-      "/immigration/legal",
+      "/1999",
+      "/onboarding",
+      "/onboarding/legal",
       "/sms-opt-in",
       "/sms-opt-in/consent",
+      "/meet",
+      "/meet/room-123",
       "/sign-in",
       "/sign-in/factor-one",
       "/sign-up",
@@ -114,11 +129,27 @@ describe("apiFetch session-expiry redirect", () => {
     }
   });
 
+  it("does NOT redirect a failed write on a public feature route", async () => {
+    setLocation("/1999");
+    global.fetch = vi.fn(() => Promise.resolve(status401()));
+    const apiFetch = await freshApiFetch();
+    await settle(apiFetch("/api/vault/entries", { method: "POST" }));
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
   it("does NOT redirect for a non-401 response", async () => {
     setLocation("/office");
     global.fetch = vi.fn(() => Promise.resolve(status200()));
     const apiFetch = await freshApiFetch();
     await settle(apiFetch("/api/business/summary"));
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("does NOT redirect when a bootstrap read explicitly suppresses expiry handling", async () => {
+    setLocation("/business");
+    global.fetch = vi.fn(() => Promise.resolve(status401()));
+    const apiFetch = await freshApiFetch();
+    await settle(apiFetch("/api/salaryman/saves", { method: "POST", skipSessionExpiryRedirect: true }));
     expect(replaceMock).not.toHaveBeenCalled();
   });
 });

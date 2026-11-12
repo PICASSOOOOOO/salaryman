@@ -1,0 +1,109 @@
+[Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2037
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 120960 samples, rms=0.0000, duration=7.6s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 241964 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (315KB) for transcription...
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2065
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 122880 samples, rms=0.0000, duration=7.7s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 245804 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (320KB) for transcription...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2065
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 122880 samples, rms=0.0000, duration=7.7s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 245804 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (320KB) for transcription...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2163
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 129600 samples, rms=0.0000, duration=8.1s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 259244 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (338KB) for transcription...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2121
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 126720 samples, rms=0.0000, duration=7.9s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 253484 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (330KB) for transcription...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2121
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 126720 samples, rms=0.0000, duration=7.9s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 253484 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (330KB) for transcription...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2135
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 127680 samples, rms=0.0000, duration=8.0s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 255404 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (333KB) for transcription...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+index-1cbGmVak.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-1cbGmVak.js:9
+(anonymous) @ index-1cbGmVak.js:9Understand this error
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: 8 chunks, totalSize=2135
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV conversion: 127680 samples, rms=0.0000, duration=8.0s
+use-voice-conversation-B5OP9OgV.js:1 [Conv] WAV blob: 255404 bytes
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Sending audio/wav (333KB) for transcription...
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Transcription: ""
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-B5OP9OgV.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+use-voice-conversation-B5OP9OgV.js:1 [Conv] onstop: conv mode inactive, skipping

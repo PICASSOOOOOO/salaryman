@@ -12,12 +12,13 @@ import { useCommsAlerts, useCommsCityDnd, useImmersiveViewActive } from "@/lib/c
 import { playNotify } from "@/lib/ui-sound";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { MiniNebula } from "@/components/MiniNebula";
 
-const CRT = (a: number) => `rgba(0,255,65,${a})`;
+const CRT = (a: number) => `rgba(0,0,0,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
 const AMBER = (a: number) => `rgba(251,191,36,${a})`;
-const BG = "rgba(3,10,3,0.98)";
-const BORDER = (a: number) => `rgba(0,255,65,${a})`;
+const BG = "rgba(255,252,245,0.98)";
+const BORDER = (a: number) => `rgba(0,0,0,${a})`;
 const FONT = "var(--font-sans)";
 
 type Tab = "pablo" | "global" | "company" | "private";
@@ -395,6 +396,8 @@ function AttachPicker({
       style={{
         position: "absolute",
         inset: 0,
+        paddingBottom: "var(--app-safe-bottom)",
+        boxSizing: "border-box",
         background: BG,
         zIndex: 5,
         display: "flex",
@@ -423,7 +426,7 @@ function AttachPicker({
         )}
         {!loading && items.length === 0 && (
           <div style={{ textAlign: "center", color: CRT(0.3), fontSize: "0.58rem", fontFamily: fontFor(boomer), padding: "20px 0" }}>
-            NO FILES HERE — UPLOAD IN MEDIA LIBRARY FIRST
+            NO FILES HERE — UPLOAD IN DATA VAULT FIRST
           </div>
         )}
         {items.map(item => (
@@ -459,25 +462,47 @@ function InputBar({
   onSend,
   disabled,
   allowAttach = false,
+  allowUpload = false,
   boomer = false,
 }: {
-  onSend: (text: string, attachmentFileId?: number) => void;
+  onSend: (text: string, attachmentFileId?: number, uploadFile?: File) => Promise<boolean>;
   disabled?: boolean;
   allowAttach?: boolean;
+  allowUpload?: boolean;
   boomer?: boolean;
 }) {
   const [value, setValue] = useState("");
   const [attachment, setAttachment] = useState<MediaItem | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [sendError, setSendError] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
-  const submit = () => {
+  const submit = async () => {
+    if (sending || disabled) return;
     const text = value.trim();
-    if (!text && !attachment) return;
-    onSend(text, attachment?.id);
-    setValue("");
-    setAttachment(null);
-    ref.current?.focus();
+    if (!text && !attachment && !uploadFile) return;
+    setSending(true);
+    setSendError("");
+    try {
+      const sent = await onSend(text, attachment?.id, uploadFile ?? undefined);
+      if (sent) {
+        setValue("");
+        setAttachment(null);
+        setUploadFile(null);
+        setUploadError("");
+      } else {
+        setSendError("Couldn't confirm delivery. Your draft is still here; check the chat before retrying.");
+      }
+    } catch {
+      setSendError("Couldn't confirm delivery. Your draft is still here; check the chat before retrying.");
+    } finally {
+      setSending(false);
+      ref.current?.focus();
+    }
   };
 
   return (
@@ -504,6 +529,43 @@ function InputBar({
           </div>
         </div>
       )}
+      {uploadFile && (
+        <div style={{ padding: "6px 10px 0", display: "flex" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "4px 8px",
+            background: CRT(0.06), border: `1px solid ${CRT(0.2)}`, borderRadius: 6,
+            fontSize: "0.58rem", color: CRT(0.8), fontFamily: fontFor(boomer), maxWidth: "100%",
+          }}>
+            <FileText size={12} style={{ flexShrink: 0 }} />
+            <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{uploadFile.name}</span>
+            <button onClick={() => { setUploadFile(null); setUploadError(""); }} style={{ background: "none", border: "none", color: CRT(0.5), cursor: "pointer", padding: 0, display: "flex", flexShrink: 0 }}>
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      )}
+      {uploadError && <div role="alert" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{uploadError}</div>}
+      {sendError && <div role="alert" data-testid="status-message-send-error" style={{ padding: "5px 10px 0", color: "#b91c1c", fontSize: "0.58rem" }}>{sendError}</div>}
+      {allowUpload && (
+        <input
+          ref={uploadRef}
+          type="file"
+          accept=".csv,.xls,.xlsx,.xlsm,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          style={{ display: "none" }}
+          onChange={event => {
+            const file = event.currentTarget.files?.[0] ?? null;
+            event.currentTarget.value = "";
+            setUploadError("");
+            if (file && file.size > 10 * 1024 * 1024) {
+              setUploadFile(null);
+              setUploadError("CRM import files must be 10 MB or smaller.");
+              return;
+            }
+            setUploadFile(file);
+            setAttachment(null);
+          }}
+        />
+      )}
     <div
       style={{
         borderTop: `1px solid ${BORDER(0.12)}`,
@@ -514,17 +576,17 @@ function InputBar({
         background: "rgba(0,0,0,0.4)",
       }}
     >
-      {allowAttach && (
+      {(allowAttach || allowUpload) && (
         <button
-          onClick={() => setPickerOpen(true)}
-          disabled={disabled}
-          title="Attach from library"
+          onClick={() => allowUpload ? uploadRef.current?.click() : setPickerOpen(true)}
+           disabled={disabled || sending}
+          title={allowUpload ? "Attach a CRM file" : "Attach from library"}
           style={{
             background: "transparent",
-            border: `1px solid ${CRT(disabled ? 0.1 : 0.25)}`,
+             border: `1px solid ${CRT(disabled || sending ? 0.1 : 0.25)}`,
             borderRadius: 6,
-            color: CRT(disabled ? 0.2 : 0.7),
-            cursor: disabled ? "default" : "pointer",
+             color: CRT(disabled || sending ? 0.2 : 0.7),
+             cursor: disabled || sending ? "default" : "pointer",
             padding: "7px 9px",
             display: "flex",
             alignItems: "center",
@@ -537,7 +599,7 @@ function InputBar({
       <textarea
         ref={ref}
         value={value}
-        onChange={e => setValue(e.target.value)}
+        onChange={e => { setValue(e.target.value); setSendError(""); }}
         onKeyDown={e => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -545,7 +607,7 @@ function InputBar({
           }
         }}
         placeholder={disabled ? "Select a channel to chat" : "Message... (Enter to send)"}
-        disabled={disabled}
+         disabled={disabled || sending}
         rows={1}
         style={{
           flex: 1,
@@ -561,18 +623,18 @@ function InputBar({
           lineHeight: 1.4,
           maxHeight: 80,
           overflowY: "auto",
-          opacity: disabled ? 0.4 : 1,
+           opacity: disabled || sending ? 0.4 : 1,
         }}
       />
       <button
         onClick={submit}
-        disabled={disabled || (!value.trim() && !attachment)}
+         disabled={disabled || sending || (!value.trim() && !attachment && !uploadFile)}
         style={{
-          background: disabled || (!value.trim() && !attachment) ? "transparent" : CRT(0.1),
-          border: `1px solid ${CRT(disabled || (!value.trim() && !attachment) ? 0.1 : 0.35)}`,
+            background: disabled || sending || (!value.trim() && !attachment && !uploadFile) ? "transparent" : CRT(0.1),
+            border: `1px solid ${CRT(disabled || sending || (!value.trim() && !attachment && !uploadFile) ? 0.1 : 0.35)}`,
           borderRadius: 6,
-          color: CRT(disabled || (!value.trim() && !attachment) ? 0.2 : 0.9),
-          cursor: disabled || (!value.trim() && !attachment) ? "default" : "pointer",
+            color: CRT(disabled || sending || (!value.trim() && !attachment && !uploadFile) ? 0.2 : 0.9),
+            cursor: disabled || sending || (!value.trim() && !attachment && !uploadFile) ? "default" : "pointer",
           padding: "7px 9px",
           display: "flex",
           alignItems: "center",
@@ -840,11 +902,17 @@ function _writeAssocBaseline(uid: string, n: number): void {
 export function ChatPanel({
   initiallyOpen = false,
   initialDmUserId,
+  initialDmRequestId = 0,
+  openRequestId = 0,
   embedded = false,
+  dockMode = false,
 }: {
   initiallyOpen?: boolean;
   initialDmUserId?: string;
+  initialDmRequestId?: number;
+  openRequestId?: number;
   embedded?: boolean;
+  dockMode?: boolean;
 } = {}) {
   const { user, isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
@@ -853,8 +921,13 @@ export function ChatPanel({
   const [open, setOpen] = useState(embedded || initiallyOpen);
   const [activeTab, setActiveTab] = useState<Tab>("pablo");
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
+  const [activeOrgChannelId, setActiveOrgChannelId] = useState<number | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [pabloLoading, setPabloLoading] = useState(false);
+
+  useEffect(() => {
+    if (dockMode && openRequestId > 0) setOpen(true);
+  }, [dockMode, openRequestId]);
 
   const {
     connected,
@@ -870,6 +943,7 @@ export function ChatPanel({
     sendToPablo,
     refreshChannels,
   } = useChatSocket();
+  const commsReady = connected || channelMeta !== null;
 
   const currentUserId = (user as any)?.id ?? "";
 
@@ -885,6 +959,12 @@ export function ChatPanel({
   const globalChannelId = channelMeta?.globalChannelId ?? null;
   const pabloChannelId = channelMeta?.pabloChannelId ?? null;
   const companyChannelId = channelMeta?.companyChannelId ?? null;
+  useEffect(() => {
+    const channels = channelMeta?.orgChannels ?? [];
+    if (activeOrgChannelId != null && !channels.some((channel) => channel.channelId === activeOrgChannelId)) {
+      setActiveOrgChannelId(companyChannelId);
+    }
+  }, [activeOrgChannelId, channelMeta?.orgChannels, companyChannelId]);
 
   const activeChannelId =
     activeTab === "pablo"
@@ -892,7 +972,7 @@ export function ChatPanel({
       : activeTab === "global"
       ? globalChannelId
       : activeTab === "company"
-      ? companyChannelId
+      ? activeOrgChannelId ?? companyChannelId
       : activePrivateChannelId;
 
   useEffect(() => {
@@ -924,18 +1004,17 @@ export function ChatPanel({
     markAllRead().finally(() => invalidateCommsSummary());
   }, [open, markAllRead]);
 
-  const handleSend = async (text: string, attachmentFileId?: number) => {
+  const handleSend = async (text: string, attachmentFileId?: number, uploadFile?: File): Promise<boolean> => {
     if (activeTab === "pablo") {
       setPabloLoading(true);
       try {
-        await sendToPablo(text);
+        return await sendToPablo(text, uploadFile);
       } finally {
         setPabloLoading(false);
       }
-      return;
     }
-    if (activeChannelId == null) return;
-    send(activeChannelId, text, attachmentFileId);
+    if (activeChannelId == null) return false;
+    return send(activeChannelId, text, attachmentFileId);
   };
 
   const handleLoadMore = useCallback(() => {
@@ -969,7 +1048,7 @@ export function ChatPanel({
       setShowUserSearch(false);
     });
     return () => { active = false; };
-  }, [initialDmUserId, currentUserId, startPrivateChat]);
+  }, [initialDmUserId, initialDmRequestId, currentUserId, startPrivateChat]);
 
   // Esc-to-close — basic dialog accessibility for the bottom-sheet on
   // mobile and the floating panel on desktop. Keyboard users can also
@@ -982,28 +1061,6 @@ export function ChatPanel({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, embedded]);
-
-  useEffect(() => {
-    const onOpenDm = async (e: Event) => {
-      const detail = (e as CustomEvent<{ userId?: string }>).detail;
-      if (!detail?.userId) return;
-      if (detail.userId === currentUserId) return;
-      setOpen(true);
-      const channelId = await startPrivateChat(detail.userId);
-      if (channelId) {
-        setActivePrivateChannelId(channelId);
-        setActiveTab("private");
-        setShowUserSearch(false);
-      }
-    };
-    const onOpenChat = () => setOpen(true);
-    window.addEventListener("salaryman:open-dm", onOpenDm as EventListener);
-    window.addEventListener("salaryman:open-chat", onOpenChat as EventListener);
-    return () => {
-      window.removeEventListener("salaryman:open-dm", onOpenDm as EventListener);
-      window.removeEventListener("salaryman:open-chat", onOpenChat as EventListener);
-    };
-  }, [currentUserId, startPrivateChat]);
 
   // --- Proactive toast notifications -------------------------------------
   // Surface new comms (incoming DM/company/Pablo messages + associate
@@ -1026,13 +1083,16 @@ export function ChatPanel({
   const openChannelById = useCallback((channelId: number) => {
     setShowUserSearch(false);
     if (channelId === pabloChannelId) setActiveTab("pablo");
-    else if (channelId === companyChannelId) setActiveTab("company");
+    else if ((channelMeta?.orgChannels ?? []).some((channel) => channel.channelId === channelId)) {
+      setActiveTab("company");
+      setActiveOrgChannelId(channelId);
+    }
     else {
       setActiveTab("private");
       setActivePrivateChannelId(channelId);
     }
     setOpen(true);
-  }, [pabloChannelId, companyChannelId]);
+  }, [pabloChannelId, companyChannelId, channelMeta?.orgChannels]);
 
   // Message-arrival toasts. We track which message ids we've already
   // considered so re-renders never re-toast, and use createdAt recency to
@@ -1166,16 +1226,19 @@ export function ChatPanel({
 
   if (!isAuthenticated) return null;
 
-  const PANEL_W = embedded ? "100%" : isMobile ? "100vw" : 340;
+  const PANEL_W = embedded ? "100%" : isMobile ? "100vw" : dockMode ? "min(420px, calc(100vw - 24px))" : 340;
   // Mobile: bottom-sheet sized to ~78% of the viewport so the user can
   // (a) tap the backdrop above to dismiss / see the page behind, and
   // (b) keep the input bar comfortably clear of the on-screen keyboard.
-  // Desktop: fixed 480px floating panel.
-  const PANEL_H = embedded ? (isMobile ? "calc(100dvh - 210px)" : 600) : isMobile ? "78dvh" : 480;
+  // Desktop COMMS docks to the lower edge; the page remains interactive because
+  // the panel has no backdrop or modal focus trap.
+  const PANEL_H = embedded ? (isMobile ? "calc(100dvh - 210px)" : 600) : isMobile ? "78dvh" : dockMode ? "min(68vh, 600px)" : 480;
 
   const tabPabloUnread = unreadCounts[pabloChannelId ?? -1] ?? 0;
   const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
-  const tabCompanyUnread = unreadCounts[companyChannelId ?? -1] ?? 0;
+  const tabCompanyUnread = (channelMeta?.orgChannels ?? []).reduce(
+    (sum, channel) => sum + (unreadCounts[channel.channelId] ?? 0), 0
+  );
   const tabPrivateUnread = channelMeta?.privateChannels.reduce(
     (sum, p) => sum + (unreadCounts[p.channelId] ?? 0),
     0
@@ -1206,6 +1269,9 @@ export function ChatPanel({
       )}
       {open && (
         <div
+          id={dockMode ? "comms-panel" : undefined}
+          role={dockMode ? "region" : undefined}
+          aria-label={dockMode ? "COMMS panel" : undefined}
           style={{
             position: embedded ? "relative" : "fixed",
             ...(embedded
@@ -1218,6 +1284,8 @@ export function ChatPanel({
                   left: 0, right: 0, bottom: 0,
                   borderRadius: "16px 16px 0 0",
                 }
+              : dockMode
+              ? { bottom: 0, right: 24, borderRadius: "10px 10px 0 0" }
               : { bottom: 56, right: 16, borderRadius: 10 }),
             width: PANEL_W,
             height: PANEL_H,
@@ -1226,7 +1294,7 @@ export function ChatPanel({
             borderBottom: isMobile ? "none" : undefined,
             display: "flex",
             flexDirection: "column",
-            zIndex: embedded ? 1 : 9999,
+            zIndex: embedded ? 1 : dockMode ? 850 : 9999,
             boxShadow: isMobile
               ? "0 -8px 32px rgba(0,0,0,0.7)"
               : `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
@@ -1271,7 +1339,7 @@ export function ChatPanel({
           )}
           <div
             style={{
-              background: `linear-gradient(90deg, rgba(0,255,65,0.06), rgba(0,0,0,0))`,
+              background: "linear-gradient(90deg, rgba(0,0,0,0.05), rgba(255,252,245,0))",
               borderBottom: `1px solid ${BORDER(0.15)}`,
               padding: isMobile ? "12px 16px" : "8px 12px",
               display: "flex",
@@ -1280,25 +1348,45 @@ export function ChatPanel({
               flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              {pabloChannelId != null && (
+                <MiniNebula
+                  size={22}
+                  status={connected ? "idle" : "thinking"}
+                  title="Open Pablo nebula"
+                />
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ fontSize: isMobile ? "0.72rem" : "0.58rem", color: CRT(0.82), letterSpacing: "0.1em", fontWeight: 700 }}>
+                    {dockMode ? "COMMS" : "PABLO AI"}
+                  </span>
+                  <span style={{ fontSize: "0.5rem", color: connected && pabloChannelId != null ? "rgba(22,101,52,0.9)" : CRT(0.42), letterSpacing: "0.08em" }}>
+                    {connected && pabloChannelId != null ? "ONLINE" : "SYNCING"}
+                  </span>
+                </div>
+                <span style={{ display: "block", marginTop: 2, fontSize: "0.48rem", color: CRT(0.42), letterSpacing: "0.08em" }}>
+                  {connected ? (dockMode ? "LIVE MESSAGES" : "LIVE COMMS") : commsReady ? "COMMS READY · SYNCING" : "COMMS OFFLINE"}
+                </span>
+              </div>
               <div
+                aria-hidden
                 style={{
                   width: 7,
                   height: 7,
+                  marginLeft: 2,
                   borderRadius: "50%",
-                  background: connected ? CRT(0.9) : "rgba(255,60,60,0.8)",
-                  boxShadow: connected ? `0 0 6px ${CRT(0.5)}` : "none",
+                  background: connected && pabloChannelId != null ? "rgb(74,222,128)" : "rgba(120,120,120,0.5)",
+                  boxShadow: connected && pabloChannelId != null ? "0 0 6px rgba(74,222,128,0.8)" : "none",
                 }}
               />
-              <span
+              {/* Keep the compact transport label for screen readers and existing
+                  layout expectations without showing it twice visually. */}
+              <div
                 style={{
-                  fontSize: isMobile ? "0.75rem" : "0.62rem",
-                  color: CRT(0.7),
-                  letterSpacing: "0.12em",
+                  display: "none",
                 }}
-              >
-                PAYPHONE
-              </span>
+              />
             </div>
             {!embedded && <button
               onClick={() => setOpen(false)}
@@ -1401,6 +1489,53 @@ export function ChatPanel({
               );
             })}
           </div>
+
+          {activeTab === "company" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px", overflowX: "auto", flexShrink: 0, borderBottom: `1px solid ${BORDER(0.08)}` }}>
+              {(channelMeta?.orgChannels ?? []).map((channel) => {
+                const selected = (activeOrgChannelId ?? companyChannelId) === channel.channelId;
+                return (
+                  <button key={channel.channelId} type="button" onClick={() => setActiveOrgChannelId(channel.channelId)}
+                    style={{ flexShrink: 0, border: `1px solid ${selected ? CRT(0.35) : CRT(0.12)}`, borderRadius: 4, background: selected ? CRT(0.07) : "transparent", color: selected ? CRT(0.9) : CRT(0.5), padding: "4px 7px", font: `bold 0.5rem ${fontFor(boomer)}`, cursor: "pointer", whiteSpace: "nowrap" }}
+                    aria-pressed={selected}>
+                    # {channel.name} {(unreadCounts[channel.channelId] ?? 0) > 0 ? `· ${unreadCounts[channel.channelId]}` : ""}
+                  </button>
+                );
+              })}
+              {channelMeta?.canManageOrgChannels && (
+                <>
+                  <button type="button" aria-label="Create organization channel" onClick={async () => {
+                    const name = window.prompt("New channel name");
+                    if (!name?.trim()) return;
+                    const response = await apiFetch("/api/chat/company/channels", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+                    if (!response.ok) { toast({ title: "CHANNEL NOT CREATED", description: (await response.json().catch(() => ({}))).error ?? "Try another name.", variant: "destructive" }); return; }
+                    const created = await response.json();
+                    await refreshChannels();
+                    setActiveOrgChannelId(created.channelId);
+                  }} style={{ flexShrink: 0, border: `1px dashed ${CRT(0.25)}`, background: "transparent", color: CRT(0.65), padding: "4px 7px", font: `bold 0.5rem ${fontFor(boomer)}`, cursor: "pointer" }}><Plus size={10} /> CHANNEL</button>
+                  {(() => {
+                    const selected = (channelMeta?.orgChannels ?? []).find((channel) => channel.channelId === (activeOrgChannelId ?? companyChannelId));
+                    if (!selected || selected.isDefault) return null;
+                    return <button type="button" aria-label={`Rename or delete ${selected.name}`} onClick={async () => {
+                      const action = window.prompt(`Manage #${selected.name}: enter R to rename or D to delete`);
+                      if (action?.toLowerCase() === "r") {
+                        const name = window.prompt("New channel name", selected.name);
+                        if (!name?.trim()) return;
+                        const response = await apiFetch(`/api/chat/company/channels/${selected.channelId}`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+                        if (!response.ok) { toast({ title: "CHANNEL NOT RENAMED", description: (await response.json().catch(() => ({}))).error ?? "Try another name.", variant: "destructive" }); return; }
+                        await refreshChannels();
+                      } else if (action?.toLowerCase() === "d" && window.confirm(`Delete #${selected.name} and its message history?`)) {
+                        const response = await apiFetch(`/api/chat/company/channels/${selected.channelId}`, { method: "DELETE", credentials: "include" });
+                        if (!response.ok) { toast({ title: "CHANNEL NOT DELETED", variant: "destructive" }); return; }
+                        setActiveOrgChannelId(companyChannelId);
+                        await refreshChannels();
+                      }
+                    }} style={{ flexShrink: 0, border: `1px solid ${CRT(0.12)}`, background: "transparent", color: CRT(0.55), padding: "4px 7px", font: `bold 0.5rem ${fontFor(boomer)}`, cursor: "pointer" }}>EDIT</button>;
+                  })()}
+                </>
+              )}
+            </div>
+          )}
 
           {activeTab === "private" && !showUserSearch && (
             <div
@@ -1544,6 +1679,7 @@ export function ChatPanel({
                 onSend={handleSend}
                 disabled={pabloLoading || activeChannelId == null || (activeTab === "private" && activePrivateChannelId == null)}
                 allowAttach={(activeTab === "private" || activeTab === "company") && activeChannelId != null}
+                allowUpload={activeTab === "pablo"}
                 boomer={boomer}
               />
             </>
@@ -1551,9 +1687,12 @@ export function ChatPanel({
         </div>
       )}
 
-      {!embedded && <button
+      {!embedded && !(dockMode && open) && <button
         onClick={() => setOpen(o => !o)}
         data-testid="button-comms-toggle"
+        aria-label={open ? "Close COMMS panel" : "Open COMMS panel"}
+        aria-expanded={open}
+        aria-controls="comms-panel"
         style={{
           position: "fixed",
           // ChatPanel is hidden on GAME_ROUTES (WorldPlay, /game, /mobile) so
@@ -1561,14 +1700,16 @@ export function ChatPanel({
           // bottom-RIGHT corner with comfortable padding — that area is
           // usually clear, and it keeps the ask-bot prompt off the user's
           // profile. Respect the iOS home-indicator safe-area inset on mobile.
-          bottom: isMobile ? `calc(var(--app-safe-bottom) + 24px + var(--fab-bottom-offset, 0px))` : `calc(16px + var(--fab-bottom-offset, 0px))`,
+          bottom: dockMode && !isMobile ? 0 : isMobile ? `calc(var(--app-safe-bottom) + 24px + var(--fab-bottom-offset, 0px))` : `calc(16px + var(--fab-bottom-offset, 0px))`,
           // Landscape iPhones push the home indicator / rounded corner
           // into the right edge — respect that inset so the FAB doesn't
           // hug the bezel.
-          right: isMobile ? `calc(env(safe-area-inset-right, 0px) + 20px)` : 16,
-          width: isMobile ? 60 : 42,
-          height: isMobile ? 60 : 42,
-          borderRadius: "50%",
+          right: dockMode && !isMobile ? 24 : isMobile ? `calc(env(safe-area-inset-right, 0px) + 20px)` : 16,
+          width: dockMode && !isMobile ? "auto" : isMobile ? 60 : 42,
+          minWidth: dockMode && !isMobile ? 112 : undefined,
+          height: dockMode && !isMobile ? 40 : isMobile ? 60 : 42,
+          padding: dockMode && !isMobile ? "0 14px" : undefined,
+          borderRadius: dockMode && !isMobile ? "8px 8px 0 0" : "50%",
           background: open
             ? `linear-gradient(135deg, ${CRT(0.15)}, ${BLUE(0.1)})`
             : `linear-gradient(135deg, rgba(0,20,0,0.95), rgba(0,10,15,0.95))`,
@@ -1580,7 +1721,7 @@ export function ChatPanel({
           justifyContent: "center",
           // Sit above all in-world HUD (z 150–240) but below full-screen
           // modals (z 9000+) so it never hijacks dialogs.
-          zIndex: isMobile ? 8500 : 901,
+          zIndex: isMobile ? 8500 : dockMode ? 851 : 901,
           boxShadow: open
             ? `0 0 18px ${CRT(0.3)}`
             : `0 4px 18px rgba(0,0,0,0.7), 0 0 12px ${CRT(0.18)}`,
@@ -1589,11 +1730,12 @@ export function ChatPanel({
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
         }}
-        title="Chat"
+        title={dockMode ? "Open COMMS" : "Chat"}
       >
         {open
           ? <ChevronDown size={isMobile ? 28 : 18} />
           : <MessageSquare size={isMobile ? 28 : 18} />}
+        {dockMode && !isMobile && <span style={{ fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.12em" }}>COMMS</span>}
         {!open && totalUnread > 0 && (
           <span
             style={{

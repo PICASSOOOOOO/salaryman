@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, Radio, Wrench } from "lucide-react";
-import { TOWER_BUSINESSES, TOWER_GOSSIP, TOWER_RESIDENTS, getTowerGossip } from "@/lib/tower-life";
+import { CalendarClock, Radio, ShieldAlert, Wrench } from "lucide-react";
+import { TOWER_BUSINESSES, TOWER_GOSSIP, TOWER_RESIDENTS, getTowerGossip, getTowerRivalryUpdate } from "@/lib/tower-life";
 import { getActiveCityId } from "@/lib/city-defs";
 import { CityClock, useCityClock } from "@/components/CityClock";
 import { businessOfficeHours, isOfficeOpenAt, officeHoursLabel } from "@workspace/api-zod";
@@ -12,7 +12,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
 }) {
   const cityId = getActiveCityId();
   const { clock } = useCityClock(cityId);
-  const [tab, setTab] = useState<"classifieds" | "residents">("classifieds");
+  const [tab, setTab] = useState<"classifieds" | "residents" | "rivalries">("classifieds");
   const [gossipIndex, setGossipIndex] = useState(0);
   const [broadcast, setBroadcast] = useState("");
 
@@ -22,6 +22,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
   }, []);
 
   const [speaker, line] = getTowerGossip(gossipIndex);
+  const rivalry = getTowerRivalryUpdate(clock ? new Date(clock.serverNow) : new Date());
   const announce = (text: string) => {
     setBroadcast(text);
   };
@@ -55,6 +56,7 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
         {([
           ["classifieds", "CLASSIFIEDS"],
           ["residents", "PEOPLE"],
+          ["rivalries", "RIVALRIES"],
         ] as const).map(([value, label]) => (
           <button key={value} type="button" onClick={() => setTab(value)} className={`border px-3 py-2 text-[10px] font-bold tracking-[.16em] transition ${tab === value ? "border-violet-300/70 bg-violet-300/10 text-violet-100" : "border-white/10 text-zinc-500 hover:border-violet-300/35 hover:text-zinc-200"}`}>{label}</button>
         ))}
@@ -117,6 +119,40 @@ export function TowerLifeHub({ compact = false, cityLabel = "SHADOW TOWER", floo
               </article>
             );
           })}
+        </div>
+      )}
+
+      {tab === "rivalries" && (
+        <div className="mt-4 grid gap-3 md:grid-cols-2" data-testid="tower-rivalry-panel">
+          <article className="border border-amber-300/25 bg-amber-300/[.04] p-4 md:col-span-2">
+            <div className="flex items-center gap-2 text-[9px] font-bold tracking-[.18em] text-amber-200">
+              <ShieldAlert className="h-3.5 w-3.5" /> SHIFT BUSINESS MOVE · {rivalry.tactic.toUpperCase()}
+            </div>
+            <h3 className="mt-2 text-sm font-black text-zinc-100">{rivalry.headline}</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {rivalry.participants.map((name, index) => (
+                <span key={`${name}-${index}`} className="border border-white/10 bg-white/[.03] px-2 py-1 text-[9px] font-bold tracking-wider text-zinc-300">{name}</span>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-zinc-300">{rivalry.businessEffect}</p>
+            <p className="mt-3 border-l-2 border-cyan-300/60 pl-3 text-[10px] leading-5 text-cyan-100">
+              <strong className="tracking-wider text-cyan-300">PLAYER OPENING</strong> · {rivalry.playerOpportunity}
+            </p>
+          </article>
+          <article className="border border-emerald-300/20 bg-emerald-300/[.035] p-4">
+            <p className="text-[9px] font-bold tracking-[.18em] text-emerald-200">SHOP FLOOR COVERAGE</p>
+            <p className="mt-2 text-xs leading-5 text-zinc-300">
+              Half of each shop’s staff may participate in rivalry activity; the other half remains on shop operations.
+            </p>
+            <p className="mt-2 text-[10px] font-bold tracking-wider text-emerald-200">
+              {Math.round(rivalry.operatingShare * 100)}% OPERATIONS · SALES AVAILABLE
+            </p>
+          </article>
+          <article className="border border-white/10 bg-white/[.025] p-4">
+            <p className="text-[9px] font-bold tracking-[.18em] text-zinc-400">BUSINESSES INVOLVED</p>
+            <p className="mt-2 text-xs leading-5 text-zinc-300">{rivalry.businesses.join(" · ")}</p>
+            <p className="mt-2 text-[9px] leading-4 text-zinc-500">Petty corporate conflict stays subject to Tower law. Public business intelligence uses public notices only.</p>
+          </article>
         </div>
       )}
 

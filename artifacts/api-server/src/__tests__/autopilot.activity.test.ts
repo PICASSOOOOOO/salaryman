@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+
+// This suite verifies route auth/org scoping, filtering, and pagination. Paid
+// feature enforcement has its own middleware tests, so bypass it here.
+vi.mock("../middlewares/requirePro", () => ({
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
 import request from "supertest";
 import express, { type Express } from "express";
 import { randomUUID } from "crypto";

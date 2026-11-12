@@ -5,7 +5,7 @@
 //      users with no org are skipped, their data still lives in the user-scoped
 //      call_history / sms tables),
 //   2. snapshots the org industry for per-industry segmentation,
-//   3. finds or creates the matching org lead (by phone, last-10-digit match),
+//   3. finds or creates the matching org lead (phone plus corroborating identity),
 //   4. upserts a crm_activities row (deduped by org + twilioSid + channel so
 //      Twilio's repeated status / recording / transcription callbacks enrich a
 //      single activity instead of duplicating it),
@@ -30,8 +30,7 @@ function normalizePhone(phone: string): string {
 function phoneMatches(a: string, b: string): boolean {
   const na = normalizePhone(a);
   const nb = normalizePhone(b);
-  if (!na || !nb) return false;
-  return na.endsWith(nb.slice(-10)) || nb.endsWith(na.slice(-10));
+  return !!na && !!nb && na === nb;
 }
 
 function toE164(phone: string): string {
@@ -40,6 +39,44 @@ function toE164(phone: string): string {
   if (n.length === 10) return `+1${n}`;
   if (n.length === 11 && n.startsWith("1")) return `+${n}`;
   return `+${n}`;
+}
+
+type CallLeadCandidate = {
+  id: number;
+  name: string | null;
+  phone: string | null;
+  customFieldsJson: Record<string, unknown> | null;
+};
+
+export function selectExistingCallLead<T extends CallLeadCandidate>(
+  leads: readonly T[],
+  phone: string,
+  name?: string | null,
+  dateOfBirth?: string | null,
+): T | undefined {
+  const phoneLeads = leads.filter((lead) => lead.phone && phoneMatches(lead.phone, phone));
+  const normalizedName = normalizeLeadName(name);
+  const isPlaceholder = (lead: T) =>
+    !lead.name || lead.name === lead.phone || normalizePhone(lead.name) === normalizePhone(lead.phone ?? "");
+  const storedDob = (lead: T) => {
+    const value = lead.customFieldsJson?.dateOfBirth;
+    return typeof value === "string" ? value : "";
+  };
+
+  if (normalizedName) {
+    const sameName = phoneLeads.filter((lead) => normalizeLeadName(lead.name) === normalizedName);
+    const consistent = sameName.filter((lead) => !dateOfBirth || !storedDob(lead) || storedDob(lead) === dateOfBirth);
+    return consistent.length === 1 ? consistent[0] : undefined;
+  }
+  if (dateOfBirth) {
+    const sameDob = phoneLeads.filter((lead) => storedDob(lead) === dateOfBirth);
+    return sameDob.length === 1 ? sameDob[0] : undefined;
+  }
+
+  // A phone-only lead represents an unidentified number, not a person.
+  // Never attach a named caller to it or merge two named people on a shared line.
+  const placeholders = phoneLeads.filter(isPlaceholder);
+  return placeholders.length === 1 ? placeholders[0] : undefined;
 }
 
 export async function resolveOrgForUser(
@@ -70,27 +107,43 @@ async function findOrCreateOrgLead(opts: {
   userId: string;
   phone: string;
   name?: string | null;
+  dateOfBirth?: string | null;
+  email?: string | null;
+  company?: string | null;
   source: string;
 }): Promise<number | null> {
-  const { orgId, userId, phone, name, source } = opts;
+  const { orgId, userId, phone, name, dateOfBirth, email, company, source } = opts;
   if (!phone) return null;
   try {
     const leads = await db
       .select()
       .from(leadRecordsTable)
       .where(eq(leadRecordsTable.orgId, orgId));
-    const existing = leads.find((l) => l.phone && phoneMatches(l.phone, phone));
+    const existing = selectExistingCallLead(leads, phone, name, dateOfBirth);
+    const storedDob = (lead: typeof leads[number]) => {
+      const value = lead.customFieldsJson?.dateOfBirth;
+      return typeof value === "string" ? value : "";
+    };
+
     if (existing) {
-      // Backfill a real name if we previously only had the raw number.
-      if (name && (!existing.name || existing.name === existing.phone || normalizePhone(existing.name) === normalizePhone(existing.phone))) {
-        await db
-          .update(leadRecordsTable)
-          .set({ name: name.slice(0, 256) })
-          .where(eq(leadRecordsTable.id, existing.id))
-          .catch(() => {});
+      const customFields = { ...(existing.customFieldsJson ?? {}) };
+      if (dateOfBirth && !storedDob(existing)) customFields.dateOfBirth = dateOfBirth;
+      const update: Record<string, unknown> = {};
+      if (dateOfBirth && !storedDob(existing)) update.customFieldsJson = customFields;
+      if (email && !existing.email) update.email = email.slice(0, 256);
+      if (company && !existing.company) update.company = company.slice(0, 256);
+      if (Object.keys(update).length) {
+        await db.update(leadRecordsTable).set(update).where(eq(leadRecordsTable.id, existing.id));
       }
       return existing.id;
     }
+
+    const customFields: Record<string, unknown> = {
+      identityResolution: normalizeLeadName(name) || dateOfBirth
+        ? "corroborated_call_evidence"
+        : "phone_only_unidentified",
+    };
+    if (dateOfBirth) customFields.dateOfBirth = dateOfBirth;
     const [created] = await db
       .insert(leadRecordsTable)
       .values({
@@ -99,6 +152,9 @@ async function findOrCreateOrgLead(opts: {
         assignedUserId: userId,
         name: (name || toE164(phone)).slice(0, 256),
         phone: toE164(phone),
+        email: email?.slice(0, 256) ?? "",
+        company: company?.slice(0, 256) ?? "",
+        customFieldsJson: customFields,
         source,
         status: "new",
       })
@@ -110,6 +166,81 @@ async function findOrCreateOrgLead(opts: {
   }
 }
 
+function normalizeLeadName(value: string | null | undefined): string {
+  return (value ?? "").trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ");
+}
+
+export interface CallerIdentityEvidence {
+  name?: string;
+  dateOfBirth?: string;
+  email?: string;
+  company?: string;
+}
+
+function normalizeExplicitDate(value: string): string | undefined {
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const [, year, month, day] = iso;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    if (date.getUTCFullYear() === Number(year) && date.getUTCMonth() === Number(month) - 1 && date.getUTCDate() === Number(day)) {
+      return `${year}-${month}-${day}`;
+    }
+    return undefined;
+  }
+  const slash = value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (slash) {
+    const first = Number(slash[1]);
+    const second = Number(slash[2]);
+    const year = Number(slash[3]);
+    // Skip ambiguous dates such as 03/04/1980 rather than choosing a locale.
+    if (first <= 12 && second <= 12) return undefined;
+    const month = first > 12 ? second : first;
+    const day = first > 12 ? first : second;
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return undefined;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime()) && /[A-Za-z]/.test(value)) {
+    return `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, "0")}-${String(parsed.getUTCDate()).padStart(2, "0")}`;
+  }
+  return undefined;
+}
+
+/**
+ * Pull conservative CRM evidence only from transcript turns already labelled Caller.
+ * The DOB is internal matching data and is never included in public research queries.
+ */
+export function extractCallerIdentityEvidence(transcript: string): CallerIdentityEvidence {
+  const callerLines = transcript
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(?:caller|contact|external)\s*:/i.test(line))
+    .map((line) => line.replace(/^\s*(?:caller|contact|external)\s*:\s*/i, ""));
+  const result: CallerIdentityEvidence = {};
+  for (const line of callerLines) {
+    if (!result.name) {
+      const match = line.match(/\b(?:my name is|my name's|this is|i am|i'm)\s+([A-Z][A-Za-z'’-]*(?:\s+[A-Z][A-Za-z'’-]*){0,3})/i);
+      if (match) result.name = match[1].trim().replace(/[.,;:]+$/, "").slice(0, 128);
+    }
+    if (!result.dateOfBirth) {
+      const match = line.match(/\b(?:my\s+)?(?:date of birth|dob)\s+is\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4})\b/i)
+        ?? line.match(/\bi was born(?: on)?\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4})\b/i);
+      if (match) result.dateOfBirth = normalizeExplicitDate(match[1]);
+    }
+    if (!result.email) {
+      const match = line.match(/\b(?:my\s+)?email(?: address)?\s+is\s+([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/i);
+      if (match) result.email = match[1].slice(0, 256);
+    }
+    if (!result.company) {
+      const match = line.match(/\b(?:i work at|i work for|i'm with|i am with)\s+([^,.;!?]{2,100})/i);
+      if (match) {
+        result.company = match[1].split(/\s+(?:and|but|because)\s+/i)[0].trim().slice(0, 256);
+      }
+    }
+  }
+  return Object.fromEntries(Object.entries(result).filter(([, value]) => !!value)) as CallerIdentityEvidence;
+}
+
 export interface RecordTelephonyOpts {
   userId: string;
   /** Pass when already known (e.g. from call_history.orgId) to skip a lookup. */
@@ -119,7 +250,13 @@ export interface RecordTelephonyOpts {
   /** The OTHER party's number (the contact), not the org's Twilio line. */
   phone: string;
   contactName?: string | null;
+  /** Explicit fields spoken by a Caller-labelled transcript turn. */
+  dateOfBirth?: string | null;
+  email?: string | null;
+  company?: string | null;
   contactId?: number | null;
+  /** Authoritative CRM lead selected by the caller. Must already be org-scoped by the caller. */
+  leadId?: number | null;
   body?: string | null;
   summary?: string | null;
   recordingUrl?: string | null;
@@ -142,6 +279,43 @@ export async function recordTelephonyActivity(opts: RecordTelephonyOpts): Promis
     let orgId = opts.orgId ?? null;
     let industry: string | null = null;
     if (orgId) {
+      const membership = await db
+        .select({ orgId: orgMembersTable.orgId })
+        .from(orgMembersTable)
+        .where(and(
+          eq(orgMembersTable.userId, opts.userId),
+          eq(orgMembersTable.orgId, orgId),
+          eq(orgMembersTable.status, "active"),
+        ))
+        .limit(1);
+      // Never trust a stale/foreign org hint from a callback or client.
+      if (!membership[0] && opts.leadId) {
+        const [ownedLead] = await db
+          .select({ id: leadRecordsTable.id })
+          .from(leadRecordsTable)
+          .where(and(
+            eq(leadRecordsTable.id, opts.leadId),
+            eq(leadRecordsTable.orgId, orgId),
+            eq(leadRecordsTable.assignedUserId, opts.userId),
+          ))
+          .limit(1);
+        if (ownedLead) membership.push({ orgId });
+      }
+      if (!membership[0]) {
+        const [ownedLead] = await db
+          .select({ id: leadRecordsTable.id })
+          .from(leadRecordsTable)
+          .where(and(
+            eq(leadRecordsTable.orgId, orgId),
+            eq(leadRecordsTable.assignedUserId, opts.userId),
+            eq(leadRecordsTable.phone, opts.phone),
+          ))
+          .limit(1);
+        if (ownedLead) membership.push({ orgId });
+      }
+      if (!membership[0]) orgId = null;
+    }
+    if (orgId) {
       const orgRows = await db
         .select({ industry: organizationsTable.industry })
         .from(organizationsTable)
@@ -162,11 +336,14 @@ export async function recordTelephonyActivity(opts: RecordTelephonyOpts): Promis
       sms: direction === "inbound" ? "inbound_sms" : "outbound_sms",
     };
 
-    const leadId = await findOrCreateOrgLead({
+    const leadId = opts.leadId ?? await findOrCreateOrgLead({
       orgId,
       userId: opts.userId,
       phone,
       name: opts.contactName,
+      dateOfBirth: opts.dateOfBirth,
+      email: opts.email,
+      company: opts.company,
       source: sourceMap[opts.channel],
     });
 

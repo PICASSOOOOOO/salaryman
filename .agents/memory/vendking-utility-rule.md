@@ -1,0 +1,12 @@
+---
+name: VendKing utility rule
+description: Defines the gameplay-value and economic requirements for Shadow Tower vending stock.
+---
+
+Vending and business stock may include useful goods, fixtures, furniture, and decorative items; aesthetic value is a valid reason to sell an item. Price health, income, skill, net-worth, and operating-capability benefits higher than low-impact goods. High-value education products can cost extreme amounts of FIAT. Only publish numeric prices and purchase effects that are backed by authoritative catalog or business data.
+
+Interior threats are gameplay, not set dressing: bankruptcy, debt, and collectors must be consequential; bankers and litigation actors may use deceptive ploys; security can respond when crimes such as pickpocketing, theft, or fraud are witnessed. The undercover dealer is a mysterious former personal security consultant to Pablo who now blends into the Tower like a ghost. He procures rare/illicit goods, drugs, information, news, and keys directly; hitmen, influence, espionage, diversions, and theft use a mix of purchases and missions. No player or dealer weapons are allowed inside the Tower; only security carries batons. Debt collectors are unarmed and rely on cunning tactics.
+
+**Why:** The user allows beautiful decorative goods, including aquariums and fish, while requiring products with stronger health, income, skill, or net-worth potential to cost more. They also specified the Tower's unarmed rule and the dealer's direct-trade role.
+
+**How to apply:** Enforce functional item effects on the server when an item has one; decorative products may instead provide appearance or placement value. Preserve wallet/net-worth/debt rules when purchases settle. Put the dealer in the B4–B6 tunnel maze, render him at rotating basement/stairwell/rear-loading hideouts, and verify proximity server-side before trade or service. Keep all Tower visitors unarmed; security batons are role-restricted. Make debt collectors consequential through cunning, non-weapon tactics. Implement broker services as real purchases or playable missions with server-owned outcomes, not ambient copy. Implement banker, litigation, collector, and security actors as stateful gameplay threats with actionable outcomes. If low-end bots are added, disclose their ongoing real-world operating cost and keep their capabilities narrow enough to remain inexpensive to run.

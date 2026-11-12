@@ -6,18 +6,19 @@ SALARYMAN combines an AI business assistant (Pablo), a persistent pixel-art city
 
 ## Key Pages
 
-- [Home](https://salaryman.replit.app/): Main product page and entry point
-- [Pricing](https://salaryman.replit.app/pricing): Subscription plans and pricing
-- [Upgrade / Plans](https://salaryman.replit.app/upgrade): Upgrade to PRIME membership
-- [Pixel Agents](https://salaryman.replit.app/pledge/agents): Meet the Pixel Agents — AI bots available to SALARYMAN players
-- [Pledge Store](https://salaryman.replit.app/pledge): SALARYMAN pledge store and supporter rewards
-- [Alpha Program](https://salaryman.replit.app/alpha): Apply to join the SALARYMAN alpha
-- [Investors / Supporters](https://salaryman.replit.app/investors): Investor and supporter information
+- [Home](https://salaryman.io/): Main product page and entry point
+- [Pablo AI](https://salaryman.io/pablo): Meet Pablo, SALARYMAN's AI business assistant
+- [Pricing](https://salaryman.io/pricing): Subscription plans and pricing
+- [Upgrade / Plans](https://salaryman.io/upgrade): Upgrade to PRIME membership
+- [Pixel Agents](https://salaryman.io/pledge/agents): Meet the Pixel Agents — AI bots available to SALARYMAN players
+- [Pledge Store](https://salaryman.io/pledge): SALARYMAN pledge store and supporter rewards
+- [Alpha Program](https://salaryman.io/alpha): Apply to join the SALARYMAN alpha
+- [Investors / Supporters](https://salaryman.io/investors): Investor and supporter information
 
 ## Legal
 
-- [Legal Hub](https://salaryman.replit.app/legal): Overview of legal documents
-- [Terms of Service](https://salaryman.replit.app/legal/terms)
-- [Privacy Policy](https://salaryman.replit.app/legal/privacy)
-- [Contact](https://salaryman.replit.app/legal/contact)
-- [Refund Policy](https://salaryman.replit.app/legal/refunds)
+- [Legal Hub](https://salaryman.io/legal): Overview of legal documents
+- [Terms of Service](https://salaryman.io/legal/terms)
+- [Privacy Policy](https://salaryman.io/legal/privacy)
+- [Contact](https://salaryman.io/legal/contact)
+- [Refund Policy](https://salaryman.io/legal/refunds)

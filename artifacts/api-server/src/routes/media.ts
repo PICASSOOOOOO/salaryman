@@ -6,6 +6,7 @@ import {
   sharedMediaTable,
   screenSessionsTable,
   orgMembersTable,
+  organizationsTable,
   usersTable,
   notificationsTable,
   colleaguesTable,
@@ -13,6 +14,10 @@ import {
   filesFoldersTable,
 } from "@workspace/db";
 import { hasFeature } from "../lib/plan";
+import { requireFeature } from "../middlewares/requirePro";
+import { ObjectStorageService } from "../lib/objectStorage";
+import { getCallRecordingAccess } from "../lib/phone-recording-access";
+import { canDoInOrg } from "../lib/org-permissions";
 
 const router = Router();
 
@@ -67,7 +72,7 @@ async function requireOrgAdmin(req: Request, res: Response, next: NextFunction) 
   next();
 }
 
-router.get("/media/recording/download/:callId", requireAuth, async (req, res) => {
+router.get("/media/recording/download/:callId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
@@ -78,27 +83,38 @@ router.get("/media/recording/download/:callId", requireAuth, async (req, res) =>
       return;
     }
 
-    const rows = await db
-      .select()
-      .from(callHistoryTable)
-      .where(eq(callHistoryTable.id, callId))
-      .limit(1);
-    const call = rows[0];
+    if (!Number.isInteger(callId) || callId <= 0) {
+      res.status(400).json({ error: "Invalid callId" });
+      return;
+    }
+    const { call, allowed } = await getCallRecordingAccess(userId, callId);
     if (!call) {
       res.status(404).json({ error: "Call not found" });
       return;
     }
-
-    const orgId = await getUserOrgId(userId);
-    const isOwner = call.userId === userId;
-    const isOrgMember = orgId && call.orgId === orgId;
-    if (!isOwner && !isOrgMember) {
+    if (!allowed) {
       res.status(403).json({ error: "Access denied" });
       return;
     }
 
     if (!call.recordingUrl) {
       res.status(404).json({ error: "No recording available for this call" });
+      return;
+    }
+
+    const filename = `call-${callId}-${call.direction}-${new Date(call.startedAt).toISOString().slice(0, 10)}.${format}`;
+    if (call.recordingUrl.startsWith("/objects/")) {
+      if (format !== "mp3") {
+        res.status(400).json({ error: "Archived recordings are available as MP3" });
+        return;
+      }
+      const file = await new ObjectStorageService().getObjectEntityFile(call.recordingUrl);
+      const [bytes] = await file.download();
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Length", bytes.length);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.send(bytes);
       return;
     }
 
@@ -120,10 +136,12 @@ router.get("/media/recording/download/:callId", requireAuth, async (req, res) =>
       ogg: "audio/ogg",
     };
 
-    const filename = `call-${callId}-${call.direction}-${new Date(call.startedAt).toISOString().slice(0, 10)}.${format}`;
-
     try {
-      const response = await fetch(downloadUrl);
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const response = await fetch(downloadUrl, accountSid && authToken ? {
+        headers: { Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}` },
+      } : undefined);
       if (!response.ok) {
         res.status(502).json({ error: "Failed to fetch recording from provider" });
         return;
@@ -159,17 +177,15 @@ router.get("/media/recording/download/:callId", requireAuth, async (req, res) =>
   }
 });
 
-router.get("/media/recording/info/:callId", requireAuth, async (req, res) => {
+router.get("/media/recording/info/:callId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
 
-    const rows = await db.select().from(callHistoryTable).where(eq(callHistoryTable.id, callId)).limit(1);
-    const call = rows[0];
+    if (!Number.isInteger(callId) || callId <= 0) { res.status(400).json({ error: "Invalid callId" }); return; }
+    const { call, allowed } = await getCallRecordingAccess(userId, callId);
     if (!call) { res.status(404).json({ error: "Call not found" }); return; }
-
-    const orgId = await getUserOrgId(userId);
-    if (call.userId !== userId && !(orgId && call.orgId === orgId)) {
+    if (!allowed) {
       res.status(403).json({ error: "Access denied" });
       return;
     }
@@ -202,6 +218,7 @@ router.post("/media/share", requireAuth, async (req, res) => {
   try {
     const fromUserId = getAuthUserId(req);
     const { toUserId, mediaType, title, description, sourceUrl, objectPath, fileSizeBytes, mimeType, callHistoryId } = req.body;
+    const hasCallHistoryId = callHistoryId !== undefined && callHistoryId !== null;
 
     if (!toUserId || !mediaType || !title) {
       res.status(400).json({ error: "toUserId, mediaType, and title are required" });
@@ -214,7 +231,28 @@ router.post("/media/share", requireAuth, async (req, res) => {
       return;
     }
 
-    const orgId = await getUserOrgId(fromUserId);
+    let orgId = await getUserOrgId(fromUserId);
+    let sharedCallId: number | undefined;
+    if (hasCallHistoryId) {
+      const numericCallHistoryId = Number(callHistoryId);
+      if (mediaType !== "recording" || !Number.isInteger(numericCallHistoryId) || numericCallHistoryId <= 0) {
+        res.status(400).json({ error: "A valid call recording is required" });
+        return;
+      }
+      const [call] = await db.select().from(callHistoryTable)
+        .where(eq(callHistoryTable.id, numericCallHistoryId))
+        .limit(1);
+      const canShare = call && (
+        call.userId === fromUserId
+        || (call.orgId != null && (await canDoInOrg(fromUserId, call.orgId, "phone.supervise")).allowed)
+      );
+      if (!call || !call.recordingUrl || !canShare) {
+        res.status(403).json({ error: "You can only share a recording you own or supervise" });
+        return;
+      }
+      sharedCallId = call.id;
+      if (call.orgId != null) orgId = call.orgId;
+    }
 
     // Recipient must be either (a) a coworker in the same org, or
     // (b) an accepted colleague (cross-org friend). Coworker is checked
@@ -245,17 +283,9 @@ router.post("/media/share", requireAuth, async (req, res) => {
       }
     }
 
-    if (callHistoryId) {
-      const callRows = await db.select().from(callHistoryTable).where(eq(callHistoryTable.id, Number(callHistoryId))).limit(1);
-      if (!callRows[0] || callRows[0].userId !== fromUserId) {
-        res.status(403).json({ error: "Cannot share a call recording you don't own" });
-        return;
-      }
-    }
-
     // Verify ownership of arbitrary objectPath against MediaLibrary registry,
     // unless this share is bound to a callHistoryId (already verified above).
-    if (objectPath && !callHistoryId) {
+    if (objectPath && !hasCallHistoryId) {
       const owned = await db
         .select({ id: filesFoldersTable.id })
         .from(filesFoldersTable)
@@ -280,7 +310,7 @@ router.post("/media/share", requireAuth, async (req, res) => {
         objectPath: objectPath?.slice(0, 512) ?? undefined,
         fileSizeBytes: fileSizeBytes ? Number(fileSizeBytes) : undefined,
         mimeType: mimeType?.slice(0, 128) ?? undefined,
-        callHistoryId: callHistoryId ? Number(callHistoryId) : undefined,
+        callHistoryId: sharedCallId,
       })
       .returning();
 
@@ -373,7 +403,7 @@ router.post("/media/inbox/:id/read", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/media/screen-session/start", requireAuth, async (req, res) => {
+router.post("/media/screen-session/start", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const orgId = await getUserOrgId(userId);
@@ -404,7 +434,7 @@ router.post("/media/screen-session/start", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/media/screen-session/:id/stop", requireAuth, async (req, res) => {
+router.post("/media/screen-session/:id/stop", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -430,7 +460,7 @@ router.post("/media/screen-session/:id/stop", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/media/screen-session/:id/screenshot", requireAuth, async (req, res) => {
+router.post("/media/screen-session/:id/screenshot", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -455,7 +485,7 @@ router.post("/media/screen-session/:id/screenshot", requireAuth, async (req, res
   }
 });
 
-router.get("/media/screen-session/my", requireAuth, async (req, res) => {
+router.get("/media/screen-session/my", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const sessions = await db
@@ -470,7 +500,7 @@ router.get("/media/screen-session/my", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/media/screen-monitoring", requireAuth, async (req, res) => {
+router.get("/media/screen-monitoring", requireAuth, requireFeature("screen_scan"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const orgId = await getUserOrgId(userId);
@@ -526,7 +556,31 @@ router.get("/media/screen-monitoring", requireAuth, async (req, res) => {
 router.get("/media/org-members", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const orgId = await getUserOrgId(userId);
+    const requestedOrgId = req.query.orgId;
+    let orgId: number | null = await getUserOrgId(userId);
+    if (requestedOrgId != null) {
+      const parsedOrgId = Number(requestedOrgId);
+      if (typeof requestedOrgId !== "string" || !Number.isInteger(parsedOrgId) || parsedOrgId <= 0) {
+        res.status(400).json({ error: "Invalid orgId" });
+        return;
+      }
+      const [membership] = await db.select({ orgId: orgMembersTable.orgId })
+        .from(orgMembersTable)
+        .where(and(
+          eq(orgMembersTable.userId, userId),
+          eq(orgMembersTable.orgId, parsedOrgId),
+          eq(orgMembersTable.status, "active"),
+        )).limit(1);
+      const [ownedOrg] = await db.select({ id: organizationsTable.id })
+        .from(organizationsTable)
+        .where(and(eq(organizationsTable.id, parsedOrgId), eq(organizationsTable.ownerUserId, userId)))
+        .limit(1);
+      if (!membership && !ownedOrg) {
+        res.status(403).json({ error: "No organization membership" });
+        return;
+      }
+      orgId = parsedOrgId;
+    }
     if (!orgId) {
       res.status(403).json({ error: "No organization" });
       return;

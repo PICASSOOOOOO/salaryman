@@ -1,0 +1,29 @@
+Jean Claw Automation Network — Feature Expansion Brief
+Company: Picasso | Product: Salaryman
+
+1. Expanded Claw Bot Agents (Open Claw Network)
+We need a full suite of autonomous AI agents, each specialized and named, operating visually within the platform 24/7. These agents should be visible, animated, and active at all times — referred to internally as Replicants. They never stop working. They need to pay for themselves through the revenue they generate. All agents report up through Pablo → Jean Claw → Specialized Agents.
+
+Proposed agents include:
+
+Music Bot — Generates and publishes AI music continuously across platforms
+E-Commerce Bot — Manages automated storefronts on Etsy, eBay, and other marketplaces
+Communications Bot — Handles all inbound and outbound communications across email, chat, and phone
+Finance Bot — Tracks company spending, incoming revenue, payroll, and side ventures in real time
+Viber/Store Agent — Manages storefront operations and customer interactions
+Business Development Bot — Identifies every viable automation business opportunity, builds it from scratch, and begins outreach immediately
+All agents must work together as a unified system and be visualized on screen with live movement and activity indicators.
+
+2. Technology Stack Recommendations
+Claude Opus 1.6 — Primary language model for high-reasoning tasks
+Gemini 1.5 (Google) — Supporting model for design and multimodal tasks
+Nana Banana Pro — Game redesign and art direction
+OpenRouter — Unified API routing across models
+Codex Subscription — Code generation and automation support
+Gusto Payroll API — Real payroll integration for employee salary tracking
+Bank APIs — Real-time financial data syncing for revenue and spending metrics
+3. Virtual Office RPG — Core Redesign
+Salaryman's game layer needs to evolve into a proper Virtual Office RPG, with emphasis on the office environment over open-world exploration. Key priorities:
+
+Office Interiors — Expanded multi-room layouts with dedicated departments, art spaces, and employee workstations. Interiors should be interactive, visually rich, and reflect the company's real structure.
+Jean Claw's Agents — Once Jean Claw is operational, all active bots should appear physically inside the user's

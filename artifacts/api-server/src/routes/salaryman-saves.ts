@@ -31,7 +31,7 @@ const router: IRouter = Router();
 // This is fire-and-forget (caller `.catch()`es); a failure here NEVER breaks the
 // save response.
 
-const FIAT_PER_GOLD_SAVE = 1_000; // mirrors gameSystems.ts FIAT_PER_GOLD
+const FIAT_PER_GOLD_SAVE = 10_000; // mirrors gameSystems.ts FIAT_PER_GOLD
 const NEGATIVE_DAY_INTERVAL_MS = 3_600_000; // 1 real hour = 1 in-game day
 
 function num(v: unknown, fallback = 0): number {
@@ -110,6 +110,23 @@ async function syncDebtToLedger(userId: string, saveData: Record<string, unknown
 const FREE_MAX_SLOTS = 2;
 const PRO_MAX_SLOTS = 10;
 const ENTERPRISE_MAX_SLOTS = 1;
+const MAX_CHARACTER_LEVEL = 120;
+
+export function resolveAuthoritativeLevel(
+  progression: unknown,
+  storedLevel: unknown,
+): number {
+  const progressionLevel =
+    progression && typeof progression === "object"
+      ? (progression as Record<string, unknown>).level
+      : undefined;
+  const candidate = Number.isFinite(Number(progressionLevel))
+    ? Number(progressionLevel)
+    : Number(storedLevel);
+  return Number.isFinite(candidate)
+    ? Math.max(1, Math.min(MAX_CHARACTER_LEVEL, Math.floor(candidate)))
+    : 1;
+}
 
 // ── Story Mode (foundation) ──────────────────────────────────────────────────
 // Story progression is a per-character (per save-slot) state stored inside the
@@ -378,11 +395,14 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     // immutable commitment fields while still letting forward progress through.
     const incoming = data as Record<string, unknown>;
     const [prior] = await db
-      .select({ data: salarymanSavesTable.data })
+      .select({ data: salarymanSavesTable.data, level: salarymanSavesTable.level })
       .from(salarymanSavesTable)
       .where(and(eq(salarymanSavesTable.userId, req.user.id), eq(salarymanSavesTable.slotIndex, slot)))
       .limit(1);
     const priorData = prior?.data as Record<string, unknown> | undefined;
+    const authoritativeLevel = prior
+      ? resolveAuthoritativeLevel(priorData?.skillProgression, prior.level)
+      : 1;
     const protectedProperties = recovery.properties.find((property) => property.slotIndex === slot);
     if (protectedProperties && incoming.propertyDeeds === undefined) {
       incoming.propertyDeeds = protectedProperties.propertyDeeds;
@@ -414,21 +434,35 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     if (priorData?.towerOnboarding !== undefined && incoming.towerOnboarding === undefined) {
       incoming.towerOnboarding = priorData.towerOnboarding;
     }
-    // Skill unlocks (data.skills[]) are written server-side by /skills/unlock.
-    // The client's doSave does not include this key, so carry it over to prevent
-    // a routine save from clobbering server-granted unlocks.
-    if (priorData?.skills !== undefined && incoming.skills === undefined) {
-      incoming.skills = priorData.skills;
+    // Skill state is server-owned. Always overwrite any client-supplied skills,
+    // point balance, and progression counters so routine saves cannot forge or
+    // erase rare unlocks and progress.
+    if (priorData) {
+      incoming.skills = Array.isArray(priorData.skills) ? priorData.skills : [];
+      incoming.skill_points = Number.isFinite(Number(priorData.skill_points))
+        ? Math.max(0, Number(priorData.skill_points))
+        : 0;
+      if (priorData.skillProgression !== undefined) {
+        incoming.skillProgression = priorData.skillProgression;
+      } else {
+        delete incoming.skillProgression;
+      }
+    } else {
+      const t1Skill = defaultT1ForClass(String(charClass));
+      incoming.skills = [t1Skill];
+      incoming.skill_points = 0;
+      incoming.skillProgression = {
+        level: 1,
+        levelXp: 0,
+        verifiedPayrollFiat: 0,
+        inGameWorkFiat: 0,
+        participationXp: 0,
+        skillPointsEarned: 0,
+      };
     }
     // REC stamina, sessions, inventory effects and idempotency markers are
     // server-owned. Browser saves must never mint or roll them back.
     if (priorData?.rec !== undefined) incoming.rec = priorData.rec;
-    // Onboarding pre-unlock: first save for this slot (no prior data) gets a
-    // free T1 skill based on the character class chosen during immigration.
-    if (!priorData && !Array.isArray(incoming.skills)) {
-      const t1Skill = defaultT1ForClass(String(charClass));
-      incoming.skills = [t1Skill];
-    }
     // First save: auto-grant a visa for the player's starting city so the
     // world-server visa gate doesn't block them on their very first connection.
     // Idempotent (ON CONFLICT DO NOTHING) — fire-and-forget, never blocks save.
@@ -477,7 +511,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
           slotIndex: slot,
           charName: String(charName).slice(0, 64).toUpperCase(),
           charClass: String(charClass).slice(0, 32).toLowerCase(),
-          level: Number(level) || 1,
+          level: authoritativeLevel,
           salary: salaryColumn,
           lastZone: String(lastZone || "MINX CITY").slice(0, 64),
           playtime: Number(playtime) || 0,
@@ -489,7 +523,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
           set: {
             charName: String(charName).slice(0, 64).toUpperCase(),
             charClass: String(charClass).slice(0, 32).toLowerCase(),
-            level: Number(level) || 1,
+            level: authoritativeLevel,
             salary: salaryColumn,
             lastZone: String(lastZone || "MINX CITY").slice(0, 64),
             playtime: Number(playtime) || 0,

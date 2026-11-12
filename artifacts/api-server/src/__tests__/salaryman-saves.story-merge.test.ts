@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { mergeStoryOnSave, type StoryState } from "../routes/salaryman-saves";
+import {
+  mergeStoryOnSave,
+  resolveAuthoritativeLevel,
+  type StoryState,
+} from "../routes/salaryman-saves";
 
 // The one-way story merge runs on every PUT /salaryman/saves/:slot. It must
 // preserve the server-authoritative commitment fields once the story is active
@@ -85,5 +89,19 @@ describe("mergeStoryOnSave — one-way commitment fields", () => {
     const incoming = activeStory({ scene1: { alleyReached: true, battleDone: true } });
     expect(mergeStoryOnSave(undefined, incoming)).toBe(incoming);
     expect(mergeStoryOnSave({ ...activeStory(), active: false }, incoming)).toBe(incoming);
+  });
+});
+
+describe("resolveAuthoritativeLevel", () => {
+  it("prefers persisted progression and clamps it to the 1–120 range", () => {
+    expect(resolveAuthoritativeLevel({ level: 42 }, 7)).toBe(42);
+    expect(resolveAuthoritativeLevel({ level: 999 }, 7)).toBe(120);
+    expect(resolveAuthoritativeLevel({ level: 0 }, 7)).toBe(1);
+  });
+
+  it("uses the stored server level for legacy saves and rejects invalid values", () => {
+    expect(resolveAuthoritativeLevel(undefined, 9)).toBe(9);
+    expect(resolveAuthoritativeLevel({ level: "not-a-level" }, 9)).toBe(9);
+    expect(resolveAuthoritativeLevel(undefined, Number.NaN)).toBe(1);
   });
 });

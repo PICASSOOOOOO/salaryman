@@ -1,13 +1,13 @@
-import { createHash } from "node:crypto";
-import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq } from "drizzle-orm";
+import { Router, type IRouter } from "express";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 import {
   db,
   desktopWorkClaimsTable,
   desktopWorkLeasesTable,
-  deviceLinksTable,
 } from "@workspace/db";
+import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { creditFiat } from "../lib/fiat-wallet";
+import { recordVerifiedCareerWork } from "../lib/career-progression";
 
 const router: IRouter = Router();
 const WORK_TYPE = "office_shift";
@@ -15,47 +15,36 @@ const FIAT_PER_HOUR = 300;
 const MAX_LEASE_MINUTES = 8 * 60;
 const LEASE_TTL_MS = 24 * 60 * 60 * 1000;
 
-function hashDesktopToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-async function requireDesktopLink(req: Request, res: Response) {
-  const authorization = req.header("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  const deviceId = req.header("x-salaryman-device-id") ?? "";
-  if (!token || !/^[a-zA-Z0-9._:-]{8,128}$/.test(deviceId)) {
-    res.status(401).json({ error: "Desktop credential required" });
-    return null;
-  }
-  const [link] = await db.select().from(deviceLinksTable).where(and(
-    eq(deviceLinksTable.desktopAccessTokenHash, hashDesktopToken(token)),
-    eq(deviceLinksTable.desktopDeviceId, deviceId),
-    eq(deviceLinksTable.status, "linked"),
-  )).limit(1);
-  if (!link) {
-    res.status(401).json({ error: "Desktop credential is invalid or revoked" });
-    return null;
-  }
-  await db.update(deviceLinksTable).set({ lastDesktopSeenAt: new Date(), updatedAt: new Date() })
-    .where(eq(deviceLinksTable.id, link.id));
-  return link;
-}
-
-router.post("/desktop-work/lease", async (req, res) => {
+router.post("/desktop-work/lease", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   try {
     const now = new Date();
-    const [lease] = await db.insert(desktopWorkLeasesTable).values({
-      linkId: link.id,
-      userId: link.userId,
-      desktopDeviceId: link.desktopDeviceId,
-      status: "active",
-      issuedAt: now,
-      expiresAt: new Date(now.getTime() + LEASE_TTL_MS),
-      maxMinutes: MAX_LEASE_MINUTES,
-      consumedMinutes: 0,
-    }).returning();
+    const lease = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('desktop-work-lease'), hashtext(${link.id}))`);
+      await tx.update(desktopWorkLeasesTable).set({ status: "expired" }).where(and(
+        eq(desktopWorkLeasesTable.linkId, link.id),
+        eq(desktopWorkLeasesTable.status, "active"),
+        lte(desktopWorkLeasesTable.expiresAt, now),
+      ));
+      const [active] = await tx.select().from(desktopWorkLeasesTable).where(and(
+        eq(desktopWorkLeasesTable.linkId, link.id),
+        eq(desktopWorkLeasesTable.status, "active"),
+        gte(desktopWorkLeasesTable.expiresAt, now),
+      )).for("update").limit(1);
+      if (active) return active;
+      const [created] = await tx.insert(desktopWorkLeasesTable).values({
+        linkId: link.id,
+        userId: link.userId,
+        desktopDeviceId: link.desktopDeviceId,
+        status: "active",
+        issuedAt: now,
+        expiresAt: new Date(now.getTime() + LEASE_TTL_MS),
+        maxMinutes: MAX_LEASE_MINUTES,
+        consumedMinutes: 0,
+      }).returning();
+      return created;
+    });
     res.json({
       leaseId: lease.id,
       workType: WORK_TYPE,
@@ -65,12 +54,12 @@ router.post("/desktop-work/lease", async (req, res) => {
       expiresAt: lease.expiresAt,
     });
   } catch (error) {
-    console.error("[desktop-work] lease failed", error);
+    req.log.error({ err: error }, "Desktop work lease failed");
     res.status(500).json({ error: "Could not issue work lease" });
   }
 });
 
-router.post("/desktop-work/claims", async (req, res) => {
+router.post("/desktop-work/claims", async (req, res): Promise<void> => {
   const link = await requireDesktopLink(req, res);
   if (!link) return;
   const eventId = typeof req.body?.eventId === "string" ? req.body.eventId.trim() : "";
@@ -102,6 +91,7 @@ router.post("/desktop-work/claims", async (req, res) => {
           kind: "duplicate" as const,
           status: existing.status,
           amountFiat: existing.amountFiat,
+          startedAt: existing.settledAt ?? existing.reportedAt,
         };
       }
 
@@ -123,7 +113,14 @@ router.post("/desktop-work/claims", async (req, res) => {
             ? "lease_expired"
             : lease.consumedMinutes + workMinutes > lease.maxMinutes
               ? "lease_minutes_exceeded"
-              : null;
+              : lease.consumedMinutes + workMinutes > Math.min(
+                lease.maxMinutes,
+                Math.max(0, Math.floor((now.getTime() - lease.issuedAt.getTime()) / 60_000)),
+              )
+                ? "work_time_not_elapsed"
+                : (lease.consumedMinutes + workMinutes) * 60 > lease.verifiedSeconds
+                  ? "work_presence_not_verified"
+                  : null;
       if (reason) {
         await tx.insert(desktopWorkClaimsTable).values({
           eventId,
@@ -167,7 +164,12 @@ router.post("/desktop-work/claims", async (req, res) => {
         reportedAt,
         settledAt: now,
       });
-      return { kind: "accepted" as const, amountFiat, balance: wallet.newBalance };
+      return {
+        kind: "accepted" as const,
+        amountFiat,
+        balance: wallet.newBalance,
+        startedAt: new Date(lease.issuedAt.getTime() + lease.consumedMinutes * 60_000),
+      };
     });
 
     if (result.kind === "conflict") {
@@ -175,16 +177,48 @@ router.post("/desktop-work/claims", async (req, res) => {
       return;
     }
     if (result.kind === "duplicate") {
-      res.json({ ok: true, duplicate: true, status: result.status, amountFiat: result.amountFiat });
+      let career: Awaited<ReturnType<typeof recordVerifiedCareerWork>> | null = null;
+      if (result.status === "accepted") {
+        try {
+          career = await db.transaction((tx) => recordVerifiedCareerWork(tx, {
+            employerKey: "pablo-corp",
+            positionKey: "pablo-corp:fictional-job:office-shift",
+            title: "Pablo Corp Office Associate",
+            department: "PABLO CORP / OFFICE",
+            userId: link.userId,
+            eventKey: `desktop-office-shift:${eventId}`,
+            outputUnits: workMinutes,
+            startedAt: result.startedAt,
+          }));
+        } catch (error) {
+          req.log?.warn({ err: error, eventId }, "Office-shift career event could not be recorded");
+        }
+      }
+      res.json({ ok: true, duplicate: true, status: result.status, amountFiat: result.amountFiat, career });
       return;
     }
     if (result.kind === "rejected") {
       res.status(422).json({ ok: false, status: "rejected", reason: result.reason });
       return;
     }
-    res.json({ ok: true, status: "accepted", amountFiat: result.amountFiat, balance: result.balance });
+    let career: Awaited<ReturnType<typeof recordVerifiedCareerWork>> | null = null;
+    try {
+      career = await db.transaction((tx) => recordVerifiedCareerWork(tx, {
+        employerKey: "pablo-corp",
+        positionKey: "pablo-corp:fictional-job:office-shift",
+        title: "Pablo Corp Office Associate",
+        department: "PABLO CORP / OFFICE",
+        userId: link.userId,
+        eventKey: `desktop-office-shift:${eventId}`,
+        outputUnits: workMinutes,
+        startedAt: result.startedAt,
+      }));
+    } catch (error) {
+      req.log?.warn({ err: error, eventId }, "Office-shift career event could not be recorded");
+    }
+    res.json({ ok: true, status: "accepted", amountFiat: result.amountFiat, balance: result.balance, career });
   } catch (error) {
-    console.error("[desktop-work] claim failed", error);
+    req.log.error({ err: error }, "Desktop work claim failed");
     res.status(500).json({ error: "Could not settle desktop work" });
   }
 });

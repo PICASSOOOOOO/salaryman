@@ -1968,5 +1968,113 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.23.4.2361",
+    "date": "2026-09-08",
+    "commitHash": "61b8b5e538c36890a8e347efffde09e8e63b9fc8",
+    "changes": [
+      "Implement Twilio routing updates and enhance active call context handling",
+      "Implement Twilio call recording integration and update CRM workspace UI",
+      "Update phone system health checks and Twilio routes",
+      "Update Twilio device context and phone interface styling with new assets",
+      "Document github workflow write scope requirements in memory files"
+    ]
+  },
+  {
+    "version": "v.23.5.2361",
+    "date": "2026-09-08",
+    "commitHash": "61b8b5e538c36890a8e347efffde09e8e63b9fc8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.23.6.2391",
+    "date": "2026-09-09",
+    "commitHash": "7de1930766c9eb0db89010df681d31612f95bd20",
+    "changes": [
+      "Implement shadow tower demand logic and schema updates",
+      "Configure Replit environment settings",
+      "Update UI logic and add new rug asset metadata and screenshots",
+      "Update agent assets and enhance UI components with new camera visualization",
+      "Update floor plan metadata and refine simulation scene and UI logic"
+    ]
+  },
+  {
+    "version": "v.23.7.2402",
+    "date": "2026-09-10",
+    "commitHash": "5f9d7909523bb3a7e19b4d3301fab78744491fe1",
+    "changes": [
+      "Update interview helper app component",
+      "Refine navigation logic and update agent memory documentation",
+      "Update memory documents and refactor interview helper components",
+      "Update navigation components and add documentation screenshot",
+      "Update professional home layout and document recent navigation changes"
+    ]
+  },
+  {
+    "version": "v.23.8.2410",
+    "date": "2026-09-10",
+    "commitHash": "6109043e826a5ed2d6c9f76790684405b740df42",
+    "changes": [
+      "Implement feedback reporting system and UI integration",
+      "Remove feedback module and associated components",
+      "Update generated mockup components"
+    ]
+  },
+  {
+    "version": "v.23.9.2420",
+    "date": "2026-09-11",
+    "commitHash": "39cd275a68a6028817972b5c75118e0767a83150",
+    "changes": [
+      "Add attached asset image",
+      "Update generated mockup components",
+      "Update feedback documentation, add test coverage, and integrate new assets",
+      "Update changelog and refactor navigation components"
+    ]
+  },
+  {
+    "version": "v.24.0.2420",
+    "date": "2026-09-11",
+    "commitHash": "39cd275a68a6028817972b5c75118e0767a83150",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.24.1.2498",
+    "date": "2026-09-14",
+    "commitHash": "1dc64b01dd5b3ac899f9231b9fa374f59f46d925",
+    "changes": [
+      "Remove obsolete browser compatibility test artifacts",
+      "Update test results and add audit screenshot",
+      "Implement organization invitation functionality and update business hub UI",
+      "Update organization routes and team directory UI components",
+      "Update main client logic and UI elements"
+    ]
+  },
+  {
+    "version": "v.24.2.2506",
+    "date": "2026-09-14",
+    "commitHash": "eb9b1a9a2daa967c9a820ed201c116fc39eee318",
+    "changes": [
+      "Update session management and organization schema logic",
+      "Update immigration page content",
+      "Update immigration intake flow and associated tests",
+      "Update version and changelog files"
+    ]
+  },
+  {
+    "version": "v24.3",
+    "date": "2026-11-12",
+    "commitHash": "c3aef6e1e755b62aec2f1680ec6954b680cb6eef",
+    "changes": [
+      "Update salaryman platform documentation and guide",
+      "Add documentation and modding system files",
+      "Initialize 1999 plugin skeleton and update project documentation",
+      "Implement 1999 project persistence and UI features",
+      "Implement recording loop persistence for the 1999 interview page"
+    ]
   }
 ]

@@ -1,0 +1,2533 @@
+uploads = []
+
+[[generated]]
+id = "wAo0jfws176XjpPd8g90I"
+uri = "file://artifacts/interview-helper/public/salaryman.png"
+type = "image"
+title = "salaryman walking briefcase nobg"
+
+[[generated]]
+id = "7xwWkK6iAwzTmVRpzir5Q"
+uri = "file://artifacts/interview-helper/public/pablo-running.png"
+type = "image"
+title = "pablo running silhouette icon"
+
+[[generated]]
+id = "w5FtcyxaH1JRWju4b7t1C"
+uri = "file://attached_assets/generated_images/salaryman_keyart_cover.png"
+type = "image"
+title = "salaryman cover key art"
+
+[[generated]]
+id = "O7PeTd9Eiu10X_ljvY1Kx"
+uri = "file://attached_assets/generated_images/pablo_nebula_orb.png"
+type = "image"
+title = "pablo nebula ai overlord"
+
+[[generated]]
+id = "MNFn6AKrW4fBfoDGWoBIa"
+uri = "file://attached_assets/generated_images/neon_city_street.png"
+type = "image"
+title = "neon corporate city street"
+
+[[generated]]
+id = "Grpi5cHkFxxeXq_pzGhnl"
+uri = "file://attached_assets/generated_images/pixel_agents_squad.png"
+type = "image"
+title = "pixel agents squad roster"
+
+[[generated]]
+id = "ylfqMGa39ZUjAUP63rHjo"
+uri = "file://attached_assets/generated_images/money_as_health.png"
+type = "image"
+title = "money as health concept"
+
+[[generated]]
+id = "1RF3ypVgOeZqFuyMuf00S"
+uri = "file://attached_assets/generated_images/terrence_studio.png"
+type = "image"
+title = "terrence music studio"
+
+[[generated]]
+id = "QUHXlsA00hA_83S-3cwHO"
+uri = "file://attached_assets/generated_images/gameplay_city_walk.png"
+type = "image"
+title = "gameplay city walk hud"
+
+[[generated]]
+id = "1GSZQVRME7Pb3SbLjVgJb"
+uri = "file://attached_assets/generated_images/gameplay_office_interior.png"
+type = "image"
+title = "gameplay office interior"
+
+[[generated]]
+id = "Tusx1fQOgnfUnnZYs5Jcr"
+uri = "file://attached_assets/generated_images/gameplay_combat.png"
+type = "image"
+title = "gameplay combat coins"
+
+[[generated]]
+id = "a4NVkKoz1aOXl4BLRYYsm"
+uri = "file://attached_assets/generated_images/gameplay_subway.png"
+type = "image"
+title = "gameplay subway station"
+
+[[generated]]
+id = "hLm12hJP2vZ0XPcUQg1DA"
+uri = "file://attached_assets/generated_images/gameplay_pablo_terminal.png"
+type = "image"
+title = "gameplay pablo terminal"
+
+[[generated]]
+id = "q50CW7DY15Cqxw5wwmloF"
+uri = "file://attached_assets/generated_images/gameplay_music_lab.png"
+type = "image"
+title = "gameplay music lab"
+
+[[generated]]
+id = "0cpgvLsGReYbYVh1OEOVj"
+uri = "file://attached_assets/generated_images/v2_city_hero.png"
+type = "image"
+title = "premium city hero"
+
+[[generated]]
+id = "vOOuZLPFGGKaJnZdaYqIr"
+uri = "file://attached_assets/generated_images/v2_city_walk.png"
+type = "image"
+title = "premium city gameplay"
+
+[[generated]]
+id = "eVXh1HALGGduirnrZMX-N"
+uri = "file://attached_assets/generated_images/v2_combat.png"
+type = "image"
+title = "premium combat"
+
+[[generated]]
+id = "S-azeCqiPwg3cjZ9hvn3_"
+uri = "file://attached_assets/generated_images/v2_subway.png"
+type = "image"
+title = "premium subway"
+
+[[generated]]
+id = "8noaKkduhhoXbVuWYuEin"
+uri = "file://attached_assets/generated_images/v2_pablo_terminal.png"
+type = "image"
+title = "premium pablo terminal"
+
+[[generated]]
+id = "63Fc_hlaumyKSEXzWl3is"
+uri = "file://attached_assets/generated_images/v2_music_lab.png"
+type = "image"
+title = "premium music lab"
+
+[[generated]]
+id = "iNL_QLQ3J-vVA5tPqQMjJ"
+uri = "file://attached_assets/generated_images/picasso_logo_mark.png"
+type = "image"
+title = "picasso logo mark"
+
+[[generated]]
+id = "Oj1tZsoVs622GlJ-A1WV0"
+uri = "file://attached_assets/generated_images/picasso_logo_wordmark.png"
+type = "image"
+title = "picasso wordmark logo"
+
+[[generated]]
+id = "N4Xq7BquMnZMeDnnwN4rD"
+uri = "file://attached_assets/generated_images/salaryman_title_a.png"
+type = "image"
+title = "salaryman title banner a"
+
+[[generated]]
+id = "J737sl2i6jSZP0_43IlhB"
+uri = "file://attached_assets/generated_images/salaryman_title_b.png"
+type = "image"
+title = "salaryman title banner b"
+
+[[generated]]
+id = "TTctTeWKFVgmjEfy8nWzX"
+uri = "file://attached_assets/generated_images/bg_banner_hero.png"
+type = "image"
+title = "hero background banner"
+
+[[generated]]
+id = "Qj94VyyYL87HA_ggRZquO"
+uri = "file://attached_assets/generated_images/city_map.png"
+type = "image"
+title = "city district map"
+
+[[generated]]
+id = "3C2H7eUtDiyOSqINJgKBZ"
+uri = "file://attached_assets/generated_images/bots_group.png"
+type = "image"
+title = "bots group picture"
+
+[[generated]]
+id = "-Vhz5i-TJ52l-tUsUZ25A"
+uri = "file://attached_assets/generated_images/fight_scene.png"
+type = "image"
+title = "sick fight scene"
+
+[[generated]]
+id = "Iv35FnUzvT6aKzPZ5-OXQ"
+uri = "file://attached_assets/generated_images/bg_rundown.png"
+type = "image"
+title = "rundown cyberpunk banner bg"
+
+[[generated]]
+id = "ErwgRi5oPF-w1bgEUc9ll"
+uri = "file://artifacts/interview-helper/src/assets/pledge/wpn_escort.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "n2POTRHvlotYcAltVAiBj"
+uri = "file://artifacts/interview-helper/src/assets/pledge/decor_aquarium.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "2vr7OTGfxLWEUdQySzvb2"
+uri = "file://artifacts/interview-helper/src/assets/pledge/furn_standing_desks.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HmBXCzqKiqsSJvo3DP0g5"
+uri = "file://artifacts/interview-helper/src/assets/pledge/furn_boardroom.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "R1m8fjLCQ3B9kVwg81CNx"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_corner_office.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XTOW_lU2kgDyGpvO7-mKt"
+uri = "file://artifacts/interview-helper/src/assets/pledge/term_pablo_pass.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "SEOH5kzl2F_X2kQzrzN_f"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_warehouse.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HL_UFEESJ8yaAB5krhoIM"
+uri = "file://artifacts/interview-helper/src/assets/pledge/tech_quantum.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lNCSmCB_gsKe8iH4G6lUb"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_penthouse.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "BUxg1RfoEVqNCdJO_5tKU"
+uri = "file://artifacts/interview-helper/src/assets/pledge/term_retro.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6oMjwnDK-zNFOPa82X694"
+uri = "file://artifacts/interview-helper/src/assets/pledge/bot_extra_seat.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kRch1C80MhzN_9Hu0SKfu"
+uri = "file://artifacts/interview-helper/src/assets/pledge/sup_letterhead.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-rlg1hpceu4ojYEFWXkn8"
+uri = "file://artifacts/interview-helper/src/assets/pledge/bot_overclock.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "wzuEWMNLHN8qKWM6_ab2u"
+uri = "file://artifacts/interview-helper/src/assets/pledge/decor_neon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "fFa_1XpPESlL8cQn7hh8l"
+uri = "file://artifacts/interview-helper/src/assets/pledge/bot_jean_claw_elite.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "s8KRkJkUZPc-USkhxFnTL"
+uri = "file://artifacts/interview-helper/src/assets/pledge/wpn_briefcase.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "O30M3L-NX3mzGy7XA9WyP"
+uri = "file://artifacts/interview-helper/src/assets/pledge/wpn_gasmask.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "4UaWa1eDT4Vfgr-jB2L0r"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_studio_loft.png"
+type = "image"
+title = "cyberpunk pixel studio loft"
+
+[[outputs]]
+id = "3gJOxdj9Gbz1GYWM-h91V"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
+type = "image"
+title = "Frontman Logo — v2 (subtle)"
+logical_id = "cec2640f-36cf-457c-b0dd-dbaa6927c62f"
+
+[[outputs]]
+id = "L5PURQlW_6c6X-2feRBeM"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-a.png"
+type = "image"
+title = "Option A — Original F (the one)"
+logical_id = "da1f8c15-b8bb-43df-8eed-048025bbcc8f"
+
+[[outputs]]
+id = "NM1BpjX_DWklkENa7tEKr"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-b.png"
+type = "image"
+title = "Option B — Abstract Diamond"
+logical_id = "26dbd036-15a7-4d65-99ec-95b56153fe9c"
+
+[[outputs]]
+id = "L0_VMIdGMx1E20THBlzcW"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-c.png"
+type = "image"
+title = "Option C — Stacked Lines"
+logical_id = "207c82c4-23af-4fee-b204-c066227fa122"
+
+[[outputs]]
+id = "1N7D_-jDoul1gkzD7dFJF"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-d.png"
+type = "image"
+title = "Option D — Neon Lines"
+logical_id = "f282c67d-7c16-4a0d-940b-c34f3665912b"
+
+[[outputs]]
+id = "syk8YUM81L0TbZn7uMsoY"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-e.png"
+type = "image"
+title = "Option E — Neon Bolt"
+logical_id = "ed8bb9f4-9446-4646-861b-7b59ab004c13"
+
+[[outputs]]
+id = "MXoIn4u271w0xT97oX0U0"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-f.png"
+type = "image"
+title = "Option F — Neon F (first neon version)"
+logical_id = "00c32c4e-cef3-4f26-88b7-2d7f4fcab7d6"
+
+[[outputs]]
+id = "-3auELkPyNF31yPPk4bVO"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-g.png"
+type = "image"
+title = "Option G — Muted Neon F"
+logical_id = "f5a572e1-8e9c-485a-acf7-dd74179d7b5b"
+
+[[outputs]]
+id = "1fm0jby1yde4IPL6K8xxm"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-h.png"
+type = "image"
+title = "Option H — Medium Neon F"
+logical_id = "3d31d1b1-e7ef-4ce9-94b1-7e30ba6cb1a1"
+
+[[outputs]]
+id = "MP1yFqpf--T_h9UsDDivv"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-i.png"
+type = "image"
+title = "Option I — Pure Neon F"
+logical_id = "fc45a4c6-d31d-4d83-bdf9-1923e83db79a"
+
+[[outputs]]
+id = "Pny8yFoIMmeoJ_-ge_dCn"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-j.png"
+type = "image"
+title = "Option J — 80s Neon F"
+logical_id = "98f6a884-46b9-490f-9042-e0f4073396fd"
+
+[[outputs]]
+id = "y3mLWX4pj1gIf30yaYAKi"
+uri = "file://attached_assets/generated_images/frontman-pro-product.png"
+type = "image"
+title = "Frontman Pro — Stripe Product Image"
+logical_id = "66c4c93b-2a93-4a45-ace1-bff4641a187f"
+
+[[outputs]]
+id = "Zf4XAA_Rf9f-jEYK9v4b6"
+uri = "file://attached_assets/generated_images/frontman-pro-v1.png"
+type = "image"
+title = "V1 — Silver Monogram"
+logical_id = "a6f3002f-9b8f-4cff-ba4e-373038b37751"
+
+[[outputs]]
+id = "51eTOZLoSKOP3zEa7GVGl"
+uri = "file://attached_assets/generated_images/frontman-pro-v2.png"
+type = "image"
+title = "V2 — Purple-Blue Gradient + Crown"
+logical_id = "953fc8a2-241e-4516-a9ad-a2414e055fcb"
+
+[[outputs]]
+id = "g2CD6WGeVdp8hOlP2Ixfa"
+uri = "file://attached_assets/generated_images/frontman-pro-v3.png"
+type = "image"
+title = "V3 — Glassmorphism"
+logical_id = "ac42c5ec-2974-47ff-a993-22affdce8058"
+
+[[outputs]]
+id = "B2l6BJhXx6GG_TUqZdXaK"
+uri = "file://attached_assets/generated_images/frontman-pro-v4.png"
+type = "image"
+title = "V4 — Retro Bold Purple"
+logical_id = "7e964553-331d-4d12-866d-51e42c9ee4d4"
+
+[[outputs]]
+id = "o0zes4tII-baaWDdVKafg"
+uri = "file://attached_assets/generated_images/frontman-pro-v5.png"
+type = "image"
+title = "V5 — Dark Navy Constellation"
+logical_id = "ba1428ec-2897-4d4c-80ac-55926f5e4481"
+
+[[outputs]]
+id = "GyONhR6cG5-4ubzeIsTKF"
+uri = "file://attached_assets/generated_images/frontman-pro-v6.png"
+type = "image"
+title = "V6 — Clean White Editorial"
+logical_id = "d79ea78c-3646-4c4f-975c-5a9bb8b5bb48"
+
+[[outputs]]
+id = "VWnc4hLkgZw8s9FsLYQhy"
+uri = "file://attached_assets/generated_images/frontman-pro-v7.png"
+type = "image"
+title = "V7 — Neon Cyberpunk"
+logical_id = "5f05ad59-e2cb-4f61-8a61-ede97604d001"
+
+[[outputs]]
+id = "RQVuWD2Jxx_iBVZhl2ISl"
+uri = "file://attached_assets/generated_images/frontman-pro-v8.png"
+type = "image"
+title = "V8 — Black Marble + Gold"
+logical_id = "d5e40375-b468-45b6-9d40-fa51b5ba0075"
+
+[[outputs]]
+id = "XslGLPngjeCFvQu5klUxh"
+uri = "file://attached_assets/generated_images/frontman-pro-v9.png"
+type = "image"
+title = "V9 — Geometric Hexagon"
+logical_id = "c52b5287-44c5-499b-b4bb-262a4c26284e"
+
+[[outputs]]
+id = "GZ1ULXmM6E3VBz63JjSeT"
+uri = "file://attached_assets/generated_images/frontman-pro-v10.png"
+type = "image"
+title = "V10 — Warm Sunset Gradient"
+logical_id = "eba22f9a-b69c-4078-950f-026883f7c65d"
+
+[[outputs]]
+id = "fMVu5ZmpOkUZQdtoSQgxy"
+uri = "file://attached_assets/generated_images/frontman-pro-v11.png"
+type = "image"
+title = "V11 — Forest Green Glow"
+logical_id = "5b83c30f-2082-4117-9d40-15030559562a"
+
+[[outputs]]
+id = "DnVWSgGrCgwAx8pb3CIIF"
+uri = "file://attached_assets/generated_images/frontman-pro-v12.png"
+type = "image"
+title = "V12 — Black & Purple Split"
+logical_id = "f9505c80-aa3d-4e1d-8a45-fc0ae15a9685"
+
+[[outputs]]
+id = "GeG5Nk5SxDoarcFYrISRH"
+uri = "file://attached_assets/generated_images/frontman-pro-v13.png"
+type = "image"
+title = "V13 — Brushed Metal Chrome"
+logical_id = "59603cc3-142b-4b5c-916e-2205514f6086"
+
+[[outputs]]
+id = "qSa2F-wosnYskoSXrxYgT"
+uri = "file://attached_assets/generated_images/frontman-pro-v14.png"
+type = "image"
+title = "V14 — Zen Minimal (Japanese)"
+logical_id = "183bc053-9bb7-429a-ac8c-051b0c979fbb"
+
+[[outputs]]
+id = "JYrCbvAVFkJtmS5QmKd1K"
+uri = "file://attached_assets/generated_images/frontman-pro-v15.png"
+type = "image"
+title = "V15 — Deep Space Badge"
+logical_id = "78f0177f-006c-424e-8f7d-69aac86bce0d"
+
+[[outputs]]
+id = "LEcN0B2dqtsXZbtlRb9p3"
+uri = "file://attached_assets/generated_images/frontman-pro-v16.png"
+type = "image"
+title = "V16 — Art Deco Gold"
+logical_id = "80c2ec65-9022-48e8-b035-fd009cc2915b"
+
+[[outputs]]
+id = "GJll0eN5od1IV19beH4K1"
+uri = "file://attached_assets/generated_images/frontman-pro-v17.png"
+type = "image"
+title = "V17 — Vaporwave Chrome"
+logical_id = "1a4cee1a-2500-4f5e-b329-f5e13712b4ef"
+
+[[outputs]]
+id = "aR9I2aRHn1JgJy3GQQnf-"
+uri = "file://attached_assets/generated_images/frontman-pro-v18.png"
+type = "image"
+title = "V18 — Flat Bauhaus Indigo"
+logical_id = "bfeb4376-49c6-4ca0-986b-af3b363600aa"
+
+[[outputs]]
+id = "nS3TTiPFRXcSGUqLwvWyG"
+uri = "file://attached_assets/generated_images/frontman-pro-v19.png"
+type = "image"
+title = "V19 — Carbon Fiber Blue"
+logical_id = "7ff53606-ca53-4e74-ba1a-f16f9394374e"
+
+[[outputs]]
+id = "ro_dMImKRkpd46DBWPIQQ"
+uri = "file://attached_assets/generated_images/frontman-pro-v20.png"
+type = "image"
+title = "V20 — Ink Wash Calligraphy"
+logical_id = "64c4ffc7-86fd-4d75-b7d9-352d0398890d"
+
+[[outputs]]
+id = "YnKbboQx2bzvhGWXgeLHu"
+uri = "file://attached_assets/generated_images/frontman-sil-v1.png"
+type = "image"
+title = "V1 — Heavy Bold Serif"
+logical_id = "2ded99fa-49d0-45ff-82c1-eb468a8b1877"
+
+[[outputs]]
+id = "blzO5pQqnUI5fehmtCWry"
+uri = "file://attached_assets/generated_images/frontman-sil-v2.png"
+type = "image"
+title = "V2 — Thin Light Sans-Serif"
+logical_id = "1e62f9cf-94fa-45f7-b772-6bcfe66a979b"
+
+[[outputs]]
+id = "liHciXE7CqSg0ufDim-Fn"
+uri = "file://attached_assets/generated_images/frontman-sil-v3.png"
+type = "image"
+title = "V3 — Tall Condensed Gothic"
+logical_id = "fa3fb1a9-cae9-46df-803d-f48e5e98844c"
+
+[[outputs]]
+id = "dmZKUTCw5lauxmzNQ9N3D"
+uri = "file://attached_assets/generated_images/frontman-sil-v4.png"
+type = "image"
+title = "V4 — Cursive Script"
+logical_id = "84a23e17-54e4-4ed2-a232-c93f94997aa4"
+
+[[outputs]]
+id = "l5QJFHX2uzjsNwE9bYHTt"
+uri = "file://attached_assets/generated_images/frontman-sil-v5.png"
+type = "image"
+title = "V5 — Retro Slab Serif"
+logical_id = "993c2796-a5b5-428b-b505-aeeeb23947ec"
+
+[[outputs]]
+id = "h90EjR-fSXxlv_zjx_xzu"
+uri = "file://attached_assets/generated_images/frontman-sil-v6.png"
+type = "image"
+title = "V6 — Futuristic Geometric"
+logical_id = "79e4ebf1-5259-47b4-a8e8-f55f07a185fd"
+
+[[outputs]]
+id = "iDfu06nD0bDHTjFFfuvPk"
+uri = "file://attached_assets/generated_images/frontman-sil-v7.png"
+type = "image"
+title = "V7 — Blackletter Gothic"
+logical_id = "4e105e94-33df-49d4-a620-ea134ca882ea"
+
+[[outputs]]
+id = "CuR2DRKFGHsvORRlHoWV6"
+uri = "file://attached_assets/generated_images/frontman-sil-v8.png"
+type = "image"
+title = "V8 — Wide Tracked Uppercase"
+logical_id = "37a2db58-ae13-4eae-be00-25fedab2fd9f"
+
+[[outputs]]
+id = "x1TXNnadN8lxaQdwm9wFI"
+uri = "file://attached_assets/generated_images/frontman-sil-v9.png"
+type = "image"
+title = "V9 — Handwritten Marker"
+logical_id = "1b428a66-b9f8-4955-8f7d-8fbf89aeee38"
+
+[[outputs]]
+id = "AH7eTvr6iMtUgJ_ScSOOY"
+uri = "file://attached_assets/generated_images/frontman-sil-v10.png"
+type = "image"
+title = "V10 — Rounded Bubbly"
+logical_id = "f6b541d8-746f-461d-ab39-30a2839a2396"
+
+[[outputs]]
+id = "c_CtQl4JDA5ZIprmLfYdu"
+uri = "file://artifacts/interview-helper/public/picasso-favicon.png"
+type = "image"
+title = "Picasso Favicon (192x192)"
+logical_id = "b0f707b4-cbb7-4b82-a0f8-20c18bb26d24"
+
+[[outputs]]
+id = "ZLMi178H4aVzgjyKK723f"
+uri = "file://artifacts/interview-helper/public/picasso-logo.png"
+type = "image"
+title = "Picasso Logo / App Icon (512x512)"
+logical_id = "7855beb7-b778-4cba-bde5-be29ad497fb6"
+
+[[outputs]]
+id = "G1-CbcNj-_VFv2_zLJJwh"
+uri = "file://artifacts/interview-helper/public/picasso-social.png"
+type = "image"
+title = "Picasso Social / OG Image"
+logical_id = "d73ca14a-b83b-4487-8a78-6dec8eb63d25"
+
+[[outputs]]
+id = "095rUOmAxskmQ1Zud1mmf"
+uri = "file://SALARYMAN_BRAIN.md"
+type = "text"
+title = "SALARYMAN Brain — Complete Project Knowledge Base"
+logical_id = "3edad16f-1e01-4156-9a0c-f510e0f81b35"
+
+[[outputs]]
+id = "6ZE7i5Ga8wQRJ6-7FENQi"
+uri = "file://attached_assets/hummingbird-preview.svg"
+type = "image"
+title = "Real hummingbird silhouette — Lorc / GameIcons (CC BY 3.0)"
+logical_id = "66ccf917-fc87-491a-abc3-85b7273ec485"
+
+[[outputs]]
+id = "XyLfRzdqihzLjvrTfPCY_"
+uri = "file://.local/worldart/world_bank_iso.jpg"
+type = "image"
+title = "MINX MUTUAL — gold-vault bank (ziggurat)"
+logical_id = "b2961ffe-36ff-45d0-b155-dab249ec0306"
+
+[[outputs]]
+id = "qgwQzND6XJu2WNe7CUpSF"
+uri = "file://.local/worldart/world_tower_iso.jpg"
+type = "image"
+title = "Pablo's Shadow Tower (nebula-orb crown)"
+logical_id = "5c3f272a-58cd-4b82-bdb8-0bb8c2583efe"
+
+[[outputs]]
+id = "7iKujvoXIlinfk_mApDc4"
+uri = "file://.local/worldart/world_factory_iso.jpg"
+type = "image"
+title = "Bot Factory (FRESH BOTS / conveyor)"
+logical_id = "c2f893d0-f776-42e9-ade9-b150128f84e2"
+
+[[outputs]]
+id = "74fJfgTckLcUopD71nSt1"
+uri = "file://.local/worldart/world_realty_iso.jpg"
+type = "image"
+title = "Reconstruction Office (rebuild authority)"
+logical_id = "7b433d5d-8ccd-4a4d-9449-0c8d6f95bd99"
+
+[[outputs]]
+id = "D6hwoJg5sRMXBGGvlxP77"
+uri = "file://.local/worldart/world_campsite_iso.jpg"
+type = "image"
+title = "Survivors' Campsite"
+logical_id = "6e13cab0-ed44-48bd-a3e2-d587d325dced"
+
+[[outputs]]
+id = "La072zfobi3QD-OEchtcm"
+uri = "file://.local/worldart/world_subway_station_iso.jpg"
+type = "image"
+title = "Subway Station entrance"
+logical_id = "fd56ac0c-410f-4c8e-bb80-06c1803356dc"
+
+[[outputs]]
+id = "VWzvvdFx--ZQzWK6RU-Eq"
+uri = "file://.local/worldart/world_subway_car.jpg"
+type = "image"
+title = "Subway Car (travel animation)"
+logical_id = "b5a9facc-fb6b-4b9b-bdba-142d4cfc028e"
+
+[[outputs]]
+id = "2g8JXrfR655UGBB4T7lPy"
+uri = "file://attached_assets/Screenshot_2026-05-31_at_12.16.55_PM_1780204623506.png"
+type = "image"
+title = "BEFORE — the colorful 3D nebula you liked (\"I hope it doesn't change\")"
+logical_id = "b9a14479-604f-4a2f-9949-45eeda11fb4b"
+
+[[outputs]]
+id = "LWPo4VcLYtJ1P0cYd7xRp"
+uri = "file://attached_assets/screenshots/salaryman_replit_app_pablo.png"
+type = "image"
+title = "NOW — the flat purple 2D fallback that's showing instead"
+logical_id = "7ce8a0c4-64df-447c-838e-4044d98c0fb2"
+
+[[outputs]]
+id = "U5ukKOE_ZQtdvd21NQEmB"
+uri = "file://attached_assets/generated_images/salaryman_keyart_cover.png"
+type = "image"
+title = "SALARYMAN — Cover Key Art"
+logical_id = "afa9a83c-d5ae-4991-9efb-9b38c425a0c8"
+
+[[outputs]]
+id = "O6FL8aGkCbzYOEvJ37w8J"
+uri = "file://attached_assets/generated_images/pablo_nebula_orb.png"
+type = "image"
+title = "PABLO — AI Overlord Nebula"
+logical_id = "2cd4da6d-1bc9-4dea-a6ad-28fb8de82d7c"
+
+[[outputs]]
+id = "vjT7FuaBu8KFG6UfttHuQ"
+uri = "file://attached_assets/generated_images/neon_city_street.png"
+type = "image"
+title = "Neon Corporate City Street"
+logical_id = "6e3fe6a5-1c91-466c-b24b-36427a151cf9"
+
+[[outputs]]
+id = "g1hjaA-f6SH0Pq2nDKz9K"
+uri = "file://attached_assets/generated_images/pixel_agents_squad.png"
+type = "image"
+title = "The Pixel Agents"
+logical_id = "17815b86-1660-440a-8ac7-261b3bb23ca1"
+
+[[outputs]]
+id = "ZtY8MH4CW46oxCTCUtu2G"
+uri = "file://attached_assets/generated_images/money_as_health.png"
+type = "image"
+title = "Money Is Your Health"
+logical_id = "f8b9e8eb-f61b-4641-9ed7-743a5f2137fa"
+
+[[outputs]]
+id = "sBJgyMW_2gqCOey1ZMiPy"
+uri = "file://attached_assets/generated_images/terrence_studio.png"
+type = "image"
+title = "Terrence's Music Studio"
+logical_id = "f9b52eb6-2b05-4a69-9c2d-0b3ef5cd1fcc"
+
+[[outputs]]
+id = "beq_c9dWfs5C-O0jzbMfK"
+uri = "file://attached_assets/generated_images/gameplay_city_walk.png"
+type = "image"
+title = "Gameplay — City Walk + HUD"
+logical_id = "7a3bf1c9-b11f-4109-b934-730372413302"
+
+[[outputs]]
+id = "ctqffs_VPUiuUcwl1_Yjb"
+uri = "file://attached_assets/generated_images/gameplay_office_interior.png"
+type = "image"
+title = "Gameplay — Office Interior"
+logical_id = "ba8ebd8c-3dec-40ba-adbc-b721892db491"
+
+[[outputs]]
+id = "S9twyS-PxRvl9KNPIeioI"
+uri = "file://attached_assets/generated_images/gameplay_combat.png"
+type = "image"
+title = "Gameplay — Street Combat (Coin Health)"
+logical_id = "24d157df-b436-4de9-8ace-ae74de7ff0c3"
+
+[[outputs]]
+id = "8dZfWxbnYlgz8u7y4pBmC"
+uri = "file://attached_assets/generated_images/gameplay_subway.png"
+type = "image"
+title = "Gameplay — Subway Station"
+logical_id = "8d141e82-77eb-45e1-bd6f-62387426a6a1"
+
+[[outputs]]
+id = "mBFnrX5jyCjAWsCWNUC5h"
+uri = "file://attached_assets/generated_images/gameplay_pablo_terminal.png"
+type = "image"
+title = "Gameplay — Pablo Terminal"
+logical_id = "5065e05c-ea54-4e71-93b0-4d2425c58d10"
+
+[[outputs]]
+id = "cL_QoIC4LLpIYkUqUa9Il"
+uri = "file://attached_assets/generated_images/gameplay_music_lab.png"
+type = "image"
+title = "Gameplay — Music Lab"
+logical_id = "6cac36cc-2536-45f2-91e7-c0da11c6f9dd"
+
+[[outputs]]
+id = "Z_OD6GHMS4sH-X6ZsgSDa"
+uri = "file://attached_assets/generated_images/v2_city_hero.png"
+type = "image"
+title = "City Hero — Splash"
+logical_id = "5693fad8-db07-412b-af63-677d1d56389b"
+
+[[outputs]]
+id = "CBew19T9iPAwb0JCQuOBz"
+uri = "file://attached_assets/generated_images/v2_city_walk.png"
+type = "image"
+title = "City Walk — Gameplay"
+logical_id = "afeca245-9190-4d85-9372-c9dbebe673e1"
+
+[[outputs]]
+id = "TU3NtilKIAYuWEJOIOsiZ"
+uri = "file://attached_assets/generated_images/v2_combat.png"
+type = "image"
+title = "Street Combat — Coin Health"
+logical_id = "809255d5-1660-4a16-af2a-aab97c3a9de0"
+
+[[outputs]]
+id = "Y4QXyS4tZTIY8fUhg2lf3"
+uri = "file://attached_assets/generated_images/v2_subway.png"
+type = "image"
+title = "Subway Station"
+logical_id = "f7b6c3c8-45ef-4ec3-8291-b0d44c226059"
+
+[[outputs]]
+id = "Edzjy2glg87mnFofzcvBL"
+uri = "file://attached_assets/generated_images/v2_pablo_terminal.png"
+type = "image"
+title = "Pablo Terminal"
+logical_id = "536b4bab-455b-41ca-8b4a-0134e5ac87a2"
+
+[[outputs]]
+id = "rE2J9bZlY274ozJHFeNCz"
+uri = "file://attached_assets/generated_images/v2_music_lab.png"
+type = "image"
+title = "Music Lab"
+logical_id = "bd360f9e-9876-4a2f-8f2b-02bfcf523710"
+
+[[outputs]]
+id = "lTlqbu0QSIOAhbez-i5-H"
+uri = "file://attached_assets/generated_videos/salaryman_gameplay_clip.mp4"
+type = "video"
+title = "SALARYMAN — Gameplay Clip (8s, 1080p)"
+logical_id = "1d500e75-9d60-4e53-972e-0cd15b361a3e"
+
+[[outputs]]
+id = "qEiXsb7LL6IkOJwqNGoK_"
+uri = "file://attached_assets/generated_videos/salaryman_trailer.mp4"
+type = "video"
+title = "SALARYMAN — Gameplay Cut (38s, 1080p, w/ CALL HOME soundtrack)"
+logical_id = "f8cf9060-f0c4-4ff7-a3bb-684fd92182a8"
+
+[[outputs]]
+id = "SWWSfmPCQ9SXX35E0SpBc"
+uri = "file://attached_assets/generated_images/salaryman_banner_a.png"
+type = "image"
+title = "SALARYMAN Title Banner A (800×250)"
+logical_id = "28a3303d-7ee4-4bf6-bca2-6fed241c19da"
+
+[[outputs]]
+id = "V1B2PiscKVaoqMGsaPjiz"
+uri = "file://attached_assets/generated_images/salaryman_banner_b.png"
+type = "image"
+title = "SALARYMAN Title Banner B (800×250)"
+logical_id = "e2b4ae5c-2b46-4e72-92b7-a20bd83b817b"
+
+[[outputs]]
+id = "88m2115RtObh2zd4KOzA-"
+uri = "file://attached_assets/generated_images/bg_banner_hero_720.png"
+type = "image"
+title = "Background Banner — Hero (1280×720)"
+logical_id = "c31f8c1e-b8fd-436a-9cd8-88ea9ba70c73"
+
+[[outputs]]
+id = "72VHKALWIs5ijyMquqBH4"
+uri = "file://attached_assets/generated_images/city_map_720.png"
+type = "image"
+title = "City Map (1280×720)"
+logical_id = "e96ed3da-c218-496a-bcd6-4043b4d6de07"
+
+[[outputs]]
+id = "ZZjOnCbfZhJ9yhSSBBNTT"
+uri = "file://attached_assets/generated_images/bots_group_720.png"
+type = "image"
+title = "The Bots — Group Picture (1280×720)"
+logical_id = "51fce0a1-8f80-47c4-8f18-b8a3384d9b3e"
+
+[[outputs]]
+id = "uM5-Trhf5lUzQkdJvv4KK"
+uri = "file://attached_assets/generated_images/fight_scene_720.png"
+type = "image"
+title = "Sick Fight Scene (1280×720)"
+logical_id = "2646aa88-dc50-4ae1-bc7e-e98f8123b7ed"
+
+[[outputs]]
+id = "sHtq6ujU8Y6IMNY0Xug21"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v2.mp4"
+type = "video"
+title = "SALARYMAN — Gameplay Cut v2 (34.5s, dramatic confrontation, CALL HOME soundtrack)"
+logical_id = "ae6091f8-5b5c-4e4b-a745-9121900ce444"
+
+[[outputs]]
+id = "lD41FwjChSF9IZEjFirB_"
+uri = "file://attached_assets/generated_images/picasso_300_mark.png"
+type = "image"
+title = "PICASSO Logo Mark (300×300)"
+logical_id = "689f91d4-1220-4034-9fcc-d3d810e81061"
+
+[[outputs]]
+id = "IdOrRXfhc1DbKzNi1tGHn"
+uri = "file://attached_assets/generated_images/picasso_300_wordmark.png"
+type = "image"
+title = "PICASSO Wordmark (300×300)"
+logical_id = "b4a2edd4-eb1c-4eac-9a62-0b53a10ca849"
+
+[[outputs]]
+id = "LWXsYo3lQ8fJYIqVjWFp9"
+uri = "file://attached_assets/generated_images/picasso_logo_real_300.png"
+type = "image"
+title = "PICASSO Logo (real, 300×300, on black)"
+logical_id = "ffd6c0ff-e61c-43c8-bbc4-9f719d100673"
+
+[[outputs]]
+id = "eYEhWZdflRAeYSykYfly9"
+uri = "file://attached_assets/generated_images/picasso_banner_rundown.png"
+type = "image"
+title = "PICASSO Banner — Run-Down Cyberpunk (1280×720)"
+logical_id = "b0b7fd4f-d859-4ffd-b0cb-30c20d23d944"
+
+[[outputs]]
+id = "sswBcNWPnxfPVMrmwV1H2"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v3.mp4"
+type = "video"
+title = "SALARYMAN — Trailer v3 (run-down look, PICASSO end card, 37.9s)"
+logical_id = "a975909f-c077-46ef-8515-cf2bd0a9ce6c"
+
+[[outputs]]
+id = "-mOsWH4CU8ErzOQm9ZQ3L"
+uri = "file://attached_assets/generated_images/picasso_blocks_black_3000.png"
+type = "image"
+title = "PICASSO Boxes·Circle·Triangle Mark (3000×3000, on black)"
+logical_id = "6e889e2b-3e41-4020-af6c-c96a80dcc1d2"
+
+[[outputs]]
+id = "236DROG6ieSwYsb2WS1-q"
+uri = "file://attached_assets/generated_images/picasso_boxes_black_300.png"
+type = "image"
+title = "PICASSO Boxes Logo (300×300, on black)"
+logical_id = "2cc5fef1-5269-4418-81c0-3b254fed0cd8"
+
+[[outputs]]
+id = "FXwbYW5iHWxEEVKkHTr7i"
+uri = "file://attached_assets/generated_images/picasso_logo_real_blocks_300.png"
+type = "image"
+title = "PICASSO Logo (boxes·circle·triangle, 300×300, on black)"
+logical_id = "3589de04-2821-4bc6-94df-0c4ed4ffa9f7"
+
+[[outputs]]
+id = "yj9T1FyHjfb8sU1IOTrpw"
+uri = "file://attached_assets/generated_images/picasso_banner_800x250.png"
+type = "image"
+title = "PICASSO Banner — Run-Down (800×250)"
+logical_id = "017e5358-3d05-46c9-985e-40ebb564c3fc"
+
+[[outputs]]
+id = "ZMhUfJ6CGicgo83s8_OP4"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v4.mp4"
+type = "video"
+title = "SALARYMAN — Trailer v4 (short, consistent cinematic cut, 21s)"
+logical_id = "1c0654c4-a54e-41aa-844c-8585cd330282"
+
+[[outputs]]
+id = "T3kfILCzr30Xkcu7lUGPf"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v5.mp4"
+type = "video"
+title = "SALARYMAN — Trailer v5 (pixel-art, attacked outpost, 17.8s)"
+logical_id = "f1e5b42e-0b04-4895-a4a8-4a5747e3a567"
+
+[[outputs]]
+id = "q2Rk_nCMCuTRNao2T8KEn"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v6.mp4"
+type = "video"
+title = "SALARYMAN — Trailer v6 (REAL gameplay footage, 24.8s)"
+logical_id = "4c762c4b-857f-44f5-a125-ba0acb21ba0b"
+
+[[outputs]]
+id = "Pr1fwScjFx9Pjzizyl5mi"
+uri = "file://TESTER_60MIN_PLAYTEST.md"
+type = "text"
+title = "SALARYMAN — 60-Minute Tester Play-Test Script"
+logical_id = "8fd0d1be-78ea-4cfb-8f5a-062bffbd1d45"
+
+[[outputs]]
+id = "fo8wkNWnW5Bk7pyzrycN7"
+uri = "file://attached_assets/shadow-tower-office-kit-preview.png"
+type = "image"
+title = "Shadow Tower Analog Kit Preview"
+description = "Updated 1980s analog-surveillance office objects: amber CRT public terminal, elevator directory, secretary, executive desk, ATM, and vending machine."
+logical_id = "500c41db-2aa9-498b-8ca0-2703ea943416"
+
+[[outputs]]
+id = "5veZ2QM-eYosQRvq15KYL"
+uri = "file://attached_assets/shadow-tower-office-kit.zip"
+type = "unspecified"
+title = "Shadow Tower Analog Office Kit"
+description = "Final optimized transparent PNG kit with placement, collision, and retro-industrial usage metadata."
+logical_id = "f2b98ba1-239d-44e0-a282-211c65549d41"
+
+[[outputs]]
+id = "c5a1a43EX31HbGbjDQeiW"
+uri = "file://exports/salaryman-source-code.zip"
+type = "unspecified"
+title = "SALARYMAN Source Code"
+description = "Lightweight tracked source/configuration archive for GitHub transfer; excludes raw uploads, binaries, generated media, dependencies, build output, and internal Replit metadata."
+logical_id = "82672e0b-353b-4cf4-ae07-2931bf373ee2"
+content_hash = "sha256:97d383d7391a27d87a197b3e6c0e0904d343f188ab70081e3123e81719152f09"
+size = 4928419
+mtime_ms = 1788534258108
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/82672e0b-353b-4cf4-ae07-2931bf373ee2/fb2c9629-25f4-4a6c-9856-86cee93a663a"
+storage_version_token = "1788534265343218"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "jEQ5v248cdLgcoqbO9dpZ"
+uri = "file://exports/salaryman-1999-music-code.zip"
+type = "unspecified"
+title = "SALARYMAN 1999 + Music Code"
+description = "Focused code bundle containing SoundLab, Music Jukebox, player context, audio engine, Shadow Radio, import/generation APIs, Replicate MusicGen adapter, and music schema."
+logical_id = "84603eea-5e3d-4dd8-b903-768cad00dfbc"
+content_hash = "sha256:cff7bf9c21324adade90792d4f3f7987527f2503147f53981448d50ba3c5bb44"
+size = 851614
+mtime_ms = 1788534153280
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/84603eea-5e3d-4dd8-b903-768cad00dfbc/cb5834ee-effa-484a-a6de-e60a753e2705"
+storage_version_token = "1788534266447658"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "dozz6aOp2Y4QtTO3w6u0v"
+uri = "file://exports/salaryman-callhome-audio-01-15.zip"
+type = "unspecified"
+title = "Call Home Audio Tracks 01–15"
+description = "First delivery-safe pack of bundled Shadow Radio / Call Home MP3 tracks."
+logical_id = "2de5c023-37d1-4d97-880c-049434c4746b"
+content_hash = "sha256:2668cb8e472794763b19b8cdd3ebad3686e13f4ad277856c714cc3cacea6c5bd"
+size = 84948508
+mtime_ms = 1788534159492
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/2de5c023-37d1-4d97-880c-049434c4746b/3e64450f-be50-4d4e-8861-6bc19f1e811b"
+storage_version_token = "1788534268579153"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "xb-1GolQolfG58uCquzDG"
+uri = "file://exports/salaryman-callhome-audio-16-31.zip"
+type = "unspecified"
+title = "Call Home Audio Tracks 16–31"
+description = "Second delivery-safe pack of bundled Shadow Radio / Call Home MP3 tracks."
+logical_id = "30f60925-c2d9-4d18-8c29-58d295c9b4b1"
+content_hash = "sha256:cbd1aa3af5eb1614bace61a012a026794e8b6b9dd3c4e7738765eeed59fd522a"
+size = 91049928
+mtime_ms = 1788534164068
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/30f60925-c2d9-4d18-8c29-58d295c9b4b1/8dad9969-0a9a-40be-b762-e8fd7b16c381"
+storage_version_token = "1788534270783608"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "aMkuFItxuAu9YDSOZSnd9"
+uri = "file://exports/SALARYMAN_MUSIC_TRANSFER.md"
+type = "text"
+title = "Music Transfer Guide"
+description = "Map of the 1999 and music features, routes, dependencies, required setup, and redistribution warning for bundled audio."
+logical_id = "3a98bdb0-58fd-4c88-ab7e-619609089cfc"
+content_hash = "sha256:82506534ef5777c6e244161e6457a55b7ffd797bd0e5c754281332173ea4a124"
+size = 2859
+mtime_ms = 1788534087852
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/3a98bdb0-58fd-4c88-ab7e-619609089cfc/4efe4a0a-9ef7-43a2-b132-6c57fb72a8f7"
+storage_version_token = "1788534271914804"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "qLE92xfsRUOSufZorcyOJ"
+uri = "file://exports/salaryman-hummingbird-transfer.zip"
+type = "unspecified"
+title = "SALARYMAN Hummingbird Transfer Bundle"
+description = "Complete Hummingbird layer: persistent player, Winamp-style UI, playlists, track picker, attach controls, export bridge, navigation shortcut, audio coordination, API routes, and database schema."
+logical_id = "60dbb867-450b-4d6f-9674-a629b1b20b6e"
+content_hash = "sha256:40cc7c9fd91a2c84b0ee48a1bb97a0c62838f660c5edf841268939a44aec3451"
+size = 446644
+mtime_ms = 1788534528801
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/60dbb867-450b-4d6f-9674-a629b1b20b6e/9b727569-6dcd-43b2-9198-72b2276c19ad"
+storage_version_token = "1788534534506849"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "REjSgv4fn_LyWH_53GCml"
+uri = "file://exports/HUMMINGBIRD_TRANSFER.md"
+type = "text"
+title = "Hummingbird Transfer Guide"
+description = "Hummingbird architecture, features, endpoints, wiring checklist, and security notes for moving it into another app."
+logical_id = "c9f11df7-2e12-4e98-bd4d-80c3ceb47802"
+content_hash = "sha256:b41dff3c5f7e198a6be5bb549918a44e2a44830bbe89509ac9f8c5cdfc69ddcd"
+size = 3573
+mtime_ms = 1788534528813
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c9f11df7-2e12-4e98-bd4d-80c3ceb47802/92cd2e87-4e03-4fcb-9706-ba75103385d9"
+storage_version_token = "1788534535409667"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "Uew--6gcfZr2Yu1jvLiJj"
+uri = "file://exports/HUMMINGBIRD_CORE_CODE.md"
+type = "text"
+title = "Hummingbird Core — Copyable Code"
+description = "Plain Markdown source document with the main Hummingbird files separated by original path for direct viewing and copy/paste."
+logical_id = "334c711e-ac0c-4c35-84e4-6394fd0c913c"
+content_hash = "sha256:bf44165db833151f60a10343a3802073a15fcebda882ff3dff074a5684cfbd29"
+size = 158145
+mtime_ms = 1788534602236
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/334c711e-ac0c-4c35-84e4-6394fd0c913c/84c24d0e-da4d-4f77-8fcd-2cee08d23558"
+storage_version_token = "1788534609332144"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "7a6oKIJ9kSUyIWX2g5vuj"
+uri = "file://exports/HUMMINGBIRD_ALL_CODE.md"
+type = "text"
+title = "Hummingbird Complete — Copyable Code"
+description = "Plain Markdown source document with Hummingbird core code plus app wiring, audio helpers, API integration, and creative-tool examples."
+logical_id = "4b8fb142-0e32-4247-b5dc-ed70e1efdb77"
+content_hash = "sha256:753d2b2515ccb0cf0fa47988070ff93060fe1b87ff4a0f93ab596850a35983c2"
+size = 1118046
+mtime_ms = 1788534602708
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/4b8fb142-0e32-4247-b5dc-ed70e1efdb77/555fd0cd-f7ad-4272-9d49-607b6341b380"
+storage_version_token = "1788534610535862"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "_6NDA3dhg6xyAhg8WZa1S"
+uri = "file://exports/SALARYMAN_1999_CODE.txt"
+type = "text"
+title = "SALARYMAN 1999 — Copyable Text Code"
+description = "Plain TXT file containing the Creative Lab / SoundLab source, route wiring, audio dependencies, MusicGen server adapter, optional music API, schema, and setup notes."
+logical_id = "32ed271d-a2bc-4282-8c08-e0b1effda650"
+content_hash = "sha256:86db85db7ac79cd7855a30af9566cc4e16e404417b3ee5b25313ff48797a7853"
+size = 412618
+mtime_ms = 1788535174236
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/32ed271d-a2bc-4282-8c08-e0b1effda650/9001bfd7-5d46-4a0e-8848-70e75ea7fc5f"
+storage_version_token = "1788535179693971"
+content_type = "text/plain"
+
+[[outputs]]
+id = "UBqEKq0GMVsCAtZJaIvy5"
+uri = "file://exports/SALARYMAN_MUSIC_WRITING_MARKETING_CODE.txt"
+type = "text"
+title = "SALARYMAN Music + Writing + Marketing Code"
+description = "Copyable text bundle containing 66 current production source files for music creation/playback, Hummingbird, Shadow Radio, writing/content tools, marketing/social tools, assistant support, backend routes, and database schemas. No secret values or binary audio are included."
+logical_id = "cb9f152c-3170-443f-96a2-92a9403aa100"
+content_hash = "sha256:a98bfbab3e9829de4a5596e1da71d7616f2e1a1714521ab1ebae20a69a900faa"
+size = 1225699
+mtime_ms = 1788536415929
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/cb9f152c-3170-443f-96a2-92a9403aa100/0d9e29db-796b-40e0-8168-9f44f177f75a"
+storage_version_token = "1788536580275253"
+content_type = "text/plain"
+
+[[outputs]]
+id = "IawDPyqpXKRBbLnmaY06r"
+uri = "file://attached_assets/generated_images/salaryman-character-pablo-review.png"
+type = "image"
+title = "Pablo character design reference"
+description = "High-fidelity character direction for the Unreal production pass."
+logical_id = "609f7ed7-3636-480c-9f6f-ed8fe87cb034"
+content_hash = "sha256:70e741ff88d13f00eab0b5cb631b2cbe31ccb118735710a469cafe31be6f21d1"
+size = 1000705
+mtime_ms = 1788583971117
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/609f7ed7-3636-480c-9f6f-ed8fe87cb034/57b19acc-98a8-4702-a1f6-12ce671f1a29"
+storage_version_token = "1788583983962461"
+content_type = "image/png"
+
+[[outputs]]
+id = "RU60myNRisMe_P1N4phHB"
+uri = "file://attached_assets/generated_images/salaryman-shadow-tower-landscape-review.png"
+type = "image"
+title = "Shadow Tower landscape reference"
+description = "Wide spatial environment direction for the Unreal landscape pass."
+logical_id = "40db7804-62e0-492f-abe4-e3aca930f533"
+content_hash = "sha256:2186f5ce6dc01a321a23d1fb7d89576444d94d09b8d924a894f60c3ad66ec2fe"
+size = 1468414
+mtime_ms = 1788583973285
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/40db7804-62e0-492f-abe4-e3aca930f533/a173b541-a357-48eb-8437-b7c366325b3b"
+storage_version_token = "1788583985031919"
+content_type = "image/png"
+
+[[outputs]]
+id = "cLJ-QWnovkI_Y4cTD3pOQ"
+uri = "file://attached_assets/generated_images/salaryman-office-object-kit-review.png"
+type = "image"
+title = "Office object kit reference"
+description = "Production prop direction for spatial objects and interactables."
+logical_id = "da95f545-38c2-4223-b018-cb4d374a71f6"
+content_hash = "sha256:ec525270cbdd390e1f8d6f7e36eee99242033b3c3eccbc1cd98fa392f38aac9a"
+size = 1274702
+mtime_ms = 1788583972001
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/da95f545-38c2-4223-b018-cb4d374a71f6/a82b4708-8ad9-4a54-ab44-08fcf0436dcd"
+storage_version_token = "1788583986032619"
+content_type = "image/png"
+
+[[outputs]]
+id = "YTpEXgAT_r5WXpLrJKtKn"
+uri = "file://attached_assets/generated_images/salaryman-tile-material-review.png"
+type = "image"
+title = "Tile material direction reference"
+description = "Material and tile direction for Godot blocking and environment production."
+logical_id = "16f6308c-7d6f-4d2b-8a6f-8bae88c80864"
+content_hash = "sha256:ba71e33691148485a82338caea4b22db7cfc176ea192ed021fba30ee7cde74cc"
+size = 2237707
+mtime_ms = 1788583976877
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/16f6308c-7d6f-4d2b-8a6f-8bae88c80864/2e9ce60f-3051-48fd-a719-ef73e9074d02"
+storage_version_token = "1788583987313148"
+content_type = "image/png"
+
+[[outputs]]
+id = "gBXdXOODdksEnsHIIMZcX"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-character-v2.png"
+type = "image"
+title = "Solar-punk character design"
+description = "Physical 1970s–1980s solar-punk character direction with dark-noir narrative room."
+logical_id = "452e0ee2-aa6a-47ff-b377-efec36f91315"
+content_hash = "sha256:fc823442c834ca424352eadc9d9986c37039ec198d5284a2f94d4d78c6876336"
+size = 1354711
+mtime_ms = 1788587787255
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/452e0ee2-aa6a-47ff-b377-efec36f91315/2b30c700-2910-4db8-818b-5ee2d7c95e21"
+storage_version_token = "1788587858217584"
+content_type = "image/png"
+
+[[outputs]]
+id = "G0rjpjHGCLKz2vzJATqjJ"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-animation-v2.png"
+type = "image"
+title = "Solar-punk animation pose reference"
+description = "Readable key poses for a Godot animation pass."
+logical_id = "3cf52daf-2883-49e0-b7a2-0c246b634acf"
+content_hash = "sha256:81129dbab93c998816c83ae351f633443f14a9acc09cceee12044993f3f41301"
+size = 1920637
+mtime_ms = 1788587793579
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/3cf52daf-2883-49e0-b7a2-0c246b634acf/0ee61a40-982e-4dec-bcce-dfbcc6877de8"
+storage_version_token = "1788587859326365"
+content_type = "image/png"
+
+[[outputs]]
+id = "o8JC08j2YvdyWL9F38Z0O"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-landscape-v2.png"
+type = "image"
+title = "Solar-punk landscape direction"
+description = "Warm planted civic architecture for Unreal spatial production."
+logical_id = "f8fc77d3-f207-4108-9d88-62389ff250a2"
+content_hash = "sha256:6711f8d874125f41229b32be195cdf839bfaac3e92ee8ed7914bcfa264a7b39c"
+size = 2022236
+mtime_ms = 1788587785023
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f8fc77d3-f207-4108-9d88-62389ff250a2/3bc5a783-b5e9-4efc-b8d9-3ca63030ae4c"
+storage_version_token = "1788587860278492"
+content_type = "image/png"
+
+[[outputs]]
+id = "ReLIwyNQZH132HERoMAKN"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-object-kit-v2.png"
+type = "image"
+title = "Solar-punk object kit"
+description = "Modular, animation-friendly props for spatial gameplay."
+logical_id = "f2adb106-3d2e-4f24-832e-80ec74de003a"
+content_hash = "sha256:0c464c04839ee86e6f537bd2e020f091f16189793edc5a0047ef854c4a72c90b"
+size = 1461182
+mtime_ms = 1788587787655
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f2adb106-3d2e-4f24-832e-80ec74de003a/ac1b884d-c8e8-4e89-b3f0-e746fba7110c"
+storage_version_token = "1788587861178391"
+content_type = "image/png"
+
+[[outputs]]
+id = "qDS4Mij9TfdjwOlVFxK9W"
+uri = "file://attached_assets/generated_images/salaryman-solarpunk-tiles-v2.png"
+type = "image"
+title = "Solar-punk tile materials"
+description = "Seamless material direction for Godot blocking and environment production."
+logical_id = "090297fd-3505-48bb-a1ea-505951643530"
+content_hash = "sha256:4e1d2511ded301b23ea0d89847e193bbacd7ed1ad2917cbd177a0abda4783197"
+size = 2086627
+mtime_ms = 1788587785327
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/090297fd-3505-48bb-a1ea-505951643530/185838bc-9792-4f60-a700-fd81460d2078"
+storage_version_token = "1788587862246861"
+content_type = "image/png"
+
+[[outputs]]
+id = "GiK9KWjyHalXTigM4Vofq"
+uri = "file://exports/salaryman-engine-kit/text/SALARYMAN_ENGINE_KIT_ALL_CODE.txt"
+type = "text"
+title = "SALARYMAN all engines — plain text"
+description = "Complete 606-section text export of the reusable server, client, shared-contract, Godot, and renderer engine sources. Copy each section into the path shown after FILE: and adapt imports using COPY_MAP.md."
+logical_id = "20957940-2bc2-4de5-b9ce-d6e72ee6cd9f"
+content_hash = "sha256:97c80d451c3f1b4faa7cf58a578030ca71010b57d2c9aa9e693a55a23da31317"
+size = 7516365
+mtime_ms = 1788591383114
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/20957940-2bc2-4de5-b9ce-d6e72ee6cd9f/687c7cdc-d1ab-4098-a484-32a06b5f4799"
+storage_version_token = "1788591524091037"
+content_type = "text/plain"
+
+[[outputs]]
+id = "OnZDlRxzeIVIKolnkZnV8"
+uri = "file://exports/salaryman-engine-kit/text/SALARYMAN_ART_ENGINES.txt"
+type = "text"
+title = "SALARYMAN art engines — plain text"
+description = "Focused copy/paste export for art direction, style contracts, provider routing, QA, Godot review, office rendering, Unreal, and world-condition art rules."
+logical_id = "e1bdb7a6-8e6f-4042-bb17-26a95ba17da1"
+content_hash = "sha256:9f74fc7e96d532ffa87e9f9e3eed78eae812fd3f1ffaa6375c39aa1d8fec9b06"
+size = 528314
+mtime_ms = 1788591383422
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/e1bdb7a6-8e6f-4042-bb17-26a95ba17da1/a6a22117-2332-4e2b-9a0f-923597c66d79"
+storage_version_token = "1788591525312261"
+content_type = "text/plain"
+
+[[outputs]]
+id = "VswgKKgDr-ltQBv6ZBubf"
+uri = "file://exports/salaryman-engine-kit/text/SALARYMAN_RUNTIME_ENGINES.txt"
+type = "text"
+title = "SALARYMAN runtime engines — plain text"
+description = "Server, client, and shared runtime engine sources without the separate Godot project and documentation files."
+logical_id = "43f1d73b-8d99-4440-baf6-02b531c81273"
+content_hash = "sha256:62f92614731c32bfa43ae52b8f50f0affb36f5076843f6a3f7134af314267022"
+size = 7477514
+mtime_ms = 1788591386450
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/43f1d73b-8d99-4440-baf6-02b531c81273/edac6d6f-b77a-44e5-a20d-98a5ea84a880"
+storage_version_token = "1788591526414280"
+content_type = "text/plain"
+
+[[outputs]]
+id = "aUNKaXr4Z1cxuZVMpb_eJ"
+uri = "file://exports/salaryman-engine-kit/text/MANIFEST.txt"
+type = "text"
+title = "SALARYMAN engine text manifest"
+description = "File counts, sizes, and source-section listing for the plain-text exports."
+logical_id = "76a8a569-67c6-4753-aadf-d5e532a8260a"
+content_hash = "sha256:3fd8ed3d440f392f621cf26d3733ce1d4829c37f59b161a286f7315a99b2a609"
+size = 21550
+mtime_ms = 1788591386530
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/76a8a569-67c6-4753-aadf-d5e532a8260a/a3c583d6-0c80-4b5f-888f-e4c8cd9cf400"
+storage_version_token = "1788591527225850"
+content_type = "text/plain"
+
+[[outputs]]
+id = "wCu9YmU5bWSP_9NuhWuqU"
+uri = "file://dist/releases/salaryman-office-linux-x86_64.tar.gz"
+type = "unspecified"
+title = "SALARYMAN Office — corrected Linux desktop release"
+description = "Verified Linux x86_64 bundle with readable cross-platform font fallback, working download endpoint, portable launcher, and branded icon installer. macOS packaging logic is now target-OS-safe but needs a real macOS build for final binary verification."
+logical_id = "7c094129-e1d2-454a-afd7-5066af2bd757"
+content_hash = "sha256:7028944f89d1a1540cd7e4e573a85262bf4e75f7cdd570af178e0bca3e208bf6"
+size = 21459517
+mtime_ms = 1788716857754
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7c094129-e1d2-454a-afd7-5066af2bd757/a2d79a4e-6671-44aa-b096-83d39418bb7b"
+storage_version_token = "1788716893142748"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Nb0S3YMmW0V8HqDNeCshX"
+uri = "file://screenshots/salaryman-pygame-gameplay.mp4"
+type = "video"
+title = "SALARYMAN Pygame Gameplay — Review Build"
+description = "Eight-second authentic capture from the real Pygame simulation and renderer. Review this visual direction before it is approved for promotion."
+logical_id = "daafc029-bf74-478f-b468-d4bcc975b5aa"
+content_hash = "sha256:d12e4e0c4243528c27d63d390c903195307940d1910022861fdc51f253e004f1"
+size = 58103
+mtime_ms = 1788756845179
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/daafc029-bf74-478f-b468-d4bcc975b5aa/7fa8eb65-8d1e-4601-9f16-a3c3744a302e"
+storage_version_token = "1788756871659769"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "Lul4i7VMQ9QwCLheo_bXE"
+uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-alpha-showcase.mp4"
+type = "video"
+title = "SALARYMAN Pygame Alpha Showcase"
+description = "Fresh 18-second gameplay recording captured from the current authoritative Pygame office runtime."
+logical_id = "280ade69-e009-4dee-8048-eff2ac7c8b12"
+content_hash = "sha256:759aab3b7ceda5b5605c16b5cf5274987afadb9d73cdb8bd5382bce5291c9a07"
+size = 682821
+mtime_ms = 1788885010047
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/280ade69-e009-4dee-8048-eff2ac7c8b12/813d55c7-93fb-4b32-ab44-99ca9499ccd1"
+storage_version_token = "1788885239039172"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "7RKnHQvbkj43kdnL4f1G1"
+uri = "file://screenshots/pygame-isometric-office-final.png"
+type = "image"
+title = "Revised isometric office floor"
+description = "Current rendered Pygame client frame with diagonal isometric projection, office carpet, workstations, collaboration zone, and no vanishing-point corridor."
+logical_id = "42bcbab8-8be9-4408-83e0-ed3049bf11ee"
+content_hash = "sha256:006d37aae41f19d9235df25bbcde4626a7e0e8d801b6060897c34501bd958c46"
+size = 53534
+mtime_ms = 1788934017128
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/42bcbab8-8be9-4408-83e0-ed3049bf11ee/fe46ce83-cb82-4dd3-b230-7dc58a797d23"
+storage_version_token = "1788934039551220"
+content_type = "image/png"
+
+[[outputs]]
+id = "bVOzIa87a7OIOqkYu5YpT"
+uri = "file://screenshots/pygame-square-office-final.png"
+type = "image"
+title = "Square top-down office"
+description = "Verified Pygame client frame with straight orthogonal camera, square carpet tiles, rectangular work zone, and properly scaled office workstations."
+logical_id = "6128dbc4-53a2-4ac4-8188-481d2c2ac5c6"
+content_hash = "sha256:8683d382f3c6b35d14eb2c7e25227683177c6d012a21b7a8fdb9448c9ef53122"
+size = 36470
+mtime_ms = 1788951470441
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6128dbc4-53a2-4ac4-8188-481d2c2ac5c6/9051728d-54ca-4923-bb39-808614e3b1d7"
+storage_version_token = "1788951498283551"
+content_type = "image/png"
+
+[[outputs]]
+id = "2vO46JTNfBIY1n_HMtXE0"
+uri = "file://screenshots/pygame-layered-square-office.png"
+type = "image"
+title = "Layered square office shell"
+description = "Verified current Pygame frame with square tiles, orthogonal wall depth, columns, partitions, ceiling-light zones, workstations, and no diagonal geometry."
+logical_id = "8997a27f-ccd5-4cd2-83cc-b9699466d72c"
+
+[[outputs]]
+id = "HizRxx3XJPtkvgTsJjxjV"
+uri = "file://screenshots/pygame-10k-floor-center.png"
+type = "image"
+title = "10,000 × 10,000 floor — center view"
+description = "A verified center-camera render of the world-anchored square floor. The player can pan across the larger floor while architecture and interactive objects retain fixed world positions."
+logical_id = "21bc58bb-3fd3-4308-81ba-c65f595da64c"
+content_hash = "sha256:06720f5f152345815e065ee034246312b102072979109fc76082a29aa2f2205b"
+size = 32314
+mtime_ms = 1788958968273
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/21bc58bb-3fd3-4308-81ba-c65f595da64c/5ff09fe8-ad10-4668-a4a6-4d2d7e3a8469"
+storage_version_token = "1788958994773233"
+content_type = "image/png"
+
+[[outputs]]
+id = "DgnQvBL8l1h4XeNsYmWu0"
+uri = "file://screenshots/pygame-million-floor-commons.png"
+type = "image"
+title = "Solar-punk million-pixel floor"
+description = "Verified center commons on a 1,000,000 × 1,000,000 world floor, with world-anchored square tiles, timber paths, productive gardens, water infrastructure, and orthogonal architecture."
+logical_id = "31e46043-df2c-4167-8f6f-fb5bde53a2bb"
+content_hash = "sha256:6767e916902990be9a18f1adb5b76580735d691f8bdd9eb9820ccbd4ffc732e4"
+size = 32442
+mtime_ms = 1788959079221
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/31e46043-df2c-4167-8f6f-fb5bde53a2bb/f1e7225f-a076-4965-8013-297d319781ab"
+storage_version_token = "1788959105995701"
+content_type = "image/png"
+
+[[outputs]]
+id = "7QV8Cvk4fQ6ZqG13RzTs9"
+uri = "file://screenshots/pygame-four-office-floor-base.png"
+type = "image"
+title = "Four-office floor base"
+description = "Verified central hallway view for the 67-floor base contract. Each 100,000,000 × 100,000,000 floor has an elevator lobby, connected hallway, and four separate 100-desk office footprints; interiors are intentionally not built yet."
+logical_id = "21853ba2-eeb7-4189-ba46-896d1b42d716"
+content_hash = "sha256:54c80e4df40827fe35a371580130d1ad382575dbdf22550a8d2a5b1910174006"
+size = 29565
+mtime_ms = 1788959406869
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/21853ba2-eeb7-4189-ba46-896d1b42d716/9ebab400-91ae-451f-817c-b4ae3bac5386"
+storage_version_token = "1788959427252369"
+content_type = "image/png"
+
+[[outputs]]
+id = "xhVsMV09a33pKwm1W76m1"
+uri = "file://screenshots/pygame-concrete-persian-rugs.png"
+type = "image"
+title = "Concrete floor with Persian rugs"
+description = "Verified floor-base render with exposed concrete slabs and many distinct Persian-inspired rugs using orthogonal borders and motifs."
+logical_id = "f91e9393-a646-4548-b08f-c2c0d61ec1cf"
+content_hash = "sha256:64a2cf734681b389638fcbcc42225d9200a275718f0e0044b9744e02c84645ed"
+size = 30094
+mtime_ms = 1788959571484
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f91e9393-a646-4548-b08f-c2c0d61ec1cf/2f32a1fd-4d76-4d7e-9d0e-c2d229c84176"
+storage_version_token = "1788959590283364"
+content_type = "image/png"
+
+[[outputs]]
+id = "w3DFT3-x-7OyRSxs_T-8W"
+uri = "file://screenshots/pygame-subtle-patterned-rugs.png"
+type = "image"
+title = "Subtle patterned Persian rugs"
+description = "Verified blended-concrete floor with restrained Persian-inspired rug patterns, muted medallions, and low-contrast woven accents."
+logical_id = "6295f835-692f-4aa8-b3d2-661ae17fdf93"
+content_hash = "sha256:e37d589d52f70666b8de45dcc415154a64648de9e03e915417074b1c27155f48"
+size = 30010
+mtime_ms = 1788959764257
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6295f835-692f-4aa8-b3d2-661ae17fdf93/1a00b6cc-2b68-4b3f-8a4d-107f80f5ba2b"
+storage_version_token = "1788959777425192"
+content_type = "image/png"
+
+[[outputs]]
+id = "SJ6A-4o-UG6fwEkRlY3sU"
+uri = "file://screenshots/pygame-key-elevator-base.png"
+type = "image"
+title = "1,000 × 1,000 key elevator"
+description = "Verified Floor 1 base showing the exact 1,000 × 1,000 elevator car inside its lobby, aligned with the hallway approach and backed by the 67-floor destination program."
+logical_id = "63c4e434-d5fe-4f55-95a4-8415166421d2"
+content_hash = "sha256:2f824e3d75295846e619026c18a90c0ef1b10d2cbc237f65f9c9609b9c82da72"
+size = 28838
+mtime_ms = 1788959949649
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/63c4e434-d5fe-4f55-95a4-8415166421d2/a04e1991-a19e-4c3f-9c02-2f11391af8c4"
+storage_version_token = "1788960006342823"
+content_type = "image/png"
+
+[[outputs]]
+id = "dv7SyZ1dZ-Jl7E23t9SVA"
+uri = "file://screenshots/old-menu-cream-preview.jpg"
+type = "image"
+title = "Old menu restored in cream"
+description = "Two-tier SALARYMAN navigation with Pablo Prime, Calll Home, Agents, Office, and More. Economy is removed."
+logical_id = "8e41dc25-86e3-4b39-9baf-4bacfff1187d"
+content_hash = "sha256:a8218b1ea85114ee21b0a7fe59e5f0511d5613b590511b7e4e90ec20d96c7232"
+size = 115043
+mtime_ms = 1788969410289
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8e41dc25-86e3-4b39-9baf-4bacfff1187d/365008c4-3aaf-4dfd-9dff-143f480a0087"
+storage_version_token = "1788969417870974"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "W9uyb8_mMeSeGjrjltyTl"
+uri = "file://artifacts/interview-helper/public/brand/desktop/salaryman-pygame-trailer.mp4"
+type = "video"
+title = "SALARYMAN — 36-second trailer"
+description = "Fast-cut live Pygame gameplay trailer with the CALL HOME soundtrack, executive workstations, movement, and character actions."
+logical_id = "66ad0a22-b385-4ee0-bae6-9f234da113d1"
+content_hash = "sha256:4f5c3e4a38d025571af398aff45c1872c6963f90526b62110d64f397422f86fa"
+size = 1623942
+mtime_ms = 1789230295143
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66ad0a22-b385-4ee0-bae6-9f234da113d1/3616cae7-5839-4d2d-a5da-b02db4e331ed"
+storage_version_token = "1789232379861465"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "dFCanmxDxhv3Ac4W76chA"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-walk-phone.mp4"
+type = "video"
+title = "Corrected workstation example"
+description = "Raw gameplay showing monitors positioned on the desk surfaces, distinct characters, chairs, and cubicle divider runs."
+logical_id = "a8177bb8-16c0-4b58-b917-461b30086258"
+content_hash = "sha256:97883fed6fd7e165e678e5715f17f60d2faae41d2a9737eb1e5420592532880a"
+size = 459018
+mtime_ms = 1789220412224
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a8177bb8-16c0-4b58-b917-461b30086258/976d5bf8-db42-4e7f-ab51-8aaa78820f69"
+storage_version_token = "1789220523649258"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "E8DZ-XURU-MmYiJR4N8Bv"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-terminal-break.mp4"
+type = "video"
+title = "Corrected gameplay: terminal to break"
+description = "14-second raw gameplay proof covering the terminal interaction and movement into the break area."
+logical_id = "891a4f71-5164-4a49-b766-1d7c012fbd90"
+content_hash = "sha256:1034a2e5182a00ad8380cc0a0dc5087109bf273389654f2254bcc36bf367f472"
+size = 402425
+mtime_ms = 1789219623400
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/891a4f71-5164-4a49-b766-1d7c012fbd90/ca20a367-4528-41ee-a448-97fe6e6da0b9"
+storage_version_token = "1789219705178816"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "qZDJtBgZ1AAtbjnKk64B2"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-npc-sleep.mp4"
+type = "video"
+title = "Furnished office example: NPCs at work"
+description = "Latest raw gameplay segment showing the varied NPC roster moving through the furnished office."
+logical_id = "e302c2e0-c0b4-4b97-a494-485430556a28"
+content_hash = "sha256:d891fd0a1505fdfaf3573679fed1bda77e7e19814b986dd608d0b218ad9ea212"
+size = 426399
+mtime_ms = 1789220113457
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/e302c2e0-c0b4-4b97-a494-485430556a28/d8ba245c-a671-49e9-ad3e-0da9e44edfe6"
+storage_version_token = "1789220187269961"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "nXxPz9cT6vRl3qUg8GGMB"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-executive-office.mp4"
+type = "video"
+title = "Executive terminal access clip"
+description = "Focused Pygame clip: the player approaches from the open side of the desk, the computer stays on the tabletop, furniture blocks traversal, and the terminal tools interface opens."
+logical_id = "fd6d54cd-6e29-4003-8c11-926ad17d4e34"
+content_hash = "sha256:5eee9f89e81d87344d58fa8d3348bc3ec803c805dd790991247f70323a960899"
+size = 206525
+mtime_ms = 1789222994055
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/fd6d54cd-6e29-4003-8c11-926ad17d4e34/759d19db-cf48-4223-b4d6-eabacd3577f3"
+storage_version_token = "1789223204669935"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "unm2RZZGw23yZTKKjVBcp"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-workstations.mp4"
+type = "video"
+title = "Gameplay example — workstations"
+description = "Short live gameplay clip showing the four-desk executive workstation showcase."
+logical_id = "12f3f999-fab2-4d4d-a40f-7d01d4c08326"
+content_hash = "sha256:d23a8800ac5d7ace82ec20dc4f0780f6e1b5b096ca1a06cbbbc6b5dd8307f3ca"
+size = 91826
+mtime_ms = 1789230337159
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/12f3f999-fab2-4d4d-a40f-7d01d4c08326/747ddbed-368e-4317-9ccb-4447ccebd8d3"
+storage_version_token = "1789232380664925"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "jq4QS_ibrAQa6nB4Eo87f"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-terminal.mp4"
+type = "video"
+title = "Gameplay example — terminal"
+description = "Short live gameplay clip showing the office terminal interaction flow."
+logical_id = "ad5dcbb7-cc0c-4f3a-b452-7f6686da2a56"
+content_hash = "sha256:c9656c492ae649985dd53109eb6d9c2de5736fdde3907cf464fb0cc510876705"
+size = 97674
+mtime_ms = 1789230337691
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/ad5dcbb7-cc0c-4f3a-b452-7f6686da2a56/0c697698-6ad6-4de9-b32d-bda5999abd4b"
+storage_version_token = "1789232381589314"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "-YsA9m_RZH_Eu5Yz63-8o"
+uri = "file://artifacts/interview-helper/public/brand/desktop/examples/salaryman-gameplay-fast-huddle.mp4"
+type = "video"
+title = "Gameplay example — team huddle"
+description = "Short live gameplay clip showing the office NPC movement and team huddle scene."
+logical_id = "038cbb47-c949-48ae-be24-b878c02f56b2"
+content_hash = "sha256:d1a1915e5d1439c58420e2aa98a0d9024ad6f9c6fa06c87d23dc09b602326a21"
+size = 260633
+mtime_ms = 1789230338339
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/038cbb47-c949-48ae-be24-b878c02f56b2/c3521e57-8cf6-4f3a-a713-8b22258852e9"
+storage_version_token = "1789232382493731"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "2kh1XSQOstfdXR-asRd94"
+uri = "file://exports/salaryman-api-replit-build.zip"
+type = "unspecified"
+title = "SALARYMAN API Replit build"
+description = "Portable Node/TypeScript API handoff for another Replit project. Includes the compiled production server, API source, shared workspace packages, database migrations, tests, lockfile, and setup instructions; excludes the web app, node_modules, and secret values."
+logical_id = "bb0e596b-71bc-4ecd-bda5-1d85fffb58a7"
+content_hash = "sha256:e27bc7cf451d202688518060b359d6fea6ef01f6e8baa8e62a4b4e0a99367831"
+size = 3510335
+mtime_ms = 1789278287954
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/bb0e596b-71bc-4ecd-bda5-1d85fffb58a7/8ce29538-ffad-4450-9ce1-e85049476927"
+storage_version_token = "1789278299213002"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Q5yT_4FH_4or8wbdH9gdF"
+uri = "file://screenshots/pygame-room-customizer.png"
+type = "image"
+title = "Pygame room customizer"
+description = "Headless desktop render showing the four wall finishes and four decor sets."
+logical_id = "11c094c0-5443-468f-876f-f3c2ac5b55fd"
+content_hash = "sha256:0aa8803bd1e7b84d5acdec822b57989d5bf555700b7bf59539509e0e8b7ad7c0"
+size = 52845
+mtime_ms = 1791273953784
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/11c094c0-5443-468f-876f-f3c2ac5b55fd/f94ea08e-1a0b-46e9-9bae-c03ed60a2136"
+storage_version_token = "1791274515100482"
+content_type = "image/png"
+
+[[outputs]]
+id = "qV-WbrbUsXJs7qx6-gkzN"
+uri = "file://screenshots/pygame-custom-room.png"
+type = "image"
+title = "Customized Pygame room"
+description = "Room preview with the selected Sunrise wall finish and Greenhouse decor."
+logical_id = "ec4c9db9-adf3-46be-aacf-a19b529c8d12"
+content_hash = "sha256:d24194368fffa8917490ec3887d42cbf40560430c915a5fb8e4d4695dea3eccc"
+size = 41407
+mtime_ms = 1791273953816
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/ec4c9db9-adf3-46be-aacf-a19b529c8d12/57182028-1b32-4f6d-b5eb-72ac2c8c98c8"
+storage_version_token = "1791274516122654"
+content_type = "image/png"
+
+[[outputs]]
+id = "va17lYtFB0sc-O98cgJkZ"
+uri = "file://screenshots/godot-office-1080p-visual-pass.png"
+type = "image"
+title = "Godot office — 1080p visual review"
+description = "1920×1080 Godot render using the authoritative lobby spawn coordinates. Static review frame; no live Pygame session."
+logical_id = "8750be26-50fe-4215-b617-460a690cf8d2"
+content_hash = "sha256:915565dd5e7552646c1e29ad5d781d32399a542b2a86fc2f76aa32184c121c19"
+size = 310891
+mtime_ms = 1791280300738
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8750be26-50fe-4215-b617-460a690cf8d2/2311959c-60bc-4a8c-8fdb-fa952a571968"
+storage_version_token = "1791280406433073"
+content_type = "image/png"
+
+[[outputs]]
+id = "iw_Ei9NEPEWmyGnd-LWCz"
+uri = "file://screenshots/godot-office-lobby-1080p.png"
+type = "image"
+title = "Godot office — elevator lobby"
+description = "1920×1080 render from a Pygame snapshot, showing the elevator lobby, pixel player, lounge rug, couch, and lamp."
+logical_id = "434c0fd1-f681-4229-8789-eb212ad5e7d8"
+content_hash = "sha256:1d236cea5fcf9f7c7c08134eaa32fc003401d7466350134dfe5d294f65b2e966"
+size = 270423
+mtime_ms = 1791283618992
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/434c0fd1-f681-4229-8789-eb212ad5e7d8/e8b68965-c206-4c88-8028-0be4c66a5cb0"
+storage_version_token = "1791283735979109"
+content_type = "image/png"
+
+[[outputs]]
+id = "1Z8Md8b1qzM5cC0cP-Oho"
+uri = "file://screenshots/godot-office-recreation-1080p.png"
+type = "image"
+title = "Godot office — connected hallway"
+description = "1920×1080 render from a Pygame snapshot, showing the hallway, MUSE pixel character, runner, and doorway openings."
+logical_id = "8abafb7f-73e8-4120-acb6-845bb339b1c5"
+content_hash = "sha256:5c9c6b49a15dae723609767d1bb53ad356c285acffceed1b1207a82a95d3a900"
+size = 168817
+mtime_ms = 1791283625046
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/8abafb7f-73e8-4120-acb6-845bb339b1c5/da7172dd-fe39-46bc-821d-7fbb10e4d4f1"
+storage_version_token = "1791283736820670"
+content_type = "image/png"
+
+[[outputs]]
+id = "hBkQGJwoFdlpBW7cLrEkm"
+uri = "file://screenshots/godot-office-executive-1080p.png"
+type = "image"
+title = "Godot office — executive office"
+description = "1920×1080 render from a Pygame snapshot, showing pixel characters, workstations, chairs, desk terminal, ATM, vending machine, and office lighting."
+logical_id = "b2ad2b32-4dca-469e-883f-0d8cf3a39e5d"
+content_hash = "sha256:8961b305a3829b879dea8f6566aa07a6445f649db217a96eae63925bf7d9050d"
+size = 323150
+mtime_ms = 1791283630904
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b2ad2b32-4dca-469e-883f-0d8cf3a39e5d/a081f8eb-ec7e-4d06-b149-733d7348ea89"
+storage_version_token = "1791283737762057"
+content_type = "image/png"
+
+[[outputs]]
+id = "WXtZNVWRLDHg-0in6gab-"
+uri = "file://screenshots/salaryman-native-office-props.png"
+type = "image"
+title = "SALARYMAN OS — native office prop review"
+description = "Rendered directly in Godot. Walnut-and-brass desks, slatted reception counter, enamel rotary phones, and articulated task lamps. Asset review, not a published build."
+logical_id = "6f9c050f-1f4e-47f1-a6b3-8907e158dfcf"
+content_hash = "sha256:36608166a8fd0bd28ada708d92fcab313e3d02a6ebfcde8c7b0ddeaa18ef4df5"
+size = 152600
+mtime_ms = 1791302442902
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6f9c050f-1f4e-47f1-a6b3-8907e158dfcf/bdf284c9-3ce9-4b8b-be99-1ccc48dd3446"
+storage_version_token = "1791302537220387"
+content_type = "image/png"
+
+[[outputs]]
+id = "zwg9RpS60ixIQltEdo_VQ"
+uri = "file://screenshots/salaryman-native-office-services.png"
+type = "image"
+title = "SALARYMAN OS — matching office and service props"
+description = "Actual Godot render with the approved wood, brass, and green-enamel finishes extended to upholstered chairs, the ATM, and vending machine. Integrated native models; review scene only, not a published desktop build."
+logical_id = "28e28a8f-319d-464f-b3b8-6da79d496969"
+content_hash = "sha256:6a035b969dc95c097c4776b255212b30a06726115b746e5eb9e7fd41f398aaca"
+size = 164310
+mtime_ms = 1791303348453
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/28e28a8f-319d-464f-b3b8-6da79d496969/49593e5e-d0c9-4839-b561-810c3f1c34fb"
+storage_version_token = "1791303364687643"
+content_type = "image/png"
+
+[[outputs]]
+id = "OONbYxHYN9B7KwBZz3kyi"
+uri = "file://screenshots/tower-open-floor-layouts.html"
+type = "html"
+title = "Open Tower floor gallery · B1–F12"
+description = "Self-contained gallery with one static Pygame layout screenshot for every accessible level: B1–B6 and F1–F12. Floors 2–5 are marked construction-open; Floors 13–67 are excluded."
+logical_id = "d8dec92c-26ec-4eb2-9fef-cb3a1a208636"
+content_hash = "sha256:cc210f163d6a73291a75a05b1ea33430b049e63c5543824e2f853d36bf5b8b5a"
+size = 481968
+mtime_ms = 1791384161174
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d8dec92c-26ec-4eb2-9fef-cb3a1a208636/ff034218-db29-4bed-8c0f-c0b742915986"
+storage_version_token = "1791384179731367"
+content_type = "text/html"
+
+[[outputs]]
+id = "maaTWNmHc393JAYz6_9sM"
+uri = "file://screenshots/tower-open-layouts-b1-b6.png"
+type = "image"
+title = "Basement layouts · B1–B6"
+description = "Six labeled static floor-layout screenshots from the current Pygame renderer."
+logical_id = "6754074e-9e54-490f-a8ad-9693585a82fe"
+content_hash = "sha256:0c32b11bef509a8595c04bf80cbf79f1be36bde14de9535081c5af072baf5a97"
+size = 107609
+mtime_ms = 1791384160794
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6754074e-9e54-490f-a8ad-9693585a82fe/04ad388c-e0c0-4822-aef2-4477673a3d09"
+storage_version_token = "1791384181200332"
+content_type = "image/png"
+
+[[outputs]]
+id = "kHNhtm0Is4_I-B_0cgW_l"
+uri = "file://screenshots/tower-open-layouts-f1-f6.png"
+type = "image"
+title = "Tower layouts · F1–F6"
+description = "Six labeled static floor-layout screenshots, including construction-open Floors 2–5."
+logical_id = "b63e8bee-18d9-4c29-acd8-9f0c46b8ed4b"
+content_hash = "sha256:0196337193c2184488b6986359e02b96a995f1b77e574d896cd5a47ae2e3c451"
+size = 118332
+mtime_ms = 1791384160994
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b63e8bee-18d9-4c29-acd8-9f0c46b8ed4b/67a35307-f851-4d1d-ab7d-99ab45d91148"
+storage_version_token = "1791384182053537"
+content_type = "image/png"
+
+[[outputs]]
+id = "-vGM447AkqT5qt5rX_BV2"
+uri = "file://screenshots/tower-open-layouts-f7-f12.png"
+type = "image"
+title = "Tower layouts · F7–F12"
+description = "Six labeled static floor-layout screenshots, including the meditation temple and business floors."
+logical_id = "1270a8f2-28b5-4d54-b292-ce513141d7bc"
+content_hash = "sha256:d0111892a3ac65d8c014d771a78d96251643ee807c66f46a6d7ca5aaaca7538c"
+size = 111374
+mtime_ms = 1791384161170
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/1270a8f2-28b5-4d54-b292-ce513141d7bc/e75e70b1-bfd3-4308-ad1e-3896ed55017a"
+storage_version_token = "1791384183072972"
+content_type = "image/png"
+
+[[outputs]]
+id = "r6wELNsXzWgiTxVZOofWT"
+uri = "file://screenshots/tower-godot-floor-previews.html"
+type = "html"
+title = "Tower Godot 3D Floor Gallery"
+description = "Self-contained gallery of all 18 native Godot isometric previews: B1–B6 and F1–F12."
+logical_id = "d03725b9-6598-4a80-a87f-ee3a537dda4e"
+content_hash = "sha256:dcbaf7ddb1a3bcadec3bf01771020eb541873ad4f2b9a975053e4314fd5c216a"
+size = 3318488
+mtime_ms = 1791385411638
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d03725b9-6598-4a80-a87f-ee3a537dda4e/14a59a70-a39c-4bd7-b983-9ff08f90f6d4"
+storage_version_token = "1791385952592921"
+content_type = "text/html"
+
+[[outputs]]
+id = "wO1QfE4UBdZponPXWqbeF"
+uri = "file://screenshots/tower-godot-basements.png"
+type = "image"
+title = "Tower Basements B1–B6"
+description = "Godot-rendered isometric 3D review sheet for all six basement layouts."
+logical_id = "39133612-7915-4c6d-9e23-677da1ca5462"
+content_hash = "sha256:7e00444395c5051e555918ec040bc592600c4f825687d96c73f3f4dde78953c3"
+size = 489728
+mtime_ms = 1791385407958
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/39133612-7915-4c6d-9e23-677da1ca5462/efb1857f-547c-47c2-972a-ea912a6fd581"
+storage_version_token = "1791385953826468"
+content_type = "image/png"
+
+[[outputs]]
+id = "GKchfZLm3Dhq3quNNO3RE"
+uri = "file://screenshots/tower-godot-floors-01-06.png"
+type = "image"
+title = "Tower Floors F1–F6"
+description = "Godot-rendered isometric 3D review sheet for the lobby, construction suites, and office concourse."
+logical_id = "563d43f3-fc49-413c-8f61-190bd7ceb1d2"
+content_hash = "sha256:a1eea39f5e5e8a6bb6f1c7c2df9290f86defa79da9e647425bec3178619585bd"
+size = 544008
+mtime_ms = 1791385409982
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/563d43f3-fc49-413c-8f61-190bd7ceb1d2/55e064dc-0848-4d3c-857e-954b1d275718"
+storage_version_token = "1791385954956821"
+content_type = "image/png"
+
+[[outputs]]
+id = "9p_u5BoTjd5Ej43KitdZu"
+uri = "file://screenshots/tower-godot-floors-07-12.png"
+type = "image"
+title = "Tower Floors F7–F12"
+description = "Godot-rendered isometric 3D review sheet for the meditation temple and upper business floors."
+logical_id = "b48861a4-b412-49ab-a776-b3ee1e15aa4b"
+content_hash = "sha256:c567d224dd5a9aec0f8491c8976c4a1a2575b0b0c193d0f12700848679402072"
+size = 555556
+mtime_ms = 1791385411462
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b48861a4-b412-49ab-a776-b3ee1e15aa4b/582a581d-8bcc-49ad-abe0-91cb520341d4"
+storage_version_token = "1791385956310288"
+content_type = "image/png"
+
+[[outputs]]
+id = "BRuf7Qd8w1bJ5DF2ADa65"
+uri = "file://dist/tower-review-renders/contact-sheet.png"
+type = "image"
+title = "Tower floor renders — B1–B6, F1–F12"
+description = "Native Godot 3D overview renders for all 18 floors, plus the B1 gate and F2 window close-ups."
+logical_id = "90a794ed-34bd-473b-9abb-d62639176a3f"
+content_hash = "sha256:46d91fc9b4dca985fa3b24173b7418a858095e2d8873e92ca9b00a6dcf2394a9"
+size = 114742
+mtime_ms = 1791392497222
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/90a794ed-34bd-473b-9abb-d62639176a3f/b0498aa9-ae3d-46cf-b02a-727f25d29f4a"
+storage_version_token = "1791392569846826"
+content_type = "image/png"
+
+[[outputs]]
+id = "g162XGwEOGf36Oiq2np-l"
+uri = "file://dist/tower-review-renders/b1-gate.png"
+type = "image"
+title = "B1 open-air fenced yard gate"
+description = "Native-scale detail view showing the open gate and the yard fence with no roof."
+logical_id = "d894d361-84c2-40e5-aade-fa87d88613a6"
+content_hash = "sha256:553df192f2d318fc01007ca73aae4fbe1656a55405d7a52c04dd1035f1db9d5e"
+size = 30248
+mtime_ms = 1791392185616
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d894d361-84c2-40e5-aade-fa87d88613a6/5c800564-ec21-40a7-916f-382fca5600d0"
+storage_version_token = "1791392570616145"
+content_type = "image/png"
+
+[[outputs]]
+id = "hE5qlZZaYSGFgMhkH4979"
+uri = "file://dist/tower-review-renders/f2-window.png"
+type = "image"
+title = "F2 exterior window and wall"
+description = "Native-scale window close-up with the 30 cm outer wall."
+logical_id = "773e7e19-d86f-4013-895e-4f4aa0624661"
+content_hash = "sha256:c2b67fb75801dafd37da09b6bd4ad2a2272e9b4cc8b2b9d168442e7d6218c8a0"
+size = 29217
+mtime_ms = 1791392185842
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/773e7e19-d86f-4013-895e-4f4aa0624661/b959bdee-8265-4915-a7ff-780ed6962fef"
+storage_version_token = "1791392571391840"
+content_type = "image/png"
+
+[[outputs]]
+id = "HCuqcL98_qtt7_5_gdT6u"
+uri = "file://godot/office-client/review/tower-floor-review.html"
+type = "html"
+title = "Tower Floor Visual Review"
+description = "Self-contained gallery of 23 final Godot-native previews for B1–B6 and F1–F12, including the B1 yard and gate details."
+logical_id = "6bf79a47-58fe-4ff5-9bfd-96e202817460"
+content_hash = "sha256:220efbdcffc16ec62a145f0fc8e9cc7c10daf23f39fb5ccbfa010b11d735560e"
+size = 1205478
+mtime_ms = 1791395455294
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6bf79a47-58fe-4ff5-9bfd-96e202817460/9aae9d4c-aab6-4dcd-a391-f8612fb9335a"
+storage_version_token = "1791395510996176"
+content_type = "text/html"
+
+[[outputs]]
+id = "17lFmsRn6Re-RC_6-BQZO"
+uri = "file://godot/office-client/review/gameplay-contact-sheet.png"
+type = "image"
+title = "Tower floors — contact sheet"
+description = "Overview of all 18 full-resolution captures from the actual Godot gameplay camera."
+logical_id = "5617b9d5-bd08-4f67-abfb-5613dbc0474e"
+content_hash = "sha256:6336ec6b2e143c3bd823e0e60c372d81e3f3bdd1d2b3a465dbbe7ac0d3072d70"
+size = 3661997
+mtime_ms = 1791397219203
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/5617b9d5-bd08-4f67-abfb-5613dbc0474e/5f5cd75e-ba16-4013-8254-3e76bde4cc9b"
+storage_version_token = "1791397282223018"
+content_type = "image/png"
+
+[[outputs]]
+id = "CSbJdRAMlJNVMBFGt6T1a"
+uri = "file://godot/office-client/review/gameplay-screenshots.html"
+type = "html"
+title = "Tower floors — downloadable screenshot gallery"
+description = "Self-contained gallery of B1–B6 and F1–F12, with individual PNG download buttons."
+logical_id = "fbe06427-2d9a-4432-bac9-22cce0882c2e"
+content_hash = "sha256:560e22368712ca836a580655ea6d2c8468d037864d05d2033a69cf8d5d1cdfec"
+size = 3868766
+mtime_ms = 1791397214355
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/fbe06427-2d9a-4432-bac9-22cce0882c2e/ddd8f35e-560a-4244-af58-313c2583557a"
+storage_version_token = "1791397283441911"
+content_type = "text/html"
+
+[[outputs]]
+id = "FR4BnhH8b5_RKl8RqvVRR"
+uri = "file://godot/office-client/review/gameplay-screenshots/B1.png"
+type = "image"
+title = "Basement 1 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "c4436bb2-8cbe-4b3f-954a-e1256cbdcf34"
+content_hash = "sha256:957cc76d95b5f4ea1449d17cd0ed35afba3458342e8ddcf8c0cadb823c5c24d0"
+size = 115302
+mtime_ms = 1791397156106
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c4436bb2-8cbe-4b3f-954a-e1256cbdcf34/058f4f7c-3ce6-4199-ada0-7d5202b0f3f7"
+storage_version_token = "1791397284408961"
+content_type = "image/png"
+
+[[outputs]]
+id = "BxFh2B7xit1pTCMwd0YLa"
+uri = "file://godot/office-client/review/gameplay-screenshots/B2.png"
+type = "image"
+title = "Basement 2 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "1da1bd73-e442-47d0-bf1b-f64f1e25cca0"
+content_hash = "sha256:b8d58ccbe59af39181032f713a28ac9be39fd4547f531802e550656d809aec67"
+size = 81822
+mtime_ms = 1791397158178
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/1da1bd73-e442-47d0-bf1b-f64f1e25cca0/e14a931f-d7e1-479d-abf5-acf7fac329a6"
+storage_version_token = "1791397285215209"
+content_type = "image/png"
+
+[[outputs]]
+id = "fl9jhCg_UJIUtM9fLA3xI"
+uri = "file://godot/office-client/review/gameplay-screenshots/B3.png"
+type = "image"
+title = "Basement 3 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "7c202e79-b99d-4a4d-a586-3ecc28d26e5a"
+content_hash = "sha256:f2d00513d2047831e2e5cb3ab09e782092447c50d44de195cd6192659e5520ca"
+size = 96839
+mtime_ms = 1791397160182
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7c202e79-b99d-4a4d-a586-3ecc28d26e5a/c5ceb70c-4173-458e-ace5-5e90902b58a1"
+storage_version_token = "1791397286024515"
+content_type = "image/png"
+
+[[outputs]]
+id = "-kIwpaPD33Oj8VAgMOLWi"
+uri = "file://godot/office-client/review/gameplay-screenshots/B4.png"
+type = "image"
+title = "Basement 4 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "23fe07d9-f8f8-442e-91f4-fe2efb97816e"
+content_hash = "sha256:472d8b7a9996a0789f09b29e4198ae4bf880dad104763bf08fe13e6be04186e9"
+size = 82748
+mtime_ms = 1791397162634
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/23fe07d9-f8f8-442e-91f4-fe2efb97816e/a93358b0-9051-4a61-bf93-c1b75df0105a"
+storage_version_token = "1791397287228356"
+content_type = "image/png"
+
+[[outputs]]
+id = "1241kVfQJXebUxbBE66QB"
+uri = "file://godot/office-client/review/gameplay-screenshots/B5.png"
+type = "image"
+title = "Basement 5 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "00cc8f08-f93e-4af6-9fc7-714c1b191494"
+content_hash = "sha256:fc78626cb0c202cef89c442a0646d03ec7c0fdae0911494aa519f890e3190b3c"
+size = 106641
+mtime_ms = 1791397165030
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/00cc8f08-f93e-4af6-9fc7-714c1b191494/fdc0684f-bd70-4e35-bdff-3f919e8f47e0"
+storage_version_token = "1791397288102651"
+content_type = "image/png"
+
+[[outputs]]
+id = "REC8KMukW5_GDMoGALuiB"
+uri = "file://godot/office-client/review/gameplay-screenshots/B6.png"
+type = "image"
+title = "Basement 6 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "f21f16a7-9c14-4f8c-9a48-63f4192a2f9d"
+content_hash = "sha256:3542a347cfb35e0f5d07d5dcfd7fb47cef1d45b4abd91df11dc0b7432241a868"
+size = 107243
+mtime_ms = 1791397167674
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f21f16a7-9c14-4f8c-9a48-63f4192a2f9d/b7a5707d-e45e-4c89-89b8-e96c10f8b3cd"
+storage_version_token = "1791397288973616"
+content_type = "image/png"
+
+[[outputs]]
+id = "-7xJIak73YHhp63YDc7Xj"
+uri = "file://godot/office-client/review/gameplay-screenshots/F01.png"
+type = "image"
+title = "Floor 1 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "1981dbd4-2d4c-4c35-b6fc-fe23508825da"
+content_hash = "sha256:df1a042f533bdcf21d8bb51258b7f6a2a2fe16b6edd75763617a9110879d68fe"
+size = 125616
+mtime_ms = 1791396963246
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/1981dbd4-2d4c-4c35-b6fc-fe23508825da/66a6a71c-f9ac-4f6e-8e9c-6d8679413f95"
+storage_version_token = "1791397289919301"
+content_type = "image/png"
+
+[[outputs]]
+id = "osDioV0bUAT3r5fWVQNKT"
+uri = "file://godot/office-client/review/gameplay-screenshots/F02.png"
+type = "image"
+title = "Floor 2 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "dc9257a0-d5ff-49a0-bc52-3912d16e5d57"
+content_hash = "sha256:5892d33ec1ea848075aa9664e6537cfcb89534b84a7ddd0695d403df69389e9a"
+size = 206423
+mtime_ms = 1791396965314
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/dc9257a0-d5ff-49a0-bc52-3912d16e5d57/f5b1f0bf-5c60-437b-a707-ae9790f3fa75"
+storage_version_token = "1791397290834701"
+content_type = "image/png"
+
+[[outputs]]
+id = "UNlX_FpURx2OxVzWCvJ8f"
+uri = "file://godot/office-client/review/gameplay-screenshots/F03.png"
+type = "image"
+title = "Floor 3 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "d94e69ff-804d-42e6-9e48-b3b06ba73145"
+content_hash = "sha256:93d6731fb0d35603a0a45887e88ed2acd1e23220a0ec5e02aa866188e64a5e24"
+size = 190265
+mtime_ms = 1791396967658
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d94e69ff-804d-42e6-9e48-b3b06ba73145/d0d8f75d-c6be-4054-9992-333569c80173"
+storage_version_token = "1791397291623889"
+content_type = "image/png"
+
+[[outputs]]
+id = "LaFdhDDpisnuf3GlPfK19"
+uri = "file://godot/office-client/review/gameplay-screenshots/F04.png"
+type = "image"
+title = "Floor 4 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "38cbb0ef-e0e7-43e7-94dd-e65e1bf16f86"
+content_hash = "sha256:4f18276d9eef5deec04b51b0ae3412bb1d41f4b18f62d25825ded4e401fcecfc"
+size = 207945
+mtime_ms = 1791396969558
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/38cbb0ef-e0e7-43e7-94dd-e65e1bf16f86/27bd5dfa-71cc-4b88-9124-3b99b095cbce"
+storage_version_token = "1791397292566338"
+content_type = "image/png"
+
+[[outputs]]
+id = "iYu8JvF9T0andtjPVpJwD"
+uri = "file://godot/office-client/review/gameplay-screenshots/F05.png"
+type = "image"
+title = "Floor 5 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "d04b027b-a806-4206-a9f7-9e551c798b99"
+content_hash = "sha256:c88f1fb724832857dc33c7907a456921750c21d10ca2695d1651891760d4cd53"
+size = 186378
+mtime_ms = 1791396971862
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/d04b027b-a806-4206-a9f7-9e551c798b99/39466a74-0cb2-4c91-98e7-a7c61b0dd52b"
+storage_version_token = "1791397293498392"
+content_type = "image/png"
+
+[[outputs]]
+id = "4Tho4qRdYR3wmLgqsNgfu"
+uri = "file://godot/office-client/review/gameplay-screenshots/F06.png"
+type = "image"
+title = "Floor 6 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "6e42be05-46d0-412f-9aae-6b7011793523"
+content_hash = "sha256:230abb062117181a8e334e89e5b89b5816c3fd4f7e95b831d49748958fe835bf"
+size = 187098
+mtime_ms = 1791396973514
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6e42be05-46d0-412f-9aae-6b7011793523/c17f970c-92c3-4faa-890b-b95d6008293d"
+storage_version_token = "1791397294512107"
+content_type = "image/png"
+
+[[outputs]]
+id = "Es-ot2WbHVQwWdltKkDCI"
+uri = "file://godot/office-client/review/gameplay-screenshots/F07.png"
+type = "image"
+title = "Floor 7 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "c25f29a6-a34c-4be8-9db4-47e0dfb06cdf"
+content_hash = "sha256:266894c9712e6eca313c67f4dd2a1f4e97348e19101519fe576f37a0807c58bc"
+size = 192940
+mtime_ms = 1791396975454
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c25f29a6-a34c-4be8-9db4-47e0dfb06cdf/3c5786ae-d856-468f-a6d8-acd6c202eb1d"
+storage_version_token = "1791397295326384"
+content_type = "image/png"
+
+[[outputs]]
+id = "q7xsWlOX8us54qYHfyYF5"
+uri = "file://godot/office-client/review/gameplay-screenshots/F08.png"
+type = "image"
+title = "Floor 8 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "0a77be73-3974-4055-8a55-225988bb6c7b"
+content_hash = "sha256:15c02f062b29422d2c1675b32fa10780ad8c9e7c27b920a5fad656127431ffa1"
+size = 205347
+mtime_ms = 1791396978026
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0a77be73-3974-4055-8a55-225988bb6c7b/4b0ffd32-cd84-41f5-b8c6-24766919e9b9"
+storage_version_token = "1791397296323377"
+content_type = "image/png"
+
+[[outputs]]
+id = "2eXpVQL0FOrde8-eA-noH"
+uri = "file://godot/office-client/review/gameplay-screenshots/F09.png"
+type = "image"
+title = "Floor 9 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "c6e0fba2-f2b1-4f2a-b20d-559d57b9808b"
+content_hash = "sha256:e911dc0e279fd1b0d8d74602cec790b1e5ffa0ee5b5d26e298ea04b103b9e7dd"
+size = 209490
+mtime_ms = 1791396980278
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c6e0fba2-f2b1-4f2a-b20d-559d57b9808b/3f4c39c9-9286-4b77-bdbf-8dde8760c1de"
+storage_version_token = "1791397297497989"
+content_type = "image/png"
+
+[[outputs]]
+id = "x7IQjRlTX5q6ElRnOqeWq"
+uri = "file://godot/office-client/review/gameplay-screenshots/F10.png"
+type = "image"
+title = "Floor 10 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "fc91b864-9d49-400e-8cc9-a9d8e771aff9"
+content_hash = "sha256:7e2938a0a6821d379cf7ecfa232a38750a565b968aee097a8dd05b9f810b6943"
+size = 215720
+mtime_ms = 1791396982166
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/fc91b864-9d49-400e-8cc9-a9d8e771aff9/c73b0e09-1b52-4a58-afcc-58f6148ca256"
+storage_version_token = "1791397298515209"
+content_type = "image/png"
+
+[[outputs]]
+id = "lDL7JlsplN0fZs8NxQ74H"
+uri = "file://godot/office-client/review/gameplay-screenshots/F11.png"
+type = "image"
+title = "Floor 11 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "452c0020-b3d7-4add-a3bd-4ffa06cb54ff"
+content_hash = "sha256:323d5efbb2e1a7174041c43452c79a0a7006ebbb90c78ac4f21179f228bfab98"
+size = 192586
+mtime_ms = 1791396985006
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/452c0020-b3d7-4add-a3bd-4ffa06cb54ff/567be896-9e48-4ef1-9051-5a582cace83e"
+storage_version_token = "1791397299444103"
+content_type = "image/png"
+
+[[outputs]]
+id = "RVkVb8SqNXwwHSlTsxwlQ"
+uri = "file://godot/office-client/review/gameplay-screenshots/F12.png"
+type = "image"
+title = "Floor 12 — Godot gameplay screenshot"
+description = "1920×1080 capture from the paired Python simulation and live Godot game window."
+logical_id = "4027636f-eb59-42e4-aabf-084ab356e166"
+content_hash = "sha256:3cca4e7f7c11d78a32b68d416d94df1d9315a8e622e13a44c06bebb0483db9b4"
+size = 185770
+mtime_ms = 1791396987778
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/4027636f-eb59-42e4-aabf-084ab356e166/16b187ee-dbca-482d-8e5f-3ec04441b165"
+storage_version_token = "1791397300465530"
+content_type = "image/png"
+
+[[outputs]]
+id = "ACunN8dvJG0O690PvnTjL"
+uri = "file://screenshots/tower-exterior-world.png"
+type = "image"
+title = "Tower exterior preview"
+description = "A real Godot render of the generated district beyond the B1 loading-yard gate. This is visual scenery, not gameplay footage."
+logical_id = "49780001-aa3b-4961-a09b-89038d105124"
+content_hash = "sha256:b472baa57c8ac72b97841d16fa2a7a5f6f6067226ebc04cf2259d4f92fbf3578"
+size = 58087
+mtime_ms = 1791429218616
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/49780001-aa3b-4961-a09b-89038d105124/3d86d232-db22-4623-b8e6-22a7568c2401"
+storage_version_token = "1791429420443311"
+content_type = "image/png"
+
+[[outputs]]
+id = "UFMWnjzG5HEX__W-zjnNF"
+uri = "file://release-media/salaryman-office-package-capture.mp4"
+type = "video"
+title = "SALARYMAN Office — packaged game capture"
+description = "12-second 1080p capture from the packaged Linux client with the Python bridge connected. This is an idle Floor 01 view; it does not claim to show movement."
+logical_id = "f32182ec-2e13-4ec4-b0d3-3ac2acf20896"
+content_hash = "sha256:a0ecce795b1a644c70e52ac05e0daafe009e95bdc374b5012601f1055949202c"
+size = 711082
+mtime_ms = 1791435550133
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f32182ec-2e13-4ec4-b0d3-3ac2acf20896/8e610dad-cf0f-4f4a-900a-90e1958a71e0"
+storage_version_token = "1791435659623069"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "f03KSj831y-40YYCUQMYR"
+uri = "file://release-media/salaryman-office-package-screenshot.png"
+type = "image"
+title = "SALARYMAN Office — packaged game screenshot"
+description = "1920×1080 still extracted from the same packaged-client capture."
+logical_id = "0dbeb4e7-0fbf-4c13-8e6f-d5ab17874f05"
+content_hash = "sha256:89a119408d3c509d9889e3f3462512adda85881d21c18140944fc3788f322b61"
+size = 824417
+mtime_ms = 1791435550404
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0dbeb4e7-0fbf-4c13-8e6f-d5ab17874f05/4a5a8e4c-bcfc-4deb-8d4f-f8805f3c6717"
+storage_version_token = "1791435660649430"
+content_type = "image/png"
+
+[[outputs]]
+id = "Y6l7hRa2lGAnN1daYmkYu"
+uri = "file://release-media/tower-landscape-review.png"
+type = "image"
+title = "Tower exterior — review render"
+description = "Still rendered with the bundled Godot runtime from the integrated through-window review scene. This is a review render, not gameplay footage."
+logical_id = "27ad743c-2f98-46d7-9c97-0fa10572d308"
+content_hash = "sha256:dc864349aee1a8f60eb0cd9e0e5a912553ab5ad36e7d23f61ee437ba16387f60"
+size = 16425
+mtime_ms = 1791435603649
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/27ad743c-2f98-46d7-9c97-0fa10572d308/47c7e0b9-9d9b-4895-a903-2b073ae24d51"
+storage_version_token = "1791435661396019"
+content_type = "image/png"
+
+[[outputs]]
+id = "7sNah7MGwVRVPQjIeW7dM"
+uri = "file://release-media/salaryman-office-4k-demo.mp4"
+type = "video"
+title = "SALARYMAN Office — 4K gameplay"
+description = "Captured from the packaged Python + Godot game at native 3840×2160, 15 fps, 6 seconds; the bridge is live."
+logical_id = "e0cddbaf-a734-412b-acb4-2aeb725f43a6"
+content_hash = "sha256:b403f726940c478a0ab92c962c17cfb544d3d35f687dc4b87d09d81efe1a9086"
+size = 945231
+mtime_ms = 1791449999954
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/e0cddbaf-a734-412b-acb4-2aeb725f43a6/b5fb8632-7797-422e-a647-c402f8117df0"
+storage_version_token = "1791450097276816"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "aUWXgiYO2K6dG437W32-x"
+uri = "file://release-media/salaryman-office-4k-frame-02.png"
+type = "image"
+title = "SALARYMAN Office — 4K screenshot"
+description = "Native 3840×2160 frame from the packaged game, with the Python simulation connected."
+logical_id = "0e6990ae-dfaa-48fc-9710-e2389d0ec3e3"
+content_hash = "sha256:1d6a8f9bd10b62c7bfb1c4d646ecb000ac5a477376c79082eb25e4fb98de8c2a"
+size = 751980
+mtime_ms = 1791450001262
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0e6990ae-dfaa-48fc-9710-e2389d0ec3e3/dd24f15f-1ec1-48f2-86ca-93ace520b104"
+storage_version_token = "1791450098317920"
+content_type = "image/png"
+
+[[outputs]]
+id = "J6KDjUjE8frxVkANCZLzb"
+uri = "file://release-media/salaryman-office-4k-zoomed-out.png"
+type = "image"
+title = "SALARYMAN Office — zoomed-out 4K screenshot"
+description = "Native 3840×2160 frame from the packaged game after camera zoom-out and movement input."
+logical_id = "a45ad654-ff16-4060-8969-b1ce5323d213"
+content_hash = "sha256:5efbcdad623bb4ba4306447d29684ae9dab7178c0b8285ef1c8f3e00c2ed189e"
+size = 829869
+mtime_ms = 1791450001822
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a45ad654-ff16-4060-8969-b1ce5323d213/2d6149a1-09ef-43e3-a71b-48ae7b364357"
+storage_version_token = "1791450099440007"
+content_type = "image/png"
+
+[[outputs]]
+id = "ZPCGAli6yeifzkgZ_Wosu"
+uri = "file://deliverables/salaryman-1980s-japanese-office-character-approval.mp4"
+type = "video"
+title = "Japanese 1980s Office Character — Approval Video"
+description = "18-second Godot-rendered candidate preview, 1280×720 at 24 fps. Shows full-body, portrait, and walk views; the candidate remains isolated pending approval."
+logical_id = "f411e456-5200-4c75-ae7f-69b552f114a0"
+content_hash = "sha256:423e6b6f09f8ed26b5a00713d18943717cac2e12c2aa7b59e60d8c9ef0eb6c3d"
+size = 5004645
+mtime_ms = 1791463299855
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f411e456-5200-4c75-ae7f-69b552f114a0/ba81d8da-eae2-49b6-90fb-a02f5f7a3c63"
+storage_version_token = "1791463522922968"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "f0N7xqritM14S2JjRkD8V"
+uri = "file://deliverables/salaryman-overhead-review.png"
+type = "image"
+title = "Overhead Salaryman — Godot Preview"
+description = "Pixel-treated 1980s salaryman in the isolated overhead preview scene."
+logical_id = "db44e66c-5ee6-413e-a263-14067054d33d"
+content_hash = "sha256:ed0054a41a16f4bb7c53979d3b3d650c820c4465fbd076487ec2c573aa7e2605"
+size = 143155
+mtime_ms = 1791470633956
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/db44e66c-5ee6-413e-a263-14067054d33d/0cd8dbfd-1d82-4e7d-b522-6e29b1d7a666"
+storage_version_token = "1791470690364161"
+content_type = "image/png"
+
+[[outputs]]
+id = "g16SWRNrH9aqDKrZVdN0W"
+uri = "file://deliverables/salaryman-overhead-walk.mp4"
+type = "video"
+title = "Salaryman Walk Preview"
+description = "Eight-second Godot capture showing the character walking in four directions."
+logical_id = "f4670a46-9565-4f43-ae95-ea5f861800af"
+content_hash = "sha256:18e93d353163746ed846483c99baa9b8e31d6637934ed5e39a3f766364e4b49a"
+size = 4680664
+mtime_ms = 1791470633968
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f4670a46-9565-4f43-ae95-ea5f861800af/8f1b07ae-0156-411e-a71b-aa5d50306a88"
+storage_version_token = "1791470692561814"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "dqsEgeOSGjUJDcGxJAgDu"
+uri = "file://godot/office-client/review/realistic_salaryman_idle_preview.png"
+type = "image"
+title = "Godot Tower review — overhead idle"
+description = "The review camera now matches the game's elevated overhead 3D view. Captured in the populated Floor 06 scene."
+logical_id = "7e3f74d3-ebf1-4e5d-8686-30d40cb49f0f"
+content_hash = "sha256:f932ef098992c096c378e3c8d46287233de3220923fe1253ef65328bde30f45e"
+size = 200365
+mtime_ms = 1791549505629
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7e3f74d3-ebf1-4e5d-8686-30d40cb49f0f/ce0dad17-b680-4981-8665-e7e85650a7c9"
+storage_version_token = "1791549528333611"
+content_type = "image/png"
+
+[[outputs]]
+id = "BKxb7uxOQBh-ChFCn5Ajf"
+uri = "file://godot/office-client/review/realistic_salaryman_walk_preview.png"
+type = "image"
+title = "Godot Tower review — overhead walk"
+description = "Movement capture using the same overhead orthographic 3D camera."
+logical_id = "0d3a042f-ee09-4489-8732-678c21fa7ef2"
+content_hash = "sha256:c1fa055d5ebf7783e665238679df44d485d49b1c43d2bef65f60da682dc02c63"
+size = 160381
+mtime_ms = 1791549511548
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0d3a042f-ee09-4489-8732-678c21fa7ef2/1b305958-a238-4dfa-baca-55f70187f352"
+storage_version_token = "1791549529187620"
+content_type = "image/png"
+
+[[outputs]]
+id = "yQ9m8noetbq2NLNHg9XqF"
+uri = "file://godot/office-client/review/salaryman_stylized_review_walk.png"
+type = "image"
+title = "Stylized salaryman — overhead walk review"
+description = "Review-only Godot capture of the revised proportions and softened walk cycle."
+logical_id = "aa15c91d-9137-401e-ba02-4b7aa3ea2479"
+content_hash = "sha256:422e58a3cd0f92d982a10b274ed4663db350592184c1834c2118fd323bfb6d1a"
+size = 219392
+mtime_ms = 1791567808147
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/aa15c91d-9137-401e-ba02-4b7aa3ea2479/f8cf1951-dbc2-4e3f-81ff-6813f9adc3e0"
+storage_version_token = "1791567831562668"
+content_type = "image/png"
+
+[[outputs]]
+id = "V_T8C3UiZfy-7cTvUc9y_"
+uri = "file://generated-artifacts/character-review/salaryman-idle-f06.mp4"
+type = "video"
+title = "F06 character review — idle example"
+description = "5-second, 1080p capture in the production F06 Tower scene. Uses the current production player model at its game scale; appearance is not an approval candidate."
+logical_id = "a41665c8-3b0f-4045-ba58-af27b821cc17"
+content_hash = "sha256:a04abeb9b5e6390da8ce94f135fa8d8c74accaff3e935eec72cdcaeb661e06b4"
+size = 189092
+mtime_ms = 1791625158309
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a41665c8-3b0f-4045-ba58-af27b821cc17/2db278b8-ea15-4d6e-9f54-cea85badeedc"
+storage_version_token = "1791625192087608"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "nj1ir_2TGozrHR6cbHJc8"
+uri = "file://generated-artifacts/character-review/salaryman-walk-f06.mp4"
+type = "video"
+title = "F06 character review — walk example"
+description = "5-second, 1080p capture in the production F06 Tower scene. Uses the original player controller and walk animation; the model and walk remain review-only, not approved."
+logical_id = "9152b658-429a-482d-a5aa-d81fe1acef10"
+content_hash = "sha256:aa6826eab2e5ffc36d11f13e784a5eb71b9cfa44df1a980ac55e59ed6a7b048f"
+size = 486920
+mtime_ms = 1791625160907
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/9152b658-429a-482d-a5aa-d81fe1acef10/39308d19-cad7-4114-823f-f07dd7193902"
+storage_version_token = "1791625193181752"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "NXj70Io0aIK5-ET8IgQYF"
+uri = "file://generated-artifacts/salaryman-reviews/f1-lobby-idle.mp4"
+type = "video"
+title = "Floor 1 lobby — idle review"
+description = "4-second, 1600×900 top-down idle clip. The on-screen notice identifies the character appearance as unapproved."
+logical_id = "f34c348d-6664-4f4f-827c-e55cd3acc69f"
+content_hash = "sha256:7f011923c913791abe6d1d13880b1f27e672666923c2d90c595b65704659e62d"
+size = 59898
+mtime_ms = 1791632156291
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/f34c348d-6664-4f4f-827c-e55cd3acc69f/a7f72080-ba9e-419c-b1ba-2ac5be0512ac"
+storage_version_token = "1791632316105097"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "AbP1LMMGF_owzXYXA_bVC"
+uri = "file://generated-artifacts/salaryman-reviews/f1-lobby-walk.mp4"
+type = "video"
+title = "Floor 1 lobby — walk review"
+description = "3-second, 1600×900 top-down walk clip through the open lobby floor. The on-screen notice identifies the character appearance as unapproved."
+logical_id = "023bcf91-5c5a-4067-89ee-f2b0e2b17326"
+content_hash = "sha256:99bb78e806f5cce36e1adae7719de69a3215ffc22f9f41a9c430a642245447de"
+size = 126115
+mtime_ms = 1791632268946
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/023bcf91-5c5a-4067-89ee-f2b0e2b17326/75da9c90-d374-4d0b-ad59-9051fe34f750"
+storage_version_token = "1791632316938981"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "n6FYbB01rb0c45K5zCjZx"
+uri = "file://generated-artifacts/tower-tour/whole-tower-tour.mp4"
+type = "video"
+title = "Shadow Tower — isometric floor tour preview"
+description = "44-second Godot 3D review sequence, 1280×720 at 24 fps. Covers B1–B6 and F1–F12, including B1 loading-yard/gate and the F2 exterior window. Review dioramas use compressed coordinates; this is not gameplay footage."
+logical_id = "7a3667d3-b417-4b28-b922-6d2f72abfd9c"
+content_hash = "sha256:31f38eda0e253424c487024018560baee9df68b45d38d08a25eadaa5aceb0968"
+size = 920350
+mtime_ms = 1791653796040
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7a3667d3-b417-4b28-b922-6d2f72abfd9c/64ee51f7-5168-4ef1-9ad2-d60a173e4ce3"
+storage_version_token = "1791653844113983"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "4UBAFmxt3rPpQiUwkOR-r"
+uri = "file://generated-artifacts/tower-tour/salaryman-review-final.png"
+type = "image"
+title = "Japanese salaryman — character review image"
+description = "Navy suit, burgundy tie, and briefcase in the isometric lobby. Review-only and not yet approved; the production roster and 32 source animation clips remain unchanged."
+logical_id = "80f56f35-8a64-4956-ac41-48aad5e52dee"
+content_hash = "sha256:df08b30df31aa8ea029c54acdb6c92745180b3adde279cbdeb0bf5c20f9dff27"
+size = 300809
+mtime_ms = 1791653171920
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/80f56f35-8a64-4956-ac41-48aad5e52dee/fa8f8088-8c9d-43cd-afb2-3c73fdf4bead"
+storage_version_token = "1791653845011630"
+content_type = "image/png"
+
+[[outputs]]
+id = "S4gGBdEYsX_ajjZX3f7x5"
+uri = "file://generated-artifacts/furniture-store-review.png"
+type = "image"
+title = "Godot furniture-store art review"
+description = "Three original native Godot furniture props in the approved walnut, brass, and green-enamel palette."
+logical_id = "06006ace-21dd-494d-927f-e47afa8403c1"
+content_hash = "sha256:c1e2963ef46c69dd477522ba58885e358a1dd5718c9012433057324f213469ac"
+size = 157802
+mtime_ms = 1792329083159
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/06006ace-21dd-494d-927f-e47afa8403c1/9ba3c1da-194c-4b65-9458-a2df4b258749"
+storage_version_token = "1792329090196767"
+content_type = "image/png"
+
+[[outputs]]
+id = "t97JIY5CCnefjbuf6aV5x"
+uri = "file://generated-artifacts/avatar-proportion-review.png"
+type = "image"
+title = "SALARYMAN avatar review"
+description = "Review-only candidate with no sunglasses and a slightly smaller head. Production player and NPC avatars are unchanged."
+logical_id = "b1f503e7-c065-425e-9afc-8d87fa3febc3"
+content_hash = "sha256:25094fc695a3a990e68f405c138222f155fa31113c4e269b2444e14a0dfd241b"
+size = 216104
+mtime_ms = 1792335454252
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/b1f503e7-c065-425e-9afc-8d87fa3febc3/905b6933-d41a-4a8e-b468-f5a555aec61e"
+storage_version_token = "1792335460322158"
+content_type = "image/png"
+
+[[outputs]]
+id = "IcpvmPXIlKjJxM6q-mB_E"
+uri = "file://generated-artifacts/avatar-proportion-review-c.png"
+type = "image"
+title = "SALARYMAN avatar — Candidate C"
+description = "Review-only adult-proportion 3D candidate inspired by the Pygame player palette, without sunglasses. Production avatars remain unchanged."
+logical_id = "114f9cb7-657e-44cf-9805-1dd871a6d300"
+content_hash = "sha256:dc1f528acd820fa92df689890b2a2f906339107a08f333ce1970fcb8a4113392"
+size = 271956
+mtime_ms = 1792337406367
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/114f9cb7-657e-44cf-9805-1dd871a6d300/25ed41d5-f260-45af-92ba-ae1977d15d6b"
+storage_version_token = "1792337412339273"
+content_type = "image/png"
+
+[[outputs]]
+id = "zw-Zt50h_mPop4spPdyFT"
+uri = "file://generated-artifacts/pygame-style-hd-avatar-candidate.png"
+type = "image"
+title = "Pygame-inspired HD avatar concept"
+description = "High-resolution pixel-inspired character concept: brown hair, blue jacket, white shirt, black tie, adult proportions, no eyewear. Review art only; not yet a playable Godot model."
+logical_id = "a94725bf-f13c-4685-bed1-e03de586c2a5"
+content_hash = "sha256:3f0103180d3a15b7b122a0facbae3f06d06b0b90c528299eb13bb32b2cf29fd3"
+size = 928242
+mtime_ms = 1792338064857
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/a94725bf-f13c-4685-bed1-e03de586c2a5/fc6a6399-20c0-4590-9c1f-1c8fbf56cb2a"
+storage_version_token = "1792338135911365"
+content_type = "image/png"
+
+[[outputs]]
+id = "qvNWOecLNSihrtRaA9h_U"
+uri = "file://generated-artifacts/pygame-avatar-in-tower-preview.png"
+type = "image"
+title = "Avatar concept in the Tower"
+description = "Composite showing the new review concept at approximate gameplay scale beside the existing avatar on the Floor 1 screenshot. Production scene and roster are unchanged."
+logical_id = "de31393b-b84b-43dc-839b-07200bd282b1"
+content_hash = "sha256:d88311c5516d7a0e6acda68d33c583af0c9fa9f23ac23898729abe080cbbf0f4"
+size = 192387
+mtime_ms = 1792338112045
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/de31393b-b84b-43dc-839b-07200bd282b1/f2b07a4c-41d6-4514-b374-3a6b6e2809a8"
+storage_version_token = "1792338136705815"
+content_type = "image/png"
+
+[[outputs]]
+id = "4UtBoSNao2jpwKqL7yGdx"
+uri = "file://generated-artifacts/avatar-style-production-floor.png"
+type = "image"
+title = "Updated avatar in the Tower lobby"
+description = "Runtime capture from the Floor 1 lobby using the new adult-proportioned animated humanoid, toon materials, brown hair, navy suit, white shirt, and no eyewear. All 32 source animation clips are retained."
+logical_id = "58b8acfe-6998-4047-8d3a-88cbc9c1f54f"
+content_hash = "sha256:db0d46e3634420a4626533b21609b38173823ad5f50bcef52a1b5d1e789249b4"
+size = 197779
+mtime_ms = 1792339504302
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/58b8acfe-6998-4047-8d3a-88cbc9c1f54f/4812fe4d-872c-4cef-9c46-efde5541c5df"
+storage_version_token = "1792339563001063"
+content_type = "image/png"
+
+[[outputs]]
+id = "OiBImR_PGcxcJU_Wmc1B-"
+uri = "file://generated-artifacts/avatar-voxel-review.png"
+type = "image"
+title = "Voxel-style avatar in the Tower lobby"
+description = "Godot runtime capture of the block-built avatar using the attached reference style. The original smooth meshes are hidden; the existing 32-clip rig drives the new visible parts."
+logical_id = "cd58710e-96fe-4373-bf0a-d9de74195c2d"
+content_hash = "sha256:e22622a41f17bcafdb4bba471f334c7f292013c35bc9f06d3549253054bfcebd"
+size = 160904
+mtime_ms = 1792341251717
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/cd58710e-96fe-4373-bf0a-d9de74195c2d/acde2609-8625-4461-8df6-4857bbafc776"
+storage_version_token = "1792341271200801"
+content_type = "image/png"

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 export type InterviewMode = 'hint' | 'solution' | 'explain' | 'complexity' | 'say_it';
 export type SolverStatus = 'idle' | 'thinking' | 'streaming' | 'done' | 'error';
 export type ListenStatus = 'idle' | 'recording' | 'transcribing' | 'done' | 'error';
+export type PrepScenario = 'interview' | 'meeting' | 'pitch' | 'presentation' | 'management' | 'hiring' | 'firing' | 'difficult_conversation';
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -104,7 +105,7 @@ export function useVoiceListen() {
   const chunksRef = useRef<Blob[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const startListening = useCallback(async () => {
+  const startListening = useCallback(async (scenario: PrepScenario = 'interview') => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
@@ -129,7 +130,7 @@ export function useVoiceListen() {
         try {
           await streamSSE(
             '/api/interview/listen',
-            { audio: base64 },
+            { audio: base64, scenario },
             abortRef.current.signal,
             (c) => { setAnswer(prev => prev + c); },
             () => setListenStatus('done'),

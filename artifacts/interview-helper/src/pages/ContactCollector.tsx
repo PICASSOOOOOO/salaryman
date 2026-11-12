@@ -1,8 +1,8 @@
 import { apiFetch } from '@/lib/api-client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Users, Download, Trash2, Plus, X, Mail, Loader2, Check,
+  Users, Download, Trash2, Plus, X, Mail, Loader2, Check, Upload, Settings2,
   Search, ChevronDown, ChevronUp, Edit2,
   Phone, TrendingUp, Building2, Clock, ArrowRight,
   StickyNote, PhoneCall, Send, CalendarPlus, Calendar,
@@ -14,7 +14,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 
 interface Contact {
   id: number;
@@ -112,14 +112,7 @@ export default function ContactCollector() {
   const { user, isAuthenticated } = useAuth();
   const { config } = useAppMode();
   usePlan();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
-
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -175,8 +168,16 @@ export default function ContactCollector() {
     }
   }, [composeTo, composeSubject, composeBody]);
   const [form, setForm] = useState({ ...EMPTY_FORM });
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(() => new URLSearchParams(window.location.search).get("new") === "1");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [contactsError, setContactsError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
+  const [dataToolsOpen, setDataToolsOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importingContacts, setImportingContacts] = useState(false);
+  const [importStatus, setImportStatus] = useState('');
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [search, setSearch] = useState('');
@@ -208,11 +209,18 @@ export default function ContactCollector() {
 
   const loadContacts = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
+    setLoading(true);
+    setContactsError('');
     try {
       const res = await apiFetch('/api/tools/contacts');
-      if (res.ok) { const data = await res.json(); setContacts(data.contacts ?? []); }
-    } catch {}
-    setLoading(false);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `Could not load contacts (${res.status})`);
+      setContacts(data.contacts ?? []);
+    } catch (error) {
+      setContactsError(error instanceof Error ? error.message : 'Could not load contacts.');
+    } finally {
+      setLoading(false);
+    }
   }, [isAuthenticated]);
 
   useEffect(() => { loadContacts(); }, [loadContacts]);
@@ -232,29 +240,34 @@ export default function ContactCollector() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !isAuthenticated) return;
+    if (!form.name.trim() || !isAuthenticated || savingContact) return;
     const body = { ...form, dealValue: form.dealValue ? Number(form.dealValue) : null };
-    if (editingId) {
-      try {
-        const res = await apiFetch(`/api/tools/contacts/${editingId}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-        });
-        if (res.ok) { const data = await res.json(); setContacts(prev => prev.map(c => c.id === editingId ? data.contact : c)); }
-      } catch {}
-    } else {
-      try {
-        const res = await apiFetch('/api/tools/contacts', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-        });
-        if (res.ok) { const data = await res.json(); setContacts(prev => [data.contact, ...prev]); }
-      } catch {}
+    setSavingContact(true);
+    setSaveError('');
+    try {
+      const res = await apiFetch(editingId ? `/api/tools/contacts/${editingId}` : '/api/tools/contacts', {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.contact) {
+        throw new Error(data?.error || `Could not save contact (${res.status})`);
+      }
+      if (editingId) setContacts(prev => prev.map(c => c.id === editingId ? data.contact : c));
+      else setContacts(prev => [data.contact, ...prev]);
+      setForm({ ...EMPTY_FORM });
+      setShowForm(false);
+      setEditingId(null);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Could not save contact.');
+    } finally {
+      setSavingContact(false);
     }
-    setForm({ ...EMPTY_FORM });
-    setShowForm(false);
-    setEditingId(null);
   };
 
   const handleEdit = (c: Contact) => {
+    setSaveError('');
     setForm({
       name: c.name, email: c.email, phone: c.phone, address: c.address, age: c.age,
       ethnicity: c.ethnicity, hometown: c.hometown, timezone: c.timezone, kids: c.kids,
@@ -406,6 +419,45 @@ export default function ContactCollector() {
     const a = document.createElement('a');
     a.href = url; a.download = 'contacts.csv'; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadTemplate = () => {
+    const csv = [
+      'Full Name,Email,Phone,Company,Tag,Deal Stage,Deal Value,Address,Age,Ethnicity,Hometown,Timezone,Kids,Bio',
+      '',
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'salaryman-contacts-template.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportContacts = async () => {
+    if (!importFile || importingContacts) return;
+    setImportingContacts(true);
+    setImportStatus('');
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const res = await apiFetch('/api/tools/contacts/import-file', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `Import failed (${res.status})`);
+      setImportStatus(
+        `Imported ${data.imported ?? 0}; skipped ${data.duplicatesSkipped ?? 0} duplicates and ${data.invalidRows ?? 0} invalid rows.`,
+      );
+      setImportFile(null);
+      if (importInputRef.current) importInputRef.current.value = '';
+      await loadContacts();
+    } catch (error) {
+      setImportStatus(error instanceof Error ? error.message : 'Could not import this file.');
+    } finally {
+      setImportingContacts(false);
+    }
   };
 
   const handleEmailContacts = async () => {
@@ -587,6 +639,12 @@ export default function ContactCollector() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            {isAuthenticated && (
+              <button onClick={() => setDataToolsOpen(open => !open)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-colors ${dataToolsOpen ? 'bg-secondary border-border text-foreground' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
+                <Settings2 className="w-4 h-4" /> Data tools
+              </button>
+            )}
             {contacts.length > 0 && (
               <>
                 <button onClick={handleExportCSV}
@@ -604,13 +662,70 @@ export default function ContactCollector() {
               </>
             )}
             {isAuthenticated && (
-              <button onClick={() => { setForm({ ...EMPTY_FORM }); setEditingId(null); setShowForm(v => !v); }}
+              <button onClick={() => { setForm({ ...EMPTY_FORM }); setEditingId(null); setSaveError(''); setShowForm(v => !v); }}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/20 border border-primary/30 text-primary text-sm font-semibold hover:bg-primary/30 transition-colors">
                 <Plus className="w-4 h-4" /> {boomerMode ? 'New Contact' : 'Add Contact'}
               </button>
             )}
           </div>
         </div>
+
+        {contactsError && isAuthenticated && (
+          <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <span>{contactsError}</span>
+            <button onClick={loadContacts} className="font-semibold underline underline-offset-2">Retry</button>
+          </div>
+        )}
+
+        <AnimatePresence>
+          {dataToolsOpen && isAuthenticated && (
+            <motion.section initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              className="mb-6 rounded-2xl border border-border bg-card p-5 shadow-lg">
+              <div className="mb-4">
+                <h3 className="font-bold text-foreground">CRM contact data</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Import CSV or Excel files here. Imported records are the same contacts shown in Phone Contacts; existing email or phone matches are skipped, never overwritten.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Include a Name, Full Name, Contact Name, or Lead Name column. Email, Phone, Company, Tag, Deal Stage, Deal Value, Address, Age, Ethnicity, Hometown, Timezone, Kids, and Bio/Notes are recognized.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xlsm,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="sr-only"
+                  onChange={event => {
+                    setImportFile(event.target.files?.[0] ?? null);
+                    setImportStatus('');
+                  }}
+                />
+                <button onClick={() => importInputRef.current?.click()}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground hover:bg-secondary">
+                  <Upload className="h-4 w-4" /> {importFile ? 'Choose another file' : 'Choose CSV / XLSX'}
+                </button>
+                {importFile && <span className="max-w-[220px] truncate text-sm text-muted-foreground">{importFile.name}</span>}
+                <button onClick={handleImportContacts} disabled={!importFile || importingContacts}
+                  className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-50">
+                  {importingContacts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {importingContacts ? 'Importing…' : 'Import contacts'}
+                </button>
+                <button onClick={handleDownloadTemplate}
+                  className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground">
+                  Download template
+                </button>
+                {contacts.length > 0 && (
+                  <button onClick={handleExportCSV}
+                    className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground">
+                    <Download className="h-4 w-4" /> Export current view
+                  </button>
+                )}
+              </div>
+              {importStatus && <p role="status" className="mt-3 text-sm text-muted-foreground">{importStatus}</p>}
+            </motion.section>
+          )}
+        </AnimatePresence>
 
         {/* Add/Edit Contact Form */}
         <AnimatePresence>
@@ -619,10 +734,12 @@ export default function ContactCollector() {
               className="bg-card border border-border rounded-2xl p-6 mb-6 shadow-xl">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-bold text-foreground">{editingId ? 'Edit Contact' : 'New Contact'}</h3>
-                <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                <button onClick={() => { setShowForm(false); setEditingId(null); setSaveError(''); }} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
+
+              {saveError && <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{saveError}</p>}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <Field label="Full Name *" name="name" value={form.name} onChange={f('name')} placeholder="Jane Smith" />
@@ -661,11 +778,12 @@ export default function ContactCollector() {
               </div>
 
               <div className="flex justify-end gap-3">
-                <button onClick={() => { setShowForm(false); setEditingId(null); }}
+                <button onClick={() => { setShowForm(false); setEditingId(null); setSaveError(''); }}
                   className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">Cancel</button>
-                <button onClick={handleSave} disabled={!form.name.trim()}
+                <button onClick={handleSave} disabled={!form.name.trim() || savingContact}
                   className="px-5 py-2 rounded-xl bg-primary/20 border border-primary/30 text-primary text-sm font-bold hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                  {editingId ? 'Save Changes' : 'Save Contact'}
+                  {savingContact ? <Loader2 className="inline w-4 h-4 animate-spin mr-2" /> : null}
+                  {savingContact ? 'Saving…' : editingId ? 'Save Changes' : 'Save Contact'}
                 </button>
               </div>
             </motion.div>

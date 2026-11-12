@@ -15,6 +15,11 @@ import {
 import { requireFeature } from "../../middlewares/requirePro";
 import { MILA_VOICE_ID } from "../../lib/mila-voice";
 import { PABLO_VOICE_ID } from "../../lib/pablo-voice";
+import { hasPabloVoiceAccess } from "../../lib/pablo-voice-access";
+import {
+  isSonioxConfigured,
+  transcribeWithSoniox,
+} from "../../lib/soniox-transcription";
 
 const router: IRouter = Router();
 const requireClaw = requireFeature("claw_bot");
@@ -201,6 +206,11 @@ function isSignatureVoice(character?: string): boolean {
   return key === "PABLO" || key === "MILA";
 }
 
+function isPabloCharacter(character?: string): boolean {
+  const key = character?.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  return key === "PABLO";
+}
+
 async function handleTts(req: any, res: any) {
   const { text, character, voiceId: voiceIdOverride } = req.body as {
     text?: string;
@@ -212,10 +222,36 @@ async function handleTts(req: any, res: any) {
     return;
   }
 
+  const voiceId = resolveVoiceId(character, voiceIdOverride);
+  // The default resolver can select Pablo even when the caller omits a
+  // character, and voiceIdOverride is client-controlled. Gate the resolved
+  // voice as well as the character label so neither path bypasses payment.
+  const requestsPabloVoice = isPabloCharacter(character) || voiceId === PABLO_VOICE_ID;
+  if (requestsPabloVoice) {
+    const userId =
+      typeof req.isAuthenticated === "function" && req.isAuthenticated()
+        ? req.user?.id
+        : undefined;
+    if (typeof userId !== "string" || !userId) {
+      res.status(401).json({ error: "Sign in to use Pablo's voice" });
+      return;
+    }
+
+    try {
+      if (!(await hasPabloVoiceAccess(userId))) {
+        res.status(403).json({ error: "An active paid product is required for Pablo's voice" });
+        return;
+      }
+    } catch (err) {
+      console.error("[Pablo TTS] Could not verify voice access:", err);
+      res.status(503).json({ error: "Pablo's voice access could not be verified" });
+      return;
+    }
+  }
+
   const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
   if (elevenLabsKey) {
     try {
-      const voiceId = resolveVoiceId(character, voiceIdOverride);
       const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: {
@@ -252,17 +288,19 @@ async function handleTts(req: any, res: any) {
     }
   }
 
-  // Pablo and Mila are voice-bound characters. A generic OpenAI fallback
-  // silently recasts them and discards their assigned ElevenLabs accent,
-  // making a credential/configuration problem sound like a creative choice.
-  // Fail explicitly instead; the client keeps the written reply visible.
-  if (isSignatureVoice(character)) {
-    res.status(503).json({
-      error: "Assigned character voice is temporarily unavailable",
-      provider: "elevenlabs",
-      character,
-    });
+  // Pablo's voice is part of his identity. If ElevenLabs rejects the assigned
+  // voice (or is not configured), fail closed rather than speaking in Onyx.
+  // The browser keeps Pablo's written reply visible when this endpoint fails.
+  if (isPabloCharacter(character)) {
+    console.warn("Pablo's assigned ElevenLabs voice unavailable; suppressing generic TTS fallback");
+    res.status(502).json({ error: "Pablo's assigned voice is unavailable" });
     return;
+  }
+
+  // Other signature voices may continue through the managed fallback when
+  // their assigned ElevenLabs voice is unavailable.
+  if (isSignatureVoice(character)) {
+    console.warn(`Assigned ${character} voice unavailable; using managed speech fallback`);
   }
 
   try {
@@ -306,36 +344,65 @@ async function handleTts(req: any, res: any) {
   }
 }
 
-// TTS is intentionally OPEN to guests — let Pablo's voice ring through on
-// first visit so the storyteller intro has its full premium-voice impact.
-// Per user direction: cost is recouped by the PABLO TAX markup applied
-// elsewhere in the economy, so we don't meter the voice itself.
+// Pablo's resolved voice is protected inside handleTts by active paid-product
+// access or an approved tester record. Other character voices keep their
+// existing access policy.
 router.post("/tts", handleTts);
 
 router.post("/game-tts", async (req, res) => {
   return handleTts(req, res);
 });
 
-// Transcription is intentionally NOT gated by requireClaw. The Pablo intro
-// (and the unauthenticated landing flow generally) needs the user to be able
-// to *speak* to Pablo so they can say the passcode and respond to his
-// greeting. Locking STT behind a paid subscription means brand-new visitors
-// hit a silent 403 the first time they try to talk — which surfaces in
-// support as "Pablo can't hear me". Whisper is cheap; the auth gates that
-// matter (TTS spend, model usage) stay in place on other endpoints.
+// Transcription remains open to guests so visitors can speak to Pablo and
+// receive free written replies. Spoken output is checked separately above.
 router.post("/transcribe", async (req, res) => {
   // Defensive: same crash class as /interview/listen — if the proxy or a
   // bad client posts an empty body, destructuring an undefined req.body
   // throws a 500 instead of returning a clean 400. Always coerce.
-  const { audio, mimeType } = (req.body ?? {}) as { audio?: string; mimeType?: string };
+  const { audio, mimeType, translationTo } = (req.body ?? {}) as {
+    audio?: string;
+    mimeType?: string;
+    translationTo?: string;
+  };
   if (!audio || typeof audio !== "string") {
     res.status(400).json({ error: "audio (base64) is required" });
+    return;
+  }
+  if (translationTo !== undefined && (
+    typeof translationTo !== "string" || !/^[a-z]{2}$/i.test(translationTo.trim())
+  )) {
+    res.status(400).json({ error: "translationTo must be a two-letter ISO language code" });
     return;
   }
 
   try {
     const audioBuffer = Buffer.from(audio, "base64");
     console.log(`[Transcribe] Received ${audioBuffer.length} bytes, mimeType: ${mimeType || 'not specified'}, first bytes: ${audioBuffer.slice(0, 8).toString('hex')}`);
+
+    if (isSonioxConfigured()) {
+      try {
+        const soniox = await transcribeWithSoniox({
+          audioBuffer,
+          filename: mimeType?.includes("mp4") ? "audio.mp4" : "audio.webm",
+          mimeType,
+          translationTo,
+        });
+        console.log(`[Transcribe] Soniox result: "${soniox.text}" (${soniox.text.length} chars)`);
+        res.json({
+          text: soniox.text,
+          provider: "soniox",
+          ...(soniox.translation ? {
+            sourceText: soniox.sourceText,
+            translation: soniox.translation,
+          } : {}),
+        });
+        return;
+      } catch (sonioxError) {
+        console.warn(
+          `[Transcribe] Soniox failed; falling back to OpenAI: ${sonioxError instanceof Error ? sonioxError.message : "unknown error"}`,
+        );
+      }
+    }
 
     const { speechToText, detectAudioFormat, convertToWav } = await import("@workspace/integrations-openai-ai-server/audio");
     const detected = detectAudioFormat(audioBuffer);
@@ -398,7 +465,7 @@ router.post("/transcribe", async (req, res) => {
 
     const text = await speechToText(finalBuffer, finalFormat);
     console.log(`[Transcribe] Result: "${text}" (${text.length} chars)`);
-    res.json({ text: text || "" });
+    res.json({ text: text || "", provider: "openai" });
   } catch (err: any) {
     console.error("Transcription error:", err?.message || err);
     res.status(500).json({ error: `Transcription failed: ${err?.message || "unknown"}` });

@@ -64,18 +64,13 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
     }
   });
 
-  it("applies the default 300% markup (retail = cost × 4)", () => {
-    // bot_extra_seat cost basis is $25 → retail $100 at the default markup.
-    const seat = catalog.items.find((i) => i.id === "bot_extra_seat");
-    expect(seat).toBeTruthy();
-    expect(seat.priceUsd).toBe(100);
-  });
-
-  it("exposes Stripe-backed agents, feature passes, and membership categories", () => {
-    expect(catalog.categories).toEqual(["bots", "terminals", "membership"]);
-    expect(new Set(catalog.items.map((i) => i.category))).toEqual(new Set(["bots", "terminals", "membership"]));
-    expect(catalog.items.find((i) => i.id === "term_pablo_pass")).toBeTruthy();
-    expect(catalog.items.find((i) => i.id === "term_phone_pass")).toBeTruthy();
+  it("exposes only monthly service memberships in the USD store", () => {
+    expect(catalog.categories).toEqual(["membership"]);
+    expect(new Set(catalog.items.map((i) => i.category))).toEqual(new Set(["membership"]));
+    expect(new Set(catalog.items.map((i) => i.id))).toEqual(new Set([
+      "membership_calll_home",
+      "membership_pablo_prime",
+    ]));
   });
 
   it("keeps non-agent game goods out of the dollar storefront", () => {
@@ -94,14 +89,20 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
     expect(res.body.error).toBe("Unknown pledge item");
   });
 
-  it("lists PABLO PRIME as an unmarked-up membership subscription", () => {
+  it("lists CALLL HOME at $100/month as a subscription", () => {
+    const calllHome = catalog.items.find((i) => i.id === "membership_calll_home");
+    expect(calllHome).toBeTruthy();
+    expect(calllHome.priceUsd).toBe(100);
+    expect(calllHome.subscriptionFeature).toBe("phone_system");
+  });
+
+  it("lists PABLO PRIME at $200/month as a bundled membership subscription", () => {
     expect(catalog.categories).toContain("membership");
     const prime = catalog.items.find((i) => i.id === "membership_pablo_prime");
     expect(prime).toBeTruthy();
-    // Listed at face value — NO cost-plus markup applied.
-    expect(prime.priceUsd).toBe(149);
-    // Flagged so the storefront routes it to the subscription checkout.
+    expect(prime.priceUsd).toBe(200);
     expect(prime.subscriptionFeature).toBe("claw_bot");
+    expect(prime.effect).toContain("all CALLL HOME benefits");
     // Still no secret cost/markup leak on this item.
     const text = rawText(prime);
     expect(text).not.toContain("costUsd");
@@ -110,8 +111,7 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
 
   it("rejects PABLO PRIME through the one-time pledge checkout", async () => {
     // Subscription listings must go through the subscription checkout, not the
-    // one-time pledge path. With an authenticated user the guard returns the
-    // specific 400 subscription_item before any charge/free-grant happens.
+    // retired one-time pledge path.
     const authed = buildAuthedApp();
     const res = await request(authed)
       .post("/api/pledge/checkout")
@@ -129,6 +129,7 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
     expect(text.toLowerCase()).not.toContain("markup");
     for (const item of res.body.items) {
       expect(item.priceUsd).toBeGreaterThan(0);
+      expect(item.subscriptionFeature).toBeTruthy();
     }
   });
 });

@@ -4,8 +4,10 @@ import { eq, and, desc } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { generateMusic, checkTrackStatus, isMusicConfigured, parseMusicGenerateBlock } from "../lib/suno-connector";
 import { hasFeature } from "../lib/plan";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
+router.use("/platform", requireFeature("claw_bot"));
 
 function hashKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
@@ -397,6 +399,19 @@ router.get("/platform/endpoints", async (_req, res) => {
     { method: "POST", path: "/api/platform/webhooks", description: "CREATE WEBHOOK", scope: "webhooks:write" },
     { method: "DELETE", path: "/api/platform/webhooks/:id", description: "DELETE WEBHOOK", scope: "webhooks:write" },
     { method: "GET", path: "/api/platform/apps", description: "LIST CONNECTED APPS", scope: "apps:read" },
+    { method: "GET", path: "/api/connectors/v1/whoami", description: "CHECK CONNECTOR TOKEN", scope: "connector:health" },
+    { method: "GET", path: "/api/connectors/v1/calls", description: "READ ORGANIZATION CALL METADATA", scope: "calls:read" },
+    { method: "GET", path: "/api/connectors/v1/crm/leads", description: "LIST ORGANIZATION CRM LEADS", scope: "crm:read" },
+    { method: "GET", path: "/api/connectors/v1/crm/leads/:id", description: "READ ORGANIZATION CRM LEAD", scope: "crm:read" },
+    { method: "GET", path: "/api/connectors/v1/crm/custom-fields", description: "LIST ORGANIZATION CRM FIELDS", scope: "crm:read" },
+    { method: "POST", path: "/api/connectors/v1/crm/leads", description: "CREATE ORGANIZATION CRM LEAD", scope: "crm:write" },
+    { method: "PATCH", path: "/api/connectors/v1/crm/leads/:id", description: "UPDATE ORGANIZATION CRM LEAD", scope: "crm:write" },
+    { method: "GET", path: "/api/connectors/v1/documents", description: "LIST ORGANIZATION DOCUMENTS", scope: "documents:read" },
+    { method: "GET", path: "/api/connectors/v1/documents/:id", description: "READ ORGANIZATION DOCUMENT METADATA", scope: "documents:read" },
+    { method: "GET", path: "/api/connectors/v1/documents/:id/content", description: "DOWNLOAD ORGANIZATION DOCUMENT", scope: "documents:read" },
+    { method: "POST", path: "/api/connectors/v1/documents/uploads", description: "CREATE ORGANIZATION DOCUMENT UPLOAD", scope: "documents:write" },
+    { method: "POST", path: "/api/connectors/v1/documents/uploads/:uploadId/complete", description: "COMPLETE ORGANIZATION DOCUMENT UPLOAD", scope: "documents:write" },
+    { method: "PATCH", path: "/api/connectors/v1/documents/:id", description: "UPDATE ORGANIZATION DOCUMENT METADATA", scope: "documents:write" },
     { method: "POST", path: "/api/platform/apps/connect", description: "CONNECT APP (STORE API KEY + LOGIN)", scope: "apps:write" },
     { method: "POST", path: "/api/platform/apps/disconnect", description: "DISCONNECT APP", scope: "apps:write" },
     { method: "GET", path: "/api/contacts", description: "LIST CONTACTS", scope: "contacts:read" },
@@ -451,7 +466,7 @@ router.post("/platform/music/generate", async (req, res) => {
   if (!subscribed) {
     res.status(402).json({
       error: "PABLO subscription required",
-      message: "AI music generation is a Jean Claw / PABLO PACKAGE perk ($149/mo). Subscribe to unlock automatic Replicate MusicGen tracks.",
+      message: "AI music generation is a PABLO PRIME perk ($100/mo). Subscribe to unlock automatic Replicate MusicGen tracks.",
       upgradeUrl: "/pricing",
     });
     return;

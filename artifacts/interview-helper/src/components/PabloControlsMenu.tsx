@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
-import { ChevronDown, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
+import { ChevronDown, Code2, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { useAudioSettings } from '@/hooks/use-audio-settings';
 import { useLowGfx } from '@/lib/lowGfx';
@@ -60,10 +60,16 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
 
     positionPopover();
     window.addEventListener('resize', positionPopover);
+    window.addEventListener('orientationchange', positionPopover);
     window.addEventListener('scroll', positionPopover, true);
+    window.visualViewport?.addEventListener('resize', positionPopover);
+    window.visualViewport?.addEventListener('scroll', positionPopover);
     return () => {
       window.removeEventListener('resize', positionPopover);
+      window.removeEventListener('orientationchange', positionPopover);
       window.removeEventListener('scroll', positionPopover, true);
+      window.visualViewport?.removeEventListener('resize', positionPopover);
+      window.visualViewport?.removeEventListener('scroll', positionPopover);
     };
   }, [open]);
 
@@ -76,11 +82,11 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
+         className="pablo-action pablo-header-action app-action app-control mobile-tap-target bg-black/45 backdrop-blur-md"
       >
         <SlidersHorizontal className="app-control-icon" aria-hidden />
-        <span className="hidden min-[520px]:inline">SETTINGS</span>
-        <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
+        <span className="sr-only">SETTINGS</span>
+        <ChevronDown className={`pablo-controls-chevron h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 
       {open && (
@@ -88,7 +94,7 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
           role="dialog"
           aria-label="Pablo settings"
           data-testid="pablo-controls-popover"
-          className="fixed z-[80] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
+           className="pablo-popover fixed z-[80] max-h-[min(70svh,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-[#090812]/95 p-3 text-left shadow-2xl shadow-black/60 backdrop-blur-xl"
           style={{
             top: popoverPosition.top,
             left: popoverPosition.left,
@@ -151,6 +157,15 @@ export function PabloControlsMenu({ showHummingbird }: PabloControlsMenuProps) {
               />
             </div>
           )}
+
+          <Link
+            href="/pablo/create"
+            onClick={() => setOpen(false)}
+            className="app-action app-control mt-3 w-full border-white/10 bg-white/[0.035] text-white/70 hover:bg-white/[0.08] hover:text-white"
+          >
+            <Code2 className="app-control-icon" aria-hidden />
+            CREATE WORKSPACE
+          </Link>
 
           {isAuthenticated && (
             <Link

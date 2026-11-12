@@ -19,7 +19,14 @@ export async function getUsage(userId: string, kind: UsageKind): Promise<number>
   return row?.count ?? 0;
 }
 
-export async function getAllUsage(userId: string): Promise<Record<UsageKind, { used: number; limit: number; remaining: number; throttled: boolean }>> {
+export type UsageSummary = {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  throttled: boolean;
+};
+
+export async function getAllUsage(userId: string): Promise<Record<UsageKind, UsageSummary>> {
   const rows = await db
     .select()
     .from(usageMetersTable)
@@ -29,12 +36,18 @@ export async function getAllUsage(userId: string): Promise<Record<UsageKind, { u
     ));
   const map: Record<string, number> = {};
   for (const r of rows) map[r.kind] = r.count;
-  const out: Record<string, { used: number; limit: number; remaining: number; throttled: boolean }> = {};
+  const out: Record<string, UsageSummary> = {};
   for (const [kind, limit] of Object.entries(USAGE_LIMITS)) {
     const used = map[kind] ?? 0;
-    out[kind] = { used, limit, remaining: Math.max(0, limit - used), throttled: used >= limit };
+    const capped = limit !== null;
+    out[kind] = {
+      used,
+      limit,
+      remaining: capped ? Math.max(0, limit - used) : null,
+      throttled: capped && used >= limit,
+    };
   }
-  return out as Record<UsageKind, { used: number; limit: number; remaining: number; throttled: boolean }>;
+  return out as Record<UsageKind, UsageSummary>;
 }
 
 export async function recordUsage(userId: string, kind: UsageKind, amount = 1): Promise<number> {
@@ -60,11 +73,15 @@ export async function consumeUsage(
   email: string | undefined | null,
   kind: UsageKind,
   cost = 1,
-): Promise<{ allowed: true; used: number; limit: number } | { allowed: false; used: number; limit: number; remaining: number }> {
+): Promise<{ allowed: true; used: number; limit: number | null } | { allowed: false; used: number; limit: number; remaining: number }> {
   const limit = USAGE_LIMITS[kind];
   if (isOwnerEmail(email)) return { allowed: true, used: 0, limit };
   if (await isActiveDeveloperOrgMember(userId)) return { allowed: true, used: 0, limit };
   if (cost <= 0) return { allowed: true, used: await getUsage(userId, kind), limit };
+  if (limit === null) {
+    const used = await recordUsage(userId, kind, cost);
+    return { allowed: true, used, limit: null };
+  }
 
   const period = currentPeriod();
   // Atomic conditional upsert: only increment if it would not exceed the cap.
@@ -99,6 +116,14 @@ const KIND_LABELS: Record<UsageKind, string> = {
   voice_minutes: "voice minutes",
   ai_messages: "AI messages",
   sms_count: "SMS",
+  prep_interview: "interview prep sessions",
+  prep_meeting: "meeting prep sessions",
+  prep_pitch: "pitch prep sessions",
+  prep_presentation: "presentation prep sessions",
+  prep_management: "management prep sessions",
+  prep_hiring: "hiring prep sessions",
+  prep_firing: "termination prep sessions",
+  prep_difficult_conversation: "difficult conversation prep sessions",
 };
 
 export function throttleResponse(kind: UsageKind, used: number, limit: number) {

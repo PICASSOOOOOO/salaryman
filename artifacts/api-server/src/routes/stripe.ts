@@ -7,9 +7,13 @@ import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
 import { handleItemWebhookEvent } from "./items";
+import { handleStripeOrganizationPaymentEvent } from "../lib/org-payment-settlement";
 import { ensureFiatAccounts, spendFiat } from "../lib/fiat-wallet";
 import { assertPhoneNumberAvailable, provisionPaidPhoneNumber } from "../lib/phone-number-service";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
+import { markOrganizationAsPaid, markUserAsPaid } from "../lib/payment-protection";
+import { autoActivatePrimeWorkflows } from "../lib/autopilot/activation";
+import { resolveCurrentOrgId } from "../lib/org-permissions";
 import { isSupportedCountry } from "../lib/phone";
 
 const router = Router();
@@ -19,6 +23,7 @@ const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
   screen_scan: "STRIPE_PRICE_SCREEN_SCAN",
   say_this: "STRIPE_PRICE_SAY_THIS",
   phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
+  phone_advanced: "STRIPE_PRICE_PHONE_ADVANCED",
   claw_bot: "STRIPE_PRICE_CLAW_BOT",
 };
 
@@ -52,27 +57,6 @@ const CASHOUT_MIN_FIAT = 5000;
 const CASHOUT_ELIGIBLE_KINDS = ["fiat_topup", "wage", "world_job", "world_sale", "rec_reward", "income", "payroll"] as const;
 
 const PHONE_NUMBER_PRICE_CENTS = 1000;
-
-async function getPhoneNumberPriceId(stripe: Stripe): Promise<string> {
-  const products = await stripe.products.search({ query: "metadata['salaryman_type']:'phone_number'" });
-  let product = products.data[0];
-  if (!product) {
-    product = await stripe.products.create({
-      name: "SALARYMAN custom phone number",
-      description: "One-time purchase of one custom Twilio phone number. Phone System subscription required.",
-      metadata: { salaryman_type: "phone_number" },
-    });
-  }
-  const prices = await stripe.prices.list({ product: product.id, active: true, type: "one_time", limit: 100 });
-  const existing = prices.data.find((price) => price.currency === "usd" && price.unit_amount === PHONE_NUMBER_PRICE_CENTS);
-  if (existing) return existing.id;
-  const price = await stripe.prices.create({
-    product: product.id,
-    currency: "usd",
-    unit_amount: PHONE_NUMBER_PRICE_CENTS,
-  });
-  return price.id;
-}
 
 async function activateBotSubscription(userId: string, marketplaceItemId: number, stripeSubscriptionId: string): Promise<void> {
   const [item] = await db
@@ -171,51 +155,38 @@ export function getStripe() {
 
 function getAppBaseUrl(): string {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
+  const deployedDomain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  if (deployedDomain) return `https://${deployedDomain}`;
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   return "http://localhost:3000";
 }
 
-// PABLO PRIME — single $149/mo bundle that grants every paid feature via
-// BUNDLED_BY_PABLO in lib/plan.ts. getPriceIdForFeature() lists active prices
-// on the product found via metadata search and uses the first one (the $149
-// monthly price), so no hardcoded product IDs are needed here.
+// Product and price records are created in Stripe ahead of checkout. Checkout
+// only accepts an active monthly price that exactly matches FEATURE_CATALOG.
 const FEATURE_PRODUCT_IDS: Partial<Record<FeatureKey, string>> = {};
 
 const priceIdCache: Partial<Record<FeatureKey, string>> = {};
 const productIdCache: Partial<Record<FeatureKey, string>> = {};
 
-async function ensureProductForFeature(feature: FeatureKey): Promise<string | undefined> {
+async function findProductForFeature(feature: FeatureKey): Promise<string | undefined> {
   if (FEATURE_PRODUCT_IDS[feature]) return FEATURE_PRODUCT_IDS[feature];
   if (productIdCache[feature]) return productIdCache[feature];
 
   try {
     const stripe = getStripe();
-    const catalog = FEATURE_CATALOG[feature];
-
     const existing = await stripe.products.search({ query: `metadata['feature']:'${feature}'`, limit: 1 });
     if (existing.data.length > 0) {
       productIdCache[feature] = existing.data[0].id;
-      console.log(`[Stripe] Found existing product for ${feature}: ${existing.data[0].id}`);
       return existing.data[0].id;
     }
-
-    const product = await stripe.products.create({
-      name: `${catalog.name} — THE SALARYMAN PLATFORM`,
-      description: catalog.desc,
-      tax_code: "txcd_10000000",
-      metadata: { feature, brand: "Picasso.AI", product_line: "SALARYMAN" },
-    });
-    productIdCache[feature] = product.id;
-    FEATURE_PRODUCT_IDS[feature] = product.id;
-    console.log(`[Stripe] Created product for ${feature}: ${product.id}`);
-    return product.id;
+    return undefined;
   } catch (err) {
-    console.error(`[Stripe] Failed to ensure product for ${feature}:`, err instanceof Error ? err.message : err);
+    console.error(`[Stripe] Failed to find product for ${feature}:`, err instanceof Error ? err.message : err);
     return undefined;
   }
 }
 
-async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undefined> {
+export async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undefined> {
   const envPrice = process.env[FEATURE_PRICE_ENV[feature]];
   const catalog = FEATURE_CATALOG[feature];
   const expectedUnitAmount = catalog.price * 100;
@@ -236,9 +207,17 @@ async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undef
     }
   }
 
-  if (priceIdCache[feature]) return priceIdCache[feature];
+  if (priceIdCache[feature]) {
+    try {
+      const cached = await getStripe().prices.retrieve(priceIdCache[feature]!);
+      if (priceMatches(cached)) return cached.id;
+      delete priceIdCache[feature];
+    } catch {
+      delete priceIdCache[feature];
+    }
+  }
 
-  const productId = await ensureProductForFeature(feature);
+  const productId = await findProductForFeature(feature);
   if (!productId) return undefined;
 
   try {
@@ -247,19 +226,10 @@ async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undef
     const matchingPrice = prices.data.find(priceMatches);
     if (matchingPrice) {
       priceIdCache[feature] = matchingPrice.id;
-      console.log(`[Stripe] Resolved verified USD price for ${feature}: ${matchingPrice.id}`);
       return matchingPrice.id;
     }
-
-    const newPrice = await stripe.prices.create({
-      product: productId,
-      unit_amount: catalog.price * 100,
-      currency: "usd",
-      recurring: { interval: "month" },
-    });
-    priceIdCache[feature] = newPrice.id;
-    console.log(`[Stripe] Created price for ${feature}: ${newPrice.id}`);
-    return newPrice.id;
+    console.warn(`[Stripe] No active USD ${catalog.price}/month price found for ${feature}`);
+    return undefined;
   } catch (err) {
     console.error(`[Stripe] Failed to resolve price for ${feature}:`, err instanceof Error ? err.message : err);
     return undefined;
@@ -302,18 +272,17 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
     return;
   }
 
-  const priceId = await getPriceIdForFeature(feature);
-  if (!priceId) {
-    res.status(500).json({ error: `Pricing for ${FEATURE_CATALOG[feature].name} not configured yet` });
-    return;
-  }
-
   const user = req.user;
   if (await hasFeature(user.id, user.email, feature)) {
     res.status(409).json({
       error: "already_active",
       message: `${FEATURE_CATALOG[feature].name} is already active on this account.`,
     });
+    return;
+  }
+  const priceId = await getPriceIdForFeature(feature);
+  if (!priceId) {
+    res.status(500).json({ error: `Pricing for ${FEATURE_CATALOG[feature].name} not configured yet` });
     return;
   }
   const stripe = getStripe();
@@ -346,6 +315,13 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
     }
   }
 
+  // Carry the owner's active business into a personal Prime checkout so the
+  // paid webhook can start the right org's workflows. Company billing already
+  // resolved its target org above.
+  const primeAutopilotOrgId = feature === "claw_bot"
+    ? orgId ?? await resolveCurrentOrgId(user.id)
+    : null;
+
   const checkoutReturnPath = feature === "claw_bot" ? "/pledge?view=prime" : "/pricing";
   const checkoutReturnSeparator = checkoutReturnPath.includes("?") ? "&" : "?";
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -361,6 +337,7 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
       product_line: "SALARYMAN",
       grantedBy: grantedByValue,
       ...(orgId ? { orgId: String(orgId) } : {}),
+      ...(primeAutopilotOrgId ? { primeAutopilotOrgId: String(primeAutopilotOrgId) } : {}),
     },
     // NOTE: The bank statement descriptor "PICASSO AI LLC" must be configured at the
     // account level in the Stripe Dashboard (Settings → Account details → Statement descriptor).
@@ -376,6 +353,7 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
         product_line: "SALARYMAN",
         feature,
         ...(orgId ? { orgId: String(orgId) } : {}),
+        ...(primeAutopilotOrgId ? { primeAutopilotOrgId: String(primeAutopilotOrgId) } : {}),
       },
     },
   };
@@ -577,83 +555,86 @@ router.post("/stripe/create-phone-number-session", async (req, res) => {
     return;
   }
   const user = req.user;
+  const { phoneNumber, countryCode, label, requestId } = req.body as {
+    phoneNumber?: string;
+    countryCode?: string;
+    label?: string;
+    requestId?: string;
+  };
+  if (
+    typeof phoneNumber !== "string" || !/^\+[1-9]\d{7,14}$/.test(phoneNumber)
+    || typeof countryCode !== "string" || !isSupportedCountry(countryCode)
+    || typeof requestId !== "string" || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)
+  ) {
+    res.status(400).json({ error: "A valid phone number, country code, and request ID are required" });
+    return;
+  }
   if (!(await hasFeature(user.id, user.email, "phone_system"))) {
-    res.status(403).json({ error: "Phone System subscription required", feature: "phone_system" });
+    res.status(403).json({ error: "CALLL HOME subscription required", feature: "phone_system" });
     return;
   }
   if (!(await canUsePlatformTwilio(user.id, user.email))) {
-    res.status(403).json({ error: "Platform phone system is restricted to authorized organizations.", code: "TWILIO_ORG_RESTRICTED" });
-    return;
-  }
-  const { phoneNumber, countryCode, label, requestId } = req.body as Record<string, string | undefined>;
-  if (
-    !phoneNumber || !/^\+[1-9]\d{6,14}$/.test(phoneNumber)
-    || !countryCode || !isSupportedCountry(countryCode)
-    || !requestId || !/^[a-zA-Z0-9-]{8,80}$/.test(requestId)
-  ) {
-    res.status(400).json({ error: "Invalid number purchase request" });
-    return;
-  }
-  if (countryCode === "VN" && !process.env.TWILIO_REGULATORY_BUNDLE_SID) {
-    res.status(409).json({ error: "A verified Twilio regulatory bundle is required before buying a Vietnam number." });
-    return;
-  }
-  try {
-    await assertPhoneNumberAvailable(phoneNumber, countryCode);
-  } catch (error) {
-    res.status(409).json({ error: error instanceof Error ? error.message : "Number is unavailable" });
+    res.status(403).json({ error: "Phone system access is not authorized for this account" });
     return;
   }
 
-  const stripe = getStripe();
-  const reservationId = `reservation:${user.id}:${requestId}`;
   try {
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${phoneNumber}::text))`);
-      const [pending] = await tx.select({ id: phoneNumberPurchasesTable.id })
+    const session = await db.transaction(async (tx) => {
+      // Serialize checkout creation for a specific number. Without this guard,
+      // separate browser sessions could both pay and race to provision it.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${phoneNumber})::bigint)`);
+      const [existingPurchase] = await tx.select({ id: phoneNumberPurchasesTable.id })
         .from(phoneNumberPurchasesTable)
         .where(and(
           eq(phoneNumberPurchasesTable.phoneNumber, phoneNumber),
-          sql`${phoneNumberPurchasesTable.status} in ('pending', 'processing')`,
-        )).limit(1);
-      if (pending) throw new Error("PHONE_NUMBER_ALREADY_RESERVED");
+          inArray(phoneNumberPurchasesTable.status, ["pending", "processing", "completed"]),
+        ))
+        .limit(1);
+      if (existingPurchase) throw new Error("This number already has a purchase in progress or is assigned");
+
+      await assertPhoneNumberAvailable(phoneNumber, countryCode);
+      const baseUrl = getAppBaseUrl().replace(/\/+$/, "");
+      const checkout = await getStripe().checkout.sessions.create({
+        mode: "payment",
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "SALARYMAN Custom Phone Number",
+              description: `${phoneNumber} — one-time setup and number purchase`,
+            },
+            unit_amount: PHONE_NUMBER_PRICE_CENTS,
+          },
+          quantity: 1,
+        }],
+        success_url: `${baseUrl}/phone?tab=numbers&number_checkout=success`,
+        cancel_url: `${baseUrl}/phone?tab=numbers&number_checkout=cancel`,
+        client_reference_id: user.id,
+        metadata: {
+          userId: user.id,
+          type: "phone_number",
+          phoneNumber,
+          countryCode,
+          label: typeof label === "string" ? label.slice(0, 64) : "main",
+          amountCents: String(PHONE_NUMBER_PRICE_CENTS),
+        },
+      }, { idempotencyKey: `phone-number:${user.id}:${requestId}` });
       await tx.insert(phoneNumberPurchasesTable).values({
         userId: user.id,
-        stripeSessionId: reservationId,
+        stripeSessionId: checkout.id,
         phoneNumber,
         countryCode,
-        label: (label || "main").slice(0, 64),
+        label: typeof label === "string" ? label.slice(0, 64) : "main",
         amountCents: PHONE_NUMBER_PRICE_CENTS,
       });
+      return checkout;
     });
+    res.json({ url: session.url });
   } catch (error) {
-    if (error instanceof Error && error.message === "PHONE_NUMBER_ALREADY_RESERVED") {
-      res.status(409).json({ error: "That number is already reserved by another checkout." });
-      return;
-    }
-    throw error;
+    const message = error instanceof Error ? error.message : "Phone number checkout failed";
+    console.error("[CalllHome] phone-number checkout error:", message);
+    res.status(message.includes("purchase in progress or is assigned") ? 409 : 400).json({ error: message });
   }
-  let session: Stripe.Checkout.Session;
-  try {
-    session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{ price: await getPhoneNumberPriceId(stripe), quantity: 1 }],
-      success_url: `${getAppBaseUrl()}/phone?tab=numbers&number_checkout=success`,
-      cancel_url: `${getAppBaseUrl()}/phone?tab=numbers&number_checkout=cancel`,
-      client_reference_id: user.id,
-      metadata: {
-        type: "phone_number", userId: user.id, phoneNumber, countryCode,
-        label: (label || "main").slice(0, 64),
-        amountCents: String(PHONE_NUMBER_PRICE_CENTS), requestId,
-      },
-    }, { idempotencyKey: `phone-number:${user.id}:${requestId}` });
-    await db.update(phoneNumberPurchasesTable).set({ stripeSessionId: session.id })
-      .where(eq(phoneNumberPurchasesTable.stripeSessionId, reservationId));
-  } catch (error) {
-    await db.delete(phoneNumberPurchasesTable).where(eq(phoneNumberPurchasesTable.stripeSessionId, reservationId));
-    throw error;
-  }
-  res.json({ url: session.url });
 });
 
 async function fulfilPhoneNumberPurchase(session: Stripe.Checkout.Session): Promise<void> {
@@ -1033,7 +1014,9 @@ router.post(
         // Route pledge sessions to their handler so entitlements are only
         // granted on settled funds and revoked/marked failed otherwise.
         const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.type === "pledge") {
+        if (session.metadata?.type === "organization_payment") {
+          await handleStripeOrganizationPaymentEvent(event, stripe);
+        } else if (session.metadata?.type === "pledge") {
           await handlePledgeWebhookEvent(event);
         } else if (session.metadata?.type === "item") {
           await handleItemWebhookEvent(event);
@@ -1049,7 +1032,9 @@ router.post(
       case "checkout.session.expired": {
         // An abandoned/expired checkout releases any reserved limited-drop stock.
         const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.type === "pledge") {
+        if (session.metadata?.type === "organization_payment") {
+          await handleStripeOrganizationPaymentEvent(event, stripe);
+        } else if (session.metadata?.type === "pledge") {
           await handlePledgeWebhookEvent(event);
         } else if (session.metadata?.type === "fiat_topup") {
           await markFiatTopupTerminal(session, "cancelled");
@@ -1060,13 +1045,56 @@ router.post(
       }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const subscriptionId = typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id;
+        if (session.metadata?.type === "org_plan" && subscriptionId
+          && ["paid", "no_payment_required"].includes(session.payment_status ?? "")) {
+          const orgId = Number(session.metadata.orgId);
+          const plan = session.metadata.plan;
+          if (Number.isInteger(orgId) && orgId > 0 && ["calll_home", "pablo_prime"].includes(plan ?? "")) {
+            await db.update(organizationsTable)
+              .set({ billingPlan: plan!, stripePlanSubscriptionId: subscriptionId, hasPaidHistory: true })
+              .where(eq(organizationsTable.id, orgId));
+          }
+          break;
+        }
+        if (session.metadata?.type === "org_seat" && subscriptionId
+          && ["paid", "no_payment_required"].includes(session.payment_status ?? "")) {
+          const orgId = Number(session.metadata.orgId);
+          const memberUserId = session.metadata.memberUserId;
+          const payer = session.metadata.payer === "company" ? "company" : "individual";
+          if (Number.isInteger(orgId) && orgId > 0 && memberUserId) {
+            await db.update(orgMembersTable)
+              .set({ seatBilling: payer, seatStatus: "active", stripeSeatSubscriptionId: subscriptionId })
+              .where(and(
+                eq(orgMembersTable.orgId, orgId),
+                eq(orgMembersTable.userId, memberUserId),
+                eq(orgMembersTable.status, "active"),
+              ));
+            await db.update(organizationsTable).set({ hasPaidHistory: true }).where(eq(organizationsTable.id, orgId));
+          }
+          break;
+        }
+        if (session.metadata?.type === "organization_payment") {
+          await handleStripeOrganizationPaymentEvent(event, stripe);
+          break;
+        }
         const userId = session.client_reference_id || session.metadata?.userId;
         const type = session.metadata?.type;
         const feature = session.metadata?.feature as FeatureKey | undefined;
-        const subscriptionId = typeof (session as any).subscription === "string"
-          ? (session as any).subscription
-          : (session as any).subscription?.id;
-
+        const organizationIdMeta = session.metadata?.orgId;
+        const parsedOrganizationId = organizationIdMeta ? Number(organizationIdMeta) : NaN;
+        // Persist the first settled, non-zero checkout before any product
+        // fulfillment. This flag survives later cancellation/revocation.
+        if (session.payment_status === "paid" && Number(session.amount_total ?? 0) > 0) {
+          await db.transaction(async (tx) => {
+            if (userId) await markUserAsPaid(tx, userId);
+            if (Number.isInteger(parsedOrganizationId) && parsedOrganizationId > 0) {
+              await markOrganizationAsPaid(tx, parsedOrganizationId);
+            }
+          });
+        }
         if (type === "merch") {
           await handleMerchWebhookEvent(event);
         } else if (type === "pledge") {
@@ -1102,24 +1130,39 @@ router.post(
           // the session has no `metadata.feature` because we can't inject
           // metadata into payment-link checkouts. Resolve the feature by
           // matching the subscription's product against FEATURE_PRODUCT_IDS.
+          let primeActivationFailed = false;
           try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["items.data.price.product"] });
-            const productId = (() => {
-              const item = sub.items?.data?.[0];
-              if (!item) return undefined;
-              const product = (item.price as any)?.product;
-              return typeof product === "string" ? product : product?.id;
-            })();
-            const matchedFeature = (Object.entries(FEATURE_PRODUCT_IDS) as [FeatureKey, string][])
+            const firstItem = sub.items?.data?.[0];
+            const product = (firstItem?.price as any)?.product;
+            const productId = typeof product === "string" ? product : product?.id;
+            const featureFromProductMetadata = typeof product?.metadata?.feature === "string"
+              ? resolveFeatureKey(product.metadata.feature)
+              : undefined;
+            const matchedFeature = featureFromProductMetadata
+              ?? (Object.entries(FEATURE_PRODUCT_IDS) as [FeatureKey, string][])
               .find(([, pid]) => pid === productId)?.[0];
             if (matchedFeature) {
               await grantFeature(userId, matchedFeature, "stripe-payment-link", subscriptionId);
+              if (matchedFeature === "claw_bot" && session.payment_status === "paid") {
+                try {
+                  await autoActivatePrimeWorkflows(userId, {
+                    orgId: session.metadata?.primeAutopilotOrgId
+                      ? Number(session.metadata.primeAutopilotOrgId)
+                      : null,
+                  });
+                } catch (err) {
+                  primeActivationFailed = true;
+                  throw err;
+                }
+              }
               console.log(`[Stripe] Payment-link grant: user ${userId} → ${matchedFeature} (sub: ${subscriptionId}, product: ${productId})`);
             } else {
               console.warn("[Stripe] Payment-link checkout — no matching feature for product", { userId, productId, subscriptionId });
             }
           } catch (err) {
             console.error("[Stripe] Payment-link fallback failed:", err instanceof Error ? err.message : err);
+            if (primeActivationFailed) throw err;
           }
         } else if (userId && feature && (FEATURE_KEYS.includes(feature) || resolveFeatureKey(feature))) {
           const resolvedFeature = resolveFeatureKey(feature) ?? feature as FeatureKey;
@@ -1158,15 +1201,82 @@ router.post(
               console.log(`[Stripe] Org ${parsedOrgId}: granted ${feature} to ${companyMembers.length} company-billing members`);
             }
           }
+
+          if (resolvedFeature === "claw_bot" && subscriptionId && session.payment_status === "paid") {
+            const companyBilled = grantedBy.startsWith("org:");
+            const hintedOrgId = session.metadata?.primeAutopilotOrgId
+              ? Number(session.metadata.primeAutopilotOrgId)
+              : companyBilled && orgIdMeta
+                ? Number(orgIdMeta)
+                : null;
+            await autoActivatePrimeWorkflows(userId, {
+              orgId: Number.isInteger(hintedOrgId) && Number(hintedOrgId) > 0 ? hintedOrgId : null,
+              companyBilled,
+            });
+          }
         } else {
           console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
         }
         break;
       }
 
+      case "charge.refunded":
+      case "charge.dispute.created":
+      case "charge.dispute.closed": {
+        await handleStripeOrganizationPaymentEvent(event, stripe);
+        break;
+      }
+
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const subId = subscription.id;
+
+        if (subscription.metadata?.type === "org_plan") {
+          const orgId = Number(subscription.metadata.orgId);
+          if (!Number.isInteger(orgId) || orgId < 1) break;
+          const seats = await db.select({
+            orgId: orgMembersTable.orgId,
+            userId: orgMembersTable.userId,
+            stripeSeatSubscriptionId: orgMembersTable.stripeSeatSubscriptionId,
+          }).from(orgMembersTable).where(and(
+            eq(orgMembersTable.orgId, orgId),
+            isNotNull(orgMembersTable.stripeSeatSubscriptionId),
+          ));
+          for (const seat of seats) {
+            if (!seat.stripeSeatSubscriptionId) continue;
+            try {
+              await stripe.subscriptions.cancel(seat.stripeSeatSubscriptionId);
+            } catch (error) {
+              console.error("[Stripe] Could not cancel dependent org seat subscription", seat.stripeSeatSubscriptionId,
+                error instanceof Error ? error.message : error);
+            }
+          }
+          if (seats.length) {
+            await db.update(orgMembersTable)
+              .set({ seatStatus: "canceled", stripeSeatSubscriptionId: null })
+              .where(eq(orgMembersTable.orgId, orgId));
+          }
+          await db.update(organizationsTable)
+            .set({ billingPlan: "free", stripePlanSubscriptionId: null })
+            .where(and(
+              eq(organizationsTable.id, orgId),
+              eq(organizationsTable.stripePlanSubscriptionId, subId),
+            ));
+          break;
+        }
+        if (subscription.metadata?.type === "org_seat") {
+          const orgId = Number(subscription.metadata.orgId);
+          const memberUserId = subscription.metadata.memberUserId;
+          if (!Number.isInteger(orgId) || orgId < 1 || !memberUserId) break;
+          await db.update(orgMembersTable)
+            .set({ seatStatus: "canceled", stripeSeatSubscriptionId: null })
+            .where(and(
+              eq(orgMembersTable.orgId, orgId),
+              eq(orgMembersTable.userId, memberUserId),
+              eq(orgMembersTable.stripeSeatSubscriptionId, subId),
+            ));
+          break;
+        }
 
         const botUserId = await deactivateBotSubscription(subId);
         if (botUserId) {
@@ -1188,8 +1298,29 @@ router.post(
         const subId = typeof (invoice as any).subscription === "string"
           ? (invoice as any).subscription
           : (invoice as any).subscription?.id;
-        if (subId && (invoice.billing_reason === "subscription_cycle" || invoice.billing_reason === "subscription_create")) {
-          console.log(`[Stripe] Payment succeeded for subscription ${subId}`);
+        if (subId && Number(invoice.amount_paid ?? 0) > 0) {
+          await db.transaction(async (tx) => {
+            await tx.execute(sql`
+              UPDATE users
+              SET has_paid_history = true, updated_at = now()
+              WHERE id IN (
+                SELECT user_id FROM user_features WHERE stripe_subscription_id = ${subId}
+                UNION
+                SELECT user_id FROM bot_subscriptions WHERE stripe_subscription_id = ${subId}
+              )
+            `);
+            await tx.execute(sql`
+              UPDATE organizations
+              SET has_paid_history = true, updated_at = now()
+              WHERE id IN (
+                SELECT org_id FROM org_feature_grants WHERE stripe_subscription_id = ${subId}
+                UNION
+                SELECT org_id FROM bot_subscriptions
+                WHERE stripe_subscription_id = ${subId} AND org_id IS NOT NULL
+              )
+            `);
+          });
+          console.log(`[Stripe] Paid history recorded for subscription ${subId}`);
         }
         break;
       }

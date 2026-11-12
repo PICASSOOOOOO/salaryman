@@ -2,12 +2,17 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 import {
+  db,
+  autopilotActivityLogTable,
+  orgPermissionsTable,
   AUTOPILOT_DOMAINS,
   AUTOPILOT_DOMAIN_META,
   AUTOPILOT_MARKETING_TONES,
   AUTOPILOT_CRM_LEAD_STATUSES,
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
+  AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+  AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
 } from "@workspace/db";
 import { SOCIAL_PLATFORMS } from "../lib/social-service";
 import {
@@ -16,16 +21,14 @@ import {
   setAuthed,
   createUser,
   createOrg,
-  createBot,
   cleanupTestData,
 } from "./helpers/autopilotTestApp";
 
 // Integration coverage for GET /api/autopilot — the read path the dashboard
-// loads on open. It merges each org's stored config over the four-domain
-// defaults, lists ONLY that org's bots, surfaces marketing/CRM option metadata,
-// and enforces the same autopilot.manage / no-org / unauthenticated gates as the
-// save path. These tests lock in that an org always sees all four domains, that
-// one org never sees another org's bots, and that the gates hold.
+// loads on open. It merges each org's stored config over the supported-domain
+// defaults, surfaces marketing/CRM option metadata, and enforces the same
+// autopilot.manage / no-org / unauthenticated gates as the save path. Pablo is
+// the runner, so the response does not include an assignable bot roster.
 
 let app: Express;
 
@@ -40,7 +43,7 @@ afterAll(async () => {
 });
 
 describe("GET /api/autopilot — domains merged with defaults", () => {
-  it("returns all four domains, each OFF with default shape when no row exists", async () => {
+  it("returns all supported domains, each OFF with default shape when no row exists", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
     actAs(owner);
@@ -62,7 +65,8 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
       expect(domain.cadenceMinutes).toBeNull();
       expect(domain.maxActionsPerTick).toBeNull();
       expect(domain.budgetCapCents).toBeNull();
-      expect(domain.prefs).toEqual({});
+      expect(domain.prefs).toEqual(domain.domain === "marketing" ? { generateImages: false } : {});
+      expect(domain.prefs).not.toHaveProperty("imageGenerationApprovedBy");
       expect(domain.lastRunAt).toBeNull();
       expect(domain.updatedBy).toBeNull();
     }
@@ -71,13 +75,11 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
   it("merges a stored, fully-configured domain over the defaults while the rest stay OFF", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
-    const botId = await createBot({ orgId, ownerId: owner.id });
     actAs(owner);
 
     // Configure one domain via the save path so the read path reflects it.
     await request(app).put("/api/autopilot/marketing").send({
       enabled: true,
-      botId,
       cadenceMinutes: 60,
       maxActionsPerTick: 10,
       budgetCapCents: 100000,
@@ -92,14 +94,17 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
     const marketing = byDomain.get("marketing") as Record<string, unknown>;
     expect(marketing.exists).toBe(true);
     expect(marketing.enabled).toBe(true);
-    expect(marketing.botId).toBe(botId);
+    expect(marketing.botId).toBeNull();
     expect(marketing.cadenceMinutes).toBe(60);
     expect(marketing.maxActionsPerTick).toBe(10);
     expect(marketing.budgetCapCents).toBe(100000);
-    expect(marketing.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+    expect(marketing.prefs).toEqual({
+      platforms: ["twitter"], tone: "bold", topics: ["Launch"], generateImages: false,
+    });
+    expect(marketing.prefs).not.toHaveProperty("imageGenerationApprovedBy");
     expect(marketing.updatedBy).toBe(owner.id);
 
-    // The other three domains remain at their OFF defaults.
+    // All other domains remain at their OFF defaults.
     for (const domain of AUTOPILOT_DOMAINS.filter((d) => d !== "marketing")) {
       const view = byDomain.get(domain) as Record<string, unknown>;
       expect(view.exists).toBe(false);
@@ -109,48 +114,8 @@ describe("GET /api/autopilot — domains merged with defaults", () => {
   });
 });
 
-describe("GET /api/autopilot — bot listing is scoped to the caller's org", () => {
-  it("lists the org's own bots", async () => {
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    const botA = await createBot({ orgId, ownerId: owner.id, name: "Agent A" });
-    const botB = await createBot({ orgId, ownerId: owner.id, name: "Agent B" });
-    actAs(owner);
-
-    const res = await request(app).get("/api/autopilot");
-
-    expect(res.status).toBe(200);
-    const ids = res.body.bots.map((b: { id: number }) => b.id).sort((a: number, b: number) => a - b);
-    expect(ids).toEqual([botA, botB].sort((a, b) => a - b));
-    // Each listed bot carries the columns the dashboard renders.
-    for (const bot of res.body.bots) {
-      expect(bot).toHaveProperty("id");
-      expect(bot).toHaveProperty("name");
-      expect(bot).toHaveProperty("status");
-      expect(bot).toHaveProperty("department");
-    }
-  });
-
-  it("never leaks another org's bots", async () => {
-    // A separate org owns a bot; the caller must not see it.
-    const other = await createUser();
-    const otherOrgId = await createOrg(other.id);
-    const otherBotId = await createBot({ orgId: otherOrgId, ownerId: other.id, name: "Other Org Bot" });
-
-    const owner = await createUser();
-    const orgId = await createOrg(owner.id);
-    const ownBotId = await createBot({ orgId, ownerId: owner.id, name: "My Bot" });
-    actAs(owner);
-
-    const res = await request(app).get("/api/autopilot");
-
-    expect(res.status).toBe(200);
-    const ids = res.body.bots.map((b: { id: number }) => b.id);
-    expect(ids).toContain(ownBotId);
-    expect(ids).not.toContain(otherBotId);
-  });
-
-  it("returns an empty bot list for an org with no bots", async () => {
+describe("GET /api/autopilot — Pablo is the automation runner", () => {
+  it("omits the assignable bot roster and returns no legacy runner assignment", async () => {
     const owner = await createUser();
     await createOrg(owner.id);
     actAs(owner);
@@ -158,7 +123,8 @@ describe("GET /api/autopilot — bot listing is scoped to the caller's org", () 
     const res = await request(app).get("/api/autopilot");
 
     expect(res.status).toBe(200);
-    expect(res.body.bots).toEqual([]);
+    expect(res.body).not.toHaveProperty("bots");
+    expect(res.body.domains.every((domain: { botId: number | null }) => domain.botId === null)).toBe(true);
   });
 });
 
@@ -178,6 +144,8 @@ describe("GET /api/autopilot — option metadata for the dashboard", () => {
     // Scheduling defaults shown when an org has not set its own.
     expect(res.body.defaults).toEqual({
       cadenceMinutes: AUTOPILOT_DEFAULT_CADENCE_MINUTES,
+      creativeCadenceMinutes: AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+      marketResearchCadenceMinutes: AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
       maxActionsPerTick: AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
     });
 
@@ -219,7 +187,7 @@ describe("GET /api/autopilot — permission gating (autopilot.manage)", () => {
     expect(res.status).toBe(404);
     // The shape stays consumable by the dashboard even on the no-org path.
     expect(res.body.domains).toEqual([]);
-    expect(res.body.bots).toEqual([]);
+    expect(res.body).not.toHaveProperty("bots");
   });
 
   it("403 when the caller lacks autopilot.manage (specialist, below the manager default)", async () => {
@@ -245,5 +213,52 @@ describe("GET /api/autopilot — permission gating (autopilot.manage)", () => {
     expect(res.status).toBe(200);
     expect(res.body.orgId).toBe(orgId);
     expect(res.body.domains).toHaveLength(AUTOPILOT_DOMAINS.length);
+    expect(res.body.accounting).toEqual({ canManage: false });
+  });
+
+  it("hides accounting activity from Autopilot managers without finance.view", async () => {
+    const owner = await createUser();
+    const specialist = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: specialist.id, role: "specialist" }]);
+    await db.insert(orgPermissionsTable).values({
+      orgId,
+      permissionKey: "autopilot.manage",
+      minRole: "specialist",
+    });
+    await db.insert(autopilotActivityLogTable).values([
+      {
+        orgId,
+        domain: "accounting",
+        action: "bill_paid",
+        summary: "Paid a supplier bill",
+        outcome: "success",
+        detail: { amountFiat: 1200 },
+      },
+      {
+        orgId,
+        domain: "marketing",
+        action: "draft_post",
+        summary: "Drafted a marketing post",
+        outcome: "success",
+        detail: {},
+      },
+    ]);
+
+    actAs(specialist);
+    const view = await request(app).get("/api/autopilot");
+    expect(view.status).toBe(200);
+    expect(view.body.accounting).toEqual({ canManage: false });
+    expect(view.body.activity.map((row: { domain: string }) => row.domain)).toContain("marketing");
+    expect(view.body.activity.some((row: { domain: string }) => row.domain === "accounting")).toBe(false);
+
+    const privateFeed = await request(app).get("/api/autopilot/activity?domain=accounting");
+    expect(privateFeed.status).toBe(200);
+    expect(privateFeed.body.activity).toEqual([]);
+
+    actAs(owner);
+    const ownerFeed = await request(app).get("/api/autopilot/activity?domain=accounting");
+    expect(ownerFeed.status).toBe(200);
+    expect(ownerFeed.body.activity).toHaveLength(1);
+    expect(ownerFeed.body.activity[0].detail.amountFiat).toBe(1200);
   });
 });

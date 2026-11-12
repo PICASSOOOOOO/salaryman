@@ -9,7 +9,22 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
+from .customization import (
+    DEFAULT_ROOM_CUSTOMIZATION,
+    DECOR_PRESET_BY_ID,
+    ROOM_IDS,
+    WALL_FINISH_BY_ID,
+    sanitize_room_customizations,
+)
 from .models import ActionKind, LedgerEntry, OfficeRoster, RecruitCandidate, Worker
+from .npc_engine import RivalryEngine
+from .pest_work import PEST_JOB_BY_ID, PEST_JOBS, normalize_work_orders
+from .tower_story import (
+    OPEN_MIC_PLAN_COMPLETE_STAGE,
+    normalize_open_mic_event_stage,
+    normalize_open_mic_plan_stage,
+    normalize_open_mic_story_stage,
+)
 
 
 SECONDS_PER_WORKSPACE_HOUR = 2.0
@@ -18,7 +33,14 @@ SHIFT_START = 9
 SHIFT_END = 17
 BreakKind = Literal["short", "lunch"]
 GameRole = Literal["player", "moderator", "admin"]
-OverlayPage = Literal["tools", "economy"]
+OverlayPage = Literal[
+    "tools", "economy", "customize", "systems", "phone",
+    "player", "settings", "inventory", "vending", "bank",
+    "pest_jobs", "pest_uniform", "melee", "competition", "basement_stairs",
+    "utility_work", "company_relocation", "merchant", "reception", "business_stock",
+    "collections_case", "disaster_response", "alarm_console", "shop_freight_dock",
+]
+PLAYER_PAGES = frozenset({"player", "settings", "inventory", "bank", "phone", "competition"})
 RECRUITMENT_REFRESH_COST = 50.0
 DECAY_PER_WORKSPACE_MINUTE = 0.07
 MAINTENANCE_BASE_COST = 40.0
@@ -68,6 +90,7 @@ class OfficeState:
     elapsed_seconds: float = 0.0
     running: bool = True
     roster: OfficeRoster = field(default_factory=OfficeRoster)
+    rivalry: RivalryEngine = field(default_factory=RivalryEngine.new_game)
     ledger: list[LedgerEntry] = field(default_factory=list)
     hours_completed_today: int = 0
     total_output: float = 0.0
@@ -92,11 +115,60 @@ class OfficeState:
     recruitment_candidates: list[RecruitCandidate] = field(default_factory=list)
     recruitment_open: bool = False
     role: GameRole = "player"
-    active_page: OverlayPage | None = None
+    active_page: OverlayPage | Literal["automation"] | None = None
     page_source: str | None = None
+    active_object_id: str | None = None
     tool_menu_open: bool = False
+    room_customizations: dict[str, dict[str, str]] = field(default_factory=dict)
     decay: float = 8.0
     maintenance_runs: int = 0
+    show_control_hints: bool = True
+    music_enabled: bool = False
+    sprint_toggle_mode: bool = False
+    sprint_toggled: bool = False
+    movement_speed_preset: int = 1
+    game_inventory: list[dict[str, object]] | None = None
+    game_inventory_capacity: int = 24
+    vending_catalog: list[dict[str, object]] | None = None
+    business_stock_lines: list[dict[str, object]] | None = None
+    business_shelf_stock: dict[str, list[dict[str, object]]] = field(default_factory=dict)
+    business_shelf_stock_floor_keys: dict[int, list[str]] = field(default_factory=dict)
+    ghost_listing: dict[str, object] | None = None
+    fiat_balance: int | None = None
+    fiat_spendable: int | None = None
+    selected_vending_index: int = 0
+    game_service_loading: set[str] = field(default_factory=set)
+    shop_freight_shipments_at_dock: list[dict[str, object]] = field(default_factory=list)
+    shop_freight_shipments_in_delivery: list[dict[str, object]] = field(default_factory=list)
+    shop_freight_page_index: int = 0
+    active_shop_shipment: dict[str, object] | None = None
+    pest_uniform_worn: bool = False
+    pest_stamina: int = 100
+    pest_work_orders: dict[str, dict[str, int | bool]] = field(
+        default_factory=lambda: normalize_work_orders({})
+    )
+    active_pest_job: str | None = None
+    collections_case_stage: int = 0
+    collections_case_server_stage: int | None = None
+    open_mic_story_stage: int = 0
+    open_mic_plan_stage: int = 0
+    open_mic_event_stage: int = 0
+    tower_work_advice: str = ""
+    utility_work_target: str | None = None
+    utility_work_started_at: float = 0.0
+    utility_work_active: bool = False
+    relocation_cutscene_pending: bool = False
+    relocation_cutscene_elapsed: float = 0.0
+    relocation_cutscene_seen: bool = False
+
+    @property
+    def displayed_collections_case_stage(self) -> int:
+        stage = (
+            self.collections_case_server_stage
+            if self.collections_case_server_stage is not None
+            else self.collections_case_stage
+        )
+        return max(0, min(5, stage))
 
     @classmethod
     def with_default_roster(
@@ -175,24 +247,148 @@ class OfficeState:
 
     def open_page(
         self,
-        page: OverlayPage,
+        page: OverlayPage | Literal["automation"],
         *,
         from_object: bool = False,
         source: str = "OBJECT",
+        source_object_id: str | None = None,
     ) -> bool:
         """Open shared pages while keeping operator tools role-gated."""
-        if not from_object and not self.has_operator_access:
+        if (
+            not from_object
+            and not self.has_operator_access
+            and page != "customize"
+            and page not in PLAYER_PAGES
+        ):
             self.notice = "ACCESS DENIED / FIND THE LIVE OBJECT"
             return False
         self.active_page = page
         self.page_source = source
+        self.active_object_id = source_object_id if from_object else None
         self.tool_menu_open = False
         self.notice = f"{page.upper()} PAGE / {source}"
+        return True
+
+    def start_pest_job(self, job_id: str) -> bool:
+        if job_id not in PEST_JOB_BY_ID:
+            self.notice = "WORK ORDER NOT FOUND"
+            return False
+        if not self.pest_uniform_worn:
+            self.notice = "EQUIP THE PEST-RESPONSE UNIFORM BEFORE DISPATCH"
+            return False
+        order = self.pest_work_orders[job_id]
+        if order["complete"]:
+            self.notice = "WORK ORDER ALREADY COMPLETE"
+            return False
+        self.active_pest_job = job_id
+        self.notice = f"DISPATCHED / {PEST_JOB_BY_ID[job_id]['label']}"
+        return True
+
+    def record_pest_work_progress(self, event: str) -> bool:
+        """Advance one local order step; this never grants FIAT."""
+        if self.active_pest_job is None:
+            return False
+        job = PEST_JOB_BY_ID.get(self.active_pest_job)
+        if job is None or job["event"] != event:
+            return False
+        order = self.pest_work_orders[self.active_pest_job]
+        if order["complete"]:
+            return False
+        order["progress"] = min(int(job["goal"]), int(order["progress"]) + 1)
+        if int(order["progress"]) >= int(job["goal"]):
+            order["complete"] = True
+            self.notice = f"LOCAL ORDER COMPLETE / {job['label']}"
+            self.active_pest_job = None
+            if all(bool(value["complete"]) for value in self.pest_work_orders.values()):
+                self.begin_relocation_cutscene()
+        else:
+            self.notice = f"{job['progressLabel']} / {order['progress']} OF {job['goal']}"
+        return True
+
+    def advance_collections_case(self, station: str) -> bool:
+        """Advance the local B2 evidence review only from its expected station."""
+        expected_stations = ("clerk", "ledger", "security", "evidence", "clerk")
+        if self.collections_case_stage >= len(expected_stations):
+            self.notice = "CASE FILED / RECORDS PRESERVED FOR SUPERVISOR REVIEW"
+            return False
+        expected = expected_stations[self.collections_case_stage]
+        if station != expected:
+            next_step = {
+                "clerk": "COLLECTIONS CLERK",
+                "ledger": "COLLECTIONS LEDGER",
+                "security": "SECURITY DISPATCH LOG",
+                "evidence": "INVESTIGATIONS DESK",
+            }[expected]
+            self.notice = f"CASE REVIEW / NEXT: {next_step}"
+            return False
+
+        self.collections_case_stage += 1
+        self.notice = (
+            "CASE OPENED / CHECK THE COLLECTIONS LEDGER",
+            "LEDGER FLAGGED / CHECK THE SECURITY DISPATCH LOG",
+            "ACCESS TIMELINE FLAGGED / REVIEW THE EVIDENCE AT INVESTIGATIONS",
+            "CONFLICTING RECORDS / RETURN TO THE COLLECTIONS CLERK",
+            "CASE FILED / RECORDS PRESERVED FOR SUPERVISOR REVIEW",
+        )[self.collections_case_stage - 1]
+        return True
+
+    def begin_relocation_cutscene(self) -> None:
+        if self.relocation_cutscene_seen:
+            return
+        self.relocation_cutscene_seen = True
+        self.relocation_cutscene_pending = True
+        self.relocation_cutscene_elapsed = 0.0
+        self.active_page = "company_relocation"
+        self.page_source = "COMPANY GROWTH"
+        self.active_object_id = None
+        self.notice = "COMPANY MOVE APPROVED / DESTINATION WITHHELD"
+
+    def advance_relocation_cutscene(self, delta_seconds: float) -> None:
+        if not self.relocation_cutscene_pending:
+            return
+        self.relocation_cutscene_elapsed = min(
+            6.0, self.relocation_cutscene_elapsed + max(0.0, delta_seconds)
+        )
+        if self.relocation_cutscene_elapsed >= 6.0:
+            self.relocation_cutscene_pending = False
+            self.notice = "MOVE APPROVED / DESTINATION NOT RELEASED"
+
+    def get_room_customization(self, room_id: str) -> dict[str, str]:
+        """Return a validated room appearance, using defaults for unknown data."""
+        if room_id not in ROOM_IDS:
+            return dict(DEFAULT_ROOM_CUSTOMIZATION)
+        room_customizations = sanitize_room_customizations(self.room_customizations)
+        return room_customizations.get(room_id, dict(DEFAULT_ROOM_CUSTOMIZATION))
+
+    def set_room_customization(
+        self,
+        room_id: str,
+        *,
+        wall_style: str | None = None,
+        decor_style: str | None = None,
+    ) -> bool:
+        """Update only known visual presets; room geometry stays authoritative."""
+        if room_id not in ROOM_IDS:
+            return False
+        current = self.get_room_customization(room_id)
+        if wall_style is not None:
+            if not isinstance(wall_style, str) or wall_style not in WALL_FINISH_BY_ID:
+                return False
+            current["wall_style"] = wall_style
+        if decor_style is not None:
+            if not isinstance(decor_style, str) or decor_style not in DECOR_PRESET_BY_ID:
+                return False
+            current["decor_style"] = decor_style
+        self.room_customizations = sanitize_room_customizations(
+            {**self.room_customizations, room_id: current}
+        )
+        self.notice = f"{room_id.upper()} CUSTOMIZATION SAVED"
         return True
 
     def close_page(self) -> None:
         self.active_page = None
         self.page_source = None
+        self.active_object_id = None
         self.tool_menu_open = False
 
     def toggle_tool_menu(self) -> bool:
@@ -254,6 +450,11 @@ class OfficeState:
     @property
     def net_today(self) -> float:
         return self.total_output - self.total_wages_paid
+
+    @property
+    def shift_payroll_forecast(self) -> float:
+        """Show the roster's full-shift wage commitment without changing settlement."""
+        return round(sum(worker.daily_wage for worker in self.roster.workers), 2)
 
     def add_funds(self, amount: float, label: str) -> None:
         self.funds = round(self.funds + amount, 2)
@@ -325,15 +526,43 @@ class OfficeState:
         destination = Path(path).expanduser()
         destination.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            "version": 1,
+            "version": 3,
             "funds": self.funds,
             "day": self.day,
             "hour": self.hour,
             "minute": self.minute,
             "selected_worker": self.selected_worker,
             "office_inventory": self.office_inventory,
+            "room_customizations": sanitize_room_customizations(
+                self.room_customizations
+            ),
             "decay": self.decay,
             "maintenance_runs": self.maintenance_runs,
+            "player_settings": {
+                "show_control_hints": self.show_control_hints,
+                "music_enabled": self.music_enabled,
+                "sprint_toggle_mode": self.sprint_toggle_mode,
+                "movement_speed_preset": self.movement_speed_preset,
+            },
+            "pest_work": {
+                "uniform_worn": self.pest_uniform_worn,
+                "stamina_cache": max(0, min(100, self.pest_stamina)),
+                "orders": self.pest_work_orders,
+                "active_order": self.active_pest_job,
+                "relocation_seen": self.relocation_cutscene_seen,
+            },
+            "collections_case": {
+                "stage": max(0, min(5, self.collections_case_stage)),
+            },
+            "open_mic_story": {
+                "stage": normalize_open_mic_story_stage(self.open_mic_story_stage),
+            },
+            "open_mic_plan": {
+                "stage": normalize_open_mic_plan_stage(self.open_mic_plan_stage),
+            },
+            "open_mic_event": {
+                "stage": normalize_open_mic_event_stage(self.open_mic_event_stage),
+            },
             "workers": [
                 {
                     "name": worker.name,
@@ -348,6 +577,7 @@ class OfficeState:
                 }
                 for worker in self.roster.workers
             ],
+            "rivalry": self.rivalry.to_dict(),
             "ledger": [
                 {"label": entry.label, "amount": entry.amount, "balance": entry.balance}
                 for entry in self.ledger[-100:]
@@ -386,6 +616,8 @@ class OfficeState:
             ]
             if workers:
                 state.roster.workers = workers
+            if "rivalry" in payload:
+                state.rivalry = RivalryEngine.from_dict(payload["rivalry"])
             state.funds = float(payload.get("funds", state.funds))
             state.day = max(1, int(payload.get("day", state.day)))
             state.hour = max(0, min(23, int(payload.get("hour", state.hour))))
@@ -395,8 +627,73 @@ class OfficeState:
                 str(key): max(0, int(value))
                 for key, value in payload.get("office_inventory", {}).items()
             }
+            state.room_customizations = sanitize_room_customizations(
+                payload.get("room_customizations", {})
+            )
             state.decay = max(0.0, min(100.0, float(payload.get("decay", state.decay))))
             state.maintenance_runs = max(0, int(payload.get("maintenance_runs", 0)))
+            player_settings = payload.get("player_settings", {})
+            if isinstance(player_settings, dict):
+                state.show_control_hints = player_settings.get("show_control_hints") is not False
+                state.music_enabled = player_settings.get("music_enabled") is True
+                state.sprint_toggle_mode = player_settings.get("sprint_toggle_mode") is True
+                try:
+                    state.movement_speed_preset = max(
+                        0, min(2, int(player_settings.get("movement_speed_preset", 1)))
+                    )
+                except (TypeError, ValueError):
+                    state.movement_speed_preset = 1
+            pest_work = payload.get("pest_work", {})
+            if isinstance(pest_work, dict):
+                state.pest_uniform_worn = pest_work.get("uniform_worn") is True
+                try:
+                    state.pest_stamina = max(
+                        0, min(100, int(pest_work.get("stamina_cache", 100)))
+                    )
+                except (TypeError, ValueError):
+                    state.pest_stamina = 100
+                state.pest_work_orders = normalize_work_orders(pest_work.get("orders"))
+                active_order = pest_work.get("active_order")
+                state.active_pest_job = (
+                    active_order
+                    if isinstance(active_order, str)
+                    and active_order in PEST_JOB_BY_ID
+                    and not bool(state.pest_work_orders[active_order]["complete"])
+                    else None
+                )
+                state.relocation_cutscene_seen = pest_work.get("relocation_seen") is True
+            collections_case = payload.get("collections_case", {})
+            if isinstance(collections_case, dict):
+                try:
+                    state.collections_case_stage = max(
+                        0, min(5, int(collections_case.get("stage", 0)))
+                    )
+                except (TypeError, ValueError):
+                    state.collections_case_stage = 0
+            open_mic_story = payload.get("open_mic_story", {})
+            if isinstance(open_mic_story, dict):
+                state.open_mic_story_stage = normalize_open_mic_story_stage(
+                    open_mic_story.get("stage", 0)
+                )
+            open_mic_event = payload.get("open_mic_event", {})
+            if isinstance(open_mic_event, dict):
+                state.open_mic_event_stage = normalize_open_mic_event_stage(
+                    open_mic_event.get("stage", 0)
+                )
+            if "open_mic_plan" in payload:
+                open_mic_plan = payload.get("open_mic_plan")
+                state.open_mic_plan_stage = normalize_open_mic_plan_stage(
+                    open_mic_plan.get("stage", 0)
+                    if isinstance(open_mic_plan, dict)
+                    else 0
+                )
+            elif (
+                state.open_mic_story_stage >= 5
+                and state.open_mic_event_stage > 0
+            ):
+                # Preserve progress from saves created before the planning
+                # conversations were added to the completed story chapter.
+                state.open_mic_plan_stage = OPEN_MIC_PLAN_COMPLETE_STAGE
             entries = payload.get("ledger", [])
             if entries:
                 state.ledger = [
@@ -489,6 +786,9 @@ class OfficeState:
         self.drawer_open = False
         self.selected_worker = None
         self.notice = "SHIFT READY"
+        self.open_mic_story_stage = 0
+        self.open_mic_plan_stage = 0
+        self.open_mic_event_stage = 0
         self.work_minutes_today = 0
         self.work_minutes_since_break = 0
         self.break_kind = None
@@ -501,6 +801,7 @@ class OfficeState:
         self.recruitment_open = False
         self.active_page = None
         self.page_source = None
+        self.active_object_id = None
         self.tool_menu_open = False
         self.decay = fresh.decay
         self.maintenance_runs = 0

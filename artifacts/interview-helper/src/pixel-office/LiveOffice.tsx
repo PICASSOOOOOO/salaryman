@@ -13,8 +13,8 @@
  *     watching it from the outside.
  *
  * Tier-aware: the floor is tinted to match the user's onboarding office
- * tier (capsule / studio / coworking / suite) so the pick they made at
- * Immigration is reflected in the room they actually sit in.
+ * tier (capsule / studio / coworking / suite) so the pick they made during
+ * onboarding is reflected in the room they actually sit in.
  *
  * What this is NOT:
  *   - Not the editor. Furniture/floor/wall placement is intentionally

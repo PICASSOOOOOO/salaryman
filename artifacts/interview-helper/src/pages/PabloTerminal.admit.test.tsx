@@ -53,6 +53,10 @@ vi.mock("@/lib/tts", () => ({
     if (onDone) onDone();
     return { cancel: () => {} };
   },
+  whenAudioUnlocked: (callback: () => void) => {
+    callback();
+    return () => {};
+  },
   unlockAudio: async () => {},
   armAudioAutoUnlock: () => {},
 }));
@@ -164,16 +168,16 @@ describe("Pablo front-door admittance flow", () => {
       expect(input.placeholder).not.toBe("Type your name");
       expect(input.placeholder).not.toBe("Type your email");
     }
-    expect(spokenTts).toContain("Cleared, Returning Rita. Heading in.");
-    expect(spokenTts).not.toContain("Cleared, RETURNING RITA. Heading in.");
+    expect(spokenTts).toContain("Thanks, Returning Rita. Let's continue to sign-in.");
+    expect(spokenTts).not.toContain("Thanks, RETURNING RITA. Let's continue to sign-in.");
   });
 
-  it("admits a returning visitor saying 'show me your papers' without re-asking name/email", async () => {
-    window.localStorage.setItem("salaryman_name", "Paper Pete");
+  it("admits a returning visitor saying 'I'm ready' without re-asking name/email", async () => {
+    window.localStorage.setItem("salaryman_name", "Ready Rita");
     window.localStorage.setItem("salaryman_email", "pete@example.com");
 
     await mount();
-    await typeAndSend("show me your papers");
+    await typeAndSend("I'm ready");
 
     expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
     const input = qs("pablo-text-input") as HTMLInputElement | null;
@@ -207,19 +211,38 @@ describe("Pablo front-door admittance flow", () => {
     expect(window.localStorage.getItem("salaryman_email")).toBe("alex@example.com");
   });
 
-  it("sends the header START WORK button straight to sign-in", async () => {
+  it("does not expose the work launcher before sign-in", async () => {
     await mount();
     expect(qs("pablo-auth-choice")).toBeNull();
+    expect(qs("pablo-enter-tower")).toBeNull();
+    expect(qs("pablo-sign-in")).toBeNull();
+  });
 
-    const signIn = qs("pablo-sign-in") as HTMLButtonElement;
-    expect(signIn, "header start-work button should render for logged-out users").not.toBeNull();
-    await act(async () => {
-      signIn.click();
-    });
-    await flush();
+  it("answers Pablo pricing questions without starting signup", async () => {
+    await mount();
+    await typeAndSend("Is it free to talk with Pablo?");
 
-    expect(qs("pablo-auth-choice"), "header entry should not add an intermediate modal").toBeNull();
-    expect(window.location.pathname).toBe("/sign-in");
-    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe("/console");
+    expect(qs("pablo-auth-choice")).toBeNull();
+    expect(spokenTts).toContain(
+      "Pablo chat is free without an account. To use other SALARYMAN features, you'll need to sign up; some optional features have a cost.",
+    );
+    expect(window.localStorage.getItem("salaryman_name")).toBeNull();
+    expect(window.localStorage.getItem("salaryman_email")).toBeNull();
+    const input = qs("pablo-text-input") as HTMLInputElement | null;
+    if (input) {
+      expect(input.placeholder).not.toBe("Type your name");
+      expect(input.placeholder).not.toBe("Type your email");
+    }
+  });
+
+  it("starts account intake when a visitor requests a non-Pablo feature", async () => {
+    await mount();
+    await typeAndSend("Open my dashboard");
+
+    expect(spokenTts).toContain(
+      "For that I'll need to set you up with an account — what should I call you?",
+    );
+    expect(qs("pablo-auth-choice")).toBeNull();
+    expect((qs("pablo-text-input") as HTMLInputElement).placeholder).toBe("Type your name");
   });
 });

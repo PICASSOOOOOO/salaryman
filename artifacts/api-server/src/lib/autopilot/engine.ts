@@ -4,29 +4,27 @@ import {
   AUTOPILOT_DOMAINS,
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
+  AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES,
+  AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES,
   type AutopilotConfig,
   type AutopilotDomain,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import { recordAutopilotActivity } from "./activity";
 import { evaluateConfigGuardrails, checkEntitlement, checkCredit } from "./guardrails";
-import type { AutopilotContext, AutopilotHandler, AutopilotLogInput } from "./types";
+import { AUTOPILOT_ASSISTANT_NAME, type AutopilotContext, type AutopilotHandler, type AutopilotLogInput } from "./types";
 
 // ─── Autopilot engine ────────────────────────────────────────────────────────
 // A SINGLE server-side recurring scheduler. Each base tick it finds orgs with an
-// enabled domain + assigned bot whose cadence has elapsed, clears the shared
-// guardrails, and invokes that domain's registered handler. Handlers are no-ops
-// in this foundation task; the four dependent tasks register the real behavior
-// via `registerAutopilotHandler`.
+// enabled domain whose cadence has elapsed, clears the shared guardrails, and
+// invokes that domain's registered handler as Pablo Prime.
 
 // ── Handler registry ─────────────────────────────────────────────────────────
 const noopHandler: AutopilotHandler = async (ctx) => {
-  // Foundation placeholder. The dependent domain task replaces this by calling
-  // registerAutopilotHandler(<domain>, realHandler). Recording a noop keeps the
-  // activity feed honest: it shows the autopilot is alive but not yet acting.
+  // Safe fallback if a supported handler was not registered during server boot.
   await ctx.log({
     action: "tick",
-    summary: `${ctx.domain} autopilot ran — no automated behavior implemented yet.`,
+    summary: `${ctx.domain} has no registered automation handler.`,
     outcome: "noop",
   });
 };
@@ -36,9 +34,11 @@ const handlers: Record<AutopilotDomain, AutopilotHandler> = {
   marketing: noopHandler,
   crm_calls: noopHandler,
   accounting: noopHandler,
+  creative_work: noopHandler,
+  market_research: noopHandler,
 };
 
-/** Register the real handler for a domain (called by the dependent tasks). */
+/** Register the handler for a domain during server boot. */
 export function registerAutopilotHandler(domain: AutopilotDomain, handler: AutopilotHandler): void {
   handlers[domain] = handler;
 }
@@ -50,15 +50,44 @@ let ticking = false; // reentrancy guard: never overlap two evaluation passes
 
 function cadenceElapsed(config: AutopilotConfig, now: number): boolean {
   if (!config.lastRunAt) return true;
-  const cadenceMin = config.cadenceMinutes ?? AUTOPILOT_DEFAULT_CADENCE_MINUTES;
+  const cadenceMin = minimumCadence(config);
   const dueAt = new Date(config.lastRunAt).getTime() + cadenceMin * 60_000;
   return now >= dueAt;
+}
+
+function minimumCadence(config: AutopilotConfig): number {
+  if (config.domain === "creative_work") {
+    return Math.max(config.cadenceMinutes ?? AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES, AUTOPILOT_CREATIVE_WORK_CADENCE_MINUTES);
+  }
+  if (config.domain === "market_research") {
+    return Math.max(config.cadenceMinutes ?? AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES, AUTOPILOT_MARKET_RESEARCH_CADENCE_MINUTES);
+  }
+  return config.cadenceMinutes ?? AUTOPILOT_DEFAULT_CADENCE_MINUTES;
+}
+
+/**
+ * Atomically claim a due config so separate API server instances cannot run
+ * the same org/domain concurrently. The database predicate rechecks enabled
+ * state and cadence after the scheduler's read.
+ */
+export async function claimAutopilotRunSlot(config: AutopilotConfig, now = new Date()): Promise<boolean> {
+  const cutoff = new Date(now.getTime() - minimumCadence(config) * 60_000);
+  const [claimed] = await db
+    .update(autopilotConfigsTable)
+    .set({ lastRunAt: now })
+    .where(and(
+      eq(autopilotConfigsTable.id, config.id),
+      eq(autopilotConfigsTable.enabled, true),
+      or(isNull(autopilotConfigsTable.lastRunAt), lte(autopilotConfigsTable.lastRunAt, cutoff)),
+    ))
+    .returning({ id: autopilotConfigsTable.id });
+  return !!claimed;
 }
 
 /** Build the per-run context handed to a domain handler. */
 function buildContext(
   config: AutopilotConfig,
-  pass: { bot: AutopilotContext["bot"]; ownerId: string; ownerEmail: string | null; maxActions: number }
+  pass: { ownerId: string; ownerEmail: string | null; maxActions: number }
 ): AutopilotContext {
   const domain = config.domain as AutopilotDomain;
   let actionsUsed = 0;
@@ -67,7 +96,7 @@ function buildContext(
     recordAutopilotActivity({
       orgId: config.orgId,
       domain,
-      botId: config.botId,
+      botId: null,
       action: input.action,
       summary: input.summary,
       outcome: input.outcome,
@@ -78,7 +107,7 @@ function buildContext(
     orgId: config.orgId,
     domain,
     config,
-    bot: pass.bot,
+    assistantName: AUTOPILOT_ASSISTANT_NAME,
     ownerId: pass.ownerId,
     ownerEmail: pass.ownerEmail,
     maxActions: pass.maxActions,
@@ -109,7 +138,7 @@ function buildContext(
       return ok;
     },
     async ensureCredit() {
-      const r = await checkCredit(pass.ownerId, pass.ownerEmail, pass.bot?.id ?? null);
+      const r = await checkCredit(pass.ownerId, pass.ownerEmail);
       if (!r.allowed) {
         await log({
           action: "blocked",
@@ -124,21 +153,16 @@ function buildContext(
   return ctx;
 }
 
-/** Process one config: guardrails → handler. Marks lastRunAt before invoking. */
-async function runConfig(config: AutopilotConfig): Promise<void> {
+/** Process one config: atomic cadence claim → guardrails → handler. */
+async function runConfig(config: AutopilotConfig, now: Date): Promise<void> {
+  if (!(await claimAutopilotRunSlot(config, now))) return;
   const guard = await evaluateConfigGuardrails(config, AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK);
 
-  // Claim the slot up front so a slow/failing handler can't double-run next tick.
-  await db.update(autopilotConfigsTable).set({ lastRunAt: new Date() }).where(eq(autopilotConfigsTable.id, config.id));
-
   if (!guard.ok) {
-    // bot_unassigned is the normal "enabled but no bot picked" state — stay quiet
-    // to avoid spamming the feed every cadence.
-    if (guard.reason === "bot_unassigned") return;
     await recordAutopilotActivity({
       orgId: config.orgId,
       domain: config.domain as AutopilotDomain,
-      botId: config.botId,
+      botId: null,
       action: "blocked",
       summary: `Autopilot could not run: ${guard.reason.replace(/_/g, " ")}.`,
       outcome: "blocked",
@@ -156,7 +180,7 @@ async function runConfig(config: AutopilotConfig): Promise<void> {
     await recordAutopilotActivity({
       orgId: config.orgId,
       domain: config.domain as AutopilotDomain,
-      botId: config.botId,
+      botId: null,
       action: "error",
       summary: `Autopilot handler threw an error: ${err instanceof Error ? err.message : "unknown error"}`,
       outcome: "error",
@@ -170,12 +194,13 @@ export async function runAutopilotTick(): Promise<void> {
   ticking = true;
   try {
     const enabled = await db.select().from(autopilotConfigsTable).where(eq(autopilotConfigsTable.enabled, true));
-    const now = Date.now();
+    const tickTime = new Date();
+    const now = tickTime.getTime();
     for (const config of enabled) {
       if (!AUTOPILOT_DOMAINS.includes(config.domain as AutopilotDomain)) continue;
       if (!cadenceElapsed(config, now)) continue;
       try {
-        await runConfig(config);
+        await runConfig(config, tickTime);
       } catch (err) {
         console.error(`[Autopilot] runConfig failed (org ${config.orgId}, ${config.domain}):`, err);
       }

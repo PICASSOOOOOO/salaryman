@@ -1,5 +1,27 @@
 # The format of this file is identical to `.dockerignore`.
 # It is used to reduce the size of deployed images to make the process of publishing faster.
 
+# Deployment builds install dependencies and do not need repository history,
+# local caches.
+.git/
+.cache/
+
+# Reference uploads are not read by production services; shipped web assets
+# live in the artifact's public directory.
+attached_assets/
+
 # No need to store the pnpm store twice.
 .local
+generated-artifacts/
+
+# Keep the workspace-wide dependency tree (all apps + development tools) out
+# of the image. The API build stages only its production dependencies here.
+**/node_modules/
+!artifacts/api-server/dist/runtime/node_modules/
+!artifacts/api-server/dist/runtime/node_modules/**
+
+# Repository exports and generated desktop build caches are not used by
+# production builds. Keep dist/releases: the API serves those downloads.
+exports/
+build/
+generated-artifacts/

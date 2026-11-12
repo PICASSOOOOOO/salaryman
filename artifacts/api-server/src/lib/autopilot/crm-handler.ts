@@ -11,16 +11,20 @@
 // Twilio CONFERENCE that a human agent joins from the browser — there is no
 // unattended equivalent, so the bot does NOT auto-place those calls. Automated
 // outreach is SMS, which is fully self-driving. Inbound/IVR is out of scope.
-import { db, leadRecordsTable, crmActivitiesTable } from "@workspace/db";
-import { and, eq, inArray, desc } from "drizzle-orm";
+import {
+  db,
+  autopilotActivityLogTable,
+  contactChannelPrefsTable,
+  contactsTable,
+  leadRecordsTable,
+  crmActivitiesTable,
+} from "@workspace/db";
+import { and, eq, inArray, desc, sql } from "drizzle-orm";
 import type { AutopilotContext, AutopilotHandler } from "./types";
 import { checkEntitlement } from "./guardrails";
 import { readCrmPrefs, resolveCrmLeadStatuses } from "./crm-prefs";
 import { sendSmsMessage } from "../telephony-service";
-import { creditOrgAccount } from "../../routes/org-accounts";
-
-// Fiat credited to org checking per successfully sent lead follow-up SMS.
-const BOT_SMS_REVENUE_FIAT = 25;
+import { toE164 } from "../phone";
 
 // Telephony's manual paths gate on the `phone_system` plan feature (bundled by
 // PABLO / claw_bot). Autopilot mirrors that exact gate.
@@ -59,6 +63,53 @@ async function lastOutboundTouchMs(orgId: number, leadId: number): Promise<numbe
   return row?.occurredAt ? new Date(row.occurredAt).getTime() : 0;
 }
 
+async function lastFailedFollowUpMs(orgId: number, leadId: number): Promise<number> {
+  const [row] = await db
+    .select({ createdAt: autopilotActivityLogTable.createdAt })
+    .from(autopilotActivityLogTable)
+    .where(and(
+      eq(autopilotActivityLogTable.orgId, orgId),
+      eq(autopilotActivityLogTable.domain, "crm_calls"),
+      eq(autopilotActivityLogTable.action, "sms_followup"),
+      eq(autopilotActivityLogTable.outcome, "error"),
+      sql`${autopilotActivityLogTable.detail}->>'leadId' = ${String(leadId)}`,
+    ))
+    .orderBy(desc(autopilotActivityLogTable.createdAt))
+    .limit(1);
+  return row?.createdAt ? new Date(row.createdAt).getTime() : 0;
+}
+
+function normalizedPhoneKey(phone: string): string {
+  return toE164(phone) ?? phone.trim();
+}
+
+async function getSmsOptedOutPhoneKeys(userId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({
+      contactId: contactsTable.id,
+      phone: contactsTable.phone,
+      smsOptIn: contactChannelPrefsTable.smsOptIn,
+    })
+    .from(contactsTable)
+    .innerJoin(contactChannelPrefsTable, and(
+      eq(contactChannelPrefsTable.contactId, contactsTable.id),
+      eq(contactChannelPrefsTable.userId, userId),
+    ))
+    .where(eq(contactsTable.userId, userId))
+    .orderBy(desc(contactChannelPrefsTable.updatedAt));
+  const latestByContact = new Map<number, { phone: string; smsOptIn: boolean }>();
+  for (const row of rows) {
+    if (!latestByContact.has(row.contactId)) {
+      latestByContact.set(row.contactId, { phone: row.phone, smsOptIn: row.smsOptIn });
+    }
+  }
+  return new Set(
+    [...latestByContact.values()]
+      .filter((row) => !row.smsOptIn && row.phone.trim())
+      .map((row) => normalizedPhoneKey(row.phone)),
+  );
+}
+
 export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotContext) => {
   // Mirror the manual telephony gate. We DON'T hard-fail when missing — per the
   // spec the bot still records the INTENDED follow-up so the org sees what it
@@ -84,10 +135,18 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
     );
 
   const now = Date.now();
+  const optedOutPhoneKeys = await getSmsOptedOutPhoneKeys(ctx.ownerId);
+  let optedOut = 0;
   const due: { lead: typeof leadRecordsTable.$inferSelect; lastTouchMs: number }[] = [];
   for (const lead of candidates) {
     if (!lead.phone || !lead.phone.trim()) continue;
-    const lastTouchMs = await lastOutboundTouchMs(ctx.orgId, lead.id);
+    if (optedOutPhoneKeys.has(normalizedPhoneKey(lead.phone))) {
+      optedOut++;
+      continue;
+    }
+    const lastOutboundMs = await lastOutboundTouchMs(ctx.orgId, lead.id);
+    if (now - lastOutboundMs < followUpIntervalMs) continue;
+    const lastTouchMs = Math.max(lastOutboundMs, await lastFailedFollowUpMs(ctx.orgId, lead.id));
     if (now - lastTouchMs < followUpIntervalMs) continue;
     due.push({ lead, lastTouchMs });
   }
@@ -97,9 +156,11 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
   if (due.length === 0) {
     await ctx.log({
       action: "tick",
-      summary: "CRM autopilot ran — no leads due for follow-up.",
+      summary: optedOut
+        ? `CRM autopilot ran — no leads due for follow-up; ${optedOut} opted-out lead(s) suppressed.`
+        : "CRM autopilot ran — no leads due for follow-up.",
       outcome: "noop",
-      detail: { candidates: candidates.length, due: 0 },
+      detail: { candidates: candidates.length, due: 0, smsOptedOut: optedOut },
     });
     return;
   }
@@ -167,22 +228,10 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
   await ctx.log({
     action: "tick",
     summary: entitled
-      ? `CRM autopilot worked the lead list — ${sent} SMS follow-up(s) sent${failed ? `, ${failed} failed` : ""} (${due.length} due).`
+      ? `CRM autopilot worked the lead list — ${sent} SMS follow-up(s) sent${failed ? `, ${failed} failed` : ""} (${due.length} due${optedOut ? `, ${optedOut} opted out` : ""}).`
       : `CRM autopilot found ${due.length} lead(s) due but the org lacks the phone-system entitlement — recorded ${intended} intended follow-up(s) without sending.`,
     outcome: sent > 0 || intended > 0 ? "success" : failed > 0 ? "error" : "noop",
-    detail: { candidates: candidates.length, due: due.length, sent, intended, failed, entitled },
+    detail: { candidates: candidates.length, due: due.length, sent, intended, failed, entitled, smsOptedOut: optedOut },
   });
 
-  // Shadow-credit org checking for each successful lead follow-up SMS.
-  // Fire-and-forget — never block the CRM tick.
-  if (sent > 0) {
-    creditOrgAccount(
-      ctx.orgId,
-      "checking",
-      BOT_SMS_REVENUE_FIAT * sent,
-      `${ctx.bot.name} — ${sent} lead follow-up(s)`,
-      "bot",
-      ctx.ownerId,
-    ).catch(() => {/* non-critical */});
-  }
 };

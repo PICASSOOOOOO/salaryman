@@ -16,6 +16,7 @@ import {
   CheckCircle, AlertTriangle, Clock, Loader2, X, MapPin, Zap,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 import { getCityCurrency, getCityMultiplier } from "@/lib/currency";
 import { getActiveCityId, hydrateActiveCityFromSave } from "@/lib/city-defs";
 
@@ -112,9 +113,12 @@ interface CityMarketDisplay {
 }
 
 export default function BusinessServices() {
+  const { user, isAuthenticated, isLoading: authLoading, login } = useAuth();
   hydrateActiveCityFromSave();
   const [location, navigate] = useLocation();
-  const [tab, setTab] = useState<Tab>("browse");
+  const [tab, setTab] = useState<Tab>(() =>
+    new URLSearchParams(window.location.search).get("tab") === "mine" ? "mine" : "browse"
+  );
   const [listings, setListings] = useState<ServiceListing[]>([]);
   const [mine, setMine] = useState<ServiceListing[]>([]);
   const [bounties, setBounties] = useState<Bounty[]>([]);
@@ -175,12 +179,16 @@ export default function BusinessServices() {
   }, [catFilter, tenantBusinessKey]);
 
   const loadMine = useCallback(async () => {
+    setMine([]);
+    if (!isAuthenticated) {
+      return;
+    }
     try {
       const query = tenantBusinessKey ? `?tenant=${encodeURIComponent(tenantBusinessKey)}` : "";
       const r = await apiFetch(`api/services/mine${query}`, { credentials: "include" });
       if (r.ok) setMine((await r.json()).listings ?? []);
     } catch { /* */ }
-  }, [tenantBusinessKey]);
+  }, [tenantBusinessKey, isAuthenticated, user?.id]);
 
   const loadBounties = useCallback(async () => {
     try {
@@ -196,8 +204,12 @@ export default function BusinessServices() {
     } catch { /* */ }
   }, []);
 
-  useEffect(() => { void loadListings(); void loadMine(); void loadBounties(); void loadVehicles(); },
-    [loadListings, loadMine, loadBounties, loadVehicles]);
+  useEffect(() => {
+    void loadListings();
+    if (isAuthenticated) void loadMine();
+    void loadBounties();
+    void loadVehicles();
+  }, [loadListings, loadMine, loadBounties, loadVehicles, isAuthenticated, user?.id]);
 
   async function doAction(path: string, method = "POST", body?: object) {
     setBusy(true); setMsg(null);
@@ -301,8 +313,19 @@ export default function BusinessServices() {
             tenantName={tenantContext?.name ?? null} tenantUnavailable={tenantViewUnavailable} />
         )}
         {tab === "mine" && (
-          <MyGigsTab listings={mine} onComplete={completeGig} onDispute={disputeGig}
-            onCancel={cancelGig} busy={busy} setRatingTarget={setRatingTarget} cityMarket={cityMarket} />
+          authLoading ? (
+            <div className="py-12 text-center text-xs text-zinc-500">Checking sign-in…</div>
+          ) : !isAuthenticated ? (
+            <div className="border border-dashed border-zinc-700/50 rounded px-4 py-8 text-center text-xs text-zinc-400">
+              Sign in to view and manage your gigs.
+              <button type="button" onClick={() => login("/business/services?tab=mine")} className="ml-2 text-cyan-200 underline underline-offset-4">
+                Sign in
+              </button>
+            </div>
+          ) : (
+            <MyGigsTab listings={mine} onComplete={completeGig} onDispute={disputeGig}
+              onCancel={cancelGig} busy={busy} setRatingTarget={setRatingTarget} cityMarket={cityMarket} />
+          )
         )}
         {tab === "bounties" && (
           <BountyTab bounties={bounties} onAccept={acceptBounty} onCollect={collectBounty}
@@ -396,9 +419,9 @@ function MyGigsTab({ listings, onComplete, onDispute, onCancel, busy, setRatingT
       {listings.map((l) => (
         <div key={l.id} className="rounded-xl border border-zinc-700/40 bg-zinc-900/30 p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <div>
+            <div className="min-w-0">
               <span className={`text-[9px] tracking-[0.3em] px-1.5 py-0.5 rounded mr-2 ${statusColor(l.status)}`}>{l.status.toUpperCase()}</span>
-              <span className="text-zinc-100 text-sm">{l.title}</span>
+              <span className="text-zinc-100 text-sm min-w-0 break-words">{l.title}</span>
             </div>
              <span className="text-cyan-200 text-xs shrink-0">{cityMarket.currencySymbol}{Math.round(l.payFiat * cityMarket.laborMultiplier).toLocaleString("en-US")}{l.payType === "hourly" ? "/hr" : ""}</span>
           </div>
@@ -466,7 +489,7 @@ function BountyTab({ bounties, onAccept, onCollect, onCancel, busy }: {
       {bounties.map((b) => (
         <div key={b.id} className="rounded-xl border border-red-700/30 bg-red-950/10 p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <div>
+            <div className="min-w-0">
               <span className="text-red-300 font-bold text-sm tracking-wide" style={{ fontFamily: "var(--font-sans)" }}>
                 TARGET: {b.targetName}
               </span>
@@ -578,7 +601,7 @@ function ServiceCard({ listing, cityMarket, children }: { listing: ServiceListin
   return (
     <div className="rounded-xl border border-zinc-700/40 bg-zinc-900/30 p-3 flex flex-col">
       <div className="flex items-start justify-between gap-2 mb-1">
-        <span className="text-zinc-100 text-sm font-medium">{listing.title}</span>
+        <span className="text-zinc-100 text-sm font-medium min-w-0 break-words">{listing.title}</span>
         <span className="text-cyan-200 text-xs shrink-0 font-bold">{cityMarket.currencySymbol}{displayedPay.toLocaleString("en-US")}{listing.payType === "hourly" ? "/hr" : ""}</span>
       </div>
       <div className="text-[10px] text-zinc-500 mb-1">

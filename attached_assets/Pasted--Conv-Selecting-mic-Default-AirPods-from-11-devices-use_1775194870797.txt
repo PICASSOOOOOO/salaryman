@@ -1,0 +1,86 @@
+[Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] onstop: 8 chunks, totalSize=102963
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Sending audio to server for transcription...
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+use-voice-conversation-7ANAPDJ5.js:1  POST https://salaryman.replit.app/api/transcribe 500 (Internal Server Error)
+te @ use-voice-conversation-7ANAPDJ5.js:1
+await in te
+C.onstop @ use-voice-conversation-7ANAPDJ5.js:1Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] onstop: 8 chunks, totalSize=128751
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Sending audio to server for transcription...
+use-voice-conversation-7ANAPDJ5.js:1  POST https://salaryman.replit.app/api/transcribe 500 (Internal Server Error)
+te @ use-voice-conversation-7ANAPDJ5.js:1
+await in te
+C.onstop @ use-voice-conversation-7ANAPDJ5.js:1Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] onstop: 8 chunks, totalSize=128751
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Sending audio to server for transcription...
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Transcription: "Hello. Why is the sky blue?"
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Sending to advisor: "Hello. Why is the sky blue?..."
+MarkdownRenderer-2ffm0iD6.js:6  POST https://salaryman.replit.app/api/interview/advisor 400 (Bad Request)
+(anonymous) @ MarkdownRenderer-2ffm0iD6.js:6
+(anonymous) @ use-voice-conversation-7ANAPDJ5.js:1
+Promise.then
+C.onstop @ use-voice-conversation-7ANAPDJ5.js:1Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Advisor response: "..." (0 chars)
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] onstop: 8 chunks, totalSize=127799
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Sending audio to server for transcription...
+use-voice-conversation-7ANAPDJ5.js:1  POST https://salaryman.replit.app/api/transcribe 500 (Internal Server Error)
+te @ use-voice-conversation-7ANAPDJ5.js:1
+await in te
+C.onstop @ use-voice-conversation-7ANAPDJ5.js:1Understand this error
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Selecting mic: "Default - AirPods" (from 11 devices)
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Fresh mic stream, device: Default - AirPods
+use-voice-conversation-7ANAPDJ5.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CMCQZO7X.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CMCQZO7X.js:9
+(anonymous) @ index-CMCQZO7X.js:9Understand this error

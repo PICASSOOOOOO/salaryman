@@ -29,10 +29,10 @@ import { createHmac, randomBytes } from "crypto";
 
 const router = Router();
 
-if (!process.env.OAUTH_STATE_SECRET) {
-  console.warn("[Trading] OAUTH_STATE_SECRET env var not set — using ephemeral key (restarts invalidate active OAuth flows)");
+if (!process.env.OAUTH_STATE_SECRET && !process.env.SESSION_SECRET) {
+  console.warn("[Trading] OAUTH_STATE_SECRET and SESSION_SECRET are not set — using ephemeral key (restarts invalidate active OAuth flows)");
 }
-const OAUTH_STATE_SECRET = process.env.OAUTH_STATE_SECRET || randomBytes(32).toString("hex");
+const OAUTH_STATE_SECRET = process.env.OAUTH_STATE_SECRET || process.env.SESSION_SECRET || randomBytes(32).toString("hex");
 
 function signState(payload: string): string {
   const sig = createHmac("sha256", OAUTH_STATE_SECRET).update(payload).digest("base64url");

@@ -133,7 +133,7 @@ export default function PabloOffice() {
   const [bots, setBots] = useState<MonitorBot[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
   // Read the user's onboarding office tier once on mount. localStorage
-  // is the source of truth here — Immigration writes it after the user
+  // is the source of truth here — Onboarding writes it after the user
   // makes their pick, and the value is stable for the session.
   const [tier, setTier] = useState<SalarymanOfficeTier>(() => getSalarymanOfficeTier() ?? 'capsule');
   useEffect(() => startPendingHousingAssessmentRetry(), []);
@@ -246,8 +246,10 @@ export default function PabloOffice() {
   // object → take the elevator), and stepping into the elevator naturally
   // begins the run. Progress persists per slot.
   const slot = currentSlot();
-  const [towerFloor, setTowerFloor] = useState<{ canManage?: boolean; floor: { id: string; city: string; floorNumber: number; tenure: string; orgId?: number | null; ownerUserId?: string | null; leaseExpiresAt?: string | null; archetype: string; settings?: { hallway?: { style: "central" | "gallery" | "executive"; lighting: "dim" | "normal" | "bright" | "warm" | "cool"; signage?: string } } }; plan: ShadowTowerPlan; assignments: Array<{ workstationKey: string; assigneeType: "human" | "bot"; assigneeUserId?: string | null; botId?: number | null }>; botGroups: Array<{ purpose: string; permissionSignature: string; canonicalBotId: number; botIds: number[] }> } | null>(null);
-  const officeLayout = useMemo(() => towerFloor ? officePropertyLayoutFromPlan(towerFloor.plan) : getShadowTowerOfficeLayout("minx_city", 1, "founder_team"), [towerFloor]);
+  const [towerFloor, setTowerFloor] = useState<{ canManage?: boolean; authorizedUnitNumbers?: number[]; manageableUnitNumbers?: number[]; floor: { id: string; city: string; floorNumber: number; tenure: string; orgId?: number | null; ownerUserId?: string | null; leaseExpiresAt?: string | null; archetype: string; settings?: { hallway?: { style: "central" | "gallery" | "executive"; lighting: "dim" | "normal" | "bright" | "warm" | "cool"; signage?: string } } }; plan: ShadowTowerPlan; assignments: Array<{ workstationKey: string; assigneeType: "human" | "bot"; assigneeUserId?: string | null; botId?: number | null }>; botGroups: Array<{ purpose: string; permissionSignature: string; canonicalBotId: number; botIds: number[] }> } | null>(null);
+  const officeLayout = useMemo(() => towerFloor
+    ? officePropertyLayoutFromPlan(towerFloor.plan, undefined, [], true, towerFloor.authorizedUnitNumbers ?? [])
+    : getShadowTowerOfficeLayout("minx_city", 1, "founder_team"), [towerFloor]);
   const officeName = towerFloor?.floor.settings?.hallway?.signage?.trim()
     || (towerFloor
       ? defaultShadowTowerOfficeName(towerFloor.plan.city, towerFloor.floor.floorNumber)
@@ -739,6 +741,44 @@ export default function PabloOffice() {
   // edge, the player walks, and the camera reveals more floor.
   const followCam = !surveillance;
 
+  const interactSuiteDoor = useCallback(async (roomId: string) => {
+    const room = officeLayout.rooms.find((candidate) => candidate.id === roomId);
+    const unitNumber = Number(roomId.match(/(\d+)$/)?.[1]);
+    if (!towerFloor || !room || !Number.isInteger(unitNumber)) return;
+    if (room.locked) {
+      const password = window.prompt(`Enter password for ${room.label ?? "this suite"}`);
+      if (password == null) return;
+      const response = await apiFetch(`/api/shadow-tower/floors/${towerFloor.floor.id}/units/${unitNumber}/access/check`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        toast({ title: "SUITE ACCESS DENIED", description: body.error ?? "Check the password and try again.", variant: "destructive" });
+        return;
+      }
+      setTowerFloor((current) => current ? {
+        ...current,
+        authorizedUnitNumbers: [...new Set([...(current.authorizedUnitNumbers ?? []), unitNumber])],
+      } : current);
+      toast({ title: "SUITE UNLOCKED", description: "You can enter while you remain in this office session." });
+      return;
+    }
+    if (!towerFloor.canManage && !towerFloor.manageableUnitNumbers?.includes(unitNumber)) {
+      toast({ title: "SUITE ACCESS", description: "You’re authorized to enter this suite." });
+      return;
+    }
+    const password = window.prompt("Set a suite password. Leave blank to remove it.");
+    if (password == null) return;
+    const response = await apiFetch(`/api/shadow-tower/floors/${towerFloor.floor.id}/units/${unitNumber}/access`, {
+      method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    toast(response.ok
+      ? { title: password ? "SUITE PASSWORD SAVED" : "SUITE PASSWORD REMOVED" }
+      : { title: "PASSWORD NOT SAVED", description: "You don’t have permission to change this suite password.", variant: "destructive" });
+  }, [officeLayout.rooms, toast, towerFloor]);
+
   // ── Interaction stations ───────────────────────────────────────────────
   // Walk-up portals to EXISTING features (no new features invented). Ordered
   // professional → comms → fun, per the owner's priority. Reuses real furniture
@@ -767,9 +807,12 @@ export default function PabloOffice() {
       terminal: () => { playNav(); navigateFromOffice(getOfficeObjectDestination('terminal')); },
       "operations-terminal": () => { playNav(); navigateFromOffice(getOfficeObjectDestination('terminal')); },
     };
-    const base: OfficeStation[] = officeLayout.stations.map((station) => ({
+    const base: OfficeStation[] = officeLayout.stations.map((station) => {
+      const roomId = station.id.endsWith("-door") ? station.id.slice(0, -5) : null;
+      return ({
       ...station,
-       onInteract: actions[station.id] ?? (station.id.includes("terminal") ? actions.terminal : () => {
+       onInteract: roomId ? () => { void interactSuiteDoor(roomId); }
+         : actions[station.id] ?? (station.id.includes("terminal") ? actions.terminal : () => {
         playClick();
         toast({
           title: `${station.label} · UNAVAILABLE`,
@@ -777,12 +820,12 @@ export default function PabloOffice() {
           variant: 'destructive',
         });
        }),
-    }));
+    }); });
     // Using ANY object counts toward the discovery "interact" step — wrap every
     // station so the contextual cue advances no matter what the player tries.
     return base.map((s) => ({ ...s, onInteract: () => { markInteracted(); s.onInteract(); } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigateFromOffice, officeLayout]);
+  }, [interactSuiteDoor, navigateFromOffice, officeLayout]);
 
   const hkBtn = (onClick: () => void, label: string, active: boolean, danger = false, disabled = false): ReactNode => (
     <button
@@ -915,6 +958,7 @@ export default function PabloOffice() {
             <IsoOffice
               key={`${slot}:${officeLayout.propertyKey}`}
               layout={officeLayout}
+              privacyScope={`${slot}:${officeLayout.propertyKey}`}
               scale={officeScale}
               viewportWidth={viewportW}
               viewportHeight={viewportH}
@@ -1066,7 +1110,7 @@ export default function PabloOffice() {
                     bankBalance={citySave?.savings ?? 0}
                     savings={citySave?.savings ?? 0}
                     gold={citySave?.goldBalance ?? 0}
-                    fiatPerGold={1_000}
+                    fiatPerGold={10_000}
                     stamina={citySave?.stamina ?? 100}
                     showStamina
                     creditScore={officeCreditInfo?.score}

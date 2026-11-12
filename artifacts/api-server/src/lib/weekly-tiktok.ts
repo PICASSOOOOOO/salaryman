@@ -20,6 +20,7 @@ import { db, socialConnectionsTable } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { captureGameplay } from "./gameplay-capture";
 import { getProvider, isProviderConfigured } from "./social-providers";
+import { decryptSocialCredentials, encryptSocialCredentials } from "./social-credentials-crypto";
 import { ObjectStorageService } from "./objectStorage";
 import { getUncachableResendClient } from "./resend";
 import { ownerEmails, getPicassoAdminUserIds } from "./plan";
@@ -386,7 +387,24 @@ async function tryPostToTikTok(
         inArray(socialConnectionsTable.userId, ownerUserIds),
       ),
     );
-  const creds = (conn?.credentials ?? {}) as Record<string, string>;
+  let creds: Record<string, string> = {};
+  if (conn?.credentials) {
+    const decoded = decryptSocialCredentials(
+      conn.credentials as Record<string, string>,
+      conn.userId,
+      "tiktok",
+    );
+    creds = decoded.credentials;
+    if (decoded.needsEncryption) {
+      await db
+        .update(socialConnectionsTable)
+        .set({
+          credentials: encryptSocialCredentials(creds, conn.userId, "tiktok"),
+          updatedAt: new Date(),
+        })
+        .where(eq(socialConnectionsTable.id, conn.id));
+    }
+  }
   const token = creds.accessToken || creds.access_token;
   if (!token) return { ok: false, reason: "No owner-connected TikTok account" };
 

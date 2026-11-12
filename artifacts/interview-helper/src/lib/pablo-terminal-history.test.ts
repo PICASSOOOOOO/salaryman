@@ -7,15 +7,22 @@ const terminal = readFileSync(
   "utf8",
 );
 const app = readFileSync(resolve(process.cwd(), "src/App.tsx"), "utf8");
+const startWorkMenu = readFileSync(
+  resolve(process.cwd(), "src/components/StartWorkMenu.tsx"),
+  "utf8",
+);
 const swipe = readFileSync(
   resolve(process.cwd(), "src/hooks/useSwipeNavigation.ts"),
   "utf8",
 );
 
 describe("Pablo terminal physical-world navigation", () => {
-  it("sends every authenticated START WORK handoff through the console sign-in surface", () => {
-    expect(terminal).toContain('navigate("/console")');
-    expect(terminal).toContain("START WORK");
+  it("uses the shared START WORK menu for authenticated terminal visitors", () => {
+    expect(terminal).toContain('import { StartWorkMenu } from "@/components/StartWorkMenu";');
+    expect(terminal).toContain("{!isLoading && isAuthenticated && <StartWorkMenu />}");
+    expect(startWorkMenu).toContain("<span>START WORK</span>");
+    expect(startWorkMenu).toContain("requestWorkspaceFeatureAssignment(path)");
+    expect(startWorkMenu).toContain('location.split("?")[0] === "/workspace"');
     expect(terminal).not.toContain('navigate(hasFinishedOnboarding ? "/office" : "/tower")');
     expect(terminal).not.toContain('{hasFinishedOnboarding ? "OFFICE" : "ENTER TOWER"}');
     expect(terminal).not.toContain('window.history.back()');

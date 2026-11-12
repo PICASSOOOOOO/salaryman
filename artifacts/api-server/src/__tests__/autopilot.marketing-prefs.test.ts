@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   sanitizeMarketingPrefs,
+  isMarketingImageGenerationApproved,
   readMarketingPrefs,
   resolveMarketingTargets,
 } from "../lib/autopilot/marketing-prefs";
@@ -18,7 +19,13 @@ import type { SocialPlatform } from "../lib/social-service";
 
 describe("sanitizeMarketingPrefs", () => {
   it("returns fully-defaulted prefs for empty / non-object input", () => {
-    const expected = { platforms: [], tone: AUTOPILOT_DEFAULT_MARKETING_TONE, topics: [] };
+    const expected = {
+      platforms: [],
+      tone: AUTOPILOT_DEFAULT_MARKETING_TONE,
+      topics: [],
+      generateImages: false,
+      imageGenerationApprovedBy: null,
+    };
     expect(sanitizeMarketingPrefs(undefined)).toEqual(expected);
     expect(sanitizeMarketingPrefs(null)).toEqual(expected);
     expect(sanitizeMarketingPrefs("nope")).toEqual(expected);
@@ -60,7 +67,19 @@ describe("sanitizeMarketingPrefs", () => {
       platforms: ["bluesky"],
       tone: "witty",
       topics: ["hi"],
+      generateImages: false,
+      imageGenerationApprovedBy: null,
     });
+  });
+
+  it("requires both owner opt-in and current-owner approval before image generation", () => {
+    const approved = sanitizeMarketingPrefs({
+      generateImages: true,
+      imageGenerationApprovedBy: "owner-1",
+    });
+    expect(isMarketingImageGenerationApproved(approved, "owner-1")).toBe(true);
+    expect(isMarketingImageGenerationApproved(approved, "new-owner")).toBe(false);
+    expect(isMarketingImageGenerationApproved(sanitizeMarketingPrefs({ generateImages: true }), "owner-1")).toBe(false);
   });
 });
 

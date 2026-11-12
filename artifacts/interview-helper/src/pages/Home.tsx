@@ -14,11 +14,12 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 import { PrimeAdInterstitial } from '@/components/PrimeAdInterstitial';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { WebsiteAnalyzer } from '@/components/WebsiteAnalyzer';
 import { ProGate } from '@/components/ProGate';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
+import { BUSINESS_INDUSTRY_GROUPS, findBusinessIndustry } from '@/lib/business-industries';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
@@ -377,7 +378,7 @@ export default function Home() {
   usePlan();
   const [trialPopup] = useState(false);
   const dismissTrialPopup = () => {};
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   // Hide the "LATE FOR WORK" intro hook for users who've already completed
   // onboarding — they don't need to be invited back through the front door.
   const [onboardingDone, setOnboardingDone] = useState<boolean>(() => {
@@ -401,7 +402,7 @@ export default function Home() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   // Auto-funnel: the Tower lobby is the open home for a fresh visitor;
-  // immigration is not part of normal entry. Returning users land in their
+  // onboarding is not part of normal entry. Returning users land in their
   // office. Session flag prevents an infinite loop if the user back-navigates
   // to `/`.
   useEffect(() => {
@@ -416,13 +417,6 @@ export default function Home() {
     } catch { /* private mode — fall through and redirect once */ }
     navigate(onboardingDone ? '/office' : '/tower', { replace: true });
   }, [onboardingDone, navigate, homeLocation]);
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
-
   const { current: musicCurrent, playing: musicPlaying } = useMusicPlayer();
   const musicActive = Boolean(musicCurrent) && musicPlaying;
 
@@ -762,6 +756,10 @@ export default function Home() {
   }, [isAuthenticated]);
 
   const registerBusiness = async () => {
+    if (bizRegForm.businessType === 'real' && !bizRegForm.industry.trim()) {
+      setBizRegError('SELECT YOUR BUSINESS INDUSTRY');
+      return;
+    }
     setBizRegLoading(true);
     setBizRegError('');
     try {
@@ -899,7 +897,7 @@ export default function Home() {
             <Layers className="w-3.5 h-3.5 text-sky-400/70" />
             <div>
               <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "var(--font-sans)", color: 'rgba(56,189,248,0.7)' }}>THE SALARYMAN PLATFORM</span>
-              <span className="text-[9px] ml-2" style={{ fontFamily: "var(--font-sans)", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
+              <span className="text-[9px] ml-2" style={{ fontFamily: "var(--font-sans)", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + CALLL HOME</span>
             </div>
           </div>
           <button
@@ -1417,7 +1415,7 @@ export default function Home() {
                   { label: boomerMode ? 'INVOICES' : PABLO_PRODUCTS.INVOICES.short, desc: 'Billing & invoices', path: '/business/invoices', color: 'rgba(120,200,255,0.6)', bg: 'rgba(120,200,255,0.05)', border: 'rgba(120,200,255,0.15)', icon: '⊟' },
                   { label: boomerMode ? 'CAMPAIGNS' : 'SIGNAL-5', desc: 'Email & outreach', path: '/marketing/campaigns', color: 'rgba(255,120,200,0.6)', bg: 'rgba(255,120,200,0.05)', border: 'rgba(255,120,200,0.15)', icon: '⊛' },
                   { label: boomerMode ? 'BRAND KIT' : PABLO_PRODUCTS.BRAND_KIT.short, desc: 'Brand identity', path: '/creative/brand', color: 'rgba(255,180,100,0.6)', bg: 'rgba(255,180,100,0.05)', border: 'rgba(255,180,100,0.15)', icon: '◉' },
-                  { label: boomerMode ? '1999' : PABLO_PRODUCTS.SOUND_LAB.short, desc: 'Audio production', path: '/creative/lab', color: 'rgba(160,120,255,0.6)', bg: 'rgba(160,120,255,0.05)', border: 'rgba(160,120,255,0.15)', icon: '♫' },
+                  { label: '1999', desc: 'Music production', path: '/1999', color: 'rgba(160,120,255,0.6)', bg: 'rgba(160,120,255,0.05)', border: 'rgba(160,120,255,0.15)', icon: '♫' },
                   { label: 'HUMMING BIRD', desc: 'Personal soundtrack', path: '/creative/music', color: 'rgba(167,139,250,0.7)', bg: 'rgba(167,139,250,0.05)', border: 'rgba(167,139,250,0.15)', icon: 'hummingbird', activeKey: 'music' as const },
                   { label: boomerMode ? 'LEADS' : 'PROSPECT-9', desc: 'Lead database', path: '/marketing/leads', color: 'rgba(255,160,100,0.6)', bg: 'rgba(255,160,100,0.05)', border: 'rgba(255,160,100,0.15)', icon: '⊕' },
                   { label: boomerMode ? 'GOALS' : PABLO_PRODUCTS.GOALS.short, desc: 'Mission tracker', path: '/intel/goals', color: 'rgba(255,200,60,0.6)', bg: 'rgba(255,200,60,0.05)', border: 'rgba(255,200,60,0.15)', icon: '⊕' },
@@ -1616,8 +1614,37 @@ export default function Home() {
                       </select>
                       <input value={bizRegForm.companyName} onChange={e => setBizRegForm(f => ({ ...f, companyName: e.target.value }))}
                         placeholder="Company name" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
-                      <input value={bizRegForm.industry} onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
-                        placeholder="Industry (e.g. Technology, Finance)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
+                      {bizRegForm.businessType === 'real' ? (
+                        <>
+                          <select
+                            aria-label="Business industry"
+                            value={bizRegForm.industry}
+                            onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-md px-2 py-2 text-xs text-foreground outline-none"
+                            style={{ fontFamily: "var(--font-sans)" }}
+                          >
+                            <option value="">SELECT BUSINESS INDUSTRY</option>
+                            {bizRegForm.industry && !findBusinessIndustry(bizRegForm.industry) && (
+                              <option value={bizRegForm.industry}>{bizRegForm.industry.toUpperCase()} · CURRENT</option>
+                            )}
+                            {BUSINESS_INDUSTRY_GROUPS.map(group => (
+                              <optgroup key={group.label} label={group.label}>
+                                {group.options.map(option => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                          {findBusinessIndustry(bizRegForm.industry) && (
+                            <div className="text-[10px] leading-relaxed text-muted-foreground">
+                              {findBusinessIndustry(bizRegForm.industry)?.description}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <input value={bizRegForm.industry} onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
+                          placeholder="In-game industry" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
+                      )}
                       <input value={bizRegForm.companySize} onChange={e => setBizRegForm(f => ({ ...f, companySize: e.target.value }))}
                         placeholder="Company size (e.g. 1-10, 50-100)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "var(--font-sans)" }} />
                       <input value={bizRegForm.contactEmail} onChange={e => setBizRegForm(f => ({ ...f, contactEmail: e.target.value }))}
@@ -1628,7 +1655,7 @@ export default function Home() {
                           className="flex-1 text-xs py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
                           CANCEL
                         </button>
-                        <button onClick={registerBusiness} disabled={bizRegLoading || !bizRegForm.companyName.trim()}
+                        <button onClick={registerBusiness} disabled={bizRegLoading || !bizRegForm.companyName.trim() || (bizRegForm.businessType === 'real' && !bizRegForm.industry.trim())}
                           className="flex-1 text-xs py-1.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors disabled:opacity-50" style={{ fontFamily: "var(--font-sans)" }}>
                           {bizRegLoading ? 'REGISTERING...' : 'REGISTER'}
                         </button>

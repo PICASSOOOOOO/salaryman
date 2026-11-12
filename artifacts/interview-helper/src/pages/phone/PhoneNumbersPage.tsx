@@ -1,6 +1,6 @@
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback } from 'react';
-import { Hash, Search, Plus, Trash2, Loader2, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { Hash, Search, Trash2, Loader2, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
 import {
   slate, destructive, warning, primary, formatPhone,
@@ -19,8 +19,8 @@ export default function PhoneNumbersPage() {
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [searchingNumbers, setSearchingNumbers] = useState(false);
   const [searchError, setSearchError] = useState('');
-  const [purchasingNumber, setPurchasingNumber] = useState('');
   const [settingActiveId, setSettingActiveId] = useState<number | null>(null);
+  const [purchasingNumber, setPurchasingNumber] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const checkoutResult = new URLSearchParams(window.location.search).get('number_checkout');
@@ -80,28 +80,23 @@ export default function PhoneNumbersPage() {
     setSearchingNumbers(false);
   };
 
-  const purchaseNumber = async (phoneNumber: string) => {
-    if (!window.confirm(`Buy ${formatPhone(phoneNumber)} for $10 one-time?\n\nYour $95/month Phone System subscription includes calls and two-way SMS.`)) return;
-    setPurchasingNumber(phoneNumber);
+  const buyNumber = async (number: AvailableNumber) => {
+    setPurchasingNumber(number.phoneNumber);
     setSearchError('');
     try {
+      const requestId = `phone-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const r = await apiFetch('/api/stripe/create-phone-number-session', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber,
-          countryCode: buyCountry,
-          label: 'main',
-          requestId: crypto.randomUUID(),
-        }) });
-      const d = await r.json();
-      if (r.ok && d.url) {
-        window.location.assign(d.url);
-        return;
-      } else {
-        setSearchError(d.detail || d.error || 'Purchase failed');
-      }
-    } catch { setSearchError('Purchase failed'); }
-    setPurchasingNumber('');
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: number.phoneNumber, countryCode: buyCountry, requestId }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data?.url) throw new Error(data?.error || `Checkout failed (${r.status})`);
+      window.location.assign(data.url);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'Could not start number checkout');
+      setPurchasingNumber(null);
+    }
   };
 
   const setActiveNumber = async (id: number) => {
@@ -135,7 +130,7 @@ export default function PhoneNumbersPage() {
   return (
     <PhonePageLayout
       title="NUMBERS"
-      subtitle="Buy, add, switch & remove your phone numbers"
+      subtitle="Manage existing phone numbers"
       icon={<Hash size={24} style={{ color: slate(0.8) }} />}
       statusLine={
         <span style={{ color: slate(0.55) }}>
@@ -174,8 +169,10 @@ export default function PhoneNumbersPage() {
         <PhoneCard>
           <PhoneCardHeader><Search size={11} /> BUY A NUMBER</PhoneCardHeader>
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: '0.52rem', color: warning(0.9) }}>$10 ONE-TIME PER CUSTOM NUMBER</div>
-            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>The $95/month Phone System includes two-way SMS and a default platform toll-free number.</div>
+            <div style={{ fontSize: '0.52rem', color: warning(0.9) }}>CUSTOM NUMBERS · $10 ONE-TIME CHECKOUT</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>Choose an available number to continue to secure checkout. Availability is checked again before payment.</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>Twilio may also charge recurring rental fees for the number.</div>
+            <div style={{ fontSize: '0.48rem', color: slate(0.55) }}>CALLL HOME subscription is separate and required to use phone features.</div>
             {regionDefaults && (
               <div style={{ fontSize: '0.5rem', color: slate(0.55) }}>
                 Home realm: {regionDefaults.countryInfo.flag} {regionDefaults.countryInfo.region}
@@ -219,8 +216,15 @@ export default function PhoneNumbersPage() {
                       <div style={{ fontSize: '0.6rem', color: slate(0.85) }}>{formatPhone(n.phoneNumber)}</div>
                       {(n.locality || n.region) && <div style={{ fontSize: '0.45rem', color: slate(0.55) }}>{[n.locality, n.region].filter(Boolean).join(', ')}</div>}
                     </div>
-                    <PhoneBtn onClick={() => purchaseNumber(n.phoneNumber)} disabled={!!purchasingNumber} size="sm" color={primary} data-testid={`button-buy-${n.phoneNumber}`}>
-                      {purchasingNumber === n.phoneNumber ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />} BUY
+                    <PhoneBtn
+                      onClick={() => buyNumber(n)}
+                      disabled={purchasingNumber !== null}
+                      size="sm"
+                      color={primary}
+                      data-testid={`button-rent-${n.phoneNumber}`}
+                    >
+                      {purchasingNumber === n.phoneNumber ? <Loader2 size={11} className="animate-spin" /> : null}
+                      BUY $10
                     </PhoneBtn>
                   </div>
                 ))}
@@ -238,7 +242,7 @@ export default function PhoneNumbersPage() {
           <span style={{ color: slate(0.5), fontVariantNumeric: 'tabular-nums' }}>{phoneNumbers.length}</span>
         </PhoneCardHeader>
         {phoneNumbers.length === 0 ? (
-          <EmptyState message={defaultNumber ? `USING PLATFORM DEFAULT ${formatPhone(defaultNumber)} — BUY OR ADD A CUSTOM NUMBER ABOVE` : "NO NUMBERS CONFIGURED — BUY OR ADD A NUMBER ABOVE"} icon={<Hash size={32} />} />
+          <EmptyState message={defaultNumber ? `USING PLATFORM DEFAULT ${formatPhone(defaultNumber)}` : "NO CUSTOM NUMBERS CONFIGURED"} icon={<Hash size={32} />} />
         ) : (
           <div>
             {phoneNumbers.map(n => (

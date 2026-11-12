@@ -8,9 +8,9 @@ describe("paid service policy", () => {
     expect(isUsdPaidFeature("live_listen")).toBe(false);
   });
 
-  it("keeps phone and automation as separately priced subscriptions", () => {
-    expect(FEATURE_CATALOG.phone_system.price).toBe(95);
-    expect(FEATURE_CATALOG.claw_bot.price).toBe(149);
-    expect(FEATURE_CATALOG.claw_bot.desc).toContain("Phone service is separate");
+  it("prices the paid tiers correctly and includes CALLL HOME in PABLO PRIME", () => {
+    expect(FEATURE_CATALOG.phone_system.price).toBe(100);
+    expect(FEATURE_CATALOG.claw_bot.price).toBe(200);
+    expect(FEATURE_CATALOG.claw_bot.desc).toContain("all CALLL HOME benefits");
   });
 });

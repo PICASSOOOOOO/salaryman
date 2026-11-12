@@ -5,28 +5,37 @@ import {
   playerInventoryTable,
   playerLoadoutTable,
   playerStorageTable,
+  publicLockerStorageTable,
   playerInstalledItemsTable,
   resourceInventoryTable,
   bankAccountsTable,
   salarymanSavesTable,
   botsTable,
+  usersTable,
+  desktopOfficePresenceTable,
+  desktopBasementPresenceTable,
+  towerShopInventoryTable,
+  towerShopShipmentsTable,
+  towerShopAccountsTable,
+  towerShopStaffAssignmentsTable,
+  shadowTowerOfficeUnitsTable,
   INSTALL_TARGET_TYPES,
   INSTALL_CAPACITY,
   type InstallTargetType,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 import Stripe from "stripe";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
-import { spendFiat } from "../lib/fiat-wallet";
+import { creditFiat, spendFiat } from "../lib/fiat-wallet";
 import { recordLegacyRecoveryEventTx, restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
 import {
   ITEM_CATALOG,
   ITEM_TYPES,
+  PUBLIC_VENDING_ITEM_IDS,
   findCatalogItem,
   computeGearStats,
-  PUBLIC_VENDING_ITEM_IDS,
   requiresPhysicalBlackMarket,
   isConsumable,
   canInstallInto,
@@ -36,7 +45,26 @@ import { utilityKindForItem, findBatterySpec, ELECTRICITY_RATE_FIAT_PER_UNIT } f
 import { recordUtilityRevenue } from "../lib/utility-revenue";
 import { CRAFT_RECIPES, getCraftRecipe, isUtilityOutput } from "../lib/crafting-catalog";
 import { getResourceDef } from "../lib/resource-catalog";
+import { requireDesktopLink } from "../lib/desktop-link-auth";
 import { getMarketIndex } from "./real-estate";
+import { recordTowerCompanyRevenueTx } from "../lib/tower-finance";
+import {
+  TOWER_BUSINESS_STOCK_LINES,
+  TOWER_GHOST_LISTING,
+  RestockTowerBusinessItemBody,
+  RestockTowerBusinessItemResponse,
+} from "@workspace/api-zod";
+import {
+  quoteTowerShopOrder,
+  DEFAULT_TOWER_SHOP_PRICING_POLICY,
+  TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY,
+  towerShopRestockAvailableAt,
+} from "../lib/tower-shop-pricing";
+import { settleTowerShopSupplierOrderTx } from "../lib/tower-shop-finance";
+import {
+  chooseNpcShelfRestock,
+  listNpcShopRestockCandidates,
+} from "../lib/tower-shop-autopilot";
 import {
   isBattery,
   batteryCapacity,
@@ -47,6 +75,339 @@ import {
 } from "../lib/battery";
 
 const router: IRouter = Router();
+// Keep aligned with the 6×4 inventory grid used by the native game.
+const CARRIED_ITEM_CAPACITY = 24;
+const PUBLIC_LOCKER_CAPACITY = 12;
+
+const TOWER_BUSINESS_SHOP_LOCATIONS: Record<
+  string,
+  { floor: number; x: number; y: number; room?: "hallway" | "lobby" | "office"; officeUnitNumber?: number }
+> = {
+  "fish-store": { floor: 2, x: 22_884, y: 47_470 },
+  "furniture-store": { floor: 2, x: 39_341, y: 47_470 },
+  shadow_cafeteria: { floor: 2, x: 7_628, y: 15_556 },
+  tower_clinic: { floor: 2, x: 22_884, y: 15_556 },
+  tower_pharmacy: { floor: 2, x: 39_341, y: 15_556 },
+  tower_terminal_repair: { floor: 2, x: 54_597, y: 15_556 },
+  phone_store_f03: { floor: 3, x: 7_628, y: 15_556 },
+  liquor_store: { floor: 3, x: 22_884, y: 15_556 },
+  office_equipment_store: { floor: 3, x: 39_341, y: 15_556 },
+  jewelry_store: { floor: 3, x: 7_628, y: 47_470 },
+  tea_shop: { floor: 3, x: 22_884, y: 47_470 },
+  formal_clothing_store: { floor: 3, x: 39_341, y: 47_470 },
+  tool_store: { floor: 3, x: 54_597, y: 15_556 },
+  shoe_store: { floor: 3, x: 54_597, y: 47_470 },
+  music_shop: { floor: 4, x: 7_628, y: 15_556 },
+  mirror_shop: { floor: 4, x: 22_884, y: 15_556 },
+  lighting_store: { floor: 4, x: 39_341, y: 15_556 },
+  cafe_f04: { floor: 4, x: 54_597, y: 15_556 },
+  antique_shop_f04: { floor: 4, x: 7_628, y: 47_470 },
+  record_store: { floor: 4, x: 22_884, y: 47_470 },
+  book_store: { floor: 4, x: 39_341, y: 47_470 },
+  restaurant: { floor: 5, x: 7_628, y: 15_556 },
+  antique_shop_f05: { floor: 5, x: 22_884, y: 15_556 },
+  phone_store_f05: { floor: 5, x: 39_341, y: 15_556 },
+  tv_store: { floor: 5, x: 54_597, y: 15_556 },
+  mattress_store: { floor: 5, x: 7_628, y: 47_470 },
+  hostel: { floor: 5, x: 22_884, y: 47_470 },
+  salon: { floor: 5, x: 39_341, y: 47_470 },
+  barber: { floor: 5, x: 54_597, y: 47_470 },
+  radio_station: { floor: 6, x: 7_628, y: 15_556, room: "office", officeUnitNumber: 1 },
+  music_studio: { floor: 6, x: 22_884, y: 15_556, room: "office", officeUnitNumber: 1 },
+  school: { floor: 6, x: 39_341, y: 15_556, room: "office", officeUnitNumber: 2 },
+  art_supply_store: { floor: 6, x: 54_597, y: 15_556, room: "office", officeUnitNumber: 2 },
+  meeting_room: { floor: 6, x: 7_628, y: 47_469, room: "office", officeUnitNumber: 3 },
+  public_workspace: { floor: 6, x: 22_884, y: 47_469, room: "office", officeUnitNumber: 3 },
+  study_hall: { floor: 6, x: 39_341, y: 47_469, room: "office", officeUnitNumber: 4 },
+  flower_shop: { floor: 6, x: 54_597, y: 47_469, room: "office", officeUnitNumber: 4 },
+  plant_store: { floor: 9, x: 39_341, y: 15_556 },
+  android_replicant_repair: { floor: 8, x: 54_597, y: 15_556 },
+  vespa_shop: { floor: 9, x: 54_597, y: 15_556 },
+  vehicle_dealership: { floor: 1, x: 49_979_414, y: 50_006_505, room: "lobby" },
+};
+const TOWER_B1_BUSINESS_SHOP_LOCATIONS: Record<string, { level: 1; x: number; y: number }> = {
+  tower_admin: { level: 1, x: 3_535, y: 6_364 },
+  tower_shipping: { level: 1, x: 10_606, y: 6_364 },
+  tower_trash: { level: 1, x: 17_677, y: 6_364 },
+  tower_food_supply: { level: 1, x: 24_748, y: 6_364 },
+  tower_construction: { level: 1, x: 3_535, y: 21_920 },
+  tower_materials_supply: { level: 1, x: 10_606, y: 21_920 },
+  tower_power: { level: 1, x: 17_677, y: 21_920 },
+  tower_water: { level: 1, x: 24_748, y: 21_920 },
+};
+const TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM = 1_000;
+const TOWER_SHOP_SHELF_CAPACITY_PER_ITEM = 100;
+const TOWER_SHOP_ORDER_TRANSIT_MS = 5 * 60 * 1_000;
+const TOWER_SHOP_DOCK_HANDOFF_MS = 12_000;
+const TOWER_SHOP_COURIER_TRAVEL_MS = 15_000;
+const NPC_SHOP_ORDER_HISTORY_MS = 30 * 24 * 60 * 60 * 1_000;
+const TOWER_B1_SHOP_DOCK = { level: 1, x: 18_500, y: 7_000 };
+const TOWER_SHOP_INTERACTION_RADIUS = 1_400;
+
+let towerShopLogisticsTimer: NodeJS.Timeout | null = null;
+let towerShopLogisticsTickRunning = false;
+
+export function startTowerShopLogisticsScheduler(): void {
+  if (towerShopLogisticsTimer) return;
+  const tick = () => {
+    if (towerShopLogisticsTickRunning) return;
+    towerShopLogisticsTickRunning = true;
+    runTowerShopLogisticsTick()
+      .catch((error) => console.error("[TowerShop] autonomous logistics tick failed:", error))
+      .finally(() => { towerShopLogisticsTickRunning = false; });
+  };
+  setTimeout(tick, 20_000);
+  towerShopLogisticsTimer = setInterval(tick, 5_000);
+}
+
+async function runTowerShopLogisticsTick(now = new Date()): Promise<void> {
+  await db.update(towerShopShipmentsTable).set({
+    status: "at_dock",
+    arrivedAtDockAt: now,
+    updatedAt: now,
+  }).where(and(
+    eq(towerShopShipmentsTable.status, "supplier_processing"),
+    sql`${towerShopShipmentsTable.supplierOrderedAt} <= ${new Date(now.getTime() - TOWER_SHOP_ORDER_TRANSIT_MS)}`,
+  ));
+
+  await db.update(towerShopShipmentsTable).set({
+    status: "in_delivery",
+    updatedAt: now,
+  }).where(and(
+    eq(towerShopShipmentsTable.status, "at_dock"),
+    sql`${towerShopShipmentsTable.arrivedAtDockAt} <= ${new Date(now.getTime() - TOWER_SHOP_DOCK_HANDOFF_MS)}`,
+  ));
+
+  const ready = await db.select({ id: towerShopShipmentsTable.id })
+    .from(towerShopShipmentsTable)
+    .where(and(
+      eq(towerShopShipmentsTable.status, "in_delivery"),
+      sql`${towerShopShipmentsTable.updatedAt} <= ${new Date(now.getTime() - TOWER_SHOP_COURIER_TRAVEL_MS)}`,
+    ))
+    .limit(25);
+
+  for (const { id } of ready) {
+    await db.transaction(async (tx) => {
+      const [shipment] = await tx.select().from(towerShopShipmentsTable)
+        .where(eq(towerShopShipmentsTable.id, id)).for("update").limit(1);
+      if (!shipment || shipment.status !== "in_delivery"
+        || shipment.updatedAt.getTime() > now.getTime() - TOWER_SHOP_COURIER_TRAVEL_MS) return;
+
+      for (const line of shipment.lines) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-inventory:${shipment.businessKey}:${line.itemId}`}))`);
+        const [stock] = await tx.select().from(towerShopInventoryTable)
+          .where(and(
+            eq(towerShopInventoryTable.businessKey, shipment.businessKey),
+            eq(towerShopInventoryTable.itemId, line.itemId),
+          )).for("update").limit(1);
+        const stored = stock?.storedQuantity ?? 0;
+        const capacity = stock?.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM;
+        if (stored + line.quantity > capacity) return;
+      }
+
+      for (const line of shipment.lines) {
+        await tx.insert(towerShopInventoryTable).values({
+          businessKey: shipment.businessKey,
+          itemId: line.itemId,
+          storedQuantity: line.quantity,
+          shelfQuantity: 0,
+          storageCapacity: TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+          shelfCapacity: TOWER_SHOP_SHELF_CAPACITY_PER_ITEM,
+          updatedAt: now,
+        }).onConflictDoUpdate({
+          target: [towerShopInventoryTable.businessKey, towerShopInventoryTable.itemId],
+          set: {
+            storedQuantity: sql`${towerShopInventoryTable.storedQuantity} + ${line.quantity}`,
+            storageCapacity: sql`greatest(${towerShopInventoryTable.storageCapacity}, ${TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM})`,
+            shelfCapacity: sql`greatest(${towerShopInventoryTable.shelfCapacity}, ${TOWER_SHOP_SHELF_CAPACITY_PER_ITEM})`,
+            updatedAt: now,
+          },
+        });
+      }
+      await tx.update(towerShopShipmentsTable).set({
+        status: "delivered",
+        deliveredAtStoreAt: now,
+        updatedAt: now,
+      }).where(and(
+        eq(towerShopShipmentsTable.id, id),
+        eq(towerShopShipmentsTable.status, "in_delivery"),
+      ));
+    });
+  }
+
+  await runNpcTowerShopRestockTick(now).catch((error) => {
+    console.error("[TowerShop] NPC shop restock tick failed:", error);
+  });
+  await runNpcTowerShopShelfRestockTick(now).catch((error) => {
+    console.error("[TowerShop] NPC shelf restock tick failed:", error);
+  });
+}
+
+async function runNpcTowerShopRestockTick(now: Date): Promise<void> {
+  const itemIdsByBusiness = new Map<string, string[]>();
+  for (const listing of TOWER_BUSINESS_STOCK_LINES) {
+    const businessKey = listing.sellerBusinessKey;
+    if (!businessKey || !TOWER_BUSINESS_SHOP_LOCATIONS[businessKey]) continue;
+    const itemIds = itemIdsByBusiness.get(businessKey) ?? [];
+    for (const itemId of listing.itemIds) {
+      if (!itemIds.includes(itemId)) itemIds.push(itemId);
+    }
+    itemIdsByBusiness.set(businessKey, itemIds);
+  }
+
+  const market = await getMarketIndex();
+  const btcMultiplierBps = Math.round(market.multiplier * 10_000);
+  for (const [businessKey, itemIds] of itemIdsByBusiness) {
+    const createdOrder = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-npc-order:${businessKey}`}))`);
+      const [activeShipment] = await tx.select({ id: towerShopShipmentsTable.id })
+        .from(towerShopShipmentsTable)
+        .where(and(
+          eq(towerShopShipmentsTable.businessKey, businessKey),
+          sql`${towerShopShipmentsTable.status} in ('supplier_processing', 'at_dock', 'in_delivery')`,
+        ))
+        .limit(1);
+      if (activeShipment) return null;
+
+      const stockRows = await tx.select().from(towerShopInventoryTable)
+        .where(eq(towerShopInventoryTable.businessKey, businessKey));
+      const stockByItem = new Map(stockRows.map((row) => [
+        row.itemId,
+        row.storedQuantity + row.shelfQuantity,
+      ]));
+      const capacityByItem = new Map(stockRows.map((row) => [
+        row.itemId,
+        row.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+      ]));
+      const history = await tx.select({
+        lines: towerShopShipmentsTable.lines,
+        requestedAt: towerShopShipmentsTable.requestedAt,
+      }).from(towerShopShipmentsTable)
+        .where(and(
+          eq(towerShopShipmentsTable.businessKey, businessKey),
+          sql`${towerShopShipmentsTable.requestedAt} >= ${new Date(now.getTime() - NPC_SHOP_ORDER_HISTORY_MS)}`,
+          sql`${towerShopShipmentsTable.status} <> 'cancelled'`,
+        ))
+        .orderBy(desc(towerShopShipmentsTable.requestedAt))
+        .limit(500);
+
+      const blockedItemIds = new Set<string>();
+      for (const itemId of itemIds) {
+        const item = findCatalogItem(itemId);
+        const cooldownMs = item ? TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity] : undefined;
+        if (!cooldownMs) continue;
+        const lastOrder = history.find((shipment) =>
+          shipment.lines.some((line) => line.itemId === itemId));
+        if (lastOrder && towerShopRestockAvailableAt(lastOrder.requestedAt, cooldownMs) > now) {
+          blockedItemIds.add(itemId);
+        }
+      }
+
+      const candidates = listNpcShopRestockCandidates({
+        itemIds,
+        stockByItem,
+        storageCapacityByItem: capacityByItem,
+        blockedItemIds,
+        priorityItemIds: new Set(itemIds.filter((itemId) =>
+          findCatalogItem(itemId)?.rarity === "common")),
+      });
+      for (const candidate of candidates) {
+        const item = findCatalogItem(candidate.itemId);
+        if (!item || item.priceFiat <= 0) continue;
+
+        const historicalDemand = history.reduce((total, shipment) => total
+          + shipment.lines
+            .filter((line) => line.itemId === candidate.itemId)
+            .reduce((lineTotal, line) => lineTotal + line.quantity, 0), 0);
+        const stockQuantity = stockByItem.get(candidate.itemId) ?? 0;
+        const demandIndex = Math.min(10_000, 100 + historicalDemand * 100);
+        const supplyIndex = Math.min(10_000, 100 + stockQuantity * 100);
+        const requestKey = `tower-shop-npc:${businessKey}:${candidate.itemId}:${Math.floor(now.getTime() / 60_000)}`;
+        const cooldownMs = TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity];
+
+        for (let quantity = candidate.quantity; quantity >= 1; quantity--) {
+          const quote = quoteTowerShopOrder({
+            retailUnitPriceFiat: item.priceFiat,
+            quantity,
+            btcMultiplierBps,
+            demandIndex,
+            supplyIndex,
+          });
+          const result = await settleTowerShopSupplierOrderTx(tx, {
+            businessKey,
+            requestKey,
+            requestedByUserId: null,
+            lines: [{ itemId: candidate.itemId, quantity }],
+            restockCooldowns: cooldownMs ? [{ itemId: candidate.itemId, cooldownMs }] : [],
+            quote,
+            btcMultiplierBps,
+            demandIndex,
+            supplyIndex,
+            now,
+          });
+          if (result.ok) {
+            if (result.duplicate) break;
+            return {
+              businessKey,
+              itemId: candidate.itemId,
+              quantity,
+              balanceFiat: result.balanceFiat,
+            };
+          }
+          if (result.reason === "tower_funds") return null;
+          if (result.reason === "restock_cooldown") break;
+        }
+      }
+      return null;
+    });
+    if (createdOrder) {
+      console.info(
+        `[TowerShop] NPC order: ${createdOrder.businessKey} ordered ${createdOrder.quantity} × ${createdOrder.itemId}; balance=${createdOrder.balanceFiat}`,
+      );
+      return;
+    }
+  }
+}
+
+async function runNpcTowerShopShelfRestockTick(now: Date): Promise<void> {
+  const businessItems = new Map<string, Set<string>>();
+  for (const listing of TOWER_BUSINESS_STOCK_LINES) {
+    const businessKey = listing.sellerBusinessKey;
+    if (!businessKey || !TOWER_BUSINESS_SHOP_LOCATIONS[businessKey]) continue;
+    const itemIds = businessItems.get(businessKey) ?? new Set<string>();
+    listing.itemIds.forEach((itemId) => itemIds.add(itemId));
+    businessItems.set(businessKey, itemIds);
+  }
+
+  for (const [businessKey, itemIds] of businessItems) {
+    for (const itemId of itemIds) {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-shelf:${businessKey}:${itemId}`}))`);
+        const [stock] = await tx.select().from(towerShopInventoryTable).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+        )).for("update").limit(1);
+        if (!stock) return;
+        const quantity = chooseNpcShelfRestock({
+          stored: stock.storedQuantity,
+          shelf: stock.shelfQuantity,
+          shelfCapacity: stock.shelfCapacity || TOWER_SHOP_SHELF_CAPACITY_PER_ITEM,
+        });
+        if (quantity <= 0) return;
+        await tx.update(towerShopInventoryTable).set({
+          storedQuantity: sql`${towerShopInventoryTable.storedQuantity} - ${quantity}`,
+          shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} + ${quantity}`,
+          updatedAt: now,
+        }).where(and(
+          eq(towerShopInventoryTable.businessKey, businessKey),
+          eq(towerShopInventoryTable.itemId, itemId),
+          sql`${towerShopInventoryTable.storedQuantity} >= ${quantity}`,
+          sql`${towerShopInventoryTable.shelfQuantity} + ${quantity} <= ${stock.shelfCapacity || TOWER_SHOP_SHELF_CAPACITY_PER_ITEM}`,
+        ));
+      });
+    }
+  }
+}
 
 function requireAuth(req: Request, res: any): string | null {
   if (!(req as any).isAuthenticated?.()) {
@@ -59,6 +420,34 @@ function requireAuth(req: Request, res: any): string | null {
     return null;
   }
   return id;
+}
+
+type GameItemsIdentity = {
+  userId: string;
+  email?: string | null;
+  desktopLink: boolean;
+  desktopLinkId?: string;
+};
+
+async function resolveGameItemsIdentity(req: Request, res: any): Promise<GameItemsIdentity | null> {
+  if ((req as any).isAuthenticated?.() && (req as any).user?.id) {
+    return {
+      userId: String((req as any).user.id),
+      email: (req as any).user.email,
+      desktopLink: false,
+    };
+  }
+  const link = await requireDesktopLink(req, res);
+  if (!link) return null;
+  const [user] = await db.select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, link.userId))
+    .limit(1);
+  if (!user) {
+    res.status(401).json({ error: "Desktop account is unavailable" });
+    return null;
+  }
+  return { userId: link.userId, email: user.email, desktopLink: true, desktopLinkId: link.id };
 }
 
 function parseSlot(raw: unknown): number {
@@ -92,6 +481,22 @@ function getAppBaseUrl(): string {
 // These operate on `quantity` and run inside a caller-supplied transaction so
 // the buy/use/install legs stay atomic with whatever else they touch.
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function checkCarriedCapacity(tx: Tx, userId: string, slot: number, itemId: string) {
+  // Serialize acquisitions for one character so parallel requests cannot both
+  // claim the final slot. hashtext collisions only cause extra serialization.
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${slot})`);
+  const rows = await tx.select({ itemId: playerInventoryTable.itemId })
+    .from(playerInventoryTable)
+    .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slot)));
+  const alreadyHeld = rows.some((row) => row.itemId === itemId);
+  return {
+    ok: alreadyHeld || rows.length < CARRIED_ITEM_CAPACITY,
+    usedSlots: rows.length,
+    capacity: CARRIED_ITEM_CAPACITY,
+    alreadyHeld,
+  };
+}
 
 // Increment a consumable stack by `qty` (upsert: create at `qty` or add on top).
 async function addConsumable(tx: Tx, userId: string, slot: number, itemId: string, qty: number, acquiredVia: string): Promise<void> {
@@ -151,23 +556,50 @@ router.get("/items/catalog", async (_req, res) => {
 });
 
 router.get("/items/vending-catalog", async (_req, res) => {
-  const allowed = new Set<string>(PUBLIC_VENDING_ITEM_IDS);
   const catalog = await marketCatalogItems();
-  res.json({ market: catalog.market, items: catalog.items.filter((item) => allowed.has(item.id)) });
+  const vendingItems = catalog.items.filter((item) =>
+    PUBLIC_VENDING_ITEM_IDS.some((vendingId) => vendingId === item.id));
+  const lines = TOWER_BUSINESS_STOCK_LINES.map((listing) => ({
+    ...listing,
+    items: catalog.items.filter((item) => listing.itemIds.includes(item.id)).map((item) => ({
+      ...item,
+      sellerBusinessKey: listing.sellerBusinessKey,
+      sellerName: listing.sellerName,
+    })),
+  }));
+  res.json({
+    market: catalog.market,
+    items: vendingItems.map((item) => ({
+      ...item,
+      sellerBusinessKey: "tower_vending",
+      sellerName: "NIGHT PANTRY NETWORK",
+    })),
+    businessStock: { lines },
+    ghost: TOWER_GHOST_LISTING,
+  });
 });
 
 // ─── Inventory for a character save slot ──────────────────────────────────────
 router.get("/items/inventory", async (req, res) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
-  const slot = parseSlot(req.query.slot);
+  const identity = await resolveGameItemsIdentity(req, res);
+  if (!identity) return;
+  const userId = identity.userId;
+  // The linked desktop game is currently the primary character only. It
+  // cannot use a device link to inspect other save slots.
+  const slot = identity.desktopLink ? 0 : parseSlot(req.query.slot);
   try {
-    await restoreLegacyRecoveryForUser(userId, (req as any).user?.email);
+    await restoreLegacyRecoveryForUser(userId, identity.email);
     const rows = await db
       .select()
       .from(playerInventoryTable)
       .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slot)));
-    res.json({ slot, itemIds: rows.map((r) => r.itemId), rows });
+    res.json({
+      slot,
+      itemIds: rows.map((r) => r.itemId),
+      rows,
+      usedSlots: rows.length,
+      capacity: CARRIED_ITEM_CAPACITY,
+    });
   } catch {
     res.status(500).json({ error: "Failed to load inventory" });
   }
@@ -213,23 +645,636 @@ router.get("/items/loadout", async (req, res) => {
 });
 
 // ─── Buy with in-game FIAT ────────────────────────────────────────────────────
+router.post("/items/tower-business/order", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const businessKey = String(req.body?.businessKey ?? "");
+  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+  const requestToken = String(req.body?.requestKey ?? "");
+  const rawLines = req.body?.lines;
+  if (!shop || !/^[A-Za-z0-9:_-]{8,100}$/.test(requestToken)
+    || !Array.isArray(rawLines) || rawLines.length < 1 || rawLines.length > 20) {
+    res.status(400).json({ error: "Invalid Tower shop order." });
+    return;
+  }
+
+  const lines: Array<{ itemId: string; quantity: number }> = [];
+  const seen = new Set<string>();
+  for (const raw of rawLines) {
+    const itemId = String(raw?.itemId ?? "");
+    const quantity = Number(raw?.quantity);
+    const listing = TOWER_BUSINESS_STOCK_LINES.find(
+      (entry) => entry.sellerBusinessKey === businessKey && entry.itemIds.includes(itemId),
+    );
+    if (!listing || seen.has(itemId) || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) {
+      res.status(400).json({ error: "Order lines must be unique listed products with quantity from 1 to 100." });
+      return;
+    }
+    seen.add(itemId);
+    lines.push({ itemId, quantity });
+  }
+
+  const [presence] = await db.select().from(desktopOfficePresenceTable)
+    .where(eq(desktopOfficePresenceTable.userId, link.userId))
+    .limit(1);
+  const presenceAgeMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  const distance = presence
+    ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
+    : Number.POSITIVE_INFINITY;
+  if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
+    || presence.room !== (shop.room ?? "hallway")
+    || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
+    res.status(403).json({ error: "Approach the Tower shop in the linked desktop game to place an order." });
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const market = await getMarketIndex();
+    const btcMultiplierBps = Math.round(market.multiplier * 10_000);
+    const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1_000);
+    const history = await db.select({ lines: towerShopShipmentsTable.lines })
+      .from(towerShopShipmentsTable)
+      .where(and(
+        eq(towerShopShipmentsTable.businessKey, businessKey),
+        sql`${towerShopShipmentsTable.requestedAt} >= ${cutoff}`,
+        sql`${towerShopShipmentsTable.status} <> 'cancelled'`,
+      ))
+      .orderBy(desc(towerShopShipmentsTable.requestedAt))
+      .limit(500);
+    const inventory = await db.select().from(towerShopInventoryTable)
+      .where(eq(towerShopInventoryTable.businessKey, businessKey));
+    const inventoryByItem = new Map(inventory.map((row) => [
+      row.itemId,
+      row.storedQuantity + row.shelfQuantity,
+    ]));
+    const demandByItem = new Map<string, number>();
+    for (const shipment of history) {
+      for (const line of shipment.lines) {
+        demandByItem.set(line.itemId, (demandByItem.get(line.itemId) ?? 0) + line.quantity);
+      }
+    }
+
+    const itemQuotes = lines.map((line) => {
+      const item = findCatalogItem(line.itemId);
+      if (!item || item.priceFiat <= 0) throw new Error("Catalog item has no valid price");
+      const demandIndex = Math.min(10_000, 100 + (demandByItem.get(line.itemId) ?? 0) * 100);
+      const supplyIndex = Math.min(10_000, 100 + (inventoryByItem.get(line.itemId) ?? 0) * 100);
+      const quote = quoteTowerShopOrder({
+        retailUnitPriceFiat: item.priceFiat,
+        quantity: line.quantity,
+        btcMultiplierBps,
+        demandIndex,
+        supplyIndex,
+      });
+      return { demandIndex, supplyIndex, quote };
+    });
+    const restockCooldowns = lines.flatMap((line) => {
+      const item = findCatalogItem(line.itemId);
+      const cooldownMs = item ? TOWER_SHOP_RESTOCK_COOLDOWN_MS_BY_RARITY[item.rarity] : undefined;
+      return cooldownMs ? [{ itemId: line.itemId, cooldownMs }] : [];
+    });
+    const quantityTotal = lines.reduce((sum, line) => sum + line.quantity, 0);
+    const goodsCostFiat = itemQuotes.reduce((sum, entry) => sum + entry.quote.goodsCostFiat, 0);
+    const supplierCostFiat = itemQuotes.reduce((sum, entry) => sum + entry.quote.supplierCostFiat, 0);
+    const deliveryFeeFiat = Math.ceil(
+      ((DEFAULT_TOWER_SHOP_PRICING_POLICY.deliveryBaseFiat
+        + DEFAULT_TOWER_SHOP_PRICING_POLICY.deliveryPerItemFiat * quantityTotal)
+        * btcMultiplierBps) / 10_000,
+    );
+    const shopTotalFiat = goodsCostFiat + deliveryFeeFiat;
+    const demandIndex = Math.round(itemQuotes.reduce((sum, entry) => sum + entry.demandIndex, 0) / itemQuotes.length);
+    const supplyIndex = Math.round(itemQuotes.reduce((sum, entry) => sum + entry.supplyIndex, 0) / itemQuotes.length);
+    if (![goodsCostFiat, supplierCostFiat, deliveryFeeFiat, shopTotalFiat].every(Number.isSafeInteger)) {
+      throw new Error("Tower shop order exceeds supported FIAT range");
+    }
+
+    const result = await db.transaction((tx) => settleTowerShopSupplierOrderTx(tx, {
+      businessKey,
+      requestKey: `tower-shop:${link.id}:${requestToken}`,
+      requestedByUserId: link.userId,
+      lines,
+      restockCooldowns,
+      quote: {
+        wholesaleRateBps: Math.round(itemQuotes.reduce((sum, entry) => sum + entry.quote.wholesaleRateBps, 0) / itemQuotes.length),
+        marketRetailUnitFiat: 0,
+        goodsCostFiat,
+        deliveryFeeFiat,
+        shopTotalFiat,
+        supplierCostFiat,
+        shippingCompanyMarginFiat: shopTotalFiat - supplierCostFiat,
+      },
+      btcMultiplierBps,
+      demandIndex,
+      supplyIndex,
+      now,
+    }));
+    if (!result.ok) {
+      if (result.reason === "tower_funds") {
+        res.status(503).json({ error: "Tower working capital is temporarily unavailable." });
+      } else {
+        if (result.reason === "restock_cooldown") {
+          res.status(429).json({
+            error: "rare_item_restock_cooldown",
+            itemId: result.itemId,
+            nextAvailableAt: result.nextAvailableAt,
+          });
+          return;
+        }
+        res.status(402).json({
+          error: "shop_funds",
+          balanceFiat: result.balanceFiat,
+          requiredFiat: result.requiredFiat,
+        });
+      }
+      return;
+    }
+    res.status(result.duplicate ? 200 : 201).json({
+      shipmentId: result.shipment.id,
+      status: result.shipment.status,
+      lines: result.shipment.lines,
+      goodsCostFiat: result.shipment.goodsCostFiat,
+      deliveryFeeFiat: result.shipment.deliveryFeeFiat,
+      totalFiat: result.shipment.goodsCostFiat + result.shipment.deliveryFeeFiat,
+      supplierCostFiat: result.shipment.supplierCostFiat,
+      btcMultiplierBps: result.shipment.btcMultiplierBps,
+      demandIndex: result.shipment.demandIndex,
+      supplyIndex: result.shipment.supplyIndex,
+      duplicate: result.duplicate,
+    });
+  } catch (error: any) {
+    console.error("[TowerShop] supplier order failed:", error?.message);
+    res.status(500).json({ error: "Supplier order failed; no shop order was charged." });
+  }
+});
+
+// Supplier lead time is persisted from the order timestamp. Polling the logistics
+// view advances eligible orders to the B1 dock, so offline shops still receive stock.
+router.get("/items/tower-business/shipments/dock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const now = new Date();
+  try {
+    await db.update(towerShopShipmentsTable).set({
+      status: "at_dock",
+      arrivedAtDockAt: now,
+      updatedAt: now,
+    }).where(and(
+      eq(towerShopShipmentsTable.status, "supplier_processing"),
+      sql`${towerShopShipmentsTable.supplierOrderedAt} <= ${new Date(now.getTime() - TOWER_SHOP_ORDER_TRANSIT_MS)}`,
+    ));
+    const rows = await db.select().from(towerShopShipmentsTable).where(or(
+      eq(towerShopShipmentsTable.status, "at_dock"),
+      eq(towerShopShipmentsTable.status, "in_delivery"),
+    )).orderBy(desc(towerShopShipmentsTable.arrivedAtDockAt));
+    const shipments = rows.map((shipment) => ({
+      ...shipment,
+      from: TOWER_B1_SHOP_DOCK,
+      to: TOWER_BUSINESS_SHOP_LOCATIONS[shipment.businessKey],
+      animation: "dock_to_shop",
+    }));
+    res.json({ shipments, dock: TOWER_B1_SHOP_DOCK });
+  } catch (error: any) {
+    console.error("[TowerShop] B1 dock snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load B1 shop freight." });
+  }
+});
+
+router.get("/items/tower-business/floor/:floorNumber/shelf-stock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const floorNumber = Number(req.params.floorNumber);
+  if (!Number.isInteger(floorNumber) || floorNumber < 2 || floorNumber > 6) {
+    res.status(400).json({ error: "Floor must be between 2 and 6." });
+    return;
+  }
+
+  const itemIdsByBusiness = new Map<string, Set<string>>();
+  for (const listing of TOWER_BUSINESS_STOCK_LINES) {
+    const businessKey = listing.sellerBusinessKey;
+    const shop = businessKey ? TOWER_BUSINESS_SHOP_LOCATIONS[businessKey] : undefined;
+    if (!businessKey || !shop || shop.floor !== floorNumber || listing.itemIds.length === 0) continue;
+    const itemIds = itemIdsByBusiness.get(businessKey) ?? new Set<string>();
+    listing.itemIds.forEach((itemId) => itemIds.add(itemId));
+    itemIdsByBusiness.set(businessKey, itemIds);
+  }
+
+  try {
+    const businessKeys = [...itemIdsByBusiness.keys()];
+    const rows = businessKeys.length > 0
+      ? await db.select().from(towerShopInventoryTable).where(and(
+        or(...businessKeys.map((businessKey) => eq(towerShopInventoryTable.businessKey, businessKey)))!,
+        sql`${towerShopInventoryTable.shelfQuantity} > 0`,
+      ))
+      : [];
+    const shops = businessKeys.map((businessKey) => ({
+      businessKey,
+      items: rows.flatMap((row) => {
+        if (row.businessKey !== businessKey || !itemIdsByBusiness.get(businessKey)?.has(row.itemId)) return [];
+        const item = findCatalogItem(row.itemId);
+        if (!item) return [];
+        return [{
+          itemId: item.id,
+          name: item.name,
+          itemType: item.type,
+          shelfQuantity: row.shelfQuantity,
+        }];
+      }),
+    }));
+    res.json({ floorNumber, shops });
+  } catch (error: any) {
+    console.error("[TowerShop] floor shelf stock snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load Tower floor shelf stock." });
+  }
+});
+
+router.get("/items/tower-business/:businessKey/shelf-stock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const businessKey = String(req.params.businessKey ?? "");
+  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+  if (!shop || shop.floor < 2 || shop.floor > 6) {
+    res.status(404).json({ error: "Unknown in-scope Tower shop." });
+    return;
+  }
+
+  const allowedItemIds = new Set(TOWER_BUSINESS_STOCK_LINES
+    .filter((line) => line.sellerBusinessKey === businessKey)
+    .flatMap((line) => line.itemIds));
+  try {
+    const rows = await db.select().from(towerShopInventoryTable).where(and(
+      eq(towerShopInventoryTable.businessKey, businessKey),
+      sql`${towerShopInventoryTable.shelfQuantity} > 0`,
+    ));
+    const items = rows.flatMap((row) => {
+      if (!allowedItemIds.has(row.itemId)) return [];
+      const item = findCatalogItem(row.itemId);
+      if (!item) return [];
+      return [{
+        itemId: item.id,
+        name: item.name,
+        itemType: item.type,
+        shelfQuantity: row.shelfQuantity,
+      }];
+    });
+    res.json({ businessKey, items });
+  } catch (error: any) {
+    console.error("[TowerShop] shelf stock snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load Tower shop shelf stock." });
+  }
+});
+
+router.get("/items/tower-business/:businessKey/logistics", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const businessKey = String(req.params.businessKey ?? "");
+  if (!TOWER_BUSINESS_SHOP_LOCATIONS[businessKey]) {
+    res.status(404).json({ error: "Unknown Tower shop." });
+    return;
+  }
+  const now = new Date();
+  try {
+    await db.update(towerShopShipmentsTable).set({
+      status: "at_dock",
+      arrivedAtDockAt: now,
+      updatedAt: now,
+    }).where(and(
+      eq(towerShopShipmentsTable.businessKey, businessKey),
+      eq(towerShopShipmentsTable.status, "supplier_processing"),
+      sql`${towerShopShipmentsTable.supplierOrderedAt} <= ${new Date(now.getTime() - TOWER_SHOP_ORDER_TRANSIT_MS)}`,
+    ));
+    const [account] = await db.select().from(towerShopAccountsTable)
+      .where(eq(towerShopAccountsTable.businessKey, businessKey)).limit(1);
+    const inventory = await db.select().from(towerShopInventoryTable)
+      .where(eq(towerShopInventoryTable.businessKey, businessKey));
+    const shipments = await db.select().from(towerShopShipmentsTable)
+      .where(eq(towerShopShipmentsTable.businessKey, businessKey))
+      .orderBy(desc(towerShopShipmentsTable.requestedAt))
+      .limit(50);
+    res.json({
+      businessKey,
+      balanceFiat: account?.balanceFiat ?? 0,
+      inventory,
+      shipments,
+      dock: TOWER_B1_SHOP_DOCK,
+      transitMs: TOWER_SHOP_ORDER_TRANSIT_MS,
+    });
+  } catch (error: any) {
+    console.error("[TowerShop] logistics snapshot failed:", error?.message);
+    res.status(500).json({ error: "Could not load Tower shop logistics." });
+  }
+});
+
+router.post("/items/tower-business/shipments/:shipmentId/pickup", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const shipmentId = String(req.params.shipmentId ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(shipmentId)) {
+    res.status(400).json({ error: "Invalid shipment." });
+    return;
+  }
+  const [presence] = await db.select().from(desktopBasementPresenceTable)
+    .where(eq(desktopBasementPresenceTable.userId, link.userId)).limit(1);
+  const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  const distance = presence ? Math.hypot(presence.x - TOWER_B1_SHOP_DOCK.x, presence.y - TOWER_B1_SHOP_DOCK.y) : Infinity;
+  if (!presence || presence.linkId !== link.id || presence.level !== TOWER_B1_SHOP_DOCK.level
+    || ageMs < 0 || ageMs > 15_000 || distance > 650) {
+    res.status(403).json({ error: "Move to the B1 shop-freight loading dock in the linked desktop game." });
+    return;
+  }
+  const now = new Date();
+  try {
+    const [shipment] = await db.update(towerShopShipmentsTable).set({
+      status: "in_delivery",
+      updatedAt: now,
+    }).where(and(
+      eq(towerShopShipmentsTable.id, shipmentId),
+      eq(towerShopShipmentsTable.status, "at_dock"),
+    )).returning();
+    if (!shipment) {
+      res.status(409).json({ error: "Shipment is not waiting at the B1 dock." });
+      return;
+    }
+    res.json({
+      ok: true,
+      shipmentId: shipment.id,
+      businessKey: shipment.businessKey,
+      status: shipment.status,
+      lines: shipment.lines,
+      from: TOWER_B1_SHOP_DOCK,
+      to: TOWER_BUSINESS_SHOP_LOCATIONS[shipment.businessKey],
+      animation: "dock_to_shop",
+    });
+  } catch (error: any) {
+    console.error("[TowerShop] shipment pickup failed:", error?.message);
+    res.status(500).json({ error: "Could not dispatch the Tower shop shipment." });
+  }
+});
+
+router.post("/items/tower-business/shipments/:shipmentId/receive", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const shipmentId = String(req.params.shipmentId ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(shipmentId)) {
+    res.status(400).json({ error: "Invalid shipment." });
+    return;
+  }
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [shipment] = await tx.select().from(towerShopShipmentsTable)
+        .where(eq(towerShopShipmentsTable.id, shipmentId)).for("update").limit(1);
+      if (!shipment) return { error: "unknown_shipment" } as const;
+      if (shipment.status !== "in_delivery") return { error: "not_in_delivery" } as const;
+      const shop = TOWER_BUSINESS_SHOP_LOCATIONS[shipment.businessKey];
+      if (!shop) return { error: "unknown_shop" } as const;
+
+      // Lock and validate the live location alongside the shipment so a parallel
+      // presence update cannot move the player to another shop between the check
+      // and the stock/status transaction.
+      const [presence] = await tx.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, link.userId)).for("update").limit(1);
+      const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+      const distance = presence ? Math.hypot(presence.x - shop.x, presence.y - shop.y) : Infinity;
+      if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
+        || presence.room !== (shop.room ?? "hallway")
+        || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
+        return { error: "wrong_location" } as const;
+      }
+
+      const lines = shipment.lines;
+      for (const line of lines) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-inventory:${shipment.businessKey}:${line.itemId}`}))`);
+        const [stock] = await tx.select().from(towerShopInventoryTable)
+          .where(and(
+            eq(towerShopInventoryTable.businessKey, shipment.businessKey),
+            eq(towerShopInventoryTable.itemId, line.itemId),
+          )).for("update").limit(1);
+        const stored = stock?.storedQuantity ?? 0;
+        const capacity = stock?.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM;
+        if (stored + line.quantity > capacity) {
+          return {
+            error: "Shop storage is full.",
+            itemId: line.itemId,
+            available: Math.max(0, capacity - stored),
+            requested: line.quantity,
+          } as const;
+        }
+      }
+      for (const line of lines) {
+        await tx.insert(towerShopInventoryTable).values({
+          businessKey: shipment.businessKey,
+          itemId: line.itemId,
+          storedQuantity: line.quantity,
+          shelfQuantity: 0,
+          storageCapacity: TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+          shelfCapacity: TOWER_SHOP_SHELF_CAPACITY_PER_ITEM,
+          updatedAt: now,
+        }).onConflictDoUpdate({
+          target: [towerShopInventoryTable.businessKey, towerShopInventoryTable.itemId],
+          set: {
+            storedQuantity: sql`${towerShopInventoryTable.storedQuantity} + ${line.quantity}`,
+            storageCapacity: sql`greatest(${towerShopInventoryTable.storageCapacity}, ${TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM})`,
+            shelfCapacity: sql`greatest(${towerShopInventoryTable.shelfCapacity}, ${TOWER_SHOP_SHELF_CAPACITY_PER_ITEM})`,
+            updatedAt: now,
+          },
+        });
+      }
+      const [delivered] = await tx.update(towerShopShipmentsTable).set({
+        status: "delivered",
+        deliveredAtStoreAt: now,
+        updatedAt: now,
+      }).where(and(
+        eq(towerShopShipmentsTable.id, shipmentId),
+        eq(towerShopShipmentsTable.status, "in_delivery"),
+      )).returning();
+      if (!delivered) throw new Error("Shipment changed while being received");
+      return { shipment: delivered };
+    });
+    if ("error" in result) {
+      if (result.error === "unknown_shipment" || result.error === "unknown_shop") {
+        res.status(404).json({ error: "Unknown Tower shop shipment." });
+        return;
+      }
+      if (result.error === "wrong_location") {
+        res.status(403).json({ error: "Move to the destination shop in the linked desktop game to receive its shipment." });
+        return;
+      }
+      if (result.error === "not_in_delivery") {
+        res.status(409).json({ error: "Shipment is not in delivery." });
+        return;
+      }
+      res.status(409).json(result);
+      return;
+    }
+    res.json({ ok: true, shipmentId, status: "delivered", lines: result.shipment.lines });
+  } catch (error: any) {
+    console.error("[TowerShop] shipment receive failed:", error?.message);
+    res.status(500).json({ error: "Could not receive the Tower shop shipment." });
+  }
+});
+
+router.post("/items/tower-business/restock", async (req, res) => {
+  const link = await requireDesktopLink(req, res);
+  if (!link) return;
+  const parsedBody = RestockTowerBusinessItemBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    res.status(400).json({ error: "Choose a stocked item and a quantity from 1 to 100." });
+    return;
+  }
+  const { businessKey, itemId, quantity } = parsedBody.data;
+  const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+  if (!shop || !TOWER_BUSINESS_STOCK_LINES.some((line) =>
+    line.sellerBusinessKey === businessKey && line.itemIds.includes(itemId))) {
+    res.status(400).json({ error: "Choose a stocked item and a quantity from 1 to 100." });
+    return;
+  }
+  const [staffAssignment] = await db.select({ userId: towerShopStaffAssignmentsTable.userId })
+    .from(towerShopStaffAssignmentsTable)
+    .where(and(
+      eq(towerShopStaffAssignmentsTable.businessKey, businessKey),
+      eq(towerShopStaffAssignmentsTable.userId, link.userId),
+    ))
+    .limit(1);
+  if (!staffAssignment) {
+    res.status(403).json({ error: "Only assigned staff can restock this shop." });
+    return;
+  }
+  const [presence] = await db.select().from(desktopOfficePresenceTable)
+    .where(eq(desktopOfficePresenceTable.userId, link.userId)).limit(1);
+  const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+  const distance = presence ? Math.hypot(presence.x - shop.x, presence.y - shop.y) : Infinity;
+  if (!presence || presence.linkId !== link.id || presence.floorNumber !== shop.floor
+    || presence.room !== "hallway" || ageMs < 0 || ageMs > 10_000 || distance > TOWER_SHOP_INTERACTION_RADIUS) {
+    res.status(403).json({ error: "Move to the shop in the linked desktop game to restock its shelves." });
+    return;
+  }
+  const now = new Date();
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tower-shop-inventory:${businessKey}:${itemId}`}))`);
+      const [stock] = await tx.select().from(towerShopInventoryTable).where(and(
+        eq(towerShopInventoryTable.businessKey, businessKey),
+        eq(towerShopInventoryTable.itemId, itemId),
+      )).for("update").limit(1);
+      if (!stock || stock.storedQuantity < quantity) {
+        return { error: "Not enough units in shop storage.", storedQuantity: stock?.storedQuantity ?? 0 } as const;
+      }
+      const shelfCapacity = stock.shelfCapacity || TOWER_SHOP_SHELF_CAPACITY_PER_ITEM;
+      if (stock.shelfQuantity + quantity > shelfCapacity) {
+        return { error: "The shelf is full.", available: Math.max(0, shelfCapacity - stock.shelfQuantity) } as const;
+      }
+      const [updated] = await tx.update(towerShopInventoryTable).set({
+        storedQuantity: sql`${towerShopInventoryTable.storedQuantity} - ${quantity}`,
+        shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} + ${quantity}`,
+        storageCapacity: stock.storageCapacity || TOWER_SHOP_STORAGE_CAPACITY_PER_ITEM,
+        shelfCapacity,
+        updatedAt: now,
+      }).where(and(
+        eq(towerShopInventoryTable.businessKey, businessKey),
+        eq(towerShopInventoryTable.itemId, itemId),
+        sql`${towerShopInventoryTable.storedQuantity} >= ${quantity}`,
+        sql`${towerShopInventoryTable.shelfQuantity} + ${quantity} <= ${shelfCapacity}`,
+      )).returning();
+      if (!updated) return { error: "Stock changed; refresh and try again." } as const;
+      return { stock: updated };
+    });
+    if ("error" in result) {
+      res.status(409).json(result);
+      return;
+    }
+    res.json(RestockTowerBusinessItemResponse.parse({
+      ok: true,
+      stock: { ...result.stock, updatedAt: result.stock.updatedAt.toISOString() },
+    }));
+  } catch (error: any) {
+    console.error("[TowerShop] manual restock failed:", error?.message);
+    res.status(500).json({ error: "Could not restock the Tower shop shelf." });
+  }
+});
+
 router.post("/items/buy", async (req, res) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
-  await restoreLegacyRecoveryForUser(userId, (req as any).user?.email);
-  const slot = parseSlot(req.body?.slot);
+  const identity = await resolveGameItemsIdentity(req, res);
+  if (!identity) return;
+  const userId = identity.userId;
+  const source = String(req.body?.source ?? "");
+  const businessKey = String(req.body?.businessKey ?? "");
+  if (identity.desktopLink && source !== "tower_vending" && source !== "tower_business") {
+    res.status(403).json({ error: "Desktop purchases require an authorized Tower seller." });
+    return;
+  }
+  let businessName = "";
+  if (identity.desktopLink && req.body?.slot !== undefined && parseSlot(req.body.slot) !== 0) {
+    res.status(403).json({ error: "The linked game can purchase only for the primary character." });
+    return;
+  }
+  await restoreLegacyRecoveryForUser(userId, identity.email);
+  const slot = identity.desktopLink ? 0 : parseSlot(req.body?.slot);
   const item = findCatalogItem(String(req.body?.itemId ?? ""));
   if (!item) {
     res.status(400).json({ error: "Unknown item" });
     return;
   }
-  const source = String(req.body?.source ?? "");
-  if (requiresPhysicalBlackMarket(item) && source !== "black_market") {
-    res.status(403).json({ error: "Find the physical black-market dealer in Shadow Tower." });
+  if (source === "tower_vending" && !PUBLIC_VENDING_ITEM_IDS.some((vendingId) => vendingId === item.id)) {
+    res.status(403).json({ error: "This item is not sold by Tower vending." });
     return;
   }
-  if (source === "tower_vending" && !PUBLIC_VENDING_ITEM_IDS.includes(item.id as typeof PUBLIC_VENDING_ITEM_IDS[number])) {
-    res.status(403).json({ error: "This item is not stocked in the Tower vending machine." });
+  const repeatablePlacementItem = item.type === "furniture" || item.type === "decor";
+  let inventoryBusinessKey = "";
+  if (source === "tower_business") {
+    const shop = TOWER_BUSINESS_SHOP_LOCATIONS[businessKey];
+    const b1Shop = TOWER_B1_BUSINESS_SHOP_LOCATIONS[businessKey];
+    if (!identity.desktopLink || (!shop && !b1Shop)) {
+      res.status(403).json({ error: "Business purchases require an in-person desktop shop interaction." });
+      return;
+    }
+    const listing = TOWER_BUSINESS_STOCK_LINES.find(
+      (entry) => entry.sellerBusinessKey === businessKey && entry.itemIds.includes(item.id),
+    );
+    if (!listing) {
+      res.status(403).json({ error: "This shop does not stock that item." });
+      return;
+    }
+    if (b1Shop) {
+      const [presence] = await db.select().from(desktopBasementPresenceTable)
+        .where(eq(desktopBasementPresenceTable.userId, userId))
+        .limit(1);
+      const ageMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+      const distance = presence
+        ? Math.hypot(presence.x - b1Shop.x, presence.y - b1Shop.y)
+        : Number.POSITIVE_INFINITY;
+      if (!presence || presence.linkId !== identity.desktopLinkId
+        || presence.level !== b1Shop.level || ageMs < 0 || ageMs > 10_000 || distance > 1_400) {
+        res.status(403).json({ error: "Approach this B1 business in the linked desktop game before purchasing." });
+        return;
+      }
+    } else {
+      const [presence] = await db.select().from(desktopOfficePresenceTable)
+        .where(eq(desktopOfficePresenceTable.userId, userId))
+        .limit(1);
+      const [presenceOfficeUnit] = presence?.officeUnitId
+        ? await db.select({ unitNumber: shadowTowerOfficeUnitsTable.unitNumber })
+          .from(shadowTowerOfficeUnitsTable)
+          .where(eq(shadowTowerOfficeUnitsTable.id, presence.officeUnitId))
+          .limit(1)
+        : [];
+      const presenceAgeMs = presence ? Date.now() - presence.lastSeenAt.getTime() : Number.POSITIVE_INFINITY;
+      const distance = presence && shop
+        ? Math.hypot(presence.x - shop.x, presence.y - shop.y)
+        : Number.POSITIVE_INFINITY;
+      if (!presence || !shop || presence.linkId !== identity.desktopLinkId
+        || presence.floorNumber !== shop.floor || presence.room !== (shop.room ?? "hallway")
+        || (shop.officeUnitNumber !== undefined && presenceOfficeUnit?.unitNumber !== shop.officeUnitNumber)
+        || presenceAgeMs < 0 || presenceAgeMs > 10_000 || distance > 1_400) {
+        res.status(403).json({ error: "Approach this Tower shop before purchasing." });
+        return;
+      }
+    }
+    if (shop) inventoryBusinessKey = businessKey;
+      businessName = listing.sellerName ?? "Tower shop";
+  }
+  if (requiresPhysicalBlackMarket(item) && source !== "black_market" && source !== "tower_business") {
+    res.status(403).json({ error: "Find the physical black-market dealer in Shadow Tower." });
     return;
   }
   const market = await getMarketIndex();
@@ -239,11 +1284,19 @@ router.post("/items/buy", async (req, res) => {
   if (isConsumable(item)) {
     const qtyRaw = Number(req.body?.qty ?? 1);
     const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.min(99, Math.floor(qtyRaw))) : 1;
-    const email = (req as any).user?.email as string | undefined;
+    const email = identity.email ?? undefined;
 
     // Owners get consumables granted free.
     if (isOwnerEmail(email)) {
-      await db.transaction((tx) => addConsumable(tx, userId, slot, item.id, qty, "grant"));
+      const capacity = await db.transaction(async (tx) => {
+        const check = await checkCarriedCapacity(tx, userId, slot, item.id);
+        if (check.ok) await addConsumable(tx, userId, slot, item.id, qty, "grant");
+        return check;
+      });
+      if (!capacity.ok) {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...capacity });
+        return;
+      }
       res.json({ owned: true, granted: true, quantity: qty });
       return;
     }
@@ -251,14 +1304,45 @@ router.post("/items/buy", async (req, res) => {
     const totalPrice = marketPriceFiat * qty;
     try {
       const paid = await db.transaction(async (tx) => {
+        const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+        if (!capacity.ok) return { kind: "capacity" as const, capacity };
+        const [stock] = inventoryBusinessKey
+          ? await tx.select().from(towerShopInventoryTable).where(and(
+            eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+            eq(towerShopInventoryTable.itemId, item.id),
+          )).for("update").limit(1)
+          : [];
+        if (inventoryBusinessKey && (!stock || stock.shelfQuantity < qty)) {
+          return { kind: "stock" as const, available: stock?.shelfQuantity ?? 0 };
+        }
         const result = await spendFiat(tx, {
           userId,
           amountFiat: totalPrice,
           description: `Armory: ${item.name} ×${qty}`,
           kind: "item_purchase",
         });
-        if (!result.ok) return result;
+        if (!result.ok) return { kind: "fiat" as const, spendable: result.spendable };
+        if (inventoryBusinessKey) {
+          const [updatedStock] = await tx.update(towerShopInventoryTable).set({
+            shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} - ${qty}`,
+            updatedAt: new Date(),
+          }).where(and(
+            eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+            eq(towerShopInventoryTable.itemId, item.id),
+            sql`${towerShopInventoryTable.shelfQuantity} >= ${qty}`,
+          )).returning({ itemId: towerShopInventoryTable.itemId });
+          if (!updatedStock) throw new Error("Tower shop shelf stock changed during purchase");
+        }
         await addConsumable(tx, userId, slot, item.id, qty, "fiat");
+        if (source === "tower_business") {
+          await recordTowerCompanyRevenueTx(tx, {
+            eventKey: `tower-business-sale:${randomUUID()}`,
+            category: businessKey,
+            userId,
+            amountFiat: totalPrice,
+            description: `${businessName} sale: ${item.name} ×${qty}`,
+          });
+        }
         if (source === "tower_vending") {
           await recordLegacyRecoveryEventTx(tx, {
             userId,
@@ -270,9 +1354,17 @@ router.post("/items/buy", async (req, res) => {
             amountFiat: totalPrice,
           });
         }
-        return result;
+        return { kind: "success" as const, ...result };
       });
-      if (!paid.ok) {
+      if (paid.kind === "capacity") {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
+        return;
+      }
+      if (paid.kind === "stock") {
+        res.status(409).json({ error: "tower_shop_sold_out", available: paid.available });
+        return;
+      }
+      if (paid.kind === "fiat") {
         res.status(402).json({ error: "insufficient_fiat", required: totalPrice, spendable: paid.spendable });
         return;
       }
@@ -307,18 +1399,32 @@ router.post("/items/buy", async (req, res) => {
       eq(playerInventoryTable.itemId, item.id),
     ))
     .limit(1);
-  if (existing.length > 0) {
+  if (existing.length > 0 && !repeatablePlacementItem) {
     res.json({ owned: true, alreadyOwned: true });
     return;
   }
 
   // Owners get everything granted free.
-  const email = (req as any).user?.email as string | undefined;
+  const email = identity.email ?? undefined;
   if (isOwnerEmail(email)) {
-    await db.insert(playerInventoryTable)
-      .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "grant" })
-      .onConflictDoNothing();
-    res.json({ owned: true, granted: true });
+    const grant = await db.transaction(async (tx) => {
+      const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+      if (!capacity.ok) return { capacity };
+      const insert = tx.insert(playerInventoryTable)
+        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "grant" });
+      const rows = repeatablePlacementItem
+        ? await insert.onConflictDoUpdate({
+          target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+          set: { quantity: sql`${playerInventoryTable.quantity} + 1` },
+        }).returning({ quantity: playerInventoryTable.quantity })
+        : await insert.onConflictDoNothing().returning({ quantity: playerInventoryTable.quantity });
+      return { rows };
+    });
+    if ("capacity" in grant) {
+      res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...grant.capacity });
+      return;
+    }
+    res.json({ owned: true, granted: true, quantity: grant.rows[0]?.quantity ?? 1 });
     return;
   }
 
@@ -342,19 +1448,54 @@ router.post("/items/buy", async (req, res) => {
 
   try {
     const paid = await db.transaction(async (tx) => {
+      const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+      if (!capacity.ok) return { kind: "capacity" as const, capacity };
+      const [stock] = inventoryBusinessKey
+        ? await tx.select().from(towerShopInventoryTable).where(and(
+          eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+          eq(towerShopInventoryTable.itemId, item.id),
+        )).for("update").limit(1)
+        : [];
+      if (inventoryBusinessKey && (!stock || stock.shelfQuantity < 1)) {
+        return { kind: "stock" as const, available: stock?.shelfQuantity ?? 0 };
+      }
       const result = await spendFiat(tx, {
         userId,
         amountFiat: effectivePrice,
         description: `Armory: ${item.name}`,
         kind: "item_purchase",
       });
-      if (!result.ok) return result;
-      const inserted = await tx
+      if (!result.ok) return { kind: "fiat" as const, spendable: result.spendable };
+      if (inventoryBusinessKey) {
+        const [updatedStock] = await tx.update(towerShopInventoryTable).set({
+          shelfQuantity: sql`${towerShopInventoryTable.shelfQuantity} - 1`,
+          updatedAt: new Date(),
+        }).where(and(
+          eq(towerShopInventoryTable.businessKey, inventoryBusinessKey),
+          eq(towerShopInventoryTable.itemId, item.id),
+          sql`${towerShopInventoryTable.shelfQuantity} >= 1`,
+        )).returning({ itemId: towerShopInventoryTable.itemId });
+        if (!updatedStock) throw new Error("Tower shop shelf stock changed during purchase");
+      }
+      const inventoryInsert = tx
         .insert(playerInventoryTable)
-        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" })
-        .onConflictDoNothing()
-        .returning({ id: playerInventoryTable.id });
+        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: "fiat" });
+      const inserted = repeatablePlacementItem
+        ? await inventoryInsert.onConflictDoUpdate({
+          target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+          set: { quantity: sql`${playerInventoryTable.quantity} + 1` },
+        }).returning({ quantity: playerInventoryTable.quantity })
+        : await inventoryInsert.onConflictDoNothing().returning({ quantity: playerInventoryTable.quantity });
       if (inserted.length === 0) throw new Error("ITEM_ALREADY_OWNED");
+      if (source === "tower_business") {
+        await recordTowerCompanyRevenueTx(tx, {
+          eventKey: `tower-business-sale:${randomUUID()}`,
+          category: businessKey,
+          userId,
+          amountFiat: effectivePrice,
+          description: `${businessName} sale: ${item.name}`,
+        });
+      }
       if (source === "tower_vending") {
         await recordLegacyRecoveryEventTx(tx, {
           userId,
@@ -366,13 +1507,21 @@ router.post("/items/buy", async (req, res) => {
           amountFiat: effectivePrice,
         });
       }
-      return result;
+      return { kind: "success" as const, ...result, quantity: inserted[0]?.quantity ?? 1 };
     });
-    if (!paid.ok) {
+    if (paid.kind === "capacity") {
+      res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...paid.capacity });
+      return;
+    }
+    if (paid.kind === "stock") {
+      res.status(409).json({ error: "tower_shop_sold_out", available: paid.available });
+      return;
+    }
+    if (paid.kind === "fiat") {
       res.status(402).json({ error: "insufficient_fiat", required: effectivePrice, spendable: paid.spendable });
       return;
     }
-    res.json({ owned: true, fiat: effectivePrice, newBalance: paid.newBalance });
+    res.json({ owned: true, fiat: effectivePrice, quantity: paid.quantity, newBalance: paid.newBalance });
   } catch (err: any) {
     if (err?.message === "ITEM_ALREADY_OWNED") {
       res.json({ owned: true, alreadyOwned: true });
@@ -384,86 +1533,76 @@ router.post("/items/buy", async (req, res) => {
   }
 });
 
-// ─── Buy premium high-tech with REAL money (Stripe) ──────────────────────────
+// Any shop can buy any catalog item back. The seller gets the configured
+// buyback markup over the live catalog-market value.
+router.post("/items/sell", async (req, res) => {
+  const identity = await resolveGameItemsIdentity(req, res);
+  if (!identity) return;
+  if (identity.desktopLink && req.body?.slot !== undefined && parseSlot(req.body.slot) !== 0) {
+    res.status(403).json({ error: "The linked game can sell only from the primary character." });
+    return;
+  }
+  const userId = identity.userId;
+  const slot = identity.desktopLink ? 0 : parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  const qtyRaw = Number(req.body?.qty ?? 1);
+  const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.min(99, Math.floor(qtyRaw))) : 1;
+  try {
+    const market = await getMarketIndex();
+    const unitPayout = Math.max(1, Math.round(item.priceFiat * market.multiplier * 1.2));
+    const result = await db.transaction(async (tx) => {
+      const [held] = await tx.select().from(playerInventoryTable)
+        .where(and(
+          eq(playerInventoryTable.userId, userId),
+          eq(playerInventoryTable.slotIndex, slot),
+          eq(playerInventoryTable.itemId, item.id),
+        ))
+        .for("update").limit(1);
+      if (!held || held.quantity < qty) return { error: "quantity" as const };
+      if (!isConsumable(item)) {
+        const equipped = await tx.select({ id: playerLoadoutTable.id }).from(playerLoadoutTable)
+          .where(and(
+            eq(playerLoadoutTable.userId, userId),
+            eq(playerLoadoutTable.slotIndex, slot),
+            eq(playerLoadoutTable.itemId, item.id),
+          )).limit(1);
+        if (equipped.length) return { error: "equipped" as const };
+      }
+      const remaining = held.quantity - qty;
+      if (remaining === 0) {
+        await tx.delete(playerInventoryTable).where(eq(playerInventoryTable.id, held.id));
+      } else {
+        await tx.update(playerInventoryTable).set({ quantity: remaining })
+          .where(eq(playerInventoryTable.id, held.id));
+      }
+      const credited = await creditFiat(tx, {
+        userId,
+        amountFiat: unitPayout * qty,
+        description: `Shop buyback: ${item.name} ×${qty}`,
+        kind: "item_buyback",
+      });
+      return { ok: true as const, remaining, payout: unitPayout * qty, newBalance: credited.newBalance };
+    });
+    if ("error" in result) {
+      res.status(409).json({ error: result.error === "equipped" ? "Unequip this item before selling it." : "You don't have that quantity to sell." });
+      return;
+    }
+    res.json({ ok: true, itemId: item.id, quantity: qty, remaining: result.remaining, payoutFiat: result.payout, newBalance: result.newBalance });
+  } catch (error) {
+    console.error("[Items] buyback failed:", error);
+    res.status(500).json({ error: "Shop buyback failed." });
+  }
+});
+
+// ─── Retired one-time USD checkout ────────────────────────────────────────────
 router.post("/items/checkout", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const slot = parseSlot(req.body?.slot);
-  const item = findCatalogItem(String(req.body?.itemId ?? ""));
-  if (!item) {
-    res.status(400).json({ error: "Unknown item" });
-    return;
-  }
-  if (item.priceUsd == null) {
-    res.status(400).json({ error: "This item is FIAT-only — buy it with ƒ." });
-    return;
-  }
-
-  // Already owned? Don't sell it twice.
-  const existing = await db
-    .select({ id: playerInventoryTable.id })
-    .from(playerInventoryTable)
-    .where(and(
-      eq(playerInventoryTable.userId, userId),
-      eq(playerInventoryTable.slotIndex, slot),
-      eq(playerInventoryTable.itemId, item.id),
-    ))
-    .limit(1);
-  if (existing.length > 0) {
-    res.json({ owned: true, alreadyOwned: true });
-    return;
-  }
-
-  let stripe: Stripe;
-  try {
-    stripe = getStripe();
-  } catch {
-    res.status(503).json({ error: "Card checkout is not configured yet" });
-    return;
-  }
-  const baseUrl = getAppBaseUrl();
-
-  // Double-click / retry safety: keying the create call by (userId, slot, itemId)
-  // makes Stripe return the SAME in-flight session for a repeat request instead of
-  // opening a second checkout that could charge the card twice. Stripe scopes
-  // idempotency to a 24h window, which comfortably covers a single buy attempt.
-  const idempotencyKey = `item-checkout:${userId}:${slot}:${item.id}`;
-
-  const session = await stripe.checkout.sessions.create(
-    {
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: `${item.name} — SALARYMAN Armory`,
-              description: item.blurb,
-            },
-            unit_amount: item.priceUsd * 100,
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: `${baseUrl}/armory?purchase=success&item=${item.id}`,
-      cancel_url: `${baseUrl}/armory?purchase=cancel`,
-      client_reference_id: userId,
-      metadata: {
-        userId,
-        type: "item",
-        itemId: item.id,
-        slotIndex: String(slot),
-        brand: "Picassoo.AI",
-        product_line: "SALARYMAN",
-      },
-      payment_intent_data: {
-        description: `${item.name} by Picassoo.AI — SALARYMAN`,
-      },
-    },
-    { idempotencyKey },
-  );
-
-  res.json({ url: session.url });
+  res.status(410).json({
+    error: "monthly_subscriptions_only",
+    message: "USD checkout is limited to monthly service plans. Buy in-game items with FIAT.",
+  });
 });
 
 // ─── Equip / unequip ─────────────────────────────────────────────────────────
@@ -648,6 +1787,8 @@ router.post("/items/storage/withdraw", async (req, res) => {
   if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
   try {
     const result = await db.transaction(async (tx) => {
+      const capacity = await checkCarriedCapacity(tx, userId, slot, item.id);
+      if (!capacity.ok) return { error: "full" as const, capacity };
       const removed = await tx
         .delete(playerStorageTable)
         .where(and(
@@ -670,10 +1811,126 @@ router.post("/items/storage/withdraw", async (req, res) => {
         .onConflictDoNothing();
       return { ok: true as const };
     });
-    if ("error" in result) { res.status(404).json({ error: "That item isn't in your locker." }); return; }
+    if ("error" in result) {
+      if (result.error === "full") {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...result.capacity });
+        return;
+      }
+      res.status(404).json({ error: "That item isn't in your locker." });
+      return;
+    }
     res.json({ ok: true, withdrawn: item.id });
   } catch (e: any) {
     console.error("[Items] withdraw failed:", e?.message);
+    res.status(500).json({ error: "Failed to withdraw item" });
+  }
+});
+
+// Publicly located lockers are still owner-private; user and character scope
+// always come from the authenticated session, never from the request body.
+router.get("/items/public-locker", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.query.slot);
+  try {
+    const rows = await db.select().from(publicLockerStorageTable)
+      .where(and(eq(publicLockerStorageTable.userId, userId), eq(publicLockerStorageTable.slotIndex, slot)));
+    res.json({ slot, rows, itemIds: rows.map((row) => row.itemId), usedSlots: rows.length, capacity: PUBLIC_LOCKER_CAPACITY });
+  } catch {
+    res.status(500).json({ error: "Failed to load public locker" });
+  }
+});
+
+router.post("/items/public-locker/deposit", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${slot})`);
+      const [held] = await tx.select().from(playerInventoryTable).where(and(
+        eq(playerInventoryTable.userId, userId),
+        eq(playerInventoryTable.slotIndex, slot),
+        eq(playerInventoryTable.itemId, item.id),
+      )).for("update").limit(1);
+      if (!held) return { error: "not_owned" as const };
+      if (!isConsumable(item)) {
+        const equipped = await tx.select({ id: playerLoadoutTable.id }).from(playerLoadoutTable).where(and(
+          eq(playerLoadoutTable.userId, userId),
+          eq(playerLoadoutTable.slotIndex, slot),
+          eq(playerLoadoutTable.itemId, item.id),
+        )).limit(1);
+        if (equipped.length) return { error: "equipped" as const };
+      }
+      const lockerRows = await tx.select({ itemId: publicLockerStorageTable.itemId }).from(publicLockerStorageTable)
+        .where(and(eq(publicLockerStorageTable.userId, userId), eq(publicLockerStorageTable.slotIndex, slot)));
+      const alreadyStored = lockerRows.some((row) => row.itemId === item.id);
+      if (!alreadyStored && lockerRows.length >= PUBLIC_LOCKER_CAPACITY) return { error: "full" as const };
+      await tx.delete(playerInventoryTable).where(eq(playerInventoryTable.id, held.id));
+      await tx.insert(publicLockerStorageTable).values({
+        userId, slotIndex: slot, itemId: item.id, quantity: held.quantity, acquiredVia: held.acquiredVia,
+      }).onConflictDoUpdate({
+        target: [publicLockerStorageTable.userId, publicLockerStorageTable.slotIndex, publicLockerStorageTable.itemId],
+        set: { quantity: sql`${publicLockerStorageTable.quantity} + ${held.quantity}` },
+      });
+      return { ok: true as const, quantity: held.quantity };
+    });
+    if ("error" in result) {
+      const status = result.error === "not_owned" ? 404 : 409;
+      res.status(status).json({ error: result.error === "full" ? "Public locker is full." : result.error === "equipped" ? "Unequip this item before storing it." : "You don't carry that item.", capacity: PUBLIC_LOCKER_CAPACITY });
+      return;
+    }
+    res.json({ ok: true, stored: item.id, quantity: result.quantity });
+  } catch (error) {
+    console.error("[Items] public locker deposit failed:", error);
+    res.status(500).json({ error: "Failed to store item" });
+  }
+});
+
+router.post("/items/public-locker/withdraw", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}), ${slot})`);
+      const [stored] = await tx.select().from(publicLockerStorageTable).where(and(
+        eq(publicLockerStorageTable.userId, userId),
+        eq(publicLockerStorageTable.slotIndex, slot),
+        eq(publicLockerStorageTable.itemId, item.id),
+      )).for("update").limit(1);
+      if (!stored) return { error: "not_stored" as const };
+      const carried = await tx.select({ itemId: playerInventoryTable.itemId }).from(playerInventoryTable).where(and(
+        eq(playerInventoryTable.userId, userId),
+        eq(playerInventoryTable.slotIndex, slot),
+      ));
+      const alreadyHeld = carried.some((row) => row.itemId === item.id);
+      if (!alreadyHeld && carried.length >= CARRIED_ITEM_CAPACITY) {
+        return { error: "full" as const, usedSlots: carried.length };
+      }
+      await tx.delete(publicLockerStorageTable).where(eq(publicLockerStorageTable.id, stored.id));
+      await tx.insert(playerInventoryTable).values({
+        userId, slotIndex: slot, itemId: item.id, quantity: stored.quantity, acquiredVia: stored.acquiredVia,
+      }).onConflictDoUpdate({
+        target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+        set: { quantity: sql`${playerInventoryTable.quantity} + ${stored.quantity}` },
+      });
+      return { ok: true as const, quantity: stored.quantity };
+    });
+    if ("error" in result) {
+      res.status(result.error === "not_stored" ? 404 : 409).json({
+        error: result.error === "full" ? "Inventory full. Store an item first." : "That item isn't in your public locker.",
+        ...(result.error === "full" ? { usedSlots: result.usedSlots, capacity: CARRIED_ITEM_CAPACITY } : {}),
+      });
+      return;
+    }
+    res.json({ ok: true, withdrawn: item.id, quantity: result.quantity });
+  } catch (error) {
+    console.error("[Items] public locker withdrawal failed:", error);
     res.status(500).json({ error: "Failed to withdraw item" });
   }
 });
@@ -794,6 +2051,10 @@ router.post("/items/craft", async (req, res) => {
       // Decrement every input atomically. resource inputs hit resource_inventory;
       // item inputs hit the stackable consumable helper. Any shortfall throws so
       // the whole transaction rolls back — crafting is all-or-nothing.
+      const capacity = await checkCarriedCapacity(tx, userId, slot, recipe.output.itemId);
+      if (!capacity.ok) {
+        return { status: 409 as const, body: { error: "Inventory full. Store an item in your home locker first.", ...capacity } };
+      }
       for (const inp of recipe.inputs) {
         if (inp.kind === "resource") {
           const dec = await tx.update(resourceInventoryTable)
@@ -1022,6 +2283,22 @@ router.post("/items/uninstall", async (req, res) => {
   const slotNo = Math.max(0, Math.floor(Number(req.body?.slotNo ?? 0)) || 0);
   try {
     const result = await db.transaction(async (tx) => {
+      const [installed] = await tx.select().from(playerInstalledItemsTable)
+        .where(and(
+          eq(playerInstalledItemsTable.userId, userId),
+          eq(playerInstalledItemsTable.slotIndex, slot),
+          eq(playerInstalledItemsTable.targetType, targetType),
+          eq(playerInstalledItemsTable.targetId, targetId),
+          eq(playerInstalledItemsTable.slotNo, slotNo),
+        ))
+        .for("update").limit(1);
+      if (!installed) return { error: "not_installed" as const };
+      const cap = batteryCapacity(installed.itemId);
+      const willReturn = cap === 0 || Math.round(Number(installed.currentCharge ?? 0)) >= cap;
+      if (willReturn) {
+        const capacity = await checkCarriedCapacity(tx, userId, slot, installed.itemId);
+        if (!capacity.ok) return { error: "full" as const, capacity };
+      }
       const removed = await tx
         .delete(playerInstalledItemsTable)
         .where(and(
@@ -1034,7 +2311,6 @@ router.post("/items/uninstall", async (req, res) => {
         .returning({ itemId: playerInstalledItemsTable.itemId, currentCharge: playerInstalledItemsTable.currentCharge });
       if (removed.length === 0) return { error: "not_installed" as const };
       const itemId = removed[0].itemId;
-      const cap = batteryCapacity(itemId);
       // Batteries only return to the stack if FULL. A partially-drained cell is
       // discarded on uninstall — otherwise a player could dodge recharge costs
       // by pulling a near-empty battery and re-buying/swapping a fresh one for
@@ -1046,7 +2322,14 @@ router.post("/items/uninstall", async (req, res) => {
       if (returned) await addConsumable(tx, userId, slot, itemId, 1, "grant");
       return { ok: true as const, itemId, returned };
     });
-    if ("error" in result) { res.status(404).json({ error: "Nothing installed in that slot." }); return; }
+    if ("error" in result) {
+      if (result.error === "full") {
+        res.status(409).json({ error: "Inventory full. Store an item in your home locker first.", ...result.capacity });
+        return;
+      }
+      res.status(404).json({ error: "Nothing installed in that slot." });
+      return;
+    }
     res.json({ ok: true, uninstalled: result.itemId, returned: result.returned, targetType, targetId, slotNo });
   } catch (e: any) {
     console.error("[Items] uninstall failed:", e?.message);

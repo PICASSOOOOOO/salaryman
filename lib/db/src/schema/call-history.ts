@@ -1,4 +1,5 @@
-import { pgTable, serial, varchar, integer, timestamp, text, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, text, boolean, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const callHistoryTable = pgTable("call_history", {
   id: serial("id").primaryKey(),
@@ -24,11 +25,18 @@ export const callHistoryTable = pgTable("call_history", {
   consentGiven: boolean("consent_given").notNull().default(true),
   recordingRetainUntil: timestamp("recording_retain_until", { withTimezone: true }),
   recordingExpiryNotifiedAt: timestamp("recording_expiry_notified_at", { withTimezone: true }),
+  contactSnapshotJson: text("contact_snapshot_json"),
+  transcriptEventsJson: text("transcript_events_json").notNull().default("{}"),
+  connectionQualityJson: text("connection_quality_json"),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 }, (table) => [
+  index("call_history_org_conference_idx").on(table.orgId, table.conferenceName),
   uniqueIndex("call_history_dialing_attempt_unique")
     .on(table.dialingSessionId, table.dialingQueueIndex),
+  uniqueIndex("call_history_twilio_sid_unique")
+    .on(table.twilioCallSid)
+    .where(sql`${table.twilioCallSid} is not null`),
 ]);
 
 export type CallHistory = typeof callHistoryTable.$inferSelect;

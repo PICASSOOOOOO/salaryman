@@ -470,6 +470,202 @@
       "when": 1788693600000,
       "tag": "0066_business_data_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790208000000,
+      "tag": "0067_user_data_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790940319000,
+      "tag": "0068_desktop_work_presence_verification",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1791183935000,
+      "tag": "0069_crm_lead_note_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1791193839155,
+      "tag": "0070_org_custom_apps",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1791343500000,
+      "tag": "0071_desktop_basement_survival",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1791352800000,
+      "tag": "0072_tower_construction_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791358326553,
+      "tag": "0073_tower_operations_and_careers",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1791380203995,
+      "tag": "0074_b1_loading_yard_presence_bounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1791809500000,
+      "tag": "0075_shadow_tower_suite_passwords",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1792317418234,
+      "tag": "0076_game_business_organization_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1792501187236,
+      "tag": "0077_npc_agency_factions",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792540800000,
+      "tag": "0078_tower_shop_logistics",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1792563660559,
+      "tag": "0079_tower_operations_finance_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1792742940294,
+      "tag": "0080_b1_physical_presence_bounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1792769899100,
+      "tag": "0081_organization_connectors",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1792809078914,
+      "tag": "0082_organization_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1792810435900,
+      "tag": "0083_organization_document_upload_intents",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1792820000000,
+      "tag": "0084_member_organization_document_uploads",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1792852217202,
+      "tag": "0085_org_documents_composite_unique_constraint",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1792886400000,
+      "tag": "0086_tower_alarm_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1792930102082,
+      "tag": "0087_org_split_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1793404800000,
+      "tag": "0088_org_time_off_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1793629518187,
+      "tag": "0089_tower_shop_staff_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1793706897805,
+      "tag": "0090_tower_building_vitals_duplicate_archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1793773071904,
+      "tag": "0091_development_schema_additive_drift",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1793773841797,
+      "tag": "0092_stable_foreign_key_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1793774354992,
+      "tag": "0093_org_documents_fk_introspection_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793884883311,
+      "tag": "0094_restore_org_documents_fk_key_order",
+      "breakpoints": true
     }
   ]
 }

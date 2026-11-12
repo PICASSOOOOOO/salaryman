@@ -3,7 +3,7 @@ import { eq, desc, and, sql, gte, lte } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import { db, socialPostsTable } from "@workspace/db";
-import { generateSocialCopy, publishSocialPost, isSocialPlatform } from "../lib/social-service";
+import { generateSocialCopy, publishSocialPost, isSocialPlatform, createSocialPost } from "../lib/social-service";
 import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
@@ -50,14 +50,13 @@ router.post("/social/posts", async (req: Request, res: Response): Promise<void> 
   try {
     const { platform, content, hashtags, status, scheduledAt } = req.body;
     if (!platform || !isSocialPlatform(platform)) { res.status(400).json({ error: "Invalid platform" }); return; }
-    const [post] = await db.insert(socialPostsTable).values({
-      userId,
+    const post = await createSocialPost(userId, {
       platform,
-      content: content || "",
-      hashtags: hashtags || [],
-      status: status || "draft",
+      content,
+      hashtags,
+      status,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-    }).returning();
+    });
     res.json(post);
   } catch (err: any) {
     console.error("[Social] create error:", err.message);

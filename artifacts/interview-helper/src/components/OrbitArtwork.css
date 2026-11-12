@@ -1,0 +1,125 @@
+.sm-orbit-art {
+  position: relative;
+  min-height: 500px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(142, 185, 201, 0.4);
+  border-radius: 25px;
+  background-color: transparent;
+  box-shadow: 0 29px 70px rgba(23, 54, 74, 0.2);
+  pointer-events: none;
+  animation: sm-orbit-enter 1000ms 180ms cubic-bezier(.2,.8,.2,1) both;
+}
+.sm-orbit-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .16;
+  background-image: linear-gradient(rgba(163, 212, 233, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(163, 212, 233, 0.2) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(135deg, #000, transparent 76%);
+}
+.sm-orbit-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 66% 50%, rgba(124, 194, 164, 0.14), transparent 31%), linear-gradient(112deg, transparent 35%, rgba(216, 226, 216, 0.08), transparent 65%);
+}
+
+.sm-orbit-meta, .sm-orbit-tick {
+  position: absolute;
+  z-index: 2;
+  font-family: "Space Grotesk", sans-serif;
+}
+.sm-orbit-meta { display: flex; gap: 10px; color: #a8c7d4; font-size: 9px; font-weight: 600; letter-spacing: .12em; }
+.sm-orbit-meta b { color: #73bd9f; font-weight: 600; }
+.sm-orbit-meta-top { top: 23px; left: 26px; }
+.sm-orbit-meta-bottom { right: 26px; bottom: 22px; }
+
+.sm-orbit-lines {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; min-width: 630px; height: auto;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  z-index: 3;
+}
+
+/* Machine Visual Language */
+.mach-track-bg {
+  fill: none;
+  stroke: #1e2422;
+  stroke-width: 1.5;
+  opacity: 0.15;
+}
+.mach-track-flow {
+  fill: none;
+  stroke-width: 1.5;
+  animation: mach-dash-flow 30s linear infinite;
+}
+
+@keyframes mach-dash-flow {
+  to { stroke-dashoffset: -400; }
+}
+
+.mach-spin {
+  transform-origin: 500px 280px;
+  animation: mach-spin 25s linear infinite;
+}
+.mach-spin-reverse {
+  transform-origin: 500px 280px;
+  animation: mach-spin-reverse 35s linear infinite;
+}
+
+@keyframes mach-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes mach-spin-reverse {
+  to { transform: rotate(-360deg); }
+}
+
+.mach-pulse-ring {
+  transform-origin: 500px 280px;
+  animation: mach-pulse 2.5s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+@keyframes mach-pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.sm-orbit-tick { bottom: 20px; color: #a8c7d4; font-size: 10px; }
+.sm-orbit-tick-left { left: 27px; }
+.sm-orbit-tick-right { right: 27px; }
+
+@keyframes sm-orbit-enter { from { opacity: 0; transform: translateX(18px) scale(.985); } to { opacity: 1; transform: translateX(0) scale(1); } }
+
+@media (max-width: 760px) {
+  .sm-orbit-art { min-height: 300px; border-radius: 18px; box-shadow: 12px 16px 0 rgba(117, 188, 165, 0.18), 0 18px 42px rgba(23, 54, 74, 0.13); }
+  .sm-orbit-lines { min-width: 470px; width: 155%; }
+  .sm-orbit-meta { font-size: 7px; }
+  .sm-orbit-meta-top { top: 16px; left: 18px; }
+  .sm-orbit-meta-bottom { right: 18px; bottom: 15px; }
+  .sm-orbit-tick { bottom: 14px; font-size: 8px; }
+  .sm-orbit-tick-left { left: 18px; }
+  .sm-orbit-tick-right { right: 18px; }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .sm-orbit-art { min-height: 250px; }
+  .sm-orbit-lines { width: 82%; }
+}
+
+/* Reduced Motion State: Hide particles and stop spinning, leave a static beautiful blueprint */
+@media (prefers-reduced-motion: reduce) {
+  .sm-orbit-art, .sm-orbit-art * {
+    animation: none !important;
+  }
+  .mach-particle {
+    display: none !important;
+  }
+  .mach-pulse-ring {
+    opacity: 0.5 !important;
+    transform: scale(1.2) !important;
+  }
+}

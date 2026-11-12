@@ -5,6 +5,7 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+target/
 .expo
 .expo-shared
 
@@ -36,6 +37,7 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
+/generated-artifacts/
 
 # System Files
 .DS_Store

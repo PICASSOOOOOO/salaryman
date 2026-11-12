@@ -2,7 +2,7 @@ import { LegalLayout } from "@/components/LegalLayout";
 
 export default function PrivacyPolicy() {
   return (
-    <LegalLayout title="Privacy Policy" lastUpdated="September 5, 2026">
+    <LegalLayout title="Privacy Policy" lastUpdated="October 5, 2026">
       <div className="highlight-box">
         <p>PICASSO AI LLC ("we", "us", "our") operates SALARYMAN. This Privacy Policy explains how we collect, use, share, and protect information about you when you use the Service.</p>
       </div>
@@ -19,7 +19,7 @@ export default function PrivacyPolicy() {
       <ul>
         <li><strong>Usage data</strong> — features used, pages visited, session duration, and interaction logs</li>
         <li><strong>Device &amp; browser data</strong> — IP address, browser type, operating system, device identifiers</li>
-        <li><strong>Phone system data</strong> — call logs, call recordings (when enabled by you), voicemails, and transcriptions from Calll Home</li>
+        <li><strong>CALLL HOME data</strong> — call logs, call recordings (when enabled by you), voicemails, and transcriptions</li>
         <li><strong>AI interaction data</strong> — prompts, outputs, and session context from AI agent interactions (used to improve service quality)</li>
       </ul>
       <h3>1.3 Information from Third Parties</h3>
@@ -45,11 +45,13 @@ export default function PrivacyPolicy() {
       <p>We do not sell your personal information. We may share information with:</p>
       <ul>
         <li><strong>Service providers</strong> — third parties that help us deliver the Service (e.g., Twilio, Stripe, Resend, OpenAI, Anthropic, cloud hosting providers) under data processing agreements</li>
+        <li><strong>Support and investor inquiries</strong> — messages submitted through the Contact Us and Investors forms are routed through Resend to authorized SALARYMAN project owners for review and response</li>
         <li><strong>Organization and feature sharing</strong> — information you intentionally expose through an organization, team, CRM, shared workspace, public profile, message, call, or other recipient-facing feature is available to the people and organizations you choose, subject to the permissions of that feature</li>
         <li><strong>Legal requirements</strong> — when required by law, court order, or governmental authority</li>
         <li><strong>Business transfers</strong> — in connection with a merger, acquisition, or sale of assets, with appropriate notice</li>
         <li><strong>With your consent</strong> — for any other purpose with your explicit consent</li>
       </ul>
+      <p><strong>All the above categories exclude text messaging originator opt-in data and consent; this information won’t be shared with any third parties.</strong></p>
 
       <h2>4. Approximate Location and Regional Services</h2>
       <p>To provide regional services, we may process approximate location signals such as IP-derived region, browser timezone, language, device settings, or a city you select. We use these signals for city routing, local clocks and business hours, regional availability, safety and fraud prevention, and relevant service behavior.</p>
@@ -85,10 +87,10 @@ export default function PrivacyPolicy() {
       <p>SALARYMAN is not directed to children under 13. We do not knowingly collect personal information from children under 13. If you become aware that a child has provided us personal information, please contact us immediately.</p>
 
       <h2>9. SMS and Communications</h2>
-      <p>Where available, recurring SMS requires your consent. Message frequency varies and message and data rates may apply. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. Phone-system data may include call metadata, recordings, voicemails, transcripts, and related support records when you use or enable those features.</p>
+      <p>Where available, SALARYMAN sends recurring automated informational text messages about account activity, CALLL HOME, and service updates only to people who opt in. Message frequency varies, and message and data rates may apply. Reply <strong>STOP</strong> to opt out or <strong>HELP</strong> for help. For customer support, use our <a href="/legal/contact">Contact Us</a> page. Text-messaging opt-in data and consent are not shared with third parties, as stated above. CALLL HOME data may include call metadata, recordings, voicemails, transcripts, and related support records when you use or enable those features.</p>
 
       <h2>10. Service Disclaimer</h2>
-      <p>SALARYMAN includes fictional simulation, AI-generated output, communications, financial features, and regional services. These may be incomplete, inaccurate, delayed, unavailable, or wrong. Nothing in the Service is legal, financial, medical, employment, emergency, or immigration advice. Verify important decisions independently and follow applicable law.</p>
+      <p>SALARYMAN includes fictional simulation, AI-generated output, communications, financial features, and regional services. These may be incomplete, inaccurate, delayed, unavailable, or wrong. Nothing in the Service is legal, financial, medical, employment, emergency, or location advice. Verify important decisions independently and follow applicable law.</p>
 
       <h2>11. Changes to This Policy</h2>
       <p>We may update this Privacy Policy from time to time. We will notify you of material changes via email or platform notice. Your continued use of the Service after changes take effect constitutes your acceptance of the revised policy.</p>

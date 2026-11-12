@@ -19,6 +19,7 @@ import { vi } from "vitest";
 export const NANO_ID = "nano-banana";
 export const FAL_ID = "fal";
 export const UNREAL_ID = "unreal";
+export const BLENDER_ID = "blender";
 
 export interface ArtProvidersMockState {
   configured: Record<string, boolean>;
@@ -38,7 +39,7 @@ export interface ArtProvidersMockState {
 }
 
 export const mockState: ArtProvidersMockState = {
-  configured: { [NANO_ID]: true, [FAL_ID]: false, [UNREAL_ID]: false },
+  configured: { [NANO_ID]: true, [FAL_ID]: false, [UNREAL_ID]: false, [BLENDER_ID]: false },
   starts: [],
   health: {},
   probeCount: 0,
@@ -47,7 +48,7 @@ export const mockState: ArtProvidersMockState = {
 };
 
 export function resetArtProvidersMock() {
-  mockState.configured = { [NANO_ID]: true, [FAL_ID]: false, [UNREAL_ID]: false };
+  mockState.configured = { [NANO_ID]: true, [FAL_ID]: false, [UNREAL_ID]: false, [BLENDER_ID]: false };
   mockState.starts = [];
   mockState.health = {};
   mockState.probeCount = 0;
@@ -73,7 +74,8 @@ export function makeArtProvidersMock() {
   const nano = makeProvider(NANO_ID, "Nano Banana");
   const fal = makeProvider(FAL_ID, "fal.ai");
   const unreal = makeProvider(UNREAL_ID, "Unreal Render Node");
-  const registry = [nano, fal, unreal];
+  const blender = makeProvider(BLENDER_ID, "Blender Render Node");
+  const registry = [nano, fal, unreal, blender];
   const byId = new Map(registry.map((p) => [p.id, p]));
   const DEFAULT_PROVIDER_ID = NANO_ID;
 
@@ -104,6 +106,8 @@ export function makeArtProvidersMock() {
     NANO_BANANA_PROVIDER_ID: NANO_ID,
     FAL_PROVIDER_ID: FAL_ID,
     UNREAL_PROVIDER_ID: UNREAL_ID,
+    BLENDER_PROVIDER_ID: BLENDER_ID,
+    PROVIDER_HEALTH_HISTORY_LIMIT: 8,
     PROVIDER_HEALTH_CACHE_TTL_MS: 20_000,
     getProvider: (id?: string | null) => (id && byId.get(id)) || byId.get(DEFAULT_PROVIDER_ID)!,
     listProviders: () => registry,
@@ -121,5 +125,6 @@ export function makeArtProvidersMock() {
       mockState.cacheCleared = true;
       mockState.healthCache.clear();
     },
+    clearProviderHealthHistory: async () => {},
   };
 }

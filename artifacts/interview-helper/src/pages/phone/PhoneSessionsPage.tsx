@@ -1,8 +1,9 @@
 import { apiFetch } from '@/lib/api-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Radio, Users, Zap, Square, CheckSquare, Loader2, X, Search } from 'lucide-react';
+import { Radio, Users, Zap, Square, CheckSquare, Loader2, X, Search, RefreshCw, Rocket } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { usePlan } from '@/hooks/use-plan';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
@@ -11,6 +12,8 @@ import {
   type CRMContact, type BatchResult, type ActiveCall } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import type { CountryCode } from 'libphonenumber-js/max';
+import { PhoneCountrySelect } from './PhoneCountrySelect';
 
 type DialMode = 'power' | 'auto' | 'predictive';
 
@@ -20,6 +23,10 @@ interface DialingSession {
   total: number;
   dialed: number;
   queue: Array<{ phone: string; name?: string }>;
+  concurrency?: number;
+  delayBetweenCalls?: number;
+  paused?: boolean;
+  error?: string;
 }
 
 export default function PhoneSessionsPage() {
@@ -27,6 +34,8 @@ export default function PhoneSessionsPage() {
 
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
+  const { features: planFeatures } = usePlan();
+  const hasAdvancedDialing = planFeatures.has('phone_advanced');
   const [, rawNavigate] = useLocation();
   const hubNav = useCalllHomeNavigate();
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
@@ -35,10 +44,15 @@ export default function PhoneSessionsPage() {
   const [contacts, setContacts] = useState<CRMContact[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [dialingMode, setDialingMode] = useState<DialMode>('power');
+  const [dialCountry, setDialCountry] = useState<CountryCode>('US');
   const [dialingSession, setDialingSession] = useState<DialingSession | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [concurrency, setConcurrency] = useState(3);
+  const [delayBetweenCalls, setDelayBetweenCalls] = useState(5);
+  const [policy, setPolicy] = useState({ maxConcurrency: 5, minDelaySeconds: 1, maxQueueSize: 250 });
+  const [canManagePolicy, setCanManagePolicy] = useState(false);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
   const bridgeOutbound = useReliableOutboundBridge(apiUrl);
@@ -52,6 +66,21 @@ export default function PhoneSessionsPage() {
       })
       .catch(() => setError('Network error loading contacts'));
   }, [userId, apiUrl, navigate]);
+
+  useEffect(() => {
+    apiFetch(apiUrl('twilio/dialing/policy'), { credentials: 'include' })
+      .then(async r => {
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.policy) {
+          setPolicy(d.policy);
+          setConcurrency((current) => Math.min(current, d.policy.maxConcurrency));
+          setDelayBetweenCalls((current) => Math.max(current, d.policy.minDelaySeconds));
+        }
+        setCanManagePolicy(Boolean(d.canManage));
+      })
+      .catch(() => {});
+  }, [apiUrl]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return contacts;
@@ -77,19 +106,34 @@ export default function PhoneSessionsPage() {
       const d = await bridgeOutbound(async () => {
         const r = await apiFetch(apiUrl('twilio/dialing/start'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }) });
+          body: JSON.stringify({
+            mode: dialingMode,
+            contactIds: selectedContacts.map(c => c.id),
+            settings: { concurrency, delayBetweenCalls },
+            countryCode: dialCountry,
+          }) });
         const body = await r.json();
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Failed to start dialing session');
         return body;
-      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), { allowNoLegs: true });
       {
         const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
         const newActiveCalls: ActiveCall[] = batchCalls
           .filter(c => c.ok && c.callSid)
           .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
         addActiveCallsBatch(newActiveCalls);
-        const session = { id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length, queue: d.queue ?? selectedContacts.map(c => ({ phone: c.phone, name: c.name })) };
+        const session = {
+          id: d.sessionId,
+          mode: d.mode,
+          total: d.queue?.length ?? selectedContacts.length,
+          dialed: batchCalls.filter((c: BatchResult) => c.ok).length,
+          queue: d.queue ?? selectedContacts.map(c => ({ phone: c.phone, name: c.name })),
+          concurrency: d.settings?.concurrency,
+          delayBetweenCalls: d.settings?.delayBetweenCalls,
+          paused: Boolean(d.paused),
+          error: d.error,
+        };
         setDialingSession(session);
         try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
         setSelected(new Set());
@@ -118,8 +162,8 @@ export default function PhoneSessionsPage() {
 
   const MODES: { key: DialMode; label: string; desc: string; details: string; color: (o: number) => string; icon: React.ReactNode }[] = [
     { key: 'power', label: 'POWER DIALING', desc: 'Manual queue advancement', details: 'Call one contact at a time. When a call ends, you manually advance to the next contact in the queue.', color: slate, icon: <Zap size={14} /> },
-    { key: 'auto', label: 'AUTO DIALING', desc: 'Automatic queue progression', details: 'Automatically dials the next contact after the current call completes. Configurable delay between calls.', color: primary, icon: '🔄' },
-    { key: 'predictive', label: 'PREDICTIVE DIALING', desc: 'Multi-line simultaneous (3x)', details: 'Dials multiple numbers simultaneously to maximize connect rate. Connects you to the first person who answers.', color: accent, icon: '🚀' },
+    { key: 'auto', label: 'AUTO DIALING', desc: 'Automatic queue progression', details: 'Automatically dials the next contact after the current call completes. Configurable delay between calls.', color: primary, icon: <RefreshCw size={14} /> },
+    { key: 'predictive', label: 'PREDICTIVE DIALING', desc: 'Multi-line simultaneous (3x)', details: 'Dials multiple numbers simultaneously to maximize connect rate. Connects you to the first person who answers.', color: accent, icon: <Rocket size={14} /> },
   ];
 
   const sessionProgress = dialingSession ? Math.round((dialingSession.dialed / dialingSession.total) * 100) : 0;
@@ -194,12 +238,16 @@ export default function PhoneSessionsPage() {
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {MODES.map(m => {
                 const isSel = dialingMode === m.key;
+                const locked = m.key !== 'power' && !hasAdvancedDialing;
                 return (
                   <button
                     key={m.key}
-                    onClick={() => setDialingMode(m.key)}
+                    onClick={() => { if (!locked) setDialingMode(m.key); }}
+                    disabled={locked}
+                    title={locked ? 'Available on Custom CALLL HOME plans' : undefined}
                     style={{
-                      padding: '14px 16px', textAlign: 'left', borderRadius: 8, cursor: 'pointer',
+                      padding: '14px 16px', textAlign: 'left', borderRadius: 8, cursor: locked ? 'not-allowed' : 'pointer',
+                      opacity: locked ? 0.45 : 1,
                       background: isSel ? slate(0.06) : slate(0.04),
                       border: `1px solid ${isSel ? m.color(0.35) : slate(0.08)}`,
                       transition: 'all 0.15s' }}
@@ -223,8 +271,65 @@ export default function PhoneSessionsPage() {
           </PhoneCard>
 
           <PhoneCard>
+            <PhoneCardHeader>SPEED & INTENSITY</PhoneCardHeader>
+            <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+              <label style={{ display: 'grid', gap: 5, fontSize: '0.48rem', color: slate(0.65) }}>
+                SIMULTANEOUS LINES · {concurrency}
+                <input
+                  type="range"
+                  min={1}
+                  max={policy.maxConcurrency}
+                  value={concurrency}
+                  onChange={e => setConcurrency(Number(e.target.value))}
+                />
+              </label>
+              <label style={{ display: 'grid', gap: 5, fontSize: '0.48rem', color: slate(0.65) }}>
+                DELAY BETWEEN CALLS · {delayBetweenCalls}s
+                <input
+                  type="range"
+                  min={policy.minDelaySeconds}
+                  max={30}
+                  step={1}
+                  value={delayBetweenCalls}
+                  onChange={e => setDelayBetweenCalls(Number(e.target.value))}
+                />
+              </label>
+              <div style={{ fontSize: '0.42rem', lineHeight: 1.6, color: slate(0.5) }}>
+                Organization limit: {policy.maxConcurrency} simultaneous lines, {policy.minDelaySeconds}s minimum delay, {policy.maxQueueSize} numbers per queue.
+                {canManagePolicy ? ' Managers and directors can update these limits.' : ''}
+              </div>
+              {canManagePolicy && (
+                <PhoneBtn
+                  size="sm"
+                  onClick={async () => {
+                    const r = await apiFetch(apiUrl('twilio/dialing/policy'), {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({
+                        maxConcurrency: concurrency,
+                        minDelaySeconds: delayBetweenCalls,
+                        maxQueueSize: policy.maxQueueSize,
+                      }),
+                    });
+                    const d = await r.json().catch(() => ({}));
+                    if (!r.ok) setError(d.error || 'Could not update organization dialing limits');
+                    else setPolicy(d.policy);
+                  }}
+                >
+                  SAVE ORGANIZATION LIMITS
+                </PhoneBtn>
+              )}
+            </div>
+          </PhoneCard>
+
+          <PhoneCard>
             <PhoneCardHeader accent={selected.size > 0 ? warning(0.5) : undefined}>SESSION CONTROLS</PhoneCardHeader>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={{ display: 'grid', gap: 5, fontSize: '0.48rem', color: slate(0.65) }}>
+                LOCAL NUMBER COUNTRY
+                <PhoneCountrySelect value={dialCountry} onChange={setDialCountry} />
+              </label>
               <div style={{ fontSize: '0.52rem', color: slate(0.55), lineHeight: 1.7, marginBottom: 4 }}>
                 {selected.size === 0 ? 'Select contacts from the list to build a dialing queue.' : `${selected.size} contact${selected.size !== 1 ? 's' : ''} ready in queue.`}
               </div>

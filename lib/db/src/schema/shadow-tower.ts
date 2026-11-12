@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, jsonb, index, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, date, jsonb, foreignKey, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { organizationsTable } from "./organizations";
 
@@ -39,6 +39,7 @@ export const shadowTowerOfficeUnitsTable = pgTable("shadow_tower_office_units", 
   leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
   saleFiat: integer("sale_fiat"),
   leaseFiat: integer("lease_fiat"),
+  passwordHash: varchar("password_hash", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
@@ -50,7 +51,7 @@ export const shadowTowerOfficeUnitsTable = pgTable("shadow_tower_office_units", 
 
 export const shadowTowerWorkstationAssignmentsTable = pgTable("shadow_tower_workstation_assignments", {
   id: serial("id").primaryKey(),
-  floorId: integer("floor_id").notNull().references(() => shadowTowerFloorsTable.id, { onDelete: "cascade" }),
+  floorId: integer("floor_id").notNull(),
   workstationKey: varchar("workstation_key", { length: 64 }).notNull(),
   assigneeType: varchar("assignee_type", { length: 12 }).notNull(), // human | bot
   assigneeUserId: varchar("assignee_user_id"),
@@ -62,6 +63,11 @@ export const shadowTowerWorkstationAssignmentsTable = pgTable("shadow_tower_work
   uniqueIndex("shadow_tower_assignment_human_unique").on(t.floorId, t.assigneeUserId),
   uniqueIndex("shadow_tower_assignment_bot_unique").on(t.floorId, t.botId),
   index("shadow_tower_assignment_floor_idx").on(t.floorId),
+  foreignKey({
+    name: "shadow_tower_workstation_floor_fk",
+    columns: [t.floorId],
+    foreignColumns: [shadowTowerFloorsTable.id],
+  }).onDelete("cascade"),
 ]);
 
 /** Explicit per-player selection avoids ambiguous "first floor" office hydration. */
@@ -70,6 +76,24 @@ export const shadowTowerSelectedFloorsTable = pgTable("shadow_tower_selected_flo
   floorId: integer("floor_id").notNull().references(() => shadowTowerFloorsTable.id, { onDelete: "cascade" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [index("shadow_tower_selected_floor_idx").on(t.floorId)]);
+
+export const shadowTowerInterestEventsTable = pgTable("shadow_tower_interest_events", {
+  id: serial("id").primaryKey(),
+  city: varchar("city", { length: 20 }).notNull(),
+  floorNumber: integer("floor_number").notNull(),
+  unitNumber: integer("unit_number").notNull(),
+  userId: varchar("user_id").notNull(),
+  kind: varchar("kind", { length: 16 }).notNull(), // view | watch | inquiry
+  eventDay: date("event_day").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("shadow_tower_interest_dedupe_idx").on(t.city, t.floorNumber, t.unitNumber, t.userId, t.kind, t.eventDay),
+  index("shadow_tower_interest_city_created_idx").on(t.city, t.createdAt),
+  index("shadow_tower_interest_city_unit_idx").on(t.city, t.floorNumber, t.unitNumber),
+  check("shadow_tower_interest_floor_check", sql`${t.floorNumber} between 5 and 62`),
+  check("shadow_tower_interest_unit_check", sql`${t.unitNumber} between 1 and 4`),
+  check("shadow_tower_interest_kind_check", sql`${t.kind} in ('view', 'watch', 'inquiry')`),
+]);
 
 export type ShadowTowerFloor = typeof shadowTowerFloorsTable.$inferSelect;
 export type ShadowTowerOfficeUnit = typeof shadowTowerOfficeUnitsTable.$inferSelect;

@@ -10,8 +10,13 @@ import {
   conferenceRoomsTable,
   callCenterAgentsTable,
   pabloOutboundCampaignsTable,
+  contactsTable,
+  contactChannelPrefsTable,
+  worldBusinessesTable,
+  sharedMediaTable,
+  systemConfigTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import twilioRouter from "../../routes/twilio";
 
 // A throwaway user, unique per test file. There are no hard FK constraints on
@@ -29,6 +34,24 @@ export const authState: { authed: boolean; user: { id: string; email: string } }
   user: TEST_USER,
 };
 
+let onboardingSeed: Promise<void> | null = null;
+
+function ensureOnboardingSeeded(): Promise<void> {
+  if (!onboardingSeed) {
+    onboardingSeed = db.insert(worldBusinessesTable).values({
+      userId: TEST_USER.id,
+      playerName: `twilio-test-${randomUUID().slice(0, 20)}`,
+      businessType: "unemployed",
+      contactEmail: TEST_USER.email,
+      meta: {
+        source: "browser_onboarding",
+        contactPhone: "+15550001111",
+      },
+    }).then(() => undefined);
+  }
+  return onboardingSeed;
+}
+
 export function resetAuthState() {
   authState.authed = true;
   authState.user = TEST_USER;
@@ -41,9 +64,10 @@ export function resetAuthState() {
 export function buildApp(): Express {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => {
+  app.use(async (req, _res, next) => {
     (req as any).isAuthenticated = () => authState.authed;
     (req as any).user = authState.user;
+    if (authState.authed) await ensureOnboardingSeeded();
     next();
   });
   app.use("/api", twilioRouter);
@@ -53,6 +77,10 @@ export function buildApp(): Express {
 // Remove every row this test file may have created, scoped to TEST_USER.id.
 export async function cleanupTestData() {
   const id = TEST_USER.id;
+  await db.delete(sharedMediaTable).where(or(
+    eq(sharedMediaTable.fromUserId, id),
+    eq(sharedMediaTable.toUserId, id),
+  ));
   await Promise.allSettled([
     db.delete(callHistoryTable).where(eq(callHistoryTable.userId, id)),
     db.delete(voicemailsTable).where(eq(voicemailsTable.userId, id)),
@@ -62,7 +90,12 @@ export async function cleanupTestData() {
     db.delete(conferenceRoomsTable).where(eq(conferenceRoomsTable.userId, id)),
     db.delete(callCenterAgentsTable).where(eq(callCenterAgentsTable.userId, id)),
     db.delete(pabloOutboundCampaignsTable).where(eq(pabloOutboundCampaignsTable.userId, id)),
+    db.delete(contactChannelPrefsTable).where(eq(contactChannelPrefsTable.userId, id)),
+    db.delete(contactsTable).where(eq(contactsTable.userId, id)),
+    db.delete(systemConfigTable).where(eq(systemConfigTable.key, `phone_recording_user_${id}`)),
+    db.delete(worldBusinessesTable).where(eq(worldBusinessesTable.userId, id)),
   ]);
+  onboardingSeed = null;
 }
 
 // Seed an owned call so call-control routes (mute/hold/transfer/hangup) pass

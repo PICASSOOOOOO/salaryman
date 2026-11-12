@@ -65,6 +65,10 @@ export const worldBuildPlansTable = pgTable(
     owningOrgId: varchar("owning_org_id", { length: 64 }),
     owningOrgName: varchar("owning_org_name", { length: 120 }),
     openToDebtorLabor: boolean("open_to_debtor_labor").notNull().default(false),
+    // Tower construction plans are physically targeted and settled by the
+    // desktop construction route, not by Collections Facility debtor labor.
+    targetBuildingKey: varchar("target_building_key", { length: 64 }),
+    targetFloorNumber: integer("target_floor_number"),
   },
   (t) => ({
     slugIdx: uniqueIndex("world_build_plans_slug_idx").on(t.slug),
@@ -108,7 +112,7 @@ export type WorldBuildPlan = typeof worldBuildPlansTable.$inferSelect;
 
 export type WorldBuildTask = {
   id: string;
-  kind: "building" | "road" | "prop" | "sign" | "light" | "tree" | "custom";
+  kind: "building" | "road" | "prop" | "sign" | "light" | "tree" | "custom" | "power_export";
   x: number;
   y: number;
   w?: number;
@@ -118,6 +122,12 @@ export type WorldBuildTask = {
   completed?: boolean;
   completedByName?: string | null;
   completedAt?: string | null;
+  assetKey?: string;
+  workBasementLevel?: number;
+  workFloorNumber?: number;
+  workingUserId?: string | null;
+  workSessionId?: string | null;
+  workStartedAt?: string | null;
 };
 
 export const insertWorldBuildContributionSchema = createInsertSchema(worldBuildContributionsTable).omit({

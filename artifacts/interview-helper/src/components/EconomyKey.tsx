@@ -15,7 +15,7 @@ const RAIL_COLORS: Record<string, string> = {
  * player has constant context for what the FIAT (ƒ) figures are worth.
  *
  * Self-contained inline styles in the cyan terminal aesthetic so it drops into
- * both the Pablo onboarding modal and the Immigration stamping panel without
+ * both the Pablo onboarding modal and the onboarding stamping panel without
  * pulling in Tailwind. Wraps cleanly on narrow (vertical iPhone) layouts.
  *
  * Single source of truth: the rails + wording come from `lib/economy-key`,

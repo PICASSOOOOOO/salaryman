@@ -15,8 +15,34 @@ import {
 } from "@workspace/db";
 import { getProvider } from "./social-providers";
 import { hasFeature } from "./plan";
+import { decryptSocialCredentials, encryptSocialCredentials } from "./social-credentials-crypto";
 
 export type SocialPost = typeof socialPostsTable.$inferSelect;
+
+export interface CreateSocialPostInput {
+  platform: SocialPlatform;
+  content?: string;
+  hashtags?: string[];
+  mediaUrls?: string[];
+  status?: string;
+  scheduledAt?: Date | null;
+  aiGenerated?: string;
+}
+
+/** Create a post in the same table used by the manual Marketing Command Center. */
+export async function createSocialPost(userId: string, input: CreateSocialPostInput): Promise<SocialPost> {
+  const [post] = await db.insert(socialPostsTable).values({
+    userId,
+    platform: input.platform,
+    content: input.content || "",
+    hashtags: input.hashtags || [],
+    mediaUrls: input.mediaUrls || [],
+    status: input.status || "draft",
+    scheduledAt: input.scheduledAt ?? null,
+    ...(input.aiGenerated !== undefined ? { aiGenerated: input.aiGenerated } : {}),
+  }).returning();
+  return post;
+}
 
 export const SOCIAL_PLATFORMS = [
   "twitter",
@@ -244,8 +270,10 @@ export async function publishSocialPost(opts: {
   postId: number;
   /** Active org whose Platform Connections should be considered first. */
   orgId?: number | string | null;
+  /** Automation must never count a simulated publish as a live campaign post. */
+  liveOnly?: boolean;
 }): Promise<PublishSocialPostResult> {
-  const { userId, email, postId, orgId } = opts;
+  const { userId, email, postId, orgId, liveOnly = false } = opts;
   const [post] = await db
     .select()
     .from(socialPostsTable)
@@ -264,7 +292,31 @@ export async function publishSocialPost(opts: {
 
   // Real publish when PRIME + a live, connected Marketing account exists.
   if (canPublishLive && provider?.publish && conn && conn.status === "connected" && conn.credentials) {
-    const result = await provider.publish(conn.credentials as Record<string, string>, {
+    let credentials: Record<string, string>;
+    try {
+      const decoded = decryptSocialCredentials(
+        conn.credentials as Record<string, string>,
+        userId,
+        post.platform,
+      );
+      credentials = decoded.credentials;
+      if (decoded.needsEncryption) {
+        await db
+          .update(socialConnectionsTable)
+          .set({
+            credentials: encryptSocialCredentials(credentials, userId, post.platform),
+            updatedAt: new Date(),
+          })
+          .where(eq(socialConnectionsTable.id, conn.id));
+      }
+    } catch {
+      await db
+        .update(socialConnectionsTable)
+        .set({ lastError: "Stored social credentials could not be decrypted.", updatedAt: new Date() })
+        .where(eq(socialConnectionsTable.id, conn.id));
+      return { ok: false, status: 502, error: "Stored social credentials could not be decrypted.", platform: post.platform };
+    }
+    const result = await provider.publish(credentials, {
       content: post.content || "",
       hashtags: (post.hashtags as string[]) || [],
       mediaUrls: (post.mediaUrls as string[]) || [],
@@ -322,6 +374,18 @@ export async function publishSocialPost(opts: {
         .returning();
       return { ok: true, post: updated, simulated: false, url: result.url ?? null };
     }
+  }
+
+  if (liveOnly) {
+    return {
+      ok: false,
+      status: 409,
+      error: provider?.publish
+        ? `${provider.label} needs a connected account before this campaign can publish.`
+        : `${provider?.label ?? post.platform} does not have a live publishing adapter yet.`,
+      platform: post.platform,
+      ...(!conn || conn.status !== "connected" ? { needsConnection: post.platform } : {}),
+    };
   }
 
   // No live connection (or not PRIME) — keep the in-game simulation but signal

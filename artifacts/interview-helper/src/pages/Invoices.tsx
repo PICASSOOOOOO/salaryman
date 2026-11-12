@@ -5,7 +5,7 @@ import {
   FileText, Plus, X, Trash2, Eye, Download, Loader2, Check, Send, Mail,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { BOOMER_MODE_ENABLED } from '@/lib/vocabulary';
 import { useAppMode } from '@/hooks/use-app-mode';
 import { SignInPage } from '@/components/SignInPrompt';
 
@@ -53,7 +53,7 @@ function CrtInput({ label, value, onChange, type = 'text', placeholder = '', tex
 export default function Invoices() {
   const { user, isAuthenticated } = useAuth();
   const { config } = useAppMode();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const boomerMode = BOOMER_MODE_ENABLED;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -73,13 +73,6 @@ export default function Invoices() {
     terms: 'Payment due within 30 days of invoice date.',
   });
   const [lineItems, setLineItems] = useState<LineItem[]>([{ description: '', quantity: 1, rate: 0 }]);
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const fetchInvoices = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }

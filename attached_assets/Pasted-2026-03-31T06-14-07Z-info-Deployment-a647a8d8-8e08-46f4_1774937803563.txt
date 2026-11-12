@@ -1,0 +1,94 @@
+2026-03-31T06:14:07Z info: Deployment: a647a8d8-8e08-46f4-91e6-39d6cd551990
+2026-03-31T06:14:07Z info: Build: dd2d2ae3-c68e-4edc-842e-cf7006e1586f
+2026-03-31T06:14:08Z info: Running Security Scan
+2026-03-31T06:14:52Z info: Security Scan Complete
+2026-03-31T06:14:57Z info: Installing packages
+--> pnpm install
+
+Scope: all 14 workspace projects
+
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.26.1 → 10.33.0.   │
+   │   Changelog: https://pnpm.io/v/10.33.0   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+
+Lockfile is up to date, resolution step is skipped
+
+Progress: resolved 1, reused 0, downloaded 0, added 0
+
+Progress: resolved 3, reused 3, downloaded 0, added 0
+
+Packages: +3 -1
++++-
+
+Progress: resolved 3, reused 3, downloaded 0, added 0, done
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+. preinstall: Done
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @whiskeysockets/baileys@7.0.0-rc.9,                 │
+│   core-js@3.49.0, koffi@2.15.2, protobufjs@6.8.8, protobufjs@7.5.4,          │
+│   sharp@0.34.5.                                                              │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Done in 5.1s using pnpm v10.26.1
+
+2026-03-31T06:15:03Z info: Starting Build
+
+> workspace@0.0.0 prebuild /home/runner/workspace
+> echo 'Version is derived dynamically from git commit count at build time'
+
+
+Version is derived dynamically from git commit count at build time
+
+
+> workspace@0.0.0 build /home/runner/workspace
+> pnpm run typecheck && pnpm -r --if-present run build
+
+
+
+> workspace@0.0.0 typecheck /home/runner/workspace
+> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+
+
+
+> workspace@0.0.0 typecheck:libs /home/runner/workspace
+> tsc --build
+
+
+Scope: 4 of 14 workspace projects
+
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck: Done
+
+artifacts/mockup-sandbox typecheck: Done
+
+artifacts/api-server typecheck: src/routes/twilio.ts(1686,57): error TS2769: No overload matches this call.
+artifacts/api-server typecheck:   Overload 1 of 2, '(value: { name: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; id?: number | SQL<unknown> | Placeholder<string, any> | undefined; ... 13 more ...; company?: string | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+
+artifacts/api-server typecheck:     Object literal may only specify known properties, and 'userId' does not exist in type '{ name: string | SQL<unknown> | Placeholder<string, any>; userId: string | SQL<unknown> | Placeholder<string, any>; id?: number | SQL<unknown> | Placeholder<string, any> | undefined; ... 13 more ...; company?: string | ... 2 more ... | undefined; }[]'.
+
+artifacts/api-server typecheck: Failed
+
+/home/runner/workspace/artifacts/api-server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 2
+
+ ELIFECYCLE  Command failed with exit code 2.
+
+ ELIFECYCLE  Command failed with exit code 2.
+

@@ -1,5 +1,5 @@
 // ─── Accounting Autopilot handler ────────────────────────────────────────────
-// The assigned bot acts as a virtual CFO for the org's books (the org OWNER's
+// Pablo Prime acts as a virtual CFO for the org's books (the org OWNER's
 // finance data — the same account the manual Enterprise Finance screens read and
 // write). Each due tick it:
 //   1. Collections — chases overdue receivables, logging a (cooldown-deduped)

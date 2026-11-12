@@ -1,17 +1,13 @@
 import { apiFetch } from '@/lib/api-client';
-import { Suspense, lazy, memo, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, memo, useEffect, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
-import { publishableKeyFromHost } from "@clerk/react/internal";
-import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { NavBar } from "@/components/NavBar";
-import AlphaWipeBanner from "@/components/AlphaWipeBanner";
 import AbandonmentBanner from "@/components/AbandonmentBanner";
+import AdSenseBanner from "@/components/AdSenseBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
-import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
+import { MobileModuleNav } from "@/components/MobileBottomBar";
 import { installAppHistoryTracking } from "@/lib/app-navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
@@ -22,21 +18,26 @@ import { PledgeStorePopupProvider } from "@/components/PledgeStorePopup";
 import { useAuth } from "@/hooks/use-auth";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync";
-import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
+import { hydrateOnboardingStatus, resetOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
-import { isTutorialDone } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
+import { sanitizeReturnPath } from "@/lib/safe-path";
 import { DeviceControlBridge } from "@/components/DeviceControlBridge";
+import { DeferredChatPanel } from "@/components/DeferredChatPanel";
+import { SignInPage } from "@/components/SignInPrompt";
+import { PHONE_ROUTE_TO_TAB } from "@/pages/phone/CalllHomeContext";
 
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
-const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
-const Immigration = lazy(() => import("@/pages/Immigration"));
+const Console = lazy(() => import("@/pages/Console"));
+const loadPabloTerminal = () => import("@/pages/PabloTerminal");
+const PabloTerminal = lazy(loadPabloTerminal);
+const PabloCreate = lazy(() => import("@/pages/PabloCreate"));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
-const Console = lazy(() => import("@/pages/Console"));
 const DesktopDownload = lazy(() => import("@/pages/DesktopDownload"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
@@ -44,14 +45,12 @@ const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.
 const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
-const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const SeoModule = lazy(() => import("@/pages/SeoModule"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
-const GlobalErrorReporter = lazy(() => import("@/components/GlobalErrorReporter").then((m) => ({ default: m.GlobalErrorReporter })));
 const ActiveCallBar = lazy(() => import("@/components/FloatingCallBar").then((m) => ({ default: m.ActiveCallBar })));
 const NotificationToaster = lazy(() => import("@/components/NotificationToaster").then((m) => ({ default: m.NotificationToaster })));
 const CommandPalette = lazy(() => import("@/components/CommandPalette").then((m) => ({ default: m.CommandPalette })));
@@ -70,6 +69,7 @@ const OrgWebsite = lazy(() => import("@/pages/OrgWebsite"));
 const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 
 const DarkRoom = lazy(() => import("@/pages/DarkRoom"));
+const NineteenNinetyNine = lazy(() => import("@/pages/1999"));
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const WriterStudio = lazy(() => import("@/pages/WriterStudio"));
 const Classroom = lazy(() => import("@/pages/Classroom"));
@@ -83,18 +83,24 @@ const Marketing = lazy(() => import("@/pages/Marketing"));
 const Autopilot = lazy(() => import("@/pages/Autopilot"));
 const Armory = lazy(() => import("@/pages/Armory"));
 const OrgHub = lazy(() => import("@/pages/OrgHub"));
+const OrganizationDocuments = lazy(() => import("@/pages/OrganizationDocuments"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
 const Comms = lazy(() => import("@/pages/Comms"));
+const CyberDeck = lazy(() => import("@/pages/CyberDeck"));
 
 const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const WorkspaceHome = lazy(() => import("@/pages/WorkspaceHome"));
+const WorkspaceNotepad = lazy(() => import("@/pages/WorkspaceNotepad"));
+const WorkspaceCalculator = lazy(() => import("@/pages/WorkspaceCalculator"));
 const Goals = lazy(() => import("@/pages/Goals"));
 const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
 const JobCommandCenter = lazy(() => import("@/pages/JobCommandCenter"));
 const ClaudeTemplates = lazy(() => import("@/pages/ClaudeTemplates"));
 const ProductionStudio = lazy(() => import("@/pages/ProductionStudio"));
+const SceneComposer = lazy(() => import("@/pages/SceneComposer"));
 
 const LegalHub = lazy(() => import("@/pages/legal/LegalHub"));
 const LegalTerms = lazy(() => import("@/pages/legal/TermsOfService"));
@@ -125,8 +131,10 @@ const Vendors = lazy(() => import("@/pages/Vendors"));
 const ProfitLoss = lazy(() => import("@/pages/ProfitLoss"));
 const Partnerships = lazy(() => import("@/pages/Partnerships"));
 const OrgAccounts = lazy(() => import("@/pages/OrgAccounts"));
+const MyApps = lazy(() => import("@/pages/MyApps"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
+const MeshtasticCommsPage = lazy(() => import("@/pages/MeshtasticCommsPage"));
 
 // /phone opens CALLL HOME directly. Entitlement UX stays inside the product.
 function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
@@ -137,16 +145,15 @@ function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
 function LegacyUpgradeRedirect() {
   const params = new URLSearchParams(window.location.search);
   params.set("view", "prime");
-  return <Redirect to={`/pledge?${params.toString()}`} />;
+  return <Redirect to={`/pricing?${params.toString()}`} />;
 }
 
 function PledgeStoreRoute() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("view") === "agents") return <Redirect to="/bots" />;
   return <PledgeStore />;
 }
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
+const MeetLaunchPage = lazy(() => import("@/pages/MeetLaunchPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const ArtLibrary = lazy(() => import("@/pages/ArtLibrary"));
@@ -174,6 +181,7 @@ const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
 const MyOffice = lazy(() => import("@/pages/MyOffice"));
+const OfficeMonitor = lazy(() => import("@/pages/OfficeMonitor"));
 const TheaterPage = lazy(() => import("@/pages/TheaterPage"));
 const DeviceLink = lazy(() => import("@/pages/DeviceLink"));
 
@@ -186,49 +194,73 @@ const queryClient = new QueryClient({
   },
 });
 
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/immigration", "/theater", "/device-link", "/sms-opt-in"];
+const FULLSCREEN_ROUTES = ["/mobile", "/terminal", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/onboarding", "/theater", "/device-link", "/sms-opt-in", "/my-office/monitor", "/1999"];
 
 function LoadingFallback() {
   return (
     <div
-      style={{
-        minHeight: "var(--app-viewport-height, 100dvh)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#09090b",
-        color: "rgba(56,189,248,0.7)",
-        fontFamily: "monospace",
-        fontSize: "0.85rem",
-        letterSpacing: "0.1em",
-      }}
+      className="app-loading-screen"
+      role="status"
+      aria-live="polite"
+      aria-label="Pablo is synchronizing this workspace"
     >
-      LOADING...
+      <div className="app-loading-card">
+        <div className="app-loading-signal" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+         <p className="app-loading-label">LOADING PABLO</p>
+         <p className="app-loading-detail">LOADING YOUR WORKSPACE</p>
+      </div>
     </div>
   );
 }
 
+function FeatureAuthGate({ context, children, backHref }: {
+  context: string;
+  children: React.ReactNode;
+  backHref?: string;
+}) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <LoadingFallback />;
+  if (!isAuthenticated) {
+    return (
+      <>
+        {backHref && (
+          <Link
+            href={backHref}
+            className="fixed left-4 top-4 z-[100000] text-xs font-semibold tracking-wider text-black"
+          >
+            ← BACK
+          </Link>
+        )}
+        <SignInPage context={context} />
+      </>
+    );
+  }
+  return <>{children}</>;
+}
+
 const MemoHome = memo(Home as React.ComponentType);
-const MemoConsole = memo(Console as React.ComponentType);
 
 function HomeOrCover() {
   const [location] = useLocation();
+  const { isAuthenticated } = useAuth();
   // This component is kept-alive (always mounted, just hidden via display:none
-  // on non-home routes). Guard on the actual path so the homepage terminal does
+  // on non-home routes). Guard on the actual path so the homepage surface does
   // not interfere with deep routes (e.g. /my-office).
   if (location.split("?")[0] !== "/") return null;
-  // Keep the public door focused on finished browser capabilities. The
-  // downloadable gameplay client is still in development and should not be
-  // marketed from the homepage until its visual slice is complete.
+  if (isAuthenticated) return <Redirect to="/workspace" />;
+  // The homepage is the browser product index. Pablo's full nebula/chat
+  // experience remains a dedicated destination at /pablo.
   return <ProfessionalHome />;
 }
 
 const FLOATING_BAR_ROUTES = [
+  "/business/crm",
   "/",
   "/console",
   "/business",
@@ -237,12 +269,12 @@ const FLOATING_BAR_ROUTES = [
 
 function AppShell() {
   useUndoShortcut();
-  useHeartbeat();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const onboardingResolved = useOnboardingResolved();
+  useHeartbeat(isAuthenticated && onboardingResolved && !isLoading);
   usePageMeta();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
-  const { isAuthenticated, isLoading } = useAuth();
-  const onboardingResolved = useOnboardingResolved();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -269,6 +301,28 @@ function AppShell() {
   }, []);
 
   const pathname = location.split("?")[0];
+  useEffect(() => {
+    // Warm Pablo's optional route only when the browser is idle and the
+    // connection is suitable. Avoid spending mobile data on users who may
+    // never open it, especially on data-saver and slower networks.
+    if (pathname !== "/") return;
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    if (connection?.saveData || (connection?.effectiveType && connection.effectiveType !== "4g")) return;
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(() => { void loadPabloTerminal(); }, { timeout: 2500 });
+      return () => idleWindow.cancelIdleCallback?.(handle);
+    }
+
+    const timer = window.setTimeout(() => { void loadPabloTerminal(); }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
   // ── Route-change audio backstop ────────────────────────────────────────────
   // Pages own starting their background audio and stopping it on unmount, but a
   // page that forgets to clean up would leak its procedural score/bed (module
@@ -290,18 +344,24 @@ function AppShell() {
   }, [pathname]);
 
   const isRootRoute = pathname === "/";
+  const isAuthRoute = pathname === "/sign-in" || pathname === "/sign-up";
   const isDeviceLinkRoute = pathname === "/device-link";
+  const isPabloRoute = pathname === "/pablo";
+  const isOfficeMonitorRoute = pathname === "/my-office/monitor";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+  const isEmbed = isEmbedMode();
   // The browser product has one visual contract: cream/white surfaces and
   // black ink. The downloadable game owns the cyberpunk palette.
   const isLightWorkspace = true;
-  const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
+  // ProfessionalHome owns the root header. Keep the global workspace chrome
+  // off / so the homepage does not render two navigation systems.
+  // Pablo is immersive, but it still uses the same frozen app chrome as every
+  // other browser surface. The terminal owns the space between those bars.
+  const showNavBar = (!isFullscreenRoute || isPabloRoute) && !hideNavBar && !isRootRoute && !isAuthRoute && !isEmbed;
   // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
   // /my-office surveillance pane), suppress ALL app-level floating chrome
   // (alpha banner, audio control, toaster) so the iframe reads as one clean
   // feed instead of a miniature copy of the whole app.
-  const isEmbed = isEmbedMode();
-
   const isHome = pathname === "/";
   const consoleSubRoutes = ["/console/agents", "/console/video", "/console/vault", "/console/scraper"];
   const isConsoleTerminal = pathname === "/console";
@@ -320,92 +380,38 @@ function AppShell() {
   const isPhoneRoute = pathname === "/phone" || pathname.startsWith("/phone/");
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
-    FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  // GLOBAL GATE. Before a visitor passes security (signs in), the visible
-  // surface is Pablo's homepage, plus the /auth + /api machinery that performs
-  // the sign-in. Pablo remains the homepage after sign-in too; Tower entry is
-  // an explicit handoff from that surface.
-  // Typing or deep-linking ANY other URL (/game, /console, /business,
-  // /world, /profile, /legal, /alpha, …) silently bounces them back to the
-  // queue, so nothing behind the firewall is reachable by guessing a path.
-  //
-  // Once authenticated, the open Tower lobby and legal pages are available
-  // before any optional outside-world paperwork.
-  const ANON_ALLOWED_PREFIXES = ["/desktop", "/phone", "/pablo", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/legal", "/device-link", "/sms-opt-in", "/auth", "/api"];
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/terminal", "/pledge", "/upgrade", "/sign-in", "/sign-up", "/desktop", "/legal", "/alpha", "/device-link", "/sms-opt-in", "/auth", "/api", "/phone", "/comms", "/contacts", "/leads", "/organizations", "/org", "/bots", "/business", "/business/crm", "/business/calendar", "/calendar", "/console/vault", "/knowledge", "/knowledge-hub", "/vault"];
-  // Powering on the landing cinematic's terminal sends visitors to /console
-   // so an anonymous visitor must be allowed to reach EXACTLY
-  // /console and see the console's own sign-in screen there — without being
-  // bounced back to the nebula front door. We allow only the exact path, never
-  // the /console/* subroutes (those tool deep-routes stay protected: guessing
-  // them while logged out still bounces to the door). The console sign-in
-  // screen passes returnTo="/console" to OAuth, so after signing in the visitor
-  // lands back on the console rather than the app base.
-  const ANON_ALLOWED_EXACT = ["/console"];
-  const matchesPrefix = (list: string[]) =>
-    pathname === "/" || list.some(p => pathname === p || pathname.startsWith(p + "/"));
-  const allowedForAnon = matchesPrefix(ANON_ALLOWED_PREFIXES) || ANON_ALLOWED_EXACT.includes(pathname);
-  const allowedForAuthedNew = matchesPrefix(NEW_USER_ALLOWED_PREFIXES);
-  const tutorialDone = isTutorialDone();
-  const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;
-  // Wait for auth to resolve before bouncing: isAuthenticated starts false on
-  // cold load, so acting during isLoading would kick a signed-in-but-uncleared
-  // user off a post-sign-in route before we know they're authed.
-  // Also wait for the server onboarding check (authed users only): a returning,
-  // already-onboarded user has no local salaryman_tutorial_done flag yet, so
-  // bouncing before hydrateOnboardingStatus() resolves would force them back
-  // through intake. Anonymous visitors don't run that check, so this never
-  // delays their bounce to /pablo.
-  const onboardingPending = isAuthenticated && !onboardingResolved;
-  // Do not mount a protected game/office surface while the save-list check is
-  // still deciding whether this browser is stale after a development reset.
-  // Once an authenticated empty list is observed, hydration clears the local
-  // tutorial flag and this rerenders into the Tower reception redirect.
-  const holdForOnboarding = onboardingPending && isAuthenticated && !allowedForAuthedNew;
-  const newUserBlocked = !isLoading && !onboardingPending && !tutorialDone && !isAllowedForNewUser;
-  // Close the hydration window: while auth is still resolving, hold any path an
-  // anonymous visitor may NOT see behind a loading screen instead of rendering
-  // it. This stops a logged-out deep link (/profile, /legal, …) from flashing
-  // the protected page before the bounce fires, without mis-kicking a signed-in
-  // user who is legitimately allowed to be there. Cleared users (tutorialDone)
-  // are never held.
-  const holdForAuth = isLoading && !tutorialDone && !allowedForAnon;
-  const [, navigate] = useLocation();
+    !isEmbed && FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+  // Server-authoritative onboarding skip: resolve the server state as soon as
+  // Clerk reports a signed-in user. Background API work is kept below until
+  // this handshake completes.
   useEffect(() => {
-    if (!newUserBlocked) return;
-    // Send authed-but-uncleared users to the desktop client handoff. The
-    // browser now contains practical tools only; office simulation lives in
-    // the native client.
-    navigate("/desktop", { replace: true });
-  }, [newUserBlocked, isAuthenticated, location, navigate]);
+    if (!isAuthenticated || !user?.id) {
+      resetOnboardingStatus();
+      return;
+    }
+    void hydrateOnboardingStatus(user.id);
+  }, [isAuthenticated, user?.id]);
 
-  // Cross-device settings sync: once signed in, pull the player's saved display
-  // / visual-quality preferences down to this device, then mirror any further
-  // local changes back up. Logged-out players never run this and keep their
-  // local-only settings blob.
+  // Cross-device settings sync: once the server-authoritative onboarding read
+  // finishes, pull the player's saved display / visual-quality preferences down
+  // to this device and mirror further local changes back up. This deliberately
+  // avoids the Clerk-to-API bootstrap 401 window.
   useEffect(() => {
-    if (!isAuthenticated) return;
-    // Server-authoritative onboarding skip: if the server says this user already
-    // onboarded (has a world business row) but the local flag is missing (fresh
-    // device / cleared browser), flip salaryman_tutorial_done so every gate
-    // treats them as cleared and they land on the practical tools instead of
-    // re-running
-    // intake. Resolves instantly when the local flag is already set.
-    void hydrateOnboardingStatus();
+    if (!isAuthenticated || !onboardingResolved) return;
     void hydrateSettingsFromServer();
     const teardown = initSettingsSync();
     return teardown;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, onboardingResolved]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !onboardingResolved) return;
     const sendHeartbeat = () => {
       apiFetch('/api/world/heartbeat', { method: 'POST', credentials: 'include' }).catch(() => {});
     };
     sendHeartbeat();
     const hbInterval = setInterval(sendHeartbeat, 30000);
     return () => clearInterval(hbInterval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, onboardingResolved]);
 
   useEffect(() => {
     if (isGameRoute) {
@@ -425,29 +431,13 @@ function AppShell() {
     };
   }, [isLightWorkspace]);
 
-  // Hold protected paths behind a loading screen until auth resolves (see
-  // holdForAuth above) so a logged-out deep link can never flash the page.
-  if (holdForAuth || holdForOnboarding) return <LoadingFallback />;
-  // Do not mount a protected route for even one frame while the effect above
-  // updates browser history. Mounting it can start authenticated API requests;
-  // their expected 401 would otherwise win the race and send the visitor to
-  // the legacy Pablo sign-in surface instead of Tower reception.
-  if (newUserBlocked) return <Redirect to="/desktop" />;
-
   return (
     <>
       <DeviceControlBridge />
-      {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
-          on every page (including fullscreen office/game routes that hide the
-          NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      {!isEmbed && !isGameRoute && !showNavBar && !isRootRoute && !isDeviceLinkRoute && <AlphaWipeBanner />}
       {showNavBar && (
-        <div className="app-chrome">
-          {!isEmbed && <AlphaWipeBanner />}
+          <div className={`app-chrome${isRootRoute ? " app-chrome--home" : ""}`}>
           <AbandonmentBanner />
-          <NavBar />
           <MobileModuleNav />
-          <MobileSubNav />
         </div>
       )}
       {/* Site-wide command palette (nav search bar + ⌘K). Mounted wherever the
@@ -459,13 +449,17 @@ function AppShell() {
       {/* Route-independent toaster for the persistent notification stream.
           Immersive gameplay intentionally keeps this surface out of the
           viewport; ordinary fullscreen routes still receive it. */}
-        {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && <NotificationToaster />}
+        {isAuthenticated && !isEmbed && !isRootRoute && !isGameRoute && !isDeviceLinkRoute && !isOfficeMonitorRoute && <NotificationToaster />}
+        {isAuthenticated && !isEmbed && !isAuthRoute && !isDeviceLinkRoute && !isOfficeMonitorRoute && pathname !== "/comms" && (
+          <DeferredChatPanel />
+        )}
       </Suspense>
       {/* Primary surfaces are mounted only while active. Keeping both large
           trees hidden behind every office/paid-feature route retained their
           state, effects, and DOM for the entire session. Route state already
           persists through the app stores, so unmounting here releases memory
           without weakening the office or paid-feature paths. */}
+      <div key={location} className="app-route-surface">
       {isHome && (
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback />}>
@@ -476,31 +470,44 @@ function AppShell() {
       {isConsoleTerminal && (
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback />}>
-            <MemoConsole />
+            <Console />
           </Suspense>
         </ErrorBoundary>
       )}
-
       {/* Other routes — lazy-loaded */}
       {!isPrimarySurfaceActive && (
         <ErrorBoundary>
         <Suspense fallback={<LoadingFallback />}>
           <Switch>
-            <Route path="/sign-in/*?" component={ClerkSignInPage} />
-            <Route path="/sign-up/*?" component={ClerkSignUpPage} />
+            <Route path="/sign-in/*?" component={ReplitAuthPage} />
+            <Route path="/sign-up/*?" component={ReplitAuthPage} />
             {/* Standalone routes */}
+            <Route path="/landing">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/promo">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/pablo/create" component={PabloCreate} />
             <Route path="/pablo/deck" component={PabloDeck} />
-            <Route path="/pablo" component={PabloTerminal} />
+            <Route path="/pablo">{() => <PabloTerminal />}</Route>
             <Route path="/sms-opt-in" component={SmsOptIn} />
-            <Route path="/immigration" component={Immigration} />
+            <Route path="/onboarding" component={Onboarding} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
             <Route path="/profile/admin/tickets" component={AdminTickets} />
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
-            <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
-            <Route path="/profile/admin/alpha" component={AlphaAdmin} />
+            <Route path="/profile/admin/dev-tasks">{() => (
+              <FeatureAuthGate context="Sign in to access development task administration.">
+                <DevTasksAdmin />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
-            <Route path="/profile/admin/art" component={ArtLibrary} />
+            <Route path="/profile/admin/alpha">{() => (
+              <FeatureAuthGate context="Sign in to access alpha program administration.">
+                <AlphaAdmin />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/profile/admin/art">{() => (
+              <FeatureAuthGate context="Sign in to access the admin art library.">
+                <ArtLibrary />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/alpha" component={AlphaApply} />
             <Route path="/desktop" component={DesktopDownload} />
             <Route path="/download">{() => <Redirect to="/desktop" />}</Route>
@@ -509,22 +516,27 @@ function AppShell() {
             <Route path="/profile/admin" component={AdminHub} />
             <Route path="/profile/moderator" component={ModeratorPanel} />
             <Route path="/profile/world-map">{() => <Redirect to="/desktop" />}</Route>
-            {/* Platform API + the legacy APIs tab now live inside the unified
-                /settings page (General group). Preserve old deep links. */}
-            <Route path="/profile/platform">{() => <Redirect to={`/settings${window.location.search}`} />}</Route>
-            <Route path="/profile/apis">{() => <Redirect to="/settings" />}</Route>
+            {/* Platform API owns its feature route; keep its old account links working. */}
+            <Route path="/profile/platform">{() => <Redirect to={`/platform${window.location.search}`} />}</Route>
+            <Route path="/profile/apis">{() => <Redirect to="/platform" />}</Route>
             <Route path="/settings" component={SettingsPage} />
             <Route path="/profile" component={Profile} />
             <Route path="/profiles" component={ProfilePicker} />
             <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={LegacyUpgradeRedirect} />
-            <Route path="/pricing" component={Pricing} />
-            <Route path="/wallet" component={Wallet} />
+            <Route path="/pricing" component={PledgeStoreRoute} />
+            <Route path="/wallet">{() => (
+              <FeatureAuthGate context="Sign in to view your account and balances.">
+                <Wallet />
+              </FeatureAuthGate>
+            )}</Route>
             {/* Playable React gameplay retired. Keep old bookmarks useful by
                 sending them to the native desktop client landing page. */}
             <Route path="/world">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/world/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/game">{() => <Redirect to="/desktop" />}</Route>
+            {/* This was part of the retired browser game; desktop settings live at /settings. */}
+            <Route path="/game/settings">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/game/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/office">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/office/*">{() => <Redirect to="/desktop" />}</Route>
@@ -532,7 +544,7 @@ function AppShell() {
             <Route path="/tower">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/tower/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/my-office" component={MyOffice} />
-            <Route path="/game/settings">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/my-office/monitor" component={OfficeMonitor} />
             <Route path="/skills">{() => <Redirect to="/desktop" />}</Route>
             {/* The legacy bathroom->office cutscene now folds into the single
                 walkable office (no separate tutorial-office surface). */}
@@ -541,14 +553,20 @@ function AppShell() {
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
             <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
             <Route path="/admin/dev-tasks">{() => <Redirect to="/profile/admin/dev-tasks" />}</Route>
+            <Route path="/admin/feedback">{() => <Redirect to="/profile/admin/feedback" />}</Route>
             <Route path="/admin">{() => {
               const qs = window.location.search;
               return <Redirect to={`/profile/admin${qs}`} />;
             }}</Route>
             <Route path="/mobile">{() => <MobileTerminal />}</Route>
             <Route path="/terminal">{() => <MobileTerminal physicalTerminal />}</Route>
-            <Route path="/device-link" component={DeviceLink} />
+            <Route path="/device-link">{() => (
+              <FeatureAuthGate context="Sign in to link and manage your devices." backHref="/">
+                <DeviceLink />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/theater" component={TheaterPage} />
+            <Route path="/meet/new">{() => <MeetLaunchPage />}</Route>
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
             {/* BUSINESS module */}
@@ -557,11 +575,15 @@ function AppShell() {
             <Route path="/marketplace" component={Marketplace} />
             <Route path="/business/services" component={BusinessServices} />
             <Route path="/business/contacts" component={ContactCollector} />
-            <Route path="/contacts" component={ContactCollector} />
+            <Route path="/contacts">{() => <Redirect to="/business/crm" />}</Route>
             <Route path="/business/hiring" component={Hiring} />
             <Route path="/business/jobs" component={JobBoard} />
             <Route path="/business/job-command" component={JobCommandCenter} />
-            <Route path="/job-offers" component={JobOffers} />
+            <Route path="/job-offers">{() => (
+              <FeatureAuthGate context="Sign in to view and respond to your job offers.">
+                <JobOffers />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/business/interview" component={Console} />
              <Route path="/calendar">{() => <Redirect to="/business/calendar" />}</Route>
             <Route path="/business/calendar" component={Calendar} />
@@ -590,12 +612,17 @@ function AppShell() {
             <Route path="/business" component={BusinessHub} />
 
             {/* CREATIVE module */}
+            <Route path="/1999" component={NineteenNinetyNine} />
+            <Route path="/creative/1999">{() => <Redirect to="/1999" />}</Route>
+            <Route path="/1999/stems" component={StemStudio} />
             <Route path="/creative/darkroom" component={DarkRoom} />
-            <Route path="/creative/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
+            <Route path="/creative/scene">{() => <SceneComposer />}</Route>
+            <Route path="/creative/studio">{() => <Redirect to="/creative/design" />}</Route>
             <Route path="/creative/production">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
-            <Route path="/creative/music" component={MusicJukebox} />
-            <Route path="/creative/jukebox">{() => <Redirect to="/creative/music" />}</Route>
+            <Route path="/hummingbird" component={MusicJukebox} />
+            <Route path="/creative/music">{() => <Redirect to="/hummingbird" />}</Route>
+            <Route path="/creative/jukebox">{() => <Redirect to="/hummingbird" />}</Route>
             <Route path="/creative/writer" component={WriterStudio} />
             <Route path="/creative/video" component={VideoStudio} />
             <Route path="/creative/schematic" component={SchematicDecoder} />
@@ -605,22 +632,35 @@ function AppShell() {
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
             <Route path="/comms" component={Comms} />
+            <Route path="/cyber-deck" component={CyberDeck} />
             <Route path="/social/colleagues">{() => <Redirect to="/comms" />}</Route>
-            <Route path="/creative/stems" component={StemStudio} />
+            <Route path="/creative/stems">{() => <Redirect to="/1999/stems" />}</Route>
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />
             <Route path="/creative/classroom" component={Classroom} />
-            <Route path="/creative">{() => <Redirect to="/creative/music" />}</Route>
+            <Route path="/creative">{() => <Redirect to="/creative/design" />}</Route>
 
             {/* MARKETING module */}
-            <Route path="/marketing/ads" component={Marketing} />
+            <Route path="/marketing/ads">{() => (
+              <FeatureAuthGate context="Sign in to create and access your saved ad creatives.">
+                <Marketing />
+              </FeatureAuthGate>
+            )}</Route>
             <Route path="/marketing/campaigns" component={Campaigns} />
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />
-            <Route path="/leads" component={LeadsPage} />
+            <Route path="/leads">{() => <Redirect to="/marketing/leads" />}</Route>
             <Route path="/marketing/social" component={SocialMediaManager} />
-            <Route path="/marketing/command" component={MarketingCommandCenter} />
-            <Route path="/marketing" component={MarketingCommandCenter} />
+            <Route path="/marketing/command">{() => (
+              <FeatureAuthGate context="Sign in to connect and manage social accounts.">
+                <MarketingCommandCenter />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/marketing">{() => (
+              <FeatureAuthGate context="Sign in to connect and manage social accounts.">
+                <MarketingCommandCenter />
+              </FeatureAuthGate>
+            )}</Route>
 
             {/* ARMORY module */}
             <Route path="/armory/inventory" component={Armory} />
@@ -629,26 +669,48 @@ function AppShell() {
             {/* ORG module — dedicated org-management hub (separate from OFFICE) */}
             <Route path="/org" component={OrgHub} />
             <Route path="/organizations" component={OrgHub} />
+            <Route path="/business/shared-documents" component={OrganizationDocuments} />
 
             {/* Legacy agent status page now belongs to the Agent Command Center. */}
-            <Route path="/console/agents">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/console/agents">{() => <Redirect to="/pricing" />}</Route>
             <Route path="/console/video" component={VideoAnalyzer} />
              <Route path="/knowledge">{() => <Redirect to="/console/vault" />}</Route>
              <Route path="/knowledge-hub">{() => <Redirect to="/console/vault" />}</Route>
              <Route path="/vault">{() => <Redirect to="/console/vault" />}</Route>
-            <Route path="/console/vault" component={KnowledgeVault} />
-            <Route path="/console/scraper" component={WebScraper} />
+            <Route path="/console/vault">{() => (
+              <FeatureAuthGate context="Sign in to access your saved knowledge vault.">
+                <KnowledgeVault />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/console/scraper">{() => (
+              <FeatureAuthGate context="Sign in to extract content and save it to your vault.">
+                <WebScraper />
+              </FeatureAuthGate>
+            )}</Route>
 
             {/* INTEL module */}
             <Route path="/intel/reports" component={Reporting} />
             <Route path="/intel/dashboard" component={Dashboard} />
             <Route path="/intel/goals" component={Goals} />
+            <Route path="/workspace">{() => (
+              <FeatureAuthGate context="Sign in to open The Office." backHref="/">
+                <WorkspaceHome />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/workspace/notepad">{() => (
+              <FeatureAuthGate context="Sign in to access your workspace notes.">
+                <WorkspaceNotepad />
+              </FeatureAuthGate>
+            )}</Route>
+            <Route path="/workspace/calculator" component={WorkspaceCalculator} />
+            <Route path="/my-apps/:appSlug" component={MyApps} />
+            <Route path="/my-apps" component={MyApps} />
             <Route path="/business/accounts" component={OrgAccounts} />
             <Route path="/business/balance-sheet" component={BalanceSheet} />
             <Route path="/business/accounting" component={Accounting} />
             <Route path="/business/taxes" component={TurboTax} />
             <Route path="/intel/balance-sheet">{() => { window.location.href = '/business/balance-sheet'; return null; }}</Route>
-            <Route path="/intel/agents">{() => <Redirect to="/pablo" />}</Route>
+             <Route path="/intel/agents">{() => <Redirect to="/pricing" />}</Route>
             <Route path="/intel/video">{() => <Redirect to="/console/video" />}</Route>
             <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
@@ -656,30 +718,25 @@ function AppShell() {
             {/* PHONE module — one hub; free comms stay open while paid tabs
                 render their Stripe-backed access options in-shell. */}
             <Route path="/phone">{() => <PhoneGate />}</Route>
+            <Route path="/phone/mesh" component={MeshtasticCommsPage} />
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
-              const TAB_MAP: Record<string, string> = {
-                contacts: 'contacts', dialer: 'dial', active: 'cmd', cmd: 'cmd',
-                history: 'log', recordings: 'rec', recording: 'rec',
-                voicemail: 'vm', conference: 'conf', sms: 'sms',
-                sessions: 'cmd', coach: 'ai', secretary: 'ai',
-                numbers: 'numbers', 'call-center': 'cc',
-              };
               // Wouter's wildcard parameter shape differs across versions.
               // The browser pathname is authoritative for these legacy links.
               const legacySegment = window.location.pathname.slice('/phone/'.length).split('/')[0] ?? params.rest ?? '';
-              const tab = TAB_MAP[legacySegment] ?? '';
+              const tab = PHONE_ROUTE_TO_TAB[`/phone/${legacySegment}`] ?? '';
               return <PhoneGate redirectTo={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
 
             {/* INSURANCE module */}
-            <Route path="/insurance" component={InsuranceHub} />
+            <Route path="/insurance">{() => (
+              <FeatureAuthGate context="Sign in to manage insurance clients, policies, and carrier connections.">
+                <InsuranceHub />
+              </FeatureAuthGate>
+            )}</Route>
 
-            {/* PLATFORM API module — folded into /settings (preserves query params) */}
-            <Route path="/platform">{() => {
-              const qs = window.location.search;
-              return <Redirect to={`/settings${qs}`} />;
-            }}</Route>
+            {/* Platform API keys, webhooks, endpoints, and connections are a feature. */}
+            <Route path="/platform">{() => <PlatformAPI />}</Route>
 
             {/* BOTS module */}
             {/* Job Command Center moved into BUSINESS — redirect old bookmarks. */}
@@ -695,25 +752,23 @@ function AppShell() {
             <Route path="/bots/:id/office">{() => <Redirect to="/office" />}</Route>
             <Route path="/cutscene/:id" component={CutscenePage} />
             <Route path="/vending">{() => <VendingMachine />}</Route>
-            <Route path="/store/bots/vending">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/store/bots/vending">{() => <Redirect to="/pricing" />}</Route>
             {/* The realty showroom is the functional acquire flow (RealtyStore):
                 rent/buy persists server-side via /api/real-estate/acquire. The
                 VendingMachine "homebase" tab was a non-persisting V1 stub. */}
             <Route path="/store/realty" component={RealtyStore} />
             <Route path="/cutscene" component={CutscenePage} />
-            <Route path="/bots">{() => <Redirect to="/pablo" />}</Route>
-            <Route path="/bots/:rest*">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/bots">{() => <Redirect to="/business/autopilot" />}</Route>
+            <Route path="/bots/:rest*">{() => <Redirect to="/business/autopilot" />}</Route>
 
             {/* Old flat routes — redirect to new module paths */}
             <Route path="/dashboard">{() => <Redirect to="/intel/dashboard" />}</Route>
-            <Route path="/agents">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/agents">{() => <Redirect to="/pricing" />}</Route>
             <Route path="/seo">{() => <Redirect to="/marketing/seo" />}</Route>
 
-            {/* Feedback admin */}
-            <Route path="/feedback" component={FeedbackAdmin} />
 
             {/* Investor portal — standalone page */}
-            <Route path="/pledge/agents">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/pledge/agents">{() => <Redirect to="/pricing" />}</Route>
             <Route path="/pledge" component={PledgeStoreRoute} />
             <Route path="/investors" component={PledgeStore} />
             {/* Legacy alias — keeps existing links working */}
@@ -739,144 +794,103 @@ function AppShell() {
           authenticated page; it was too small to be useful and partly
           covered the music indicator and other corner widgets. The full
           legal section now lives at /legal (linked from the pledge store
-          and the immigration desk). */}
+          and the onboarding desk). */}
+      </div>
+      <AdSenseBanner
+        pathname={pathname}
+        isAuthenticated={isAuthenticated}
+        isAuthLoading={isLoading}
+        isEmbed={isEmbed}
+      />
     </>
   );
 }
 
 function App() {
+  // Tag every client-side route entry so the shared back control can distinguish
+  // app navigation from a direct browser entry or an external page.
+  installAppHistoryTracking();
   return (
     <ErrorBoundary fallbackTitle="APP CRASHED">
       <WouterRouter base={basePath}>
-        <ClerkProviderWithRoutes />
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <TwilioDeviceProvider>
+              <ActiveCallProvider>
+                <MusicPlayerProvider>
+                  <NavBarVisibilityProvider>
+                    <FeatureStateProvider>
+                      <PledgeStorePopupProvider>
+                        <AppShell />
+                      </PledgeStorePopupProvider>
+                    </FeatureStateProvider>
+                  </NavBarVisibilityProvider>
+                  <Toaster />
+                </MusicPlayerProvider>
+              </ActiveCallProvider>
+            </TwilioDeviceProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
       </WouterRouter>
     </ErrorBoundary>
   );
 }
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
-
-  return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: { start: { title: "Welcome back to SALARYMAN", subtitle: "Sign in to continue" } },
-        signUp: { start: { title: "Join SALARYMAN", subtitle: "Create your account" } },
-      }}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
-        <TooltipProvider>
-          <TwilioDeviceProvider>
-            <ActiveCallProvider>
-              <MusicPlayerProvider>
-                <NavBarVisibilityProvider>
-                  <FeatureStateProvider>
-                    <PledgeStorePopupProvider>
-                      <AppShell />
-                    </PledgeStorePopupProvider>
-                  </FeatureStateProvider>
-                </NavBarVisibilityProvider>
-                <Toaster />
-                <Suspense fallback={null}><GlobalErrorReporter /></Suspense>
-              </MusicPlayerProvider>
-            </ActiveCallProvider>
-          </TwilioDeviceProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
-  );
-}
 export default App;
 
-function ClerkSignUpPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-zinc-950 px-4">
-    <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
-  </div>;
-}
-
-function ClerkSignInPage() {
-  const returnTo = new URLSearchParams(window.location.search).get("returnTo") ?? undefined;
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-zinc-950 px-4">
-    <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={returnTo} />
-  </div>;
-}
-
-const clerkAppearance = {
-  theme: dark,
-  cssLayerName: "clerk",
-  options: {
-    logoPlacement: "inside" as const,
-    logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
-  },
-  variables: {
-    colorPrimary: "#38bdf8",
-    colorForeground: "#f4f4f5",
-    colorMutedForeground: "#a1a1aa",
-    colorDanger: "#fb7185",
-    colorBackground: "#18181b",
-    colorInput: "#09090b",
-    colorInputForeground: "#f4f4f5",
-    colorNeutral: "#3f3f46",
-    fontFamily: "Inter, sans-serif",
-    borderRadius: "0.75rem",
-  },
-  elements: {
-    rootBox: "w-full flex justify-center",
-    cardBox: "bg-zinc-900 rounded-xl w-[440px] max-w-full overflow-hidden border border-zinc-700",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "text-zinc-50 font-semibold",
-    headerSubtitle: "text-zinc-400",
-    socialButtonsBlockButtonText: "text-zinc-100",
-    formFieldLabel: "text-zinc-200",
-    footerActionLink: "text-sky-400",
-    footerActionText: "text-zinc-400",
-    dividerText: "text-zinc-400",
-    identityPreviewEditButton: "text-sky-400",
-    formFieldSuccessText: "text-emerald-400",
-    alertText: "text-zinc-100",
-    logoBox: "mb-5",
-    logoImage: "w-12 h-12",
-    socialButtonsBlockButton: "border-zinc-600 bg-zinc-800 hover:bg-zinc-700",
-    formButtonPrimary: "bg-sky-500 hover:bg-sky-400 text-zinc-950",
-    formFieldInput: "bg-zinc-950 border-zinc-600 text-zinc-100",
-    footerAction: "border-zinc-700",
-    dividerLine: "bg-zinc-700",
-    alert: "bg-zinc-800 border-zinc-600",
-    otpCodeFieldInput: "bg-zinc-950 border-zinc-600 text-zinc-100",
-    formFieldRow: "gap-2",
-    main: "gap-4",
-  },
-};
-
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const previousUserId = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => addListener(({ user }) => {
-    const userId = user?.externalId ?? user?.id ?? null;
-    if (previousUserId.current !== undefined && previousUserId.current !== userId) {
-      queryClient.clear();
+function ReplitAuthPage() {
+  const { isAuthenticated, isLoading, login } = useAuth();
+  const returnTo = sanitizeReturnPath(
+    new URLSearchParams(window.location.search).get("returnTo"),
+  ) ?? "/";
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      window.location.replace(returnTo);
     }
-    previousUserId.current = userId;
-  }), [addListener]);
-
-  return null;
-}
-
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
+  }, [isLoading, isAuthenticated, returnTo]);
+  return <div className="min-h-[100dvh] bg-[#FFFAF0] px-4 pt-20">
+    <header className="fixed inset-x-0 top-0 z-10 border-b border-[#D8D1C3] bg-[#FAF7EF]">
+      <div className="flex h-14 items-center gap-2.5 px-4 sm:px-8">
+        <img
+          src={`${basePath}/icon-192.png`}
+          alt=""
+          className="h-7 w-7 rounded-md"
+        />
+        <span className="font-mono text-sm tracking-[0.2em] text-black">SALARYMAN</span>
+        <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em] text-black">
+          ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'DEV'}
+        </span>
+      </div>
+    </header>
+    <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center">
+      <div className="w-full max-w-md border border-black/10 bg-[#FFFCF5] p-8 text-center">
+        <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em]">SALARYMAN ACCESS</p>
+        <p className="mb-6 text-sm text-black/60">
+          {isLoading
+            ? "Checking your session…"
+            : isAuthenticated
+              ? "Returning you to your destination…"
+              : "Continue to secure sign-in when you’re ready."}
+        </p>
+        {!isLoading && !isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => login(returnTo)}
+            data-testid="sign-in-continue"
+            className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800"
+          >
+            SIGN IN
+          </button>
+        )}
+        <noscript>
+          <a
+            href={`${basePath}/api/login?returnTo=${encodeURIComponent(returnTo)}`}
+            className="inline-block border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"
+          >
+            SIGN IN
+          </a>
+        </noscript>
+      </div>
+    </div>
+  </div>;
 }

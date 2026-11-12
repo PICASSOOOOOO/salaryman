@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db, investorLeadsTable } from "@workspace/db";
+import { getOwnerEmailRecipients } from "../lib/owner-email-recipients";
 import { getUncachableResendClient } from "../lib/resend";
 
 const router = Router();
@@ -67,11 +68,12 @@ router.post("/investors", async (req: Request, res: Response) => {
     const safeMessage = escapeHtml(message.trim());
 
     const { client, fromEmail } = await getUncachableResendClient();
+    const ownerRecipients = getOwnerEmailRecipients();
 
     await Promise.allSettled([
-      client.emails.send({
+      ...(ownerRecipients.length > 0 ? [client.emails.send({
         from: fromEmail,
-        to: ["support@picassoo.ai"],
+        to: ownerRecipients,
         replyTo: normalizedEmail,
         subject: `[SALARYMAN Investor Lead] ${safeName}`,
         html: `
@@ -90,8 +92,7 @@ router.post("/investors", async (req: Request, res: Response) => {
   <p style="color:rgba(0,255,65,0.3);font-size:0.75em;">Submitted via SALARYMAN Investor Portal · ${new Date().toUTCString()}</p>
 </div>
         `.trim(),
-      }),
-
+      })] : []),
       client.emails.send({
         from: fromEmail,
         to: normalizedEmail,

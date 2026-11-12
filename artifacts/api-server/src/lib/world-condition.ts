@@ -1,3 +1,5 @@
+import { normalizeConditionMetric } from "@workspace/api-zod";
+
 export type ConditionState = "flourishing" | "maintained" | "weathered" | "neglected" | "rotting";
 export type ConditionMaterialStyle = "solar" | "patina" | "crt";
 
@@ -91,15 +93,16 @@ function toTimestamp(value: Date | string | number | null | undefined): number |
 }
 
 export function conditionStateFromScore(score: number): ConditionState {
-  if (score >= 90) return "flourishing";
-  if (score >= 75) return "maintained";
-  if (score >= 50) return "weathered";
-  if (score >= 25) return "neglected";
+  const quality = normalizeConditionMetric("building", "quality", score) ?? 0;
+  if (quality >= 90) return "flourishing";
+  if (quality >= 75) return "maintained";
+  if (quality >= 50) return "weathered";
+  if (quality >= 25) return "neglected";
   return "rotting";
 }
 
 export function conditionVisualsFromScore(score: number): ConditionVisuals {
-  const normalized = Math.max(0, Math.min(100, Number(score) || 0));
+  const normalized = normalizeConditionMetric("building", "quality", score) ?? 0;
   const decay = 1 - normalized / 100;
   return {
     materialStyle: normalized >= 75 ? "solar" : normalized >= 40 ? "patina" : "crt",
@@ -139,7 +142,11 @@ export function deriveConditionProfile(
     ? 0
     : Math.max(0, Math.floor((nowMs - maintainedAt) / 86_400_000));
   const driftDays = Math.max(0, daysSinceMaintenance - CONDITION_DRIFT_GRACE_DAYS);
-  const score = Math.max(0, Math.min(100, Math.floor(Number(storedScore) - driftDays * CONDITION_DRIFT_PER_DAY)));
+  const score = normalizeConditionMetric(
+    "building",
+    "quality",
+    Number(storedScore) - driftDays * CONDITION_DRIFT_PER_DAY,
+  ) ?? 0;
   const state = conditionStateFromScore(score);
   return {
     score,

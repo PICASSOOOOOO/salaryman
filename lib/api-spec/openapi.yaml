@@ -9,13 +9,79 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: phone
+    description: Authenticated phone recording and archive operations
+  - name: workspace
+    description: User-owned creative workspace operations
   - name: openai
     description: OpenAI AI chat, image, and audio operations
   - name: interview
     description: Interview helper operations
+  - name: crm
+    description: Organization CRM operations
+  - name: organizations
+    description: Organization team and HR operations
+  - name: customApps
+    description: Published organization-only custom pages and their records
+  - name: desktopBuilding
+    description: Linked desktop presence and persistent Tower object maintenance
+  - name: autopilot
+    description: Pablo automation review and read-only business insights
   - name: Auth
     description: Browser and mobile authentication endpoints.
+  - name: admin
+    description: Picasso admin-only Tower shop staff management
+  - name: towerShop
+    description: Server-authoritative Tower shop inventory
 paths:
+  /workspace/projects/{projectId}/generate:
+    post:
+      operationId: generateWorkspaceProjectDraft
+      tags: [workspace]
+      summary: Generate a reviewable project plan and prototype
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceProjectGenerationInput"
+      responses:
+        "201":
+          description: Generated drafts saved to the project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceProjectGenerationResponse"
+        "400":
+          description: Invalid project brief
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Login required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: Pablo could not produce a valid draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /healthz:
     get:
       operationId: healthCheck
@@ -52,7 +118,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateOpenaiConversationBody"
+              $ref: "#/components/schemas/OpenaiConversationInput"
       responses:
         "201":
           description: Created conversation
@@ -138,7 +204,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendOpenaiMessageBody"
+              $ref: "#/components/schemas/OpenaiMessageInput"
       responses:
         "200":
           description: SSE stream of assistant text chunks
@@ -154,7 +220,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SolveInterviewQuestionBody"
+              $ref: "#/components/schemas/InterviewQuestionInput"
       responses:
         "200":
           description: SSE stream of solution chunks
@@ -182,8 +248,1356 @@ paths:
       responses:
         "302":
           description: Redirect to the returnTo path on success.
+  /orgs/me:
+    get:
+      operationId: getMyOrganizations
+      tags: [organizations]
+      responses:
+        "200":
+          description: Active organization context and all active memberships
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyOrganizations" }
+  /orgs/switch:
+    post:
+      operationId: switchOrganization
+      tags: [organizations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SwitchOrganizationInput" }
+      responses:
+        "200":
+          description: Updated active organization context
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SwitchOrganizationResult" }
+  /orgs/current/payments:
+    get:
+      operationId: getOrganizationPayments
+      tags: [organizations]
+      summary: Read verified real-money payments for the active organization
+      responses:
+        "200":
+          description: Organization Stripe connection and recent payment ledger
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPaymentsResponse" }
+        "401": { description: Login required }
+        "403": { description: Finance view permission required }
+        "404": { description: No active organization found }
+  /orgs/current/payments/connect:
+    post:
+      operationId: beginOrganizationStripeOnboarding
+      tags: [organizations]
+      summary: Create or resume Stripe onboarding for the active organization
+      responses:
+        "200":
+          description: Stripe-hosted onboarding URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationStripeOnboardingResponse" }
+        "401": { description: Login required }
+        "403": { description: Finance manage permission required }
+        "404": { description: No active organization found }
+  /orgs/current/payments/checkout:
+    post:
+      operationId: createOrganizationPaymentCheckout
+      tags: [organizations]
+      summary: Create a hosted one-time USD checkout for the active organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationPaymentCheckoutInput" }
+      responses:
+        "201":
+          description: Pending payment and Stripe Checkout URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPaymentCheckoutResponse" }
+        "400": { description: "Invalid amount, description, or idempotency key" }
+        "401": { description: Login required }
+        "403": { description: Finance manage permission required }
+        "404": { description: No active organization found }
+        "409": { description: Stripe account is not ready for payments }
+  /orgs/current/custom-apps:
+    get:
+      operationId: listOrganizationCustomApps
+      tags: [customApps]
+      summary: List custom pages visible in the active organization
+      responses:
+        "200":
+          description: Published pages and manager-visible drafts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppsResponse" }
+        "401": { description: Login required }
+        "403": { description: Organization custom-app access required }
+        "404": { description: No active organization found }
+    post:
+      operationId: createOrganizationCustomApp
+      tags: [customApps]
+      summary: Create an organization-only custom page draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppInput" }
+      responses:
+        "201":
+          description: Created organization custom page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "400": { description: Invalid page definition }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: No active organization found }
+  /orgs/current/custom-apps/{appSlug}:
+    get:
+      operationId: getOrganizationCustomApp
+      tags: [customApps]
+      summary: Read one page in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      responses:
+        "200":
+          description: Organization custom page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "401": { description: Login required }
+        "403": { description: Organization custom-app access required }
+        "404": { description: Page not found in the active organization }
+    put:
+      operationId: updateOrganizationCustomApp
+      tags: [customApps]
+      summary: Update a page definition in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppInput" }
+      responses:
+        "200":
+          description: Updated organization custom page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "400": { description: Invalid page definition }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: Page not found in the active organization }
+    delete:
+      operationId: deleteOrganizationCustomApp
+      tags: [customApps]
+      summary: Delete a custom page and its organization-owned records
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      responses:
+        "204": { description: Page and its records deleted }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/status:
+    patch:
+      operationId: setOrganizationCustomAppStatus
+      tags: [customApps]
+      summary: Publish a page inside the organization or return it to draft
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppStatusInput" }
+      responses:
+        "200":
+          description: Updated page status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppResponse" }
+        "401": { description: Login required }
+        "403": { description: Manage custom apps permission required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/records/page/{offset}:
+    get:
+      operationId: listOrganizationCustomAppRecords
+      tags: [customApps]
+      summary: Read records from a page in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: offset, in: path, required: true, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: A page of organization-owned app records
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppRecordsResponse" }
+        "401": { description: Login required }
+        "403": { description: Published page access required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/records:
+    post:
+      operationId: createOrganizationCustomAppRecord
+      tags: [customApps]
+      summary: Create a record in a page in the active organization
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppRecordInput" }
+      responses:
+        "201":
+          description: Created organization-owned app record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppRecord" }
+        "400": { description: Invalid record fields }
+        "401": { description: Login required }
+        "403": { description: Published page edit access required }
+        "404": { description: Page not found in the active organization }
+  /orgs/current/custom-apps/{appSlug}/records/{recordId}:
+    put:
+      operationId: updateOrganizationCustomAppRecord
+      tags: [customApps]
+      summary: Update an organization-owned app record
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCustomAppRecordInput" }
+      responses:
+        "200":
+          description: Updated organization-owned app record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationCustomAppRecord" }
+        "400": { description: Invalid record fields }
+        "401": { description: Login required }
+        "403": { description: Published page edit access required }
+        "404": { description: Record not found in the active organization }
+    delete:
+      operationId: deleteOrganizationCustomAppRecord
+      tags: [customApps]
+      summary: Delete an organization-owned app record
+      parameters:
+        - { name: appSlug, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Record deleted }
+        "401": { description: Login required }
+        "403": { description: Published page edit access required }
+        "404": { description: Record not found in the active organization }
+  /orgs/{orgId}/time-off:
+    get:
+      operationId: listOrganizationTimeOffRequests
+      tags: [organizations]
+      summary: List time-off requests for an organization member or manager
+      parameters:
+        - { name: orgId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Time-off requests visible to the caller
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationTimeOffListResponse" }
+        "401": { description: Login required }
+        "403": { description: Organization member access required }
+    post:
+      operationId: createOrganizationTimeOffRequest
+      tags: [organizations]
+      summary: Submit a time-off request for the authenticated organization member
+      parameters:
+        - { name: orgId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationTimeOffRequestInput" }
+      responses:
+        "201":
+          description: Time-off request created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationTimeOffResponse" }
+        "400": { description: Invalid dates or request fields }
+        "401": { description: Login required }
+        "403": { description: Organization member access required }
+        "409": { description: Request overlaps an existing pending or approved request }
+  /orgs/{orgId}/time-off/{requestId}:
+    patch:
+      operationId: updateOrganizationTimeOffRequest
+      tags: [organizations]
+      summary: Review a request or withdraw the caller's pending request
+      parameters:
+        - { name: orgId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: requestId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationTimeOffRequestStatusUpdate" }
+      responses:
+        "200":
+          description: Updated time-off request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationTimeOffResponse" }
+        "400": { description: Invalid status transition }
+        "401": { description: Login required }
+        "403": { description: Organization permission required }
+        "404": { description: Request not found }
+        "409": { description: Request is no longer pending }
+  /crm/custom-fields:
+    get:
+      operationId: listCrmCustomFields
+      tags: [crm]
+      responses:
+        "200":
+          description: Organization CRM field definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CrmCustomField" }
+    post:
+      operationId: createCrmCustomField
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmCustomFieldInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmCustomField" }
+  /crm/custom-fields/{fieldKey}:
+    patch:
+      operationId: updateCrmCustomField
+      tags: [crm]
+      parameters:
+        - name: fieldKey
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmCustomFieldUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmCustomField" }
+  /crm/leads/import/preview:
+    post:
+      operationId: previewCrmLeadImport
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/CrmImportPreviewInput" }
+      responses:
+        "200":
+          description: Import preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmImportPreview" }
+  /crm/leads/import/apply:
+    post:
+      operationId: applyCrmLeadImport
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmImportApplyInput" }
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmImportResult" }
+  /leads/{id}/notes/{noteId}/review:
+    patch:
+      operationId: reviewCrmLeadNote
+      tags: [crm]
+      summary: Mark a cited Market Research CRM note reviewed or dismissed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadNoteReviewInput" }
+      responses:
+        "200":
+          description: CRM note review status saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadNoteReviewResponse" }
+        "400": { description: Invalid status or note is not research-reviewable }
+        "401": { description: Login required }
+        "403": { description: Owner or manager access required }
+        "404": { description: Lead or note not found in the current organization }
+  /crm/archive/export:
+    get:
+      operationId: exportCrmArchive
+      tags: [crm]
+      responses:
+        "200":
+          description: Full organization CRM archive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrmArchive" }
+  /crm/sources:
+    get:
+      operationId: listCrmSources
+      tags: [crm]
+      responses:
+        "200": { description: Sources, content: { application/json: { schema: { type: object } } } }
+    post:
+      operationId: createCrmSource
+      tags: [crm]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmSourceInput" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+  /crm/sources/{id}:
+    delete:
+      operationId: deleteCrmSource
+      tags: [crm]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { type: object } } } }
+  /crm/google/connect:
+    get:
+      operationId: connectCrmGoogleSheets
+      tags: [crm]
+      parameters:
+        - { name: sourceId, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: OAuth authorization URL, content: { application/json: { schema: { type: object } } } }
+        "503": { description: Google OAuth configuration is missing }
+  /crm/google/callback:
+    get:
+      operationId: completeCrmGoogleSheets
+      tags: [crm]
+      parameters:
+        - { name: error, in: query, required: false, schema: { type: string } }
+        - { name: code, in: query, required: false, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "303":
+          description: Redirect to Leads after authorization completes
+          headers:
+            Location: { schema: { type: string } }
+  /crm/sources/{id}/sync:
+    post:
+      operationId: syncCrmSource
+      tags: [crm]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Sync result, content: { application/json: { schema: { type: object } } } }
+  /crm/sync/conflicts:
+    get:
+      operationId: listCrmSyncConflicts
+      tags: [crm]
+      responses:
+        "200": { description: Conflicts, content: { application/json: { schema: { type: object } } } }
+  /crm/sync/conflicts/{id}/resolve:
+    post:
+      operationId: resolveCrmSyncConflict
+      tags: [crm]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmSyncConflictResolutionInput" }
+      responses:
+        "200": { description: Resolved, content: { application/json: { schema: { type: object } } } }
+  /twilio/recording/{callId}:
+    get:
+      operationId: getSecureCallRecording
+      tags: [phone]
+      summary: Stream an authorized call recording or a bounded excerpt
+      parameters:
+        - name: callId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: startMs
+          in: query
+          required: false
+          description: Excerpt start offset in milliseconds; requires endMs.
+          schema: { type: integer, minimum: 0 }
+        - name: endMs
+          in: query
+          required: false
+          description: Excerpt end offset in milliseconds; excerpt length is limited to ten minutes.
+          schema: { type: integer, minimum: 1 }
+        - name: download
+          in: query
+          required: false
+          schema: { type: string, enum: ["1"] }
+      responses:
+        "200":
+          description: Authenticated MP3 recording or excerpt
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
+        "400": { description: Invalid excerpt range }
+        "401": { description: Login required }
+        "403": { description: Recording access denied }
+        "404": { description: Recording not found }
+  /twilio/recording/{callId}/excerpts:
+    put:
+      operationId: saveCallRecordingExcerpts
+      tags: [phone]
+      summary: Save user-confirmed timestamp ranges for a call recording
+      parameters:
+        - name: callId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordingExcerptSaveInput" }
+      responses:
+        "200":
+          description: Saved excerpt metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecordingExcerptSaveResponse" }
+        "400": { description: Invalid excerpt boundaries or metadata }
+        "401": { description: Login required }
+        "403": { description: Recording access denied }
+        "404": { description: Recording not found }
+  /twilio/internal-directory:
+    get:
+      operationId: getPhoneInternalDirectory
+      tags: [phone]
+      summary: List eligible CALLL HOME employees and office lines in the active organization
+      responses:
+        "200":
+          description: Internal employee directory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhoneInternalDirectory"
+  /twilio/internal-directory/lines/{id}:
+    put:
+      operationId: assignPhoneInternalLine
+      tags: [phone]
+      summary: Assign an organization-owned office line to an eligible employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneInternalLineAssignment"
+      responses:
+        "200":
+          description: Office line assignment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "400":
+          description: Invalid assignment
+  /twilio/pablo/internal-delivery:
+    post:
+      operationId: sendPabloInternalDelivery
+      tags: [phone]
+      summary: Deliver a message or report to an eligible employee through Pablo PRIME
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PabloInternalDelivery"
+      responses:
+        "201":
+          description: Internal delivery created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PabloInternalDeliveryResult"
+        "403":
+          description: CALLL HOME or Pablo PRIME paid access is required
+  /desktop-building/objects:
+    get:
+      operationId: listDesktopBuildingObjects
+      tags: [desktopBuilding]
+      summary: Read persistent condition for objects in the linked desktop's current building floor and room
+      parameters:
+        - { name: Authorization, in: header, required: true, schema: { type: string } }
+        - { name: x-salaryman-device-id, in: header, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Current room objects and their saved maintenance state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DesktopBuildingObjectsResponse" }
+        "401": { description: Linked desktop credential required }
+        "403": { description: Authorized office access required }
+        "409": { description: "Fresh, walkable building-floor presence required" }
+  /desktop-building/objects/action:
+    post:
+      operationId: maintainDesktopBuildingObject
+      tags: [desktopBuilding]
+      summary: Clean or repair a nearby object on any authorized building floor
+      parameters:
+        - { name: Authorization, in: header, required: true, schema: { type: string } }
+        - { name: x-salaryman-device-id, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DesktopBuildingObjectActionInput" }
+      responses:
+        "200":
+          description: Persistent object state after the maintenance action
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DesktopBuildingObjectActionResponse" }
+        "400": { description: Invalid maintenance action }
+        "401": { description: Linked desktop credential required }
+        "403": { description: Authorized office access required }
+        "404": { description: Object is not maintainable in the current room }
+        "409": { description: "Fresh presence within reach of the object required" }
+  /autopilot/brief:
+    get:
+      operationId: getAutopilotBrief
+      tags: [autopilot]
+      summary: Read a 24-hour organization business brief and recent call candidates
+      responses:
+        "200":
+          description: Read-only organization snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotDailyBriefResponse"
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+  /autopilot/approval-queue:
+    get:
+      operationId: getAutopilotApprovalQueue
+      tags: [autopilot]
+      summary: List pending post-call follow-up task proposals
+      responses:
+        "200":
+          description: Pending review items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotApprovalQueueResponse"
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+  /autopilot/follow-up-suggestions:
+    post:
+      operationId: createAutopilotFollowUpSuggestion
+      tags: [autopilot]
+      summary: Draft an internal follow-up task from a completed CRM call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutopilotFollowUpSuggestionInput"
+      responses:
+        "200":
+          description: Suggestion created or already present
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotFollowUpSuggestionResponse"
+        "400":
+          description: Invalid call identifier
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+        "404":
+          description: Call not found in the current organization
+  /autopilot/approval-queue/{id}/decision:
+    post:
+      operationId: decideAutopilotApproval
+      tags: [autopilot]
+      summary: Approve an internal task proposal or dismiss it
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutopilotApprovalDecisionInput"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutopilotApprovalDecisionResponse"
+        "400":
+          description: Invalid decision
+        "401":
+          description: Login required
+        "403":
+          description: Autopilot permission or subscription required
+        "404":
+          description: Review item not found
+        "409":
+          description: Review item was already decided
+  /admin/tower-shop-staff:
+    get:
+      operationId: listTowerShopStaff
+      tags: [admin]
+      summary: List restockable Tower shops and staff assignments
+      responses:
+        "200":
+          description: Restockable shops and their current assigned staff
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerShopStaffRoster"
+        "401":
+          description: Login required
+        "403":
+          description: Picasso admin access required
+    post:
+      operationId: assignTowerShopStaff
+      tags: [admin]
+      summary: Assign a SALARYMAN user to a Tower shop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TowerShopStaffAssignmentInput"
+      responses:
+        "200":
+          description: Assignment created or already existed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerShopStaffAssignmentResponse"
+        "400":
+          description: Invalid shop or email
+        "401":
+          description: Login required
+        "403":
+          description: Picasso admin access required
+        "404":
+          description: No account uses that email
+  /admin/tower-shop-staff/{businessKey}/{userId}:
+    delete:
+      operationId: revokeTowerShopStaff
+      tags: [admin]
+      summary: Revoke a user's Tower shop restock access
+      parameters:
+        - name: businessKey
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 80
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        "200":
+          description: Assignment removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerShopStaffRevokeResponse"
+        "400":
+          description: Invalid shop or user
+        "401":
+          description: Login required
+        "403":
+          description: Picasso admin access required
+        "404":
+          description: Assignment not found
+  /items/tower-business/restock:
+    post:
+      operationId: restockTowerBusinessItem
+      tags: [towerShop]
+      summary: Move stored stock onto an assigned shop's shelf
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - name: x-salaryman-device-id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TowerBusinessRestockInput"
+      responses:
+        "200":
+          description: Stock moved to the shelf
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowerBusinessRestockResponse"
+        "400":
+          description: Invalid shop, item, or quantity
+        "401":
+          description: Linked desktop credentials required
+        "403":
+          description: Assigned shop staff and on-site presence required
+        "409":
+          description: Insufficient storage stock or shelf capacity
 components:
   schemas:
+    DesktopBuildingObjectActionInput:
+      type: object
+      required: [objectId, action]
+      properties:
+        objectId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        action:
+          type: string
+          enum: [clean, repair]
+    DesktopBuildingObjectState:
+      type: object
+      required: [objectId, room, label, floorNumber, cleanliness, condition, updatedAt]
+      properties:
+        objectId: { type: string }
+        room: { type: string }
+        label: { type: string }
+        floorNumber: { type: integer, minimum: 1, maximum: 67 }
+        cleanliness: { type: integer, minimum: 0, maximum: 100 }
+        condition: { type: integer, minimum: 0, maximum: 100 }
+        updatedAt: { type: ["string", "null"], format: date-time }
+    DesktopBuildingObjectsResponse:
+      type: object
+      required: [floorNumber, room, objects, observedAt]
+      properties:
+        floorNumber: { type: integer, minimum: 1, maximum: 67 }
+        room: { type: string }
+        objects:
+          type: array
+          items: { $ref: "#/components/schemas/DesktopBuildingObjectState" }
+        observedAt: { type: string, format: date-time }
+    DesktopBuildingObjectActionResponse:
+      type: object
+      required: [ok, message, state]
+      properties:
+        ok: { type: boolean, const: true }
+        message: { type: string }
+        state: { $ref: "#/components/schemas/DesktopBuildingObjectState" }
+    AutopilotRecentCall:
+      type: object
+      required: [id, leadName, startedAt, summary, hasProposal, proposalStatus]
+      properties:
+        id: { type: integer }
+        leadName: { type: string }
+        startedAt: { type: string, format: date-time }
+        summary: { type: string }
+        hasProposal: { type: boolean }
+        proposalStatus: { type: ["string", "null"], enum: [pending, approved, dismissed, null] }
+    AutopilotOutcomeCounts:
+      type: object
+      required: [success, noop, blocked, error, skipped]
+      properties:
+        success: { type: integer }
+        noop: { type: integer }
+        blocked: { type: integer }
+        error: { type: integer }
+        skipped: { type: integer }
+    AutopilotDailyBriefResponse:
+      type: object
+      required: [generatedAt, windowStart, newLeads, activeLeads, calls, pendingApprovals, automationRuns, recentCalls]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        windowStart: { type: string, format: date-time }
+        newLeads: { type: integer }
+        activeLeads: { type: integer }
+        calls:
+          type: object
+          required: [total, inbound, outbound]
+          properties:
+            total: { type: integer }
+            inbound: { type: integer }
+            outbound: { type: integer }
+        pendingApprovals: { type: integer }
+        automationRuns: { $ref: "#/components/schemas/AutopilotOutcomeCounts" }
+        recentCalls:
+          type: array
+          items: { $ref: "#/components/schemas/AutopilotRecentCall" }
+    AutopilotApprovalItem:
+      type: object
+      required: [id, callHistoryId, sourceLeadId, sourceLeadName, sourceCallAt, sourceSummary, taskTitle, taskDescription, status, createdAt]
+      properties:
+        id: { type: integer }
+        callHistoryId: { type: integer }
+        sourceLeadId: { type: ["integer", "null"] }
+        sourceLeadName: { type: string }
+        sourceCallAt: { type: string, format: date-time }
+        sourceSummary: { type: string }
+        taskTitle: { type: string }
+        taskDescription: { type: string }
+        status: { type: string, enum: [pending, approved, dismissed] }
+        createdAt: { type: string, format: date-time }
+    AutopilotApprovalQueueResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AutopilotApprovalItem" }
+    AutopilotFollowUpSuggestionInput:
+      type: object
+      required: [callHistoryId]
+      properties:
+        callHistoryId: { type: integer, minimum: 1 }
+    AutopilotFollowUpSuggestionResponse:
+      type: object
+      required: [item, duplicate]
+      properties:
+        item: { $ref: "#/components/schemas/AutopilotApprovalItem" }
+        duplicate: { type: boolean }
+    AutopilotApprovalDecisionInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, dismissed] }
+    AutopilotApprovalDecisionResponse:
+      type: object
+      required: [item, businessTaskId]
+      properties:
+        item: { $ref: "#/components/schemas/AutopilotApprovalItem" }
+        businessTaskId: { type: ["integer", "null"] }
+    RecordingExcerptSaveInput:
+      type: object
+      required: [excerpts]
+      properties:
+        excerpts:
+          type: array
+          maxItems: 40
+          items: { $ref: "#/components/schemas/RecordingExcerpt" }
+    RecordingExcerpt:
+      type: object
+      required: [id, label, startMs, endMs, transcriptText, createdAt, updatedAt]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        startMs: { type: integer, minimum: 0 }
+        endMs: { type: integer, minimum: 1 }
+        transcriptText: { type: string, maxLength: 2000 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RecordingExcerptSaveResponse:
+      type: object
+      required: [excerpts]
+      properties:
+        excerpts:
+          type: array
+          items: { $ref: "#/components/schemas/RecordingExcerpt" }
+    OrganizationTimeOffRequestInput:
+      type: object
+      required: [startDate, endDate, leaveType]
+      properties:
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        leaveType: { type: string, enum: [vacation, personal, other] }
+        note: { type: string, maxLength: 500 }
+    OrganizationTimeOffRequestStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [approved, declined, cancelled] }
+    OrganizationTimeOffRequest:
+      type: object
+      required: [id, orgId, requesterUserId, requesterName, startDate, endDate, leaveType, note, status, reviewedAt, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        orgId: { type: integer }
+        requesterUserId: { type: string }
+        requesterName: { type: string }
+        startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        leaveType: { type: string, enum: [vacation, personal, other] }
+        note: { type: string }
+        status: { type: string, enum: [pending, approved, declined, cancelled] }
+        reviewedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    OrganizationTimeOffListResponse:
+      type: object
+      required: [requests, canReview]
+      properties:
+        requests:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationTimeOffRequest" }
+        canReview: { type: boolean }
+    OrganizationTimeOffResponse:
+      type: object
+      required: [request]
+      properties:
+        request: { $ref: "#/components/schemas/OrganizationTimeOffRequest" }
+    PhoneInternalDirectory:
+      type: object
+      required: [organizationId, canManageLines, members, lines]
+      properties:
+        organizationId: { type: ["integer", "null"] }
+        canManageLines: { type: boolean }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/PhoneInternalDirectoryMember" }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/PhoneInternalDirectoryLine" }
+    PhoneInternalDirectoryMember:
+      type: object
+      required: [userId, displayName, role, phoneNumber, isSelf]
+      properties:
+        userId: { type: string }
+        displayName: { type: string }
+        title: { type: ["string", "null"] }
+        role: { type: string }
+        phoneNumber: { type: ["string", "null"] }
+        isSelf: { type: boolean }
+    PhoneInternalDirectoryLine:
+      type: object
+      required: [id, number, label, assignedUserId, assignedName, isActive]
+      properties:
+        id: { type: integer }
+        number: { type: string }
+        label: { type: string }
+        assignedUserId: { type: ["string", "null"] }
+        assignedName: { type: ["string", "null"] }
+        isActive: { type: boolean }
+    PhoneInternalLineAssignment:
+      type: object
+      required: [assignedUserId]
+      properties:
+        assignedUserId: { type: string, minLength: 1 }
+    PabloInternalDelivery:
+      type: object
+      required: [targetUserId, category, title, body]
+      properties:
+        targetUserId: { type: string, minLength: 1 }
+        category: { type: string, enum: [message, report] }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        body: { type: string, minLength: 1, maxLength: 1800 }
+    PabloInternalDeliveryResult:
+      type: object
+      required: [ok, notificationId]
+      properties:
+        ok: { type: boolean }
+        notificationId: { type: integer }
+    MyOrganizations:
+      type: object
+      required: [org, member, members, featureGrants, allOrgs]
+      properties:
+        org: { type: [object, "null"], additionalProperties: true }
+        member: { type: [object, "null"], additionalProperties: true }
+        members: { type: array, items: { type: object, additionalProperties: true } }
+        featureGrants: { type: array, items: { type: object, additionalProperties: true } }
+        allOrgs: { type: array, items: { type: object, additionalProperties: true } }
+    SwitchOrganizationInput:
+      type: object
+      required: [orgId]
+      properties:
+        orgId: { type: [integer, "null"] }
+    SwitchOrganizationResult:
+      type: object
+      required: [ok, currentOrgId]
+      properties:
+        ok: { type: boolean }
+        currentOrgId: { type: [string, "null"] }
+    OrganizationPaymentsResponse:
+      type: object
+      required: [organizationId, organizationName, connected, chargesEnabled, payoutsEnabled, currency, summary, payments]
+      properties:
+        organizationId: { type: integer }
+        organizationName: { type: string }
+        connected: { type: boolean }
+        chargesEnabled: { type: boolean }
+        payoutsEnabled: { type: boolean }
+        currency: { type: string, enum: [usd] }
+        summary: { $ref: "#/components/schemas/OrganizationPaymentSummary" }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationPayment" }
+    OrganizationPaymentSummary:
+      type: object
+      required: [confirmedMinor, refundedMinor, settledCount, disputedCount]
+      properties:
+        confirmedMinor: { type: integer, minimum: 0 }
+        refundedMinor: { type: integer, minimum: 0 }
+        settledCount: { type: integer, minimum: 0 }
+        disputedCount: { type: integer, minimum: 0 }
+    OrganizationPayment:
+      type: object
+      required: [id, provider, description, amountMinor, refundedMinor, currency, status, createdAt, settledAt]
+      properties:
+        id: { type: integer }
+        provider: { type: string, enum: [stripe] }
+        description: { type: string }
+        amountMinor: { type: integer, minimum: 0 }
+        refundedMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [usd] }
+        status:
+          type: string
+          enum: [pending, paid, failed, expired, partially_refunded, refunded, disputed, dispute_won, dispute_lost]
+        createdAt: { type: string, format: date-time }
+        settledAt: { type: ["string", "null"], format: date-time }
+    OrganizationStripeOnboardingResponse:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+    OrganizationPaymentCheckoutInput:
+      type: object
+      required: [amountMinor, description, requestKey]
+      properties:
+        amountMinor: { type: integer, minimum: 50, maximum: 100000000 }
+        description: { type: string, minLength: 1, maxLength: 200 }
+        requestKey: { type: string, minLength: 8, maxLength: 80, pattern: "^[A-Za-z0-9-]+$" }
+    OrganizationPaymentCheckoutResponse:
+      type: object
+      required: [payment, checkoutUrl, expiresAt]
+      properties:
+        payment: { $ref: "#/components/schemas/OrganizationPayment" }
+        checkoutUrl: { type: string, format: uri }
+        expiresAt: { type: ["string", "null"], format: date-time }
+    OrganizationCustomAppField:
+      type: object
+      required: [key, label, type, required]
+      properties:
+        key: { type: string, minLength: 1, maxLength: 40, pattern: "^[a-z][a-z0-9_]*$" }
+        label: { type: string, minLength: 1, maxLength: 80 }
+        type: { type: string, enum: [text, textarea, number, date, select, checkbox] }
+        required: { type: boolean }
+        placeholder: { type: string, maxLength: 120 }
+        options: { type: array, maxItems: 20, items: { type: string, minLength: 1, maxLength: 80 } }
+    OrganizationCustomApp:
+      type: object
+      required: [slug, name, description, fields, status, createdAt, updatedAt]
+      properties:
+        slug: { type: string, minLength: 1, maxLength: 100 }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 240 }
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/OrganizationCustomAppField" }
+        status: { type: string, enum: [draft, published] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OrganizationCustomAppsResponse:
+      type: object
+      required: [items, permissions]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationCustomApp" }
+        permissions:
+          type: object
+          required: [canEditRecords, canManageApps]
+          properties:
+            canEditRecords: { type: boolean }
+            canManageApps: { type: boolean }
+    OrganizationCustomAppResponse:
+      type: object
+      required: [app, permissions]
+      properties:
+        app: { $ref: "#/components/schemas/OrganizationCustomApp" }
+        permissions:
+          type: object
+          required: [canEditRecords, canManageApps]
+          properties:
+            canEditRecords: { type: boolean }
+            canManageApps: { type: boolean }
+    OrganizationCustomAppInput:
+      type: object
+      required: [name, description, fields]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 240 }
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/OrganizationCustomAppField" }
+    OrganizationCustomAppStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [draft, published] }
+    OrganizationCustomAppRecord:
+      type: object
+      required: [id, data, createdByUserId, updatedByUserId, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        data: { type: object, additionalProperties: true }
+        createdByUserId: { type: string }
+        updatedByUserId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OrganizationCustomAppRecordInput:
+      type: object
+      required: [data]
+      properties:
+        data: { type: object, additionalProperties: true }
+    OrganizationCustomAppRecordsResponse:
+      type: object
+      required: [items, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrganizationCustomAppRecord" }
+        hasMore: { type: boolean }
+    CrmCustomField:
+      type: object
+      required: [id, orgId, fieldKey, label, fieldType, optionsJson, required, archived, position]
+      properties:
+        id: { type: integer }
+        orgId: { type: integer }
+        fieldKey: { type: string }
+        label: { type: string }
+        fieldType: { type: string, enum: [text, number, boolean, date, select] }
+        optionsJson: { type: array, items: { type: string } }
+        required: { type: boolean }
+        archived: { type: boolean }
+        position: { type: integer }
+    CrmCustomFieldInput:
+      type: object
+      required: [fieldKey, label, fieldType]
+      properties:
+        fieldKey: { type: string }
+        label: { type: string }
+        fieldType: { type: string, enum: [text, number, boolean, date, select] }
+        optionsJson: { type: array, items: { type: string } }
+        required: { type: boolean }
+        position: { type: integer }
+    CrmCustomFieldUpdate:
+      type: object
+      properties:
+        label: { type: string }
+        optionsJson: { type: array, items: { type: string } }
+        required: { type: boolean }
+        archived: { type: boolean }
+        position: { type: integer }
+    LeadNoteReviewInput:
+      type: object
+      required: [reviewStatus]
+      properties:
+        reviewStatus: { type: string, enum: [reviewed, dismissed] }
+    LeadNoteReviewNote:
+      type: object
+      required: [id, leadId, userId, userName, note, createdAt, reviewStatus, reviewedByUserId, reviewedAt]
+      properties:
+        id: { type: integer }
+        leadId: { type: integer }
+        userId: { type: string }
+        userName: { type: ["string", "null"] }
+        note: { type: string }
+        createdAt: { type: string, format: date-time }
+        reviewStatus: { type: string, enum: [not_required, needs_review, reviewed, dismissed] }
+        reviewedByUserId: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+    LeadNoteReviewResponse:
+      type: object
+      required: [note]
+      properties:
+        note: { $ref: "#/components/schemas/LeadNoteReviewNote" }
+    CrmImportPreview:
+      type: object
+      required: [headers, sampleRows, rowCount, candidates]
+      properties:
+        headers: { type: array, items: { type: string } }
+        sampleRows: { type: array, items: { type: array, items: { type: string } } }
+        rowCount: { type: integer }
+        candidates: { type: array, items: { type: object, additionalProperties: true } }
+        rows: { type: array, items: { type: array, items: { type: string } } }
+    CrmImportPreviewInput:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+    CrmImportApplyInput:
+      type: object
+      required: [headers, rows, mapping, existingRowPolicy, authority]
+      properties:
+        headers: { type: array, items: { type: string } }
+        rows: { type: array, items: { type: array, items: {} } }
+        mapping: { type: object, additionalProperties: { type: string } }
+        existingRowPolicy: { type: string, enum: [skip, update] }
+        authority: { type: string, enum: [import, crm] }
+    CrmImportResult:
+      type: object
+      additionalProperties: true
+    CrmArchive:
+      type: object
+      additionalProperties: true
     HealthStatus:
       type: object
       properties:
@@ -225,14 +1639,14 @@ components:
         - role
         - content
         - createdAt
-    CreateOpenaiConversationBody:
+    OpenaiConversationInput:
       type: object
       properties:
         title:
           type: string
       required:
         - title
-    SendOpenaiMessageBody:
+    OpenaiMessageInput:
       type: object
       properties:
         content:
@@ -265,7 +1679,7 @@ components:
           type: string
       required:
         - error
-    SolveInterviewQuestionBody:
+    InterviewQuestionInput:
       type: object
       properties:
         question:
@@ -282,6 +1696,17 @@ components:
         - question
         - language
         - mode
+    CrmSourceInput:
+      type: object
+      additionalProperties: true
+    CrmSyncConflictResolutionInput:
+      type: object
+      properties:
+        resolution:
+          type: string
+          enum: [crm, source]
+      required:
+        - resolution
     AuthUser:
       type: object
       required: [id, email, firstName, lastName, profileImageUrl]
@@ -345,6 +1770,145 @@ components:
       properties:
         error:
           type: string
+    WorkspaceProjectGenerationInput:
+      type: object
+      required: [brief]
+      properties:
+        brief:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    WorkspaceGeneratedNote:
+      type: object
+      required: [id, projectId, title, content, category]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+    WorkspaceProjectGenerationResponse:
+      type: object
+      required: [plan, prototype]
+      properties:
+        plan:
+          $ref: "#/components/schemas/WorkspaceGeneratedNote"
+        prototype:
+          $ref: "#/components/schemas/WorkspaceGeneratedNote"
+    TowerShopStaffShop:
+      type: object
+      required: [businessKey, name, locationLabel]
+      properties:
+        businessKey:
+          type: string
+        name:
+          type: string
+        locationLabel:
+          type: string
+    TowerShopStaffAssignment:
+      type: object
+      required: [businessKey, userId, email, firstName, lastName, assignedByUserId, assignedAt]
+      properties:
+        businessKey:
+          type: string
+        userId:
+          type: string
+        email:
+          type: ["string", "null"]
+          format: email
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        assignedByUserId:
+          type: ["string", "null"]
+        assignedAt:
+          type: string
+    TowerShopStaffRoster:
+      type: object
+      required: [shops, assignments]
+      properties:
+        shops:
+          type: array
+          items:
+            $ref: "#/components/schemas/TowerShopStaffShop"
+        assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TowerShopStaffAssignment"
+    TowerShopStaffAssignmentInput:
+      type: object
+      required: [businessKey, email]
+      properties:
+        businessKey:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    TowerShopStaffAssignmentResponse:
+      type: object
+      required: [ok, assignment]
+      properties:
+        ok:
+          type: boolean
+        assignment:
+          $ref: "#/components/schemas/TowerShopStaffAssignment"
+    TowerShopStaffRevokeResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+    TowerBusinessRestockInput:
+      type: object
+      required: [businessKey, itemId, quantity]
+      properties:
+        businessKey:
+          type: string
+          minLength: 1
+          maxLength: 80
+        itemId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+    TowerBusinessInventoryStock:
+      type: object
+      required: [businessKey, itemId, storedQuantity, shelfQuantity, storageCapacity, shelfCapacity, updatedAt]
+      properties:
+        businessKey:
+          type: string
+        itemId:
+          type: string
+        storedQuantity:
+          type: integer
+        shelfQuantity:
+          type: integer
+        storageCapacity:
+          type: integer
+        shelfCapacity:
+          type: integer
+        updatedAt:
+          type: string
+    TowerBusinessRestockResponse:
+      type: object
+      required: [ok, stock]
+      properties:
+        ok:
+          type: boolean
+        stock:
+          $ref: "#/components/schemas/TowerBusinessInventoryStock"
   parameters:
     AuthorizationSessionHeader:
       name: Authorization

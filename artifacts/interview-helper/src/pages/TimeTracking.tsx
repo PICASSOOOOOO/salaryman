@@ -167,14 +167,14 @@ export default function TimeTracking() {
           <div className="space-y-2">
             {filtered.map(e => (
               <div key={e.id} className="rounded-xl border border-zinc-800 bg-white/[0.015] p-4 hover:border-cyan-500/20 transition-colors">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${e.status === 'active' ? 'bg-green-500/15 border border-green-500/30' : 'bg-zinc-800/50 border border-zinc-700'}`}>
                     {e.status === 'active' ? <Play className="w-3.5 h-3.5 text-green-400" /> : <Check className="w-3.5 h-3.5 text-zinc-500" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-bold text-foreground">{e.employeeName}</span>
-                      {e.project && <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-sky-500/15 text-sky-400">{e.project}</span>}
+                    <div className="flex flex-wrap items-center gap-2 mb-0.5 min-w-0">
+                      <span className="text-sm font-bold text-foreground break-words">{e.employeeName}</span>
+                      {e.project && <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-sky-500/15 text-sky-400 break-words">{e.project}</span>}
                       {e.billable && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-green-500/15 text-green-400">$</span>}
                     </div>
                     <div className="text-[10px] text-zinc-500 font-mono">
