@@ -20,13 +20,13 @@ function parseVersion(raw) {
 }
 
 function formatVersion(parsed) {
-  return `${parsed.major}.${parsed.minor}${parsed.suffix}`;
+  return `v${parsed.major}.${parsed.minor}${parsed.suffix}`;
 }
 
 function getFormattedVersion() {
   const raw = readVersion();
   const parsed = parseVersion(raw);
-  return parsed ? formatVersion(parsed) : raw;
+  return parsed ? formatVersion(parsed) : `v${raw}`;
 }
 
 function readChangelog() {

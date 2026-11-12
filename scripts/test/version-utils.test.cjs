@@ -9,8 +9,8 @@ const {
 } = require("../../version-utils.cjs");
 
 test("formats the visible version as major.minor without a build suffix", () => {
-  assert.equal(formatVersion({ major: 24, minor: 3, suffix: "" }), "24.3");
-  assert.equal(getFormattedVersion(), readVersion());
+  assert.equal(formatVersion({ major: 24, minor: 3, suffix: "" }), "v24.3");
+  assert.equal(getFormattedVersion(), `v${readVersion()}`);
 });
 
 test("advances minor versions and rolls over at ten", () => {
