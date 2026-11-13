@@ -187,10 +187,14 @@ export default function GameSettings({
             <ChevronLeft className="w-4 h-4" /> OFFICE
           </Link>
         )}
-        <h1 className="text-2xl font-mono tracking-[0.2em] text-zinc-100 mb-1">SETTINGS</h1>
-        <p className="text-[11px] font-mono text-zinc-600 tracking-wider uppercase mb-5">
-          Synced to your account when signed in. Reset anytime.
-        </p>
+        {!embedded && (
+          <>
+            <h1 className="text-2xl font-mono tracking-[0.2em] text-zinc-100 mb-1">SETTINGS</h1>
+            <p className="text-[11px] font-mono text-zinc-600 tracking-wider uppercase mb-5">
+              Synced to your account when signed in. Reset anytime.
+            </p>
+          </>
+        )}
 
         {/* Tab bar */}
         <div className="flex gap-1.5 mb-5 overflow-x-auto scrollbar-hide -mx-1 px-1">

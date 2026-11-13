@@ -137,19 +137,12 @@ export default function GameBank() {
   hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
   const returnPath = useMemo(() => {
-    if (typeof window === "undefined") return "/office";
+    if (typeof window === "undefined") return "/settings/os?topic=finance";
     const candidate = new URLSearchParams(window.location.search).get("returnTo");
-    return candidate && candidate.startsWith("/") && !candidate.startsWith("//") ? candidate : "/office";
+    return candidate && candidate.startsWith("/") && !candidate.startsWith("//")
+      ? candidate
+      : "/settings/os?topic=finance";
   }, []);
-  const returnFloor = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    const explicit = Number(new URLSearchParams(window.location.search).get("returnFloor"));
-    if (Number.isInteger(explicit) && explicit >= 1 && explicit <= 67) return explicit;
-    if (returnPath === "/tower/mezzanine") return 2;
-    if (returnPath === "/tower/rest") return 3;
-    if (returnPath === "/tower/security") return 4;
-    return null;
-  }, [returnPath]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tx, setTx] = useState<Tx[]>([]);
   const [tab, setTab] = useState<Tab>(() => {
@@ -212,7 +205,7 @@ export default function GameBank() {
         apiFetch("/api/economy/bank/transactions?limit=200", { credentials: "include" }),
       ]);
       if (accRes.status === 401) {
-        navigate("/login?next=/game/bank");
+        navigate(`/sign-in?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         return;
       }
       if (!accRes.ok) throw new Error(await accRes.text());
@@ -353,7 +346,7 @@ export default function GameBank() {
 
   return (
     <div className="min-h-screen w-full text-zinc-200" style={{
-      background: "linear-gradient(180deg, rgba(5,8,15,.84), rgba(5,8,15,.97)), url('/pixel-agents/shadow-tower/spaces/tower_space_lobby.jpg') center / cover fixed",
+      background: "linear-gradient(180deg, #101319, #080a0e)",
       paddingTop: "calc(env(safe-area-inset-top) + 1.25rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>
@@ -370,9 +363,8 @@ export default function GameBank() {
         <header className="mb-6">
           <div className="flex items-center justify-between gap-3">
             <Link href={returnPath} className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
-              ← RETURN TO FLOOR
+              ← BACK TO FINANCE SETTINGS
             </Link>
-            {returnFloor && <span className="border border-emerald-300/30 bg-emerald-300/5 px-2 py-1 font-mono text-[10px] font-bold tracking-[.18em] text-emerald-200 animate-pulse">FROM FLOOR {returnFloor}</span>}
           </div>
           <div className="mt-2 flex items-center gap-3">
             <Landmark className="w-6 h-6 text-emerald-300" />

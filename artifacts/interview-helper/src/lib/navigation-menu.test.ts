@@ -121,7 +121,13 @@ describe("consolidated workspace navigation", () => {
     ]));
     const settings = sections.get("settings");
     expect(settings?.some((entry) => entry.path === "/platform")).toBe(true);
+    const settingsHome = settings?.find((entry) => entry.path === "/settings");
+    expect(settingsHome?.children).toContainEqual(expect.objectContaining({
+      path: "/settings/os",
+      label: "SALARYMAN OS",
+    }));
     const business = sections.get("business");
+    expect(business?.some((entry) => entry.path === "/business/accounting" && entry.label === "FINANCE & ACCOUNTING")).toBe(true);
     expect(business?.some((entry) => entry.path === "/workspace/notepad")).toBe(true);
     expect(business?.some((entry) => entry.path === "/workspace/calculator")).toBe(true);
     expect(sections.get("creative")?.some((entry) => entry.label === "MEETING ROOM")).toBe(true);

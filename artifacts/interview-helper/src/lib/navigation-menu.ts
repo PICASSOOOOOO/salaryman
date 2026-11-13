@@ -1,4 +1,5 @@
 import {
+  Banknote,
   Bot,
   Brain,
   Globe,
@@ -178,8 +179,15 @@ export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
     entries: [
       appEntry("business", {
         children: [
+          {
+            id: "business-finance",
+            path: "/business/accounting",
+            label: "FINANCE & ACCOUNTING",
+            icon: Banknote,
+            hint: "BUSINESS LEDGERS",
+          },
           ...businessModule.subs
-            .filter((sub) => !["contacts", "deals", "autopilot"].includes(sub.id) && sub.path !== businessModule.defaultPath)
+            .filter((sub) => !["contacts", "deals", "autopilot", "accounting"].includes(sub.id) && sub.path !== businessModule.defaultPath)
             .map(historicSubEntry),
           appEntry("notepad"),
           appEntry("calculator"),
@@ -193,7 +201,15 @@ export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
     label: "SETTINGS",
     entries: [
       appEntry("platform"),
-      appEntry("settings"),
+      appEntry("settings", {
+        children: [{
+          id: "salaryman-os-settings",
+          path: "/settings/os",
+          label: "SALARYMAN OS",
+          icon: officeModule.icon,
+          hint: "GAME, SERVER & ECONOMY SETTINGS",
+        }],
+      }),
       appEntry("profile"),
       appEntry("admin"),
     ],

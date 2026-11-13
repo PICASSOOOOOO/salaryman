@@ -8,7 +8,7 @@ import {
   Megaphone, Target, Search, BarChart2, LayoutDashboard, Bot,
   Plus, X, Edit2, Trash2, Check, Copy, Crown,
   ClipboardList, Store, Timer, Handshake, ScrollText, Globe,
-  Eye, EyeOff, LockKeyhole, BookOpen, PhoneCall, MessageSquare
+  Eye, EyeOff, LockKeyhole, PhoneCall, MessageSquare
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -85,6 +85,7 @@ const QUICK_ACCESS = [
   { path: '/business/team', label: 'EMPLOYEES', icon: Users },
   { path: '/business/tasks', label: 'TASKS', icon: ClipboardList },
   { path: '/business/jobs', label: 'JOBS', icon: Briefcase },
+  { path: '/business/accounting', label: 'FINANCE', icon: Landmark },
   { path: '/business/crm', label: 'CRM', icon: LayoutDashboard },
   { path: '/phone', label: 'CALLL HOME', icon: PhoneCall },
   { path: '/comms', label: 'COMMS', icon: MessageSquare },
@@ -802,11 +803,7 @@ export default function BusinessHub() {
                   })}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                  <Link href="/business/accounting" className="flex items-center justify-center gap-2 p-3 border border-border bg-card hover:border-primary hover:bg-primary/5 transition-all rounded-md group">
-                    <BookOpen className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-foreground group-hover:text-primary transition-colors">OPEN ACCOUNTING</span>
-                  </Link>
+                <div className="mt-4">
                   <Link href="/business/taxes" className="flex items-center justify-center gap-2 p-3 border border-border bg-card hover:border-primary hover:bg-primary/5 transition-all rounded-md group">
                     <Landmark className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-foreground group-hover:text-primary transition-colors">ESTIMATE TAXES</span>

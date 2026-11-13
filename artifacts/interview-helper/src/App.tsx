@@ -42,11 +42,14 @@ const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const DesktopDownload = lazy(() => import("@/pages/DesktopDownload"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
+const SalarymanOSSettings = lazy(() => import("@/pages/SalarymanOSSettings"));
 const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.AdminHub })));
 const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
+const GameBank = lazy(() => import("@/pages/Game/Bank"));
+const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const SeoModule = lazy(() => import("@/pages/SeoModule"));
@@ -561,6 +564,7 @@ function AppShell() {
             <Route path="/profile/platform">{() => <Redirect to={`/platform${window.location.search}`} />}</Route>
             <Route path="/profile/apis">{() => <Redirect to="/platform" />}</Route>
             <Route path="/settings" component={SettingsPage} />
+            <Route path="/settings/os" component={SalarymanOSSettings} />
             <Route path="/profile" component={Profile} />
             <Route path="/profiles" component={ProfilePicker} />
             <Route path="/profile/:userId" component={MemberProfile} />
@@ -576,8 +580,10 @@ function AppShell() {
             <Route path="/world">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/world/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/game">{() => <Redirect to="/desktop" />}</Route>
-            {/* This was part of the retired browser game; desktop settings live at /settings. */}
-            <Route path="/game/settings">{() => <Redirect to="/desktop" />}</Route>
+            {/* Keep game configuration and finance reachable through SALARYMAN OS. */}
+            <Route path="/game/settings">{() => <Redirect to="/settings/os?topic=controls" />}</Route>
+            <Route path="/game/economy" component={GameEconomy} />
+            <Route path="/game/bank" component={GameBank} />
             <Route path="/game/*">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/office">{() => <Redirect to="/desktop" />}</Route>
             <Route path="/office/*">{() => <Redirect to="/desktop" />}</Route>

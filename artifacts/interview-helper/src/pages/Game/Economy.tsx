@@ -179,13 +179,13 @@ export default function GameEconomy() {
 
   return (
     <div className="min-h-screen w-full" style={{
-      background: "linear-gradient(180deg, rgba(11,12,18,.82), rgba(11,12,18,.97)), url('/pixel-agents/shadow-tower/spaces/tower_space_company.jpg') center / cover fixed",
+      background: "linear-gradient(180deg, #101319, #080a0e)",
       paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <Link href="/office" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
-          <ChevronLeft className="w-4 h-4" /> OFFICE
+        <Link href="/settings/os?topic=finance" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
+          <ChevronLeft className="w-4 h-4" /> SALARYMAN OS
         </Link>
 
         <header className="mb-6">
