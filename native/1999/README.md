@@ -27,7 +27,11 @@ Build output stays in the ignored `generated-artifacts/` directory.
 Machinedrum and Monomachine require matching firmware images from hardware the
 user owns. Do not download or redistribute firmware/ROM files. Gearmulator is
 GPLv3; see the license notice inside the VST3 bundle and the upstream source
-repository for complete corresponding source and notices.
+repository for complete corresponding source and notices. The plugin remembers
+only each selected firmware file's local path in the user's application-data
+folder. It does not copy firmware, or put firmware paths in projects, presets,
+or host-shared state; if a file moves, the plugin asks the user to select it
+again.
 
 Browser projects can include private sample-library IDs, sampler pad settings,
 and recorded take IDs. Their metadata is retained, but the plugin does not fetch

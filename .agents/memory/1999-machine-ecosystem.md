@@ -53,7 +53,7 @@ The user approved GPLv3 distribution of Gearmulator's Machinedrum and Monomachin
 
 **Why:** The user wants a broad, modular instrument and furniture ecosystem. Open-source engines, vendor firmware, and factory sounds have different license boundaries, and browser projects cannot load native VST3 modules or read private state from a cross-origin emulator. They explicitly approved GPLv3 distribution for these two engines while keeping firmware user-supplied.
 
-**How to apply:** Use explicit MIDI permission and output selection for live routing; keep project-owned controls, firmware choice, and owner-private patch-file references in Vault. Make each game workstation component separately placeable and connect it to the same machine registry. For the approved Gearmulator integration, preserve the source license in the VST3 distribution and load only verified firmware supplied by the user.
+**How to apply:** Use explicit MIDI permission and output selection for live routing; keep project-owned controls and owner-private patch-file references in Vault. Keep native Gearmulator firmware paths device-local, never in shared project or host state, and never package the firmware itself. Make each game workstation component separately placeable and connect it to the same machine registry. For the approved Gearmulator integration, preserve the source license in the VST3 distribution and load only verified firmware supplied by the user.
 
 Recorded microphone loops must remain playable after a 1999 session is saved and reloaded, with their mixer settings intact.
 

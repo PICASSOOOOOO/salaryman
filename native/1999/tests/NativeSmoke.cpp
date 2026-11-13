@@ -11,7 +11,47 @@ bool require(bool condition, const char* message) {
 }
 
 int main() {
-  Salaryman1999AudioProcessor processor;
+  const auto tempDirectory = juce::File::getSpecialLocation(juce::File::tempDirectory);
+  const auto settingsFile = tempDirectory.getNonexistentChildFile(
+    "1999-firmware-path-settings", ".json", false);
+  const auto rememberedMachinedrum = tempDirectory.getNonexistentChildFile(
+    "1999-owned-machinedrum", ".bin", false);
+  const auto rememberedMonomachine = tempDirectory.getNonexistentChildFile(
+    "1999-owned-monomachine", ".bin", false);
+  std::array<juce::File, 2> rememberedPaths;
+  if (!require(gearmulatorFirmwareSettings::read(settingsFile, rememberedPaths).wasOk()
+      && rememberedPaths[0] == juce::File()
+      && rememberedPaths[1] == juce::File(),
+      "Missing local firmware settings did not produce empty paths"))
+    return 1;
+  if (!require(gearmulatorFirmwareSettings::write(
+        settingsFile, GearmulatorModel::Machinedrum, rememberedMachinedrum).wasOk()
+      && gearmulatorFirmwareSettings::write(
+        settingsFile, GearmulatorModel::Monomachine, rememberedMonomachine).wasOk()
+      && gearmulatorFirmwareSettings::read(settingsFile, rememberedPaths).wasOk()
+      && rememberedPaths[0] == rememberedMachinedrum
+      && rememberedPaths[1] == rememberedMonomachine,
+      "Local firmware paths did not persist independently"))
+    return 1;
+  const auto corruptSettingsFile = tempDirectory.getNonexistentChildFile(
+    "1999-corrupt-firmware-path-settings", ".json", false);
+  if (!require(corruptSettingsFile.replaceWithText("{")
+      && gearmulatorFirmwareSettings::read(corruptSettingsFile, rememberedPaths).failed()
+      && gearmulatorFirmwareSettings::write(
+        corruptSettingsFile, GearmulatorModel::Machinedrum, rememberedMachinedrum).wasOk()
+      && gearmulatorFirmwareSettings::read(corruptSettingsFile, rememberedPaths).wasOk()
+      && rememberedPaths[0] == rememberedMachinedrum,
+      "Corrupt local settings could not be recovered by selecting firmware again"))
+    return 1;
+  corruptSettingsFile.deleteFile();
+
+  Salaryman1999AudioProcessor processor(settingsFile);
+  if (!require(!processor.gearmulatorFirmwareReady(GearmulatorModel::Machinedrum)
+      && !processor.gearmulatorFirmwareReady(GearmulatorModel::Monomachine)
+      && processor.gearmulatorFirmwareNeedsReselect(GearmulatorModel::Machinedrum)
+      && processor.gearmulatorFirmwareNeedsReselect(GearmulatorModel::Monomachine),
+      "Missing remembered firmware files did not prompt for reselection"))
+    return 1;
   processor.prepareToPlay(44100.0, 512);
   if (!require(!processor.gearmulatorFirmwareReady(GearmulatorModel::Machinedrum)
       && !processor.gearmulatorFirmwareReady(GearmulatorModel::Monomachine),
@@ -89,6 +129,10 @@ int main() {
   if (!require(exportedRoot->getProperty("browserExtension").getDynamicObject() != nullptr,
       "Unknown browser project metadata was discarded"))
     return 1;
+  if (!require(!exported.contains(rememberedMachinedrum.getFullPathName())
+      && !exported.contains(rememberedMonomachine.getFullPathName()),
+      "Local firmware paths leaked into shared project data"))
+    return 1;
   const auto exportedTracks = exportedRoot->getProperty("tracks");
   const auto* rows = exportedTracks.getArray();
   auto* firstTrack = rows == nullptr || rows->isEmpty() ? nullptr : rows->getReference(0).getDynamicObject();
@@ -155,14 +199,14 @@ int main() {
 
   juce::MemoryBlock state;
   processor.getStateInformation(state);
-  Salaryman1999AudioProcessor restored;
+  Salaryman1999AudioProcessor restored(settingsFile);
   restored.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
   if (!require(static_cast<int>(juce::JSON::parse(restored.exportProjectJson())
       .getDynamicObject()->getProperty("bpm")) == 107,
       "Host state did not restore the session"))
     return 1;
 
-  Salaryman1999AudioProcessor noFirmwareProcessor;
+  Salaryman1999AudioProcessor noFirmwareProcessor(settingsFile);
   noFirmwareProcessor.prepareToPlay(44100.0, 512);
   noFirmwareProcessor.setMachineForTrack(0, "gearmulator_md");
   noFirmwareProcessor.setSequencerPlaying(true);
@@ -190,5 +234,6 @@ int main() {
       "Host MIDI silently fell back to a synthetic sound without firmware"))
     return 1;
 
+  settingsFile.deleteFile();
   return 0;
 }

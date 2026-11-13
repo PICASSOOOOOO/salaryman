@@ -178,8 +178,16 @@ void Salaryman1999AudioProcessorEditor::timerCallback() {
   const auto activeStep = processor_.isSequencerPlaying() ? processor_.currentStep() : -1;
   const auto mdReady = processor_.gearmulatorFirmwareReady(GearmulatorModel::Machinedrum);
   const auto mmReady = processor_.gearmulatorFirmwareReady(GearmulatorModel::Monomachine);
-  machinedrumFirmwareButton.setButtonText(mdReady ? "MD READY" : "LOAD MD FW");
-  monomachineFirmwareButton.setButtonText(mmReady ? "MM READY" : "LOAD MM FW");
+  const auto mdReselect = processor_.gearmulatorFirmwareNeedsReselect(GearmulatorModel::Machinedrum);
+  const auto mmReselect = processor_.gearmulatorFirmwareNeedsReselect(GearmulatorModel::Monomachine);
+  machinedrumFirmwareButton.setButtonText(mdReady ? "MD READY" : mdReselect ? "MD RESELECT" : "LOAD MD FW");
+  monomachineFirmwareButton.setButtonText(mmReady ? "MM READY" : mmReselect ? "MM RESELECT" : "LOAD MM FW");
+  machinedrumFirmwareButton.setTooltip(mdReselect
+    ? "The saved Machinedrum firmware file is missing or invalid. Select it again."
+    : "Select matching Machinedrum firmware from hardware you own; no firmware is included.");
+  monomachineFirmwareButton.setTooltip(mmReselect
+    ? "The saved Monomachine firmware file is missing or invalid. Select it again."
+    : "Select matching Monomachine firmware from hardware you own; no firmware is included.");
   for (int track = 0; track < Salaryman1999AudioProcessor::trackCount; ++track) {
     const auto recordingTrack = processor_.isRecordingTrack(track);
     trackLabels_[static_cast<size_t>(track)].setText(

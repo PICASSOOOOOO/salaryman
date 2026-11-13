@@ -48,9 +48,12 @@ struct Salaryman1999AudioProcessor::GearmulatorEngine {
   juce::String firmwarePath;
 };
 
-Salaryman1999AudioProcessor::Salaryman1999AudioProcessor()
+Salaryman1999AudioProcessor::Salaryman1999AudioProcessor(juce::File firmwareSettingsFile)
   : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-    parameters(*this, nullptr, "1999_PARAMETERS", createParameterLayout()) {
+    parameters(*this, nullptr, "1999_PARAMETERS", createParameterLayout()),
+    firmwareSettingsFile_(firmwareSettingsFile == juce::File()
+      ? gearmulatorFirmwareSettings::userSettingsFile()
+      : std::move(firmwareSettingsFile)) {
   for (int track = 0; track < trackCount; ++track) {
     for (int step = 0; step < stepCount; ++step)
       steps_[static_cast<size_t>(track)][static_cast<size_t>(step)].store(0);
@@ -60,7 +63,10 @@ Salaryman1999AudioProcessor::Salaryman1999AudioProcessor()
   gearNoteOffAtSample_.fill(0);
   gearNoteOffModel_.fill(-1);
   gearNoteOffNumber_.fill(-1);
+  for (auto& needsReselect : gearmulatorFirmwareNeedsReselect_)
+    needsReselect.store(false);
   applyPreset(0);
+  restoreGearmulatorFirmware();
 }
 
 Salaryman1999AudioProcessor::~Salaryman1999AudioProcessor() = default;
@@ -405,6 +411,36 @@ bool Salaryman1999AudioProcessor::gearmulatorFirmwareReady(GearmulatorModel mode
   return engine != nullptr && engine->runtime != nullptr && engine->runtime->isValid();
 }
 
+bool Salaryman1999AudioProcessor::gearmulatorFirmwareNeedsReselect(GearmulatorModel model) const {
+  const auto index = model == GearmulatorModel::Machinedrum ? 0u : 1u;
+  return gearmulatorFirmwareNeedsReselect_[index].load();
+}
+
+void Salaryman1999AudioProcessor::restoreGearmulatorFirmware() {
+  std::array<juce::File, 2> paths;
+  const auto readResult = gearmulatorFirmwareSettings::read(
+    firmwareSettingsFile_, paths);
+  if (readResult.failed()) {
+    for (auto& needsReselect : gearmulatorFirmwareNeedsReselect_)
+      needsReselect.store(true);
+    return;
+  }
+
+  for (size_t index = 0; index < paths.size(); ++index) {
+    const auto& file = paths[index];
+    if (file == juce::File())
+      continue;
+    const auto model = index == 0 ? GearmulatorModel::Machinedrum : GearmulatorModel::Monomachine;
+    if (!file.existsAsFile()) {
+      gearmulatorFirmwareNeedsReselect_[index].store(true);
+      continue;
+    }
+    juce::String error;
+    if (!loadGearmulatorFirmware(model, file, error))
+      gearmulatorFirmwareNeedsReselect_[index].store(true);
+  }
+}
+
 bool Salaryman1999AudioProcessor::loadGearmulatorFirmware(
     GearmulatorModel model, const juce::File& file, juce::String& error) {
   const auto modelIndex = model == GearmulatorModel::Machinedrum ? 0u : 1u;
@@ -476,12 +512,20 @@ bool Salaryman1999AudioProcessor::loadGearmulatorFirmware(
   candidate->output.setSize(6, juce::jmax(1, blockSize), false, false, true);
   candidate->firmwarePath = file.getFullPathName();
 
+  const auto settingsResult = gearmulatorFirmwareSettings::write(
+    firmwareSettingsFile_, model, file);
+  if (settingsResult.failed()) {
+    error = settingsResult.getErrorMessage();
+    return false;
+  }
+
   {
     std::lock_guard<std::mutex> lock(gearmulatorMutex_);
     candidate->runtime->setHostSamplerate(static_cast<float>(sampleRate_), static_cast<float>(md::g_samplerate));
     candidate->runtime->setBlockSize(static_cast<uint32_t>(juce::jmax(1, maxBlockSize_)));
     candidate->output.setSize(6, juce::jmax(1, maxBlockSize_), false, false, true);
     gearmulatorEngines_[modelIndex] = std::move(candidate);
+    gearmulatorFirmwareNeedsReselect_[modelIndex].store(false);
   }
   error.clear();
   return true;

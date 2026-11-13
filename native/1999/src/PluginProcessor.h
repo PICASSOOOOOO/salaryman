@@ -1,16 +1,12 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "GearmulatorFirmwareSettings.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
-
-enum class GearmulatorModel {
-  Machinedrum,
-  Monomachine
-};
 
 class Salaryman1999AudioProcessor final : public juce::AudioProcessor {
 public:
@@ -29,7 +25,7 @@ public:
     "boss_ce2", "fm1", "smk37", "minimoog", "gearmulator_md", "gearmulator_mm"
   };
 
-  Salaryman1999AudioProcessor();
+  explicit Salaryman1999AudioProcessor(juce::File firmwareSettingsFile = {});
   ~Salaryman1999AudioProcessor() override;
 
   void prepareToPlay(double sampleRate, int samplesPerBlock) override;
@@ -59,6 +55,7 @@ public:
   void setMachineForTrack(int track, const juce::String& machineId);
   bool loadGearmulatorFirmware(GearmulatorModel model, const juce::File& file, juce::String& error);
   bool gearmulatorFirmwareReady(GearmulatorModel model) const;
+  bool gearmulatorFirmwareNeedsReselect(GearmulatorModel model) const;
   bool isRecordingTrack(int track) const {
     return track >= 0 && track < trackCount && trackKinds_[static_cast<size_t>(track)].load() != 0;
   }
@@ -86,6 +83,7 @@ private:
   void triggerVoice(int track, int velocity, int midiNote = -1, int sampleOffset = 0, int gateSamples = 0);
   float renderVoice(Voice& voice, double sampleRate);
   void resetDsp();
+  void restoreGearmulatorFirmware();
 
   std::array<std::array<std::atomic<int>, stepCount>, trackCount> steps_ {};
   std::array<std::atomic<int>, trackCount> machines_ {};
@@ -94,6 +92,8 @@ private:
   std::array<int, trackCount> gearNoteOffModel_ {};
   std::array<int, trackCount> gearNoteOffNumber_ {};
   std::array<std::unique_ptr<GearmulatorEngine>, 2> gearmulatorEngines_ {};
+  std::array<std::atomic<bool>, 2> gearmulatorFirmwareNeedsReselect_ {};
+  juce::File firmwareSettingsFile_;
   mutable std::mutex gearmulatorMutex_;
   std::array<Voice, trackCount> voices_ {};
   std::atomic<bool> sequencerPlaying_ { false };

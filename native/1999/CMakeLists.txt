@@ -35,6 +35,7 @@ juce_add_plugin(SALARYMAN1999
 juce_generate_juce_header(SALARYMAN1999)
 
 target_sources(SALARYMAN1999 PRIVATE
+  src/GearmulatorFirmwareSettings.cpp
   src/PluginProcessor.cpp
   src/PluginEditor.cpp
 )
