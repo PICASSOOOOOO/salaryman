@@ -505,17 +505,20 @@ class TowerScene:
             if existing_index is None:
                 self.objects.add(terminal, scale_legacy_coordinates=False)
             else:
-                self.objects.objects[existing_index] = terminal
+                self.objects.replace(terminal.id, terminal)
         for index, item in enumerate(self.objects.objects):
             saved = normalized.get(f"{self.current_floor}:{item.id}")
             if not saved:
                 continue
             physics_x, physics_y = saved.get("physicsX"), saved.get("physicsY")
             if isinstance(physics_x, int) and isinstance(physics_y, int):
-                self.objects.objects[index] = replace(
-                    item,
-                    position=(physics_x, physics_y),
-                    display_position=(physics_x, physics_y),
+                self.objects.replace(
+                    item.id,
+                    replace(
+                        item,
+                        position=(physics_x, physics_y),
+                        display_position=(physics_x, physics_y),
+                    ),
                 )
 
     def set_construction_plans(self, plans: object) -> None:
@@ -525,10 +528,10 @@ class TowerScene:
         if signature == self._construction_signature:
             return
         self._construction_signature = signature
-        self.objects.objects = [
+        self.objects.replace_all([
             item for item in self.objects.objects
             if not item.id.startswith("tower-construction-")
-        ]
+        ])
 
         rooms = {
             2: "construction_f02",
@@ -742,12 +745,12 @@ class TowerScene:
                 and abs(position[1] - access_y) > gate_half_width + player_half_height
             ):
                 return True
-        for item in self.objects.objects:
-            if item.room != self.current_room:
-                continue
+        for item in self.objects.collision_candidates(
+            self.current_room,
+            position,
+            (player_half_width, player_half_height),
+        ):
             object_half_width, object_half_height = item.collision_half_extents
-            if object_half_width <= 0 or object_half_height <= 0:
-                continue
             object_x, object_y = item.visual_position
             if (
                 abs(position[0] - object_x) <= player_half_width + object_half_width
@@ -917,17 +920,14 @@ class TowerScene:
             if patrol is not None and pose is not None:
                 position, _facing = pose
                 if self._room_position_is_walkable(position):
-                    patrol_index = next(
-                        (index for index, item in enumerate(self.objects.objects)
-                         if item.id == patrol.id),
-                        None,
-                    )
-                    if patrol_index is not None:
-                        self.objects.objects[patrol_index] = replace(
+                    self.objects.replace(
+                        patrol.id,
+                        replace(
                             patrol,
                             position=position,
                             display_position=position,
-                        )
+                        ),
+                    )
 
     def set_autopilot_snapshot(self, snapshot: AutopilotSnapshot) -> None:
         self.autopilot_snapshot = snapshot

@@ -23,6 +23,18 @@ const menuEntries = [
 const menuDestinations = flatten(menuEntries);
 
 describe("consolidated workspace navigation", () => {
+  it("uses the seven approved work areas in the intended order", () => {
+    expect(WORKSPACE_MENU_SECTIONS.map(({ label }) => label)).toEqual([
+      "MARKETING",
+      "CREATIVE",
+      "BUSINESS",
+      "SETTINGS",
+      "CALLL HOME",
+      "PABLO PRIME",
+      "THE OFFICE",
+    ]);
+  });
+
   it("contains each route once after merging the overlapping menus", () => {
     const paths = menuDestinations.map((entry) => entry.path);
     expect(new Set(paths).size).toBe(paths.length);
@@ -48,12 +60,15 @@ describe("consolidated workspace navigation", () => {
     }
   });
 
-  it("groups leads and lead capture inside CRM instead of separate top-level destinations", () => {
-    const section = WORKSPACE_MENU_SECTIONS.find(({ id }) => id === "crm");
-    const crm = section?.entries[0];
+  it("groups CRM, leads, deals, contacts, and calling under CALLL HOME", () => {
+    const section = WORKSPACE_MENU_SECTIONS.find(({ id }) => id === "calll-home");
+    const calllHome = section?.entries[0];
+    const crm = calllHome?.children?.find(({ path }) => path === "/business/crm");
     expect(crm?.path).toBe("/business/crm");
     expect(crm?.children?.map(({ label }) => label)).toEqual(["LEADS", "LEAD CAPTURE", "DEALS"]);
-    expect(WORKSPACE_MENU_SECTIONS.flatMap((group) => group.entries).some(({ id }) => ["contacts", "leads"].includes(id))).toBe(false);
+    expect(calllHome?.children?.some(({ path }) => path === "/phone/contacts")).toBe(true);
+    expect(calllHome?.children?.some(({ path }) => path === "/phone/dialer")).toBe(true);
+    expect(crm?.hint).toBe("FREE CRM");
   });
 
   it("filters BROWSE like the other destinations", () => {
@@ -96,7 +111,7 @@ describe("consolidated workspace navigation", () => {
     const lab = creative?.children?.find((entry) => entry.id === "lab");
     expect(lab?.label).toBe("1999");
     expect(lab?.children?.map((entry) => entry.label)).toContain("STEM PLAYER");
-    expect(sections.get("tools")?.find((entry) => entry.id === "hummingbird")?.path).toBe("/hummingbird");
+    expect(creative?.children?.find((entry) => entry.id === "hummingbird")?.path).toBe("/hummingbird");
 
     const marketing = sections.get("marketing")?.find((entry) => entry.id === "marketing");
     expect(marketing?.children?.map((entry) => entry.path)).toEqual(expect.arrayContaining([
@@ -104,13 +119,18 @@ describe("consolidated workspace navigation", () => {
       "/creative/brand",
       "/intel/reports",
     ]));
-    const account = sections.get("account");
-    expect(account?.some((entry) => entry.path === "/platform")).toBe(true);
+    const settings = sections.get("settings");
+    expect(settings?.some((entry) => entry.path === "/platform")).toBe(true);
+    const business = sections.get("business");
+    expect(business?.some((entry) => entry.path === "/workspace/notepad")).toBe(true);
+    expect(business?.some((entry) => entry.path === "/workspace/calculator")).toBe(true);
     expect(sections.get("creative")?.some((entry) => entry.label === "MEETING ROOM")).toBe(true);
     expect(sections.get("creative")?.some((entry) => entry.label === "CAD & BLUEPRINT READER")).toBe(true);
 
-    const office = sections.get("workspace")?.find((entry) => entry.id === "office");
-    expect(office?.children?.some((entry) => entry.path === "/pledge")).toBe(true);
+    const office = sections.get("office");
+    expect(office?.some((entry) => entry.path === "/desktop")).toBe(true);
+    expect(menuDestinations.some((entry) => entry.path === "/pledge")).toBe(false);
+    expect(menuDestinations.some((entry) => ["/tower", "/game/economy", "/game/bank", "/game/settings"].includes(entry.path))).toBe(false);
     const automation = menuDestinations.filter((entry) => entry.path === "/business/autopilot");
     expect(automation).toHaveLength(1);
     expect(automation[0]).toMatchObject({ label: "PABLO PRIME", hint: "AUTOMATION WORKSPACE" });

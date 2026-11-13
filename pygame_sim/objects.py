@@ -203,9 +203,19 @@ class OfficeObject:
 class OfficeObjectRegistry:
     """Stable object lookup and shared interaction dispatch."""
 
+    COLLISION_CELL_UNITS = 1_000
+
     objects: list[OfficeObject] = field(default_factory=list)
     auto_scale_legacy_coordinates: bool = False
     _legacy_positions: dict[str, tuple[int, int]] = field(default_factory=dict, repr=False)
+    _collision_cells_by_room: dict[
+        str, dict[tuple[int, int], tuple[OfficeObject, ...]]
+    ] = field(default_factory=dict, init=False, repr=False)
+    _collision_index_dirty: bool = field(default=True, init=False, repr=False)
+
+    def _invalidate_collision_index(self) -> None:
+        self._collision_cells_by_room.clear()
+        self._collision_index_dirty = True
 
     def add(
         self,
@@ -263,9 +273,121 @@ class OfficeObjectRegistry:
             )
         self.objects.append(office_object)
         self._legacy_positions[office_object.id] = legacy_position
+        if not self._collision_index_dirty:
+            self._add_collision_object(office_object)
 
     def remove(self, object_id: str) -> None:
+        removed = [item for item in self.objects if item.id == object_id]
+        old_length = len(self.objects)
         self.objects[:] = [item for item in self.objects if item.id != object_id]
+        if len(self.objects) != old_length:
+            self._legacy_positions.pop(object_id, None)
+            if not self._collision_index_dirty:
+                for item in removed:
+                    self._remove_collision_object(item)
+
+    def replace(self, object_id: str, office_object: OfficeObject) -> bool:
+        """Replace one authoritative object and update its spatial lookup."""
+        if office_object.id != object_id:
+            raise ValueError("replacement object id must match the requested id")
+        for index, item in enumerate(self.objects):
+            if item.id == object_id:
+                self.objects[index] = office_object
+                if not self._collision_index_dirty:
+                    self._remove_collision_object(item)
+                    self._add_collision_object(office_object)
+                return True
+        return False
+
+    def replace_all(self, office_objects: list[OfficeObject]) -> None:
+        """Replace the registry list after a server-owned collection refresh."""
+        previous_legacy_positions = self._legacy_positions
+        self.objects = list(office_objects)
+        self._legacy_positions = {
+            item.id: previous_legacy_positions.get(item.id, item.position)
+            for item in self.objects
+        }
+        self._invalidate_collision_index()
+
+    def collision_candidates(
+        self,
+        room: str,
+        position: tuple[int, int],
+        player_half_extents: tuple[int, int],
+    ) -> tuple[OfficeObject, ...]:
+        """Return room-local objects whose indexed footprints may overlap a player."""
+        if self._collision_index_dirty:
+            self._rebuild_collision_index()
+
+        cells = self._collision_cells_by_room.get(room)
+        if not cells:
+            return ()
+
+        cell_size = self.COLLISION_CELL_UNITS
+        half_x, half_y = player_half_extents
+        left = (position[0] - half_x) // cell_size
+        right = (position[0] + half_x) // cell_size
+        top = (position[1] - half_y) // cell_size
+        bottom = (position[1] + half_y) // cell_size
+        candidates: list[OfficeObject] = []
+        seen_ids: set[str] = set()
+        for cell_x in range(left, right + 1):
+            for cell_y in range(top, bottom + 1):
+                for item in cells.get((cell_x, cell_y), ()):
+                    if item.id not in seen_ids:
+                        seen_ids.add(item.id)
+                        candidates.append(item)
+        return tuple(candidates)
+
+    def _rebuild_collision_index(self) -> None:
+        self._collision_cells_by_room = {}
+        for item in self.objects:
+            self._add_collision_object(item)
+        self._collision_index_dirty = False
+
+    def _add_collision_object(self, item: OfficeObject) -> None:
+        half_x, half_y = item.collision_half_extents
+        if half_x <= 0 or half_y <= 0:
+            return
+        x, y = item.visual_position
+        cell_size = self.COLLISION_CELL_UNITS
+        left = (x - half_x) // cell_size
+        right = (x + half_x) // cell_size
+        top = (y - half_y) // cell_size
+        bottom = (y + half_y) // cell_size
+        room_cells = self._collision_cells_by_room.setdefault(item.room, {})
+        for cell_x in range(left, right + 1):
+            for cell_y in range(top, bottom + 1):
+                cell = (cell_x, cell_y)
+                room_cells[cell] = (*room_cells.get(cell, ()), item)
+
+    def _remove_collision_object(self, item: OfficeObject) -> None:
+        half_x, half_y = item.collision_half_extents
+        if half_x <= 0 or half_y <= 0:
+            return
+        x, y = item.visual_position
+        cell_size = self.COLLISION_CELL_UNITS
+        left = (x - half_x) // cell_size
+        right = (x + half_x) // cell_size
+        top = (y - half_y) // cell_size
+        bottom = (y + half_y) // cell_size
+        room_cells = self._collision_cells_by_room.get(item.room)
+        if room_cells is None:
+            return
+        for cell_x in range(left, right + 1):
+            for cell_y in range(top, bottom + 1):
+                cell = (cell_x, cell_y)
+                remaining = tuple(
+                    candidate
+                    for candidate in room_cells.get(cell, ())
+                    if candidate.id != item.id
+                )
+                if remaining:
+                    room_cells[cell] = remaining
+                else:
+                    room_cells.pop(cell, None)
+        if not room_cells:
+            self._collision_cells_by_room.pop(item.room, None)
 
     def get(self, object_id: str) -> OfficeObject | None:
         return next((item for item in self.objects if item.id == object_id), None)

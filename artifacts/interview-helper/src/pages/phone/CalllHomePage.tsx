@@ -346,6 +346,7 @@ export default function CalllHomePage() {
             <button
               type="button"
               onClick={() => setStatusRetryKey(value => value + 1)}
+              data-testid="button-phone-status-retry"
               style={{ border: `1px solid ${warning(0.28)}`, borderRadius: 4, padding: '5px 7px', background: 'transparent', color: warning(0.9), fontSize: '0.45rem', letterSpacing: '0.08em' }}
             >
               RETRY

@@ -10,7 +10,8 @@
     "build:prepublish": "pnpm --filter @workspace/scripts run bump-version && pnpm run typecheck",
     "build:deploy": "pnpm run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "test:safe-regression": "bash ./scripts/test-safe-regression.sh"
   },
   "private": true,
   "devDependencies": {
