@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 project(SALARYMAN1999 VERSION 1.0.0 LANGUAGES C CXX)
 
 include(FetchContent)
+include(CTest)
 
 set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
 set(JUCE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -52,7 +53,47 @@ target_link_libraries(SALARYMAN1999 PRIVATE
   juce::juce_recommended_warning_flags
 )
 
-include(CTest)
+set(GEARMULATOR_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/gearmulator-md-mm")
+if(NOT EXISTS "${GEARMULATOR_SOURCE_DIR}/source/elektron/md/mdLib/CMakeLists.txt")
+  message(FATAL_ERROR
+    "Gearmulator source is missing. Initialize the native/1999/third_party/gearmulator-md-mm submodule.")
+endif()
+foreach(required_submodule
+    "source/dsp56300/source/CMakeLists.txt"
+    "source/mc68k/CMakeLists.txt"
+    "source/3rdparty/RmlUi/CMakeLists.txt"
+    "source/3rdparty/freetype/CMakeLists.txt")
+  if(NOT EXISTS "${GEARMULATOR_SOURCE_DIR}/${required_submodule}")
+    message(FATAL_ERROR
+      "Gearmulator dependency ${required_submodule} is missing. Run native/1999/build-linux.sh to initialize it.")
+  endif()
+endforeach()
+
+# Gearmulator is a GPLv3 source dependency. Build only its shared emulator
+# libraries; 1999 remains the sole VST3 target and supplies its own UI.
+set(_1999_build_testing "${BUILD_TESTING}")
+set(BUILD_TESTING OFF)
+set(gearmulator_BUILD_JUCEPLUGIN OFF CACHE BOOL "" FORCE)
+set(gearmulator_BUILD_JUCEPLUGIN_CLAP OFF CACHE BOOL "" FORCE)
+set(gearmulator_SYNTH_OSIRUS OFF CACHE BOOL "" FORCE)
+set(gearmulator_SYNTH_OSTIRUS OFF CACHE BOOL "" FORCE)
+set(gearmulator_SYNTH_VAVRA OFF CACHE BOOL "" FORCE)
+set(gearmulator_SYNTH_XENIA OFF CACHE BOOL "" FORCE)
+set(gearmulator_SYNTH_NODALRED2X OFF CACHE BOOL "" FORCE)
+set(gearmulator_SYNTH_JE8086 OFF CACHE BOOL "" FORCE)
+set(gearmulator_SYNTH_ELEKTRON ON CACHE BOOL "" FORCE)
+add_subdirectory("${GEARMULATOR_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/gearmulator" EXCLUDE_FROM_ALL)
+set(BUILD_TESTING "${_1999_build_testing}")
+target_link_libraries(SALARYMAN1999 PRIVATE mdLib)
+
+add_custom_command(TARGET SALARYMAN1999_VST3 POST_BUILD
+  COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+    "${GEARMULATOR_SOURCE_DIR}/LICENSE.md"
+    "$<TARGET_BUNDLE_DIR:SALARYMAN1999_VST3>/GEARMULATOR-GPL-3.0.md"
+  COMMENT "Copying Gearmulator GPLv3 license into the 1999 VST3 bundle"
+  VERBATIM
+)
+
 if(BUILD_TESTING)
   add_executable(1999_native_smoke tests/NativeSmoke.cpp)
   target_compile_features(1999_native_smoke PRIVATE cxx_std_17)

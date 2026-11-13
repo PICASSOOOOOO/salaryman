@@ -3,6 +3,14 @@
 #include <JuceHeader.h>
 #include <array>
 #include <atomic>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+
+enum class GearmulatorModel {
+  Machinedrum,
+  Monomachine
+};
 
 class Salaryman1999AudioProcessor final : public juce::AudioProcessor {
 public:
@@ -16,13 +24,13 @@ public:
     "DRUMS", "PULSE", "GLASS", "SUB",
     "FM", "LEAD", "TAPE", "AIR"
   };
-  static constexpr std::array<const char*, 9> machineIds {
+  static constexpr std::array<const char*, 11> machineIds {
     "op1", "sp404mkii", "mpc_sample", "korg_ms2000r", "korg_m1",
-    "boss_ce2", "fm1", "smk37", "minimoog"
+    "boss_ce2", "fm1", "smk37", "minimoog", "gearmulator_md", "gearmulator_mm"
   };
 
   Salaryman1999AudioProcessor();
-  ~Salaryman1999AudioProcessor() override = default;
+  ~Salaryman1999AudioProcessor() override;
 
   void prepareToPlay(double sampleRate, int samplesPerBlock) override;
   void releaseResources() override;
@@ -49,6 +57,8 @@ public:
   void setStep(int track, int step, bool enabled);
   juce::String machineForTrack(int track) const;
   void setMachineForTrack(int track, const juce::String& machineId);
+  bool loadGearmulatorFirmware(GearmulatorModel model, const juce::File& file, juce::String& error);
+  bool gearmulatorFirmwareReady(GearmulatorModel model) const;
   bool isRecordingTrack(int track) const {
     return track >= 0 && track < trackCount && trackKinds_[static_cast<size_t>(track)].load() != 0;
   }
@@ -60,6 +70,8 @@ public:
   void applyPreset(int presetIndex);
 
 private:
+  struct GearmulatorEngine;
+
   struct Voice {
     double phase = 0.0;
     double frequency = 110.0;
@@ -71,19 +83,26 @@ private:
 
   static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
   static int machineIndexFor(const juce::String& machineId);
-  void triggerVoice(int track, int velocity, int midiNote = -1);
+  void triggerVoice(int track, int velocity, int midiNote = -1, int sampleOffset = 0, int gateSamples = 0);
   float renderVoice(Voice& voice, double sampleRate);
   void resetDsp();
 
   std::array<std::array<std::atomic<int>, stepCount>, trackCount> steps_ {};
   std::array<std::atomic<int>, trackCount> machines_ {};
   std::array<std::atomic<int>, trackCount> trackKinds_ {};
+  std::array<std::int64_t, trackCount> gearNoteOffAtSample_ {};
+  std::array<int, trackCount> gearNoteOffModel_ {};
+  std::array<int, trackCount> gearNoteOffNumber_ {};
+  std::array<std::unique_ptr<GearmulatorEngine>, 2> gearmulatorEngines_ {};
+  mutable std::mutex gearmulatorMutex_;
   std::array<Voice, trackCount> voices_ {};
   std::atomic<bool> sequencerPlaying_ { false };
   std::atomic<int> currentStep_ { 0 };
+  std::uint64_t processSampleCounter_ = 0;
   juce::String projectTemplateJson_;
   int currentProgram_ = 0;
   double sampleRate_ = 44100.0;
+  int maxBlockSize_ = 512;
   double samplesUntilStep_ = 0.0;
   double heldSample_ = 0.0;
   double quantizedLeft_ = 0.0;

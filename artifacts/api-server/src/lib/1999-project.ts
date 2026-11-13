@@ -8,6 +8,8 @@ export const NINETEEN_NINETY_NINE_MACHINE_IDS = [
   "fm1",
   "smk37",
   "minimoog",
+  "gearmulator_md",
+  "gearmulator_mm",
 ] as const;
 
 export type NineteenNinetyNineProject = {

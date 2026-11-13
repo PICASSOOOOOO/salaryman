@@ -1,21 +1,37 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <mdLib/mddevice.h>
+#include <mdLib/mdromloader.h>
+#include <mdLib/mdtypes.h>
+#include <synthLib/plugin.h>
+#include <algorithm>
+#include <cstdint>
+#include <utility>
 
 namespace {
 const juce::StringArray machineChoices {
-  "OP-1", "SP-404MKII", "MPC", "MS-2000R", "M1", "CE-2", "FM-1", "SMK-37", "Minimoog"
+  "OP-1", "SP-404MKII", "MPC", "MS-2000R", "M1", "CE-2", "FM-1", "SMK-37",
+  "Minimoog", "Machinedrum", "Monomachine"
 };
 
 juce::String machineIdFromChoice(int choice) {
-  const auto index = juce::jlimit(0, 8, choice);
+  const auto index = juce::jlimit(0, 10, choice);
   return Salaryman1999AudioProcessor::machineIds[static_cast<size_t>(index)];
 }
 
 int choiceFromMachineId(const juce::String& machineId) {
-  for (int i = 0; i < 9; ++i)
+  for (int i = 0; i < static_cast<int>(Salaryman1999AudioProcessor::machineIds.size()); ++i)
     if (machineId == Salaryman1999AudioProcessor::machineIds[static_cast<size_t>(i)])
       return i;
   return 0;
+}
+
+bool isGearmulatorMachine(int machineIndex) {
+  return machineIndex == 9 || machineIndex == 10;
+}
+
+int gearmulatorIndexForMachine(int machineIndex) {
+  return machineIndex == 9 ? 0 : machineIndex == 10 ? 1 : -1;
 }
 
 float readParam(juce::AudioProcessorValueTreeState& state, const char* id, float fallback = 0.0f) {
@@ -24,6 +40,13 @@ float readParam(juce::AudioProcessorValueTreeState& state, const char* id, float
   return fallback;
 }
 }
+
+struct Salaryman1999AudioProcessor::GearmulatorEngine {
+  std::unique_ptr<md::Device> device;
+  std::unique_ptr<synthLib::Plugin> runtime;
+  juce::AudioBuffer<float> output;
+  juce::String firmwarePath;
+};
 
 Salaryman1999AudioProcessor::Salaryman1999AudioProcessor()
   : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
@@ -34,8 +57,13 @@ Salaryman1999AudioProcessor::Salaryman1999AudioProcessor()
     machines_[static_cast<size_t>(track)].store(
       machineIndexFor(defaultMachines[static_cast<size_t>(track)]));
   }
+  gearNoteOffAtSample_.fill(0);
+  gearNoteOffModel_.fill(-1);
+  gearNoteOffNumber_.fill(-1);
   applyPreset(0);
 }
+
+Salaryman1999AudioProcessor::~Salaryman1999AudioProcessor() = default;
 
 juce::AudioProcessorValueTreeState::ParameterLayout Salaryman1999AudioProcessor::createParameterLayout() {
   using Float = juce::AudioParameterFloat;
@@ -64,8 +92,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout Salaryman1999AudioProcessor:
   return layout;
 }
 
-void Salaryman1999AudioProcessor::prepareToPlay(double sampleRate, int) {
+void Salaryman1999AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
   sampleRate_ = juce::jmax(8000.0, sampleRate);
+  maxBlockSize_ = juce::jmax(1, samplesPerBlock);
+  std::lock_guard<std::mutex> lock(gearmulatorMutex_);
+  for (auto& engine : gearmulatorEngines_) {
+    if (!engine || !engine->runtime) continue;
+    engine->output.setSize(6, maxBlockSize_, false, false, true);
+    engine->runtime->setHostSamplerate(static_cast<float>(sampleRate_), static_cast<float>(md::g_samplerate));
+    engine->runtime->setBlockSize(static_cast<uint32_t>(maxBlockSize_));
+  }
   resetDsp();
 }
 
@@ -80,14 +116,70 @@ bool Salaryman1999AudioProcessor::isBusesLayoutSupported(const BusesLayout& layo
 
 void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) {
   juce::ScopedNoDenormals noDenormals;
-  for (const auto metadata : midi) {
-    const auto message = metadata.getMessage();
-    if (message.isNoteOn() && trackKinds_[0].load() == 0)
-      triggerVoice(1, message.getVelocity(), message.getNoteNumber());
+  const auto sampleCount = buffer.getNumSamples();
+  if (sampleCount <= 0) {
+    buffer.clear();
+    return;
   }
-  buffer.clear();
+  const auto blockStart = processSampleCounter_;
+  const auto blockEnd = blockStart + static_cast<std::uint64_t>(sampleCount);
   const auto bpm = juce::jlimit(40.0, 240.0, static_cast<double>(readParam(parameters, "bpm", 92.0f)));
   const auto samplesPerStep = sampleRate_ * 60.0 / bpm / 4.0;
+  std::lock_guard<std::mutex> engineLock(gearmulatorMutex_);
+
+  std::array<bool, 2> gearmulatorUsed {};
+  for (int track = 0; track < trackCount; ++track) {
+    const auto machineIndex = machineIndexFor(machineForTrack(track));
+    const auto gearIndex = gearmulatorIndexForMachine(machineIndex);
+    if (gearIndex >= 0)
+      gearmulatorUsed[static_cast<size_t>(gearIndex)] = true;
+  }
+
+  for (int track = 0; track < trackCount; ++track) {
+    const auto due = gearNoteOffAtSample_[static_cast<size_t>(track)];
+    if (due == 0 || due > blockEnd)
+      continue;
+    const auto modelIndex = gearNoteOffModel_[static_cast<size_t>(track)];
+    if (modelIndex >= 0 && modelIndex < static_cast<int>(gearmulatorEngines_.size())) {
+      auto& engine = gearmulatorEngines_[static_cast<size_t>(modelIndex)];
+      if (engine && engine->runtime) {
+        const auto offset = static_cast<uint32_t>(std::max<std::int64_t>(
+          0, std::min<std::int64_t>(sampleCount - 1, due - static_cast<std::int64_t>(blockStart))));
+        engine->runtime->addMidiEvent(synthLib::SMidiEvent(
+          synthLib::MidiEventSource::Internal,
+          static_cast<uint8_t>(synthLib::M_NOTEOFF),
+          static_cast<uint8_t>(gearNoteOffNumber_[static_cast<size_t>(track)]),
+          0,
+          offset));
+      }
+    }
+    gearNoteOffAtSample_[static_cast<size_t>(track)] = 0;
+    gearNoteOffModel_[static_cast<size_t>(track)] = -1;
+    gearNoteOffNumber_[static_cast<size_t>(track)] = -1;
+  }
+
+  for (const auto metadata : midi) {
+    const auto message = metadata.getMessage();
+    const auto firstTrackIsGearmulator =
+      isGearmulatorMachine(machineIndexFor(machineForTrack(1)));
+    if (message.isNoteOn() && trackKinds_[0].load() == 0 && !firstTrackIsGearmulator)
+      triggerVoice(1, message.getVelocity(), message.getNoteNumber());
+    const auto* rawData = message.getRawData();
+    if (rawData == nullptr || message.getRawDataSize() <= 0)
+      continue;
+    for (size_t modelIndex = 0; modelIndex < gearmulatorUsed.size(); ++modelIndex) {
+      auto& engine = gearmulatorEngines_[modelIndex];
+      if (!gearmulatorUsed[modelIndex] || !engine || !engine->runtime)
+        continue;
+      synthLib::SMidiEvent event;
+      if (event.assignRawData(rawData, static_cast<size_t>(message.getRawDataSize()),
+            synthLib::MidiEventSource::Host,
+            static_cast<uint32_t>(juce::jlimit(0, sampleCount - 1, metadata.samplePosition))))
+        engine->runtime->addMidiEvent(event);
+    }
+  }
+
+  buffer.clear();
   const auto fxEnabled = readParam(parameters, "fxEnabled") > 0.5f;
   const auto inputGain = readParam(parameters, "input", 100.0f) / 100.0;
   const auto outputGain = readParam(parameters, "output", 100.0f) / 100.0;
@@ -119,7 +211,7 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
             continue;
           const auto velocity = steps_[static_cast<size_t>(track)][static_cast<size_t>(step)].load();
           if (velocity > 0)
-            triggerVoice(track, velocity);
+            triggerVoice(track, velocity, -1, sample, static_cast<int>(samplesPerStep * 0.8));
         }
         currentStep_.store((step + 1) % stepCount);
         samplesUntilStep_ += samplesPerStep;
@@ -131,6 +223,52 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
       dry += renderVoice(voice, sampleRate_);
     dry *= 0.22 * inputGain;
 
+    if (buffer.getNumChannels() == 1) {
+      buffer.setSample(0, sample, static_cast<float>(dry));
+    } else {
+      buffer.setSample(0, sample, static_cast<float>(dry));
+      buffer.setSample(1, sample, static_cast<float>(dry));
+    }
+  }
+
+  const synthLib::TAudioInputs engineInputs { nullptr, nullptr, nullptr, nullptr };
+  for (size_t modelIndex = 0; modelIndex < gearmulatorEngines_.size(); ++modelIndex) {
+    auto& engine = gearmulatorEngines_[modelIndex];
+    if (!gearmulatorUsed[modelIndex] || !engine || !engine->runtime || !engine->runtime->isValid())
+      continue;
+    if (engine->output.getNumSamples() < sampleCount) {
+      engine->output.setSize(6, sampleCount, false, false, true);
+      engine->runtime->setBlockSize(static_cast<uint32_t>(sampleCount));
+    }
+    engine->output.clear();
+    synthLib::TAudioOutputs engineOutputs {};
+    for (int channel = 0; channel < engine->output.getNumChannels(); ++channel)
+      engineOutputs[static_cast<size_t>(channel)] = engine->output.getWritePointer(channel);
+    engine->runtime->process(
+      engineInputs,
+      engineOutputs,
+      static_cast<size_t>(sampleCount),
+      bpm,
+      0.0,
+      sequencerPlaying_.load(),
+      false);
+  }
+
+  for (int sample = 0; sample < sampleCount; ++sample) {
+    auto dryLeft = static_cast<double>(buffer.getSample(0, sample));
+    auto dryRight = buffer.getNumChannels() > 1
+      ? static_cast<double>(buffer.getSample(1, sample))
+      : dryLeft;
+    for (size_t modelIndex = 0; modelIndex < gearmulatorEngines_.size(); ++modelIndex) {
+      if (!gearmulatorUsed[modelIndex])
+        continue;
+      const auto& engine = gearmulatorEngines_[modelIndex];
+      if (!engine || engine->output.getNumSamples() < sampleCount)
+        continue;
+      dryLeft += engine->output.getSample(0, sample) * inputGain;
+      dryRight += engine->output.getSample(1, sample) * inputGain;
+    }
+
     if (fxEnabled) {
       noiseState_ ^= noiseState_ << 13;
       noiseState_ ^= noiseState_ >> 17;
@@ -138,30 +276,40 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
       const auto noiseSample = (static_cast<double>(noiseState_) / 2147483648.0 - 1.0) * noise * 0.04;
       const auto wobble = 1.0 + drunk * 0.012 * std::sin(
         2.0 * juce::MathConstants<double>::pi * (sample / sampleRate_) * (0.18 + character * 0.7));
-      auto processed = dry * wobble + noiseSample;
-      processed = std::tanh(processed * (1.0 + drive * 8.0));
-      filterLeft_ += lowpassCoeff * (processed - filterLeft_);
-      filterRight_ += lowpassCoeff * (processed - filterRight_);
-      processed = filterLeft_;
-      bassLeft_ += bassCoeff * (processed - bassLeft_);
+      auto processedLeft = std::tanh((dryLeft * wobble + noiseSample) * (1.0 + drive * 8.0));
+      auto processedRight = std::tanh((dryRight * wobble + noiseSample) * (1.0 + drive * 8.0));
+      filterLeft_ += lowpassCoeff * (processedLeft - filterLeft_);
+      filterRight_ += lowpassCoeff * (processedRight - filterRight_);
+      processedLeft = filterLeft_;
+      processedRight = filterRight_;
+      bassLeft_ += bassCoeff * (processedLeft - bassLeft_);
+      bassRight_ += bassCoeff * (processedRight - bassRight_);
       if (bassEnabled)
-        processed += bassLeft_ * 0.9;
+      {
+        processedLeft += bassLeft_ * 0.9;
+        processedRight += bassRight_ * 0.9;
+      }
 
       if (samplesUntilStep_ > 0.0 && alias > 0.0) {
         const auto reducedRateHold = juce::jmax(1.0, holdEvery * (1.0 + alias * 3.0));
         if ((sample % static_cast<int>(reducedRateHold)) == 0)
-          heldSample_ = processed;
-        processed = heldSample_;
+          heldSample_ = processedLeft;
+        processedLeft = heldSample_;
+        processedRight = heldSample_;
       }
 
       if (quantization > 1.0)
-        processed = std::round(processed * quantization) / quantization;
-      const auto effected = dry * (1.0 - wet) + processed * wet;
-      quantizedLeft_ = effected;
-      quantizedRight_ = mono ? effected : effected;
+      {
+        processedLeft = std::round(processedLeft * quantization) / quantization;
+        processedRight = std::round(processedRight * quantization) / quantization;
+      }
+      quantizedLeft_ = dryLeft * (1.0 - wet) + processedLeft * wet;
+      quantizedRight_ = mono
+        ? quantizedLeft_
+        : dryRight * (1.0 - wet) + processedRight * wet;
     } else {
-      quantizedLeft_ = dry;
-      quantizedRight_ = dry;
+      quantizedLeft_ = dryLeft;
+      quantizedRight_ = mono ? dryLeft : dryRight;
     }
 
     const auto left = static_cast<float>(quantizedLeft_ * outputGain);
@@ -173,6 +321,7 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
       buffer.setSample(1, sample, right);
     }
   }
+  processSampleCounter_ = blockEnd;
 }
 
 juce::AudioProcessorEditor* Salaryman1999AudioProcessor::createEditor() {
@@ -232,6 +381,95 @@ void Salaryman1999AudioProcessor::setMachineForTrack(int track, const juce::Stri
   machines_[static_cast<size_t>(track)].store(choice);
   if (auto* parameter = parameters.getParameter("machine" + juce::String(track + 1)))
     parameter->setValueNotifyingHost(parameter->convertTo0to1(static_cast<float>(choice)));
+}
+
+bool Salaryman1999AudioProcessor::gearmulatorFirmwareReady(GearmulatorModel model) const {
+  const auto index = model == GearmulatorModel::Machinedrum ? 0u : 1u;
+  std::lock_guard<std::mutex> lock(gearmulatorMutex_);
+  const auto& engine = gearmulatorEngines_[index];
+  return engine != nullptr && engine->runtime != nullptr && engine->runtime->isValid();
+}
+
+bool Salaryman1999AudioProcessor::loadGearmulatorFirmware(
+    GearmulatorModel model, const juce::File& file, juce::String& error) {
+  const auto modelIndex = model == GearmulatorModel::Machinedrum ? 0u : 1u;
+  const auto nativeModel = model == GearmulatorModel::Machinedrum
+    ? md::MachineModel::Machinedrum
+    : md::MachineModel::Monomachine;
+  const auto expectedName = model == GearmulatorModel::Machinedrum ? "Machinedrum" : "Monomachine";
+
+  if (!file.existsAsFile()) {
+    error = "Select an existing " + juce::String(expectedName) + " firmware file.";
+    return false;
+  }
+  if (file.getSize() != 8 * 1024 * 1024) {
+    error = juce::String(expectedName) + " firmware must be an 8 MiB image. No firmware is included with 1999.";
+    return false;
+  }
+
+  juce::FileInputStream stream(file);
+  if (!stream.openedOk()) {
+    error = "1999 could not read that firmware file.";
+    return false;
+  }
+  std::vector<uint8_t> rom(static_cast<size_t>(file.getSize()));
+  if (stream.read(rom.data(), static_cast<int>(rom.size())) != static_cast<int>(rom.size())) {
+    error = "1999 could not read the complete firmware image.";
+    return false;
+  }
+  if (!md::RomLoader::isRomForModel(rom, nativeModel)) {
+    error = "That file is not recognized as " + juce::String(expectedName) + " firmware.";
+    return false;
+  }
+
+  double hostSamplerate = 44100.0;
+  int blockSize = 512;
+  {
+    std::lock_guard<std::mutex> lock(gearmulatorMutex_);
+    hostSamplerate = sampleRate_;
+    blockSize = maxBlockSize_;
+  }
+
+  const auto storageRoot = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+    .getChildFile("Picasso AI").getChildFile("1999").getChildFile("Gearmulator")
+    .getChildFile(expectedName);
+  const auto storageResult = storageRoot.createDirectory();
+  if (storageResult.failed()) {
+    error = "1999 could not create its local Gearmulator settings folder.";
+    return false;
+  }
+
+  synthLib::DeviceCreateParams params;
+  params.preferredSamplerate = static_cast<float>(md::g_samplerate);
+  params.hostSamplerate = static_cast<float>(hostSamplerate);
+  params.romName = file.getFileName().toStdString();
+  params.romData = std::move(rom);
+  params.customData = md::deviceCustomData(nativeModel);
+  params.homePath = storageRoot.getFullPathName().toStdString();
+
+  auto candidate = std::make_unique<GearmulatorEngine>();
+  candidate->device = std::make_unique<md::Device>(params);
+  if (!candidate->device->isValid()) {
+    error = "Gearmulator could not start from that firmware image.";
+    return false;
+  }
+  candidate->runtime = std::make_unique<synthLib::Plugin>(
+    candidate->device.get(), [](synthLib::Device*) {});
+  candidate->runtime->setHostSamplerate(static_cast<float>(hostSamplerate), static_cast<float>(md::g_samplerate));
+  candidate->runtime->setBlockSize(static_cast<uint32_t>(juce::jmax(1, blockSize)));
+  candidate->runtime->reserveMidiEventCapacity();
+  candidate->output.setSize(6, juce::jmax(1, blockSize), false, false, true);
+  candidate->firmwarePath = file.getFullPathName();
+
+  {
+    std::lock_guard<std::mutex> lock(gearmulatorMutex_);
+    candidate->runtime->setHostSamplerate(static_cast<float>(sampleRate_), static_cast<float>(md::g_samplerate));
+    candidate->runtime->setBlockSize(static_cast<uint32_t>(juce::jmax(1, maxBlockSize_)));
+    candidate->output.setSize(6, juce::jmax(1, maxBlockSize_), false, false, true);
+    gearmulatorEngines_[modelIndex] = std::move(candidate);
+  }
+  error.clear();
+  return true;
 }
 
 juce::String Salaryman1999AudioProcessor::exportProjectJson() const {
@@ -430,19 +668,63 @@ void Salaryman1999AudioProcessor::applyPreset(int presetIndex) {
 }
 
 int Salaryman1999AudioProcessor::machineIndexFor(const juce::String& machineId) {
-  for (int i = 0; i < 9; ++i)
+  for (int i = 0; i < static_cast<int>(machineIds.size()); ++i)
     if (machineId == machineIds[static_cast<size_t>(i)])
       return i;
   return -1;
 }
 
-void Salaryman1999AudioProcessor::triggerVoice(int track, int velocity, int midiNote) {
+void Salaryman1999AudioProcessor::triggerVoice(
+    int track, int velocity, int midiNote, int sampleOffset, int gateSamples) {
+  if (track < 0 || track >= trackCount)
+    return;
+
+  const auto machineIndex = machineIndexFor(machineForTrack(track));
+  if (isGearmulatorMachine(machineIndex)) {
+    const auto modelIndex = gearmulatorIndexForMachine(machineIndex);
+    auto& engine = gearmulatorEngines_[static_cast<size_t>(modelIndex)];
+    if (engine == nullptr || engine->runtime == nullptr || !engine->runtime->isValid())
+      return;
+
+    const auto note = midiNote >= 0
+      ? midiNote
+      : (modelIndex == 0 ? 36 : 60) + (track % 8);
+    const auto offset = static_cast<uint32_t>(juce::jmax(0, sampleOffset));
+    if (gearNoteOffAtSample_[static_cast<size_t>(track)] != 0) {
+      const auto previousModel = gearNoteOffModel_[static_cast<size_t>(track)];
+      if (previousModel >= 0 && previousModel < static_cast<int>(gearmulatorEngines_.size())) {
+        auto& previousEngine = gearmulatorEngines_[static_cast<size_t>(previousModel)];
+        if (previousEngine && previousEngine->runtime)
+          previousEngine->runtime->addMidiEvent(synthLib::SMidiEvent(
+            synthLib::MidiEventSource::Internal,
+            static_cast<uint8_t>(synthLib::M_NOTEOFF),
+            static_cast<uint8_t>(gearNoteOffNumber_[static_cast<size_t>(track)]),
+            0,
+            offset));
+      }
+    }
+    gearNoteOffAtSample_[static_cast<size_t>(track)] = 0;
+    gearNoteOffModel_[static_cast<size_t>(track)] = -1;
+    gearNoteOffNumber_[static_cast<size_t>(track)] = -1;
+    engine->runtime->addMidiEvent(synthLib::SMidiEvent(
+      synthLib::MidiEventSource::Internal,
+      static_cast<uint8_t>(synthLib::M_NOTEON),
+      static_cast<uint8_t>(juce::jlimit(0, 127, note)),
+      static_cast<uint8_t>(juce::jlimit(1, 127, velocity)),
+      offset));
+    gearNoteOffAtSample_[static_cast<size_t>(track)] =
+      static_cast<std::int64_t>(processSampleCounter_) + sampleOffset + juce::jmax(1, gateSamples);
+    gearNoteOffModel_[static_cast<size_t>(track)] = modelIndex;
+    gearNoteOffNumber_[static_cast<size_t>(track)] = note;
+    return;
+  }
+
   auto& voice = voices_[static_cast<size_t>(track)];
   voice = {};
   voice.active = true;
   voice.envelope = 1.0f;
   voice.velocity = juce::jlimit(1, 127, velocity) / 127.0f;
-  voice.machine = machineIndexFor(machineForTrack(track));
+  voice.machine = machineIndex;
   const auto note = midiNote >= 0 ? midiNote : 36 + (track * 5) + currentStep_.load() % 12;
   voice.frequency = 440.0 * std::pow(2.0, (note - 69) / 12.0);
   if (voice.machine == 2)

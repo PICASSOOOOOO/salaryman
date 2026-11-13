@@ -11,7 +11,7 @@ import { DEFAULT_LOFI_FX, isLofiFxSettings, type LofiFxSettings } from "./lofi-f
 import "./1999.css";
 import "./EmulatorPanels.css";
 
-type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37" | "minimoog";
+type MachineId = "op1" | "sp404mkii" | "mpc_sample" | "korg_ms2000r" | "korg_m1" | "boss_ce2" | "fm1" | "smk37" | "minimoog" | "gearmulator_md" | "gearmulator_mm";
 type EmulatorMachine = "fm1" | "smk37";
 type SoundEngineState = { tone: number; decayMs: number };
 type ProjectKey = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
@@ -87,6 +87,8 @@ const machines: { id: MachineId; name: string; descriptor: string }[] = [
   { id: "fm1", name: "FM-1", descriptor: "FM tone lane" },
   { id: "smk37", name: "SMK37", descriptor: "Keyboard sketch lane" },
   { id: "minimoog", name: "Minimoog Model D", descriptor: "Three-oscillator analog-style synth" },
+  { id: "gearmulator_md", name: "Machinedrum", descriptor: "Native VST3 · requires user-supplied firmware" },
+  { id: "gearmulator_mm", name: "Monomachine", descriptor: "Native VST3 · requires user-supplied firmware" },
 ];
 function usesSamplerPads(machineId: MachineId | undefined): boolean {
   return machineId === "mpc_sample" || machineId === "sp404mkii";
@@ -354,6 +356,7 @@ function scheduleSynthVoice(
   velocity = 100,
   output: AudioNode = context.destination,
 ) {
+  if (track.machineId === "gearmulator_md" || track.machineId === "gearmulator_mm") return;
   const wave: Record<MachineId, OscillatorType> = {
     op1: "triangle",
     sp404mkii: "square",
@@ -364,6 +367,8 @@ function scheduleSynthVoice(
     fm1: "sine",
     smk37: "sawtooth",
     minimoog: "sawtooth",
+    gearmulator_md: "sine",
+    gearmulator_mm: "sawtooth",
   };
   const oscillator = context.createOscillator();
   const filter = context.createBiquadFilter();
@@ -2012,6 +2017,13 @@ export default function Salaryman1999() {
                   <strong>{selectedTrack.name}</strong>
                   <span>{selectedTrack.audioTrackId === null ? "EMPTY" : `READY · ${recordingAudioTrackIds(selectedTrack).length} LAYER${recordingAudioTrackIds(selectedTrack).length === 1 ? "" : "S"}`}</span>
                 </div>
+              </div>
+            ) : selectedTrack?.machineId === "gearmulator_md" || selectedTrack?.machineId === "gearmulator_mm" ? (
+              <div className="n-gearmulator-machine" data-testid="panel-gearmulator">
+                <span className="n-eyebrow">NATIVE 1999 VST3</span>
+                <strong>{selectedTrack.machineId === "gearmulator_md" ? "MACHINEDRUM" : "MONOMACHINE"}</strong>
+                <span>Browser playback is unavailable for this machine. Open the 1999 VST3 and load matching firmware from hardware you own.</span>
+                <span className="n-gearmulator-note">Firmware/ROM files are not included or distributed with SALARYMAN.</span>
               </div>
             ) : selectedTrack?.machineId === "fm1" || selectedTrack?.machineId === "smk37" ? (
               <Fm1EmulatorPanel

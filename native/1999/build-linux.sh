@@ -5,6 +5,13 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$REPO_ROOT/generated-artifacts/1999-vst3-build}"
 BUILD_JOBS="${BUILD_JOBS:-2}"
+GEARMULATOR_DIR="$SCRIPT_DIR/third_party/gearmulator-md-mm"
+
+if [[ ! -f "$GEARMULATOR_DIR/CMakeLists.txt" ]]; then
+  git -C "$REPO_ROOT" submodule update --init --depth 1 -- native/1999/third_party/gearmulator-md-mm
+fi
+git -C "$GEARMULATOR_DIR" submodule update --init --depth 1 \
+  source/dsp56300 source/mc68k source/3rdparty/RmlUi source/3rdparty/freetype
 
 if [[ -d /nix/store ]]; then
   target_triple="$(gcc -dumpmachine)"

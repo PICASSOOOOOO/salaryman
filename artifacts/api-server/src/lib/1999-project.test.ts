@@ -22,6 +22,16 @@ describe("1999 project data validation", () => {
     expect(parseNineteenNinetyNineProject(JSON.stringify(validProject))).toEqual(validProject);
   });
 
+  it("accepts Gearmulator machine IDs without changing the project schema version", () => {
+    for (const machineId of ["gearmulator_md", "gearmulator_mm"]) {
+      const project = {
+        ...validProject,
+        tracks: [{ ...validProject.tracks[0], machineId }],
+      };
+      expect(parseNineteenNinetyNineProject(JSON.stringify(project))).toEqual(project);
+    }
+  });
+
   it("preserves valid shared master-effect settings and rejects invalid ranges", () => {
     const lofiFx = {
       enabled: true,

@@ -13,6 +13,21 @@ bool require(bool condition, const char* message) {
 int main() {
   Salaryman1999AudioProcessor processor;
   processor.prepareToPlay(44100.0, 512);
+  if (!require(!processor.gearmulatorFirmwareReady(GearmulatorModel::Machinedrum)
+      && !processor.gearmulatorFirmwareReady(GearmulatorModel::Monomachine),
+      "A firmware-free plugin unexpectedly reported an emulator as ready"))
+    return 1;
+
+  const auto invalidFirmware = juce::File::getSpecialLocation(juce::File::tempDirectory)
+    .getNonexistentChildFile("1999-invalid-firmware", ".bin", false);
+  invalidFirmware.replaceWithData("invalid", 7);
+  juce::String firmwareError;
+  const auto invalidFirmwareLoaded = processor.loadGearmulatorFirmware(
+    GearmulatorModel::Machinedrum, invalidFirmware, firmwareError);
+  invalidFirmware.deleteFile();
+  if (!require(!invalidFirmwareLoaded && firmwareError.contains("8 MiB"),
+      "Invalid firmware was not rejected with a clear message"))
+    return 1;
 
   juce::AudioBuffer<float> audio(2, 512);
   juce::MidiBuffer midi;
@@ -85,6 +100,15 @@ int main() {
   if (!require(steps.isArray() && static_cast<int>(steps.getArray()->getReference(0)) == 87,
       "Imported step velocity was not preserved"))
     return 1;
+  processor.setMachineForTrack(0, "gearmulator_md");
+  const auto gearmulatorRoundTrip = juce::JSON::parse(processor.exportProjectJson());
+  const auto gearmulatorTracks = gearmulatorRoundTrip.getDynamicObject()->getProperty("tracks");
+  auto* gearmulatorTrack = gearmulatorTracks.getArray()->getReference(0).getDynamicObject();
+  if (!require(gearmulatorTrack != nullptr
+      && gearmulatorTrack->getProperty("machineId").toString() == "gearmulator_md",
+      "Machinedrum machine ID did not survive native project export"))
+    return 1;
+  processor.setMachineForTrack(0, "mpc_sample");
   auto* recordingTrack = rows == nullptr || rows->size() < 2
     ? nullptr
     : rows->getReference(1).getDynamicObject();
@@ -136,6 +160,22 @@ int main() {
   if (!require(static_cast<int>(juce::JSON::parse(restored.exportProjectJson())
       .getDynamicObject()->getProperty("bpm")) == 107,
       "Host state did not restore the session"))
+    return 1;
+
+  Salaryman1999AudioProcessor noFirmwareProcessor;
+  noFirmwareProcessor.prepareToPlay(44100.0, 512);
+  noFirmwareProcessor.setMachineForTrack(0, "gearmulator_md");
+  noFirmwareProcessor.setSequencerPlaying(true);
+  noFirmwareProcessor.setStep(0, 0, true);
+  juce::AudioBuffer<float> silentAudio(2, 512);
+  juce::MidiBuffer emptyMidi;
+  noFirmwareProcessor.processBlock(silentAudio, emptyMidi);
+  double silentEnergy = 0.0;
+  for (int channel = 0; channel < silentAudio.getNumChannels(); ++channel)
+    for (int sample = 0; sample < silentAudio.getNumSamples(); ++sample)
+      silentEnergy += std::abs(silentAudio.getSample(channel, sample));
+  if (!require(silentEnergy == 0.0,
+      "Machinedrum silently fell back to a synthetic sound without firmware"))
     return 1;
 
   return 0;

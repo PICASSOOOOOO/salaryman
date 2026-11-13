@@ -16,11 +16,16 @@ private:
   void choosePreset(int preset);
   void exportProject();
   void importProject();
+  void loadFirmware(GearmulatorModel model);
+  void openLicense();
 
   Salaryman1999AudioProcessor& processor_;
   juce::TextButton playButton { "PLAY" };
   juce::TextButton exportButton { "EXPORT PROJECT" };
   juce::TextButton importButton { "IMPORT PROJECT" };
+  juce::TextButton machinedrumFirmwareButton { "LOAD MD FW" };
+  juce::TextButton monomachineFirmwareButton { "LOAD MM FW" };
+  juce::TextButton licenseButton { "LICENSE" };
   juce::ComboBox presetBox;
   std::array<std::array<std::unique_ptr<juce::TextButton>, Salaryman1999AudioProcessor::stepCount>,
     Salaryman1999AudioProcessor::trackCount> stepButtons_;

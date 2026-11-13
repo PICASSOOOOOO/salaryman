@@ -1,0 +1,4 @@
+[submodule "native/1999/third_party/gearmulator-md-mm"]
+	path = native/1999/third_party/gearmulator-md-mm
+	url = https://github.com/joelanders/gearmulator-md-mm.git
+	branch = release/md-mm-alpha

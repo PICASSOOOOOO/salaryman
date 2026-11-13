@@ -7,11 +7,8 @@ constexpr juce::uint32 green = 0xff53cf74;
 constexpr juce::uint32 dimGreen = 0xff28683a;
 constexpr juce::uint32 cream = 0xffe8e8dc;
 const juce::StringArray machineNames {
-  "OP-1", "SP-404MKII", "MPC", "MS-2000R", "M1", "CE-2", "FM-1", "SMK-37", "MINIMOOG"
-};
-const juce::StringArray machineIds {
-  "op1", "sp404mkii", "mpc_sample", "korg_ms2000r", "korg_m1",
-  "boss_ce2", "fm1", "smk37", "minimoog"
+  "OP-1", "SP-404MKII", "MPC", "MS-2000R", "M1", "CE-2", "FM-1", "SMK-37",
+  "MINIMOOG", "MACHINEDRUM", "MONOMACHINE"
 };
 }
 
@@ -32,12 +29,19 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
   };
   addAndMakeVisible(playButton);
 
-  for (auto* button : { &exportButton, &importButton }) {
+  for (auto* button : { &exportButton, &importButton, &machinedrumFirmwareButton,
+       &monomachineFirmwareButton, &licenseButton }) {
     button->setColour(juce::TextButton::buttonColourId, juce::Colour(panel));
     addAndMakeVisible(*button);
   }
   exportButton.onClick = [this] { exportProject(); };
   importButton.onClick = [this] { importProject(); };
+  machinedrumFirmwareButton.setTooltip("Select matching Machinedrum firmware from hardware you own; no firmware is included.");
+  monomachineFirmwareButton.setTooltip("Select matching Monomachine firmware from hardware you own; no firmware is included.");
+  machinedrumFirmwareButton.onClick = [this] { loadFirmware(GearmulatorModel::Machinedrum); };
+  monomachineFirmwareButton.onClick = [this] { loadFirmware(GearmulatorModel::Monomachine); };
+  licenseButton.setTooltip("Open the full GPLv3 license terms for Gearmulator.");
+  licenseButton.onClick = [this] { openLicense(); };
 
   presetBox.addItemList({ "CLEAN", "DUST", "CRUSH", "WOBBLE" }, 1);
   presetBox.setSelectedId(1, juce::dontSendNotification);
@@ -54,13 +58,14 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
     auto& machine = machineBoxes_[static_cast<size_t>(track)];
     machine.addItemList(machineNames, 1);
     const auto current = processor_.machineForTrack(track);
-    for (int index = 0; index < machineIds.size(); ++index)
-      if (machineIds[index] == current)
+    for (int index = 0; index < static_cast<int>(Salaryman1999AudioProcessor::machineIds.size()); ++index)
+      if (Salaryman1999AudioProcessor::machineIds[static_cast<size_t>(index)] == current)
         machine.setSelectedId(index + 1, juce::dontSendNotification);
     machine.onChange = [this, track, &machine] {
       const auto index = machine.getSelectedId() - 1;
-      if (index >= 0 && index < machineIds.size())
-        processor_.setMachineForTrack(track, machineIds[index]);
+      if (index >= 0 && index < static_cast<int>(Salaryman1999AudioProcessor::machineIds.size()))
+        processor_.setMachineForTrack(
+          track, Salaryman1999AudioProcessor::machineIds[static_cast<size_t>(index)]);
     };
     addAndMakeVisible(machine);
 
@@ -132,6 +137,9 @@ void Salaryman1999AudioProcessorEditor::resized() {
   presetBox.setBounds(width - 250, 16, 110, 30);
   importButton.setBounds(width - 130, 16, 104, 30);
   exportButton.setBounds(width - 130, 52, 104, 26);
+  machinedrumFirmwareButton.setBounds(width - 434, 52, 96, 26);
+  monomachineFirmwareButton.setBounds(width - 332, 52, 96, 26);
+  licenseButton.setBounds(width - 230, 52, 90, 26);
 
   const int left = 42;
   const int labelWidth = 72;
@@ -168,6 +176,10 @@ void Salaryman1999AudioProcessorEditor::resized() {
 
 void Salaryman1999AudioProcessorEditor::timerCallback() {
   const auto activeStep = processor_.isSequencerPlaying() ? processor_.currentStep() : -1;
+  const auto mdReady = processor_.gearmulatorFirmwareReady(GearmulatorModel::Machinedrum);
+  const auto mmReady = processor_.gearmulatorFirmwareReady(GearmulatorModel::Monomachine);
+  machinedrumFirmwareButton.setButtonText(mdReady ? "MD READY" : "LOAD MD FW");
+  monomachineFirmwareButton.setButtonText(mmReady ? "MM READY" : "LOAD MM FW");
   for (int track = 0; track < Salaryman1999AudioProcessor::trackCount; ++track) {
     const auto recordingTrack = processor_.isRecordingTrack(track);
     trackLabels_[static_cast<size_t>(track)].setText(
@@ -185,6 +197,36 @@ void Salaryman1999AudioProcessorEditor::timerCallback() {
         step == activeStep ? juce::Colour(0xff347946) : juce::Colour(panel));
     }
   }
+}
+
+void Salaryman1999AudioProcessorEditor::loadFirmware(GearmulatorModel model) {
+  const auto isMachinedrum = model == GearmulatorModel::Machinedrum;
+  const auto modelName = isMachinedrum ? "Machinedrum" : "Monomachine";
+  fileChooser_ = std::make_unique<juce::FileChooser>(
+    "Select " + juce::String(modelName) + " firmware",
+    juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
+    "*.bin");
+  fileChooser_->launchAsync(
+    juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+    [this, model, modelName](const juce::FileChooser& chooser) {
+      const auto file = chooser.getResult();
+      if (file == juce::File())
+        return;
+      juce::String error;
+      if (!processor_.loadGearmulatorFirmware(model, file, error))
+        juce::AlertWindow::showMessageBoxAsync(
+          juce::MessageBoxIconType::WarningIcon, modelName, error);
+    });
+}
+
+void Salaryman1999AudioProcessorEditor::openLicense() {
+  juce::AlertWindow::showMessageBoxAsync(
+    juce::MessageBoxIconType::InfoIcon,
+    "Gearmulator license",
+    "Machinedrum and Monomachine emulation is distributed under GPLv3. "
+    "The full license is included in the 1999 VST3 bundle as "
+    "GEARMULATOR-GPL-3.0.md. No Elektron firmware or ROM files are included.");
+  juce::URL("https://www.gnu.org/licenses/gpl-3.0.txt").launchInDefaultBrowser();
 }
 
 void Salaryman1999AudioProcessorEditor::choosePreset(int preset) {

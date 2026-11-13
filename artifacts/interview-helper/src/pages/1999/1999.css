@@ -43,6 +43,10 @@
 .n-machine-select, .n-select { width: 100%; min-height: 36px; padding: 0 9px; border: 1px solid var(--n-line); border-radius: 0; background: #111618; color: var(--n-ink); font: 10px var(--font-mono, monospace); }
 .n-stage-head .n-machine-select { width: min(240px, 65%); min-height: 30px; font-size: 9px; }
 .n-native-machine { display: grid; min-height: 575px; align-content: center; justify-items: center; gap: clamp(24px, 5vh, 52px); padding: clamp(18px, 4vw, 60px); background: radial-gradient(ellipse at 50% 36%, #151b1c 0, #090b0c 62%); }
+.n-gearmulator-machine { display: grid; min-height: 575px; align-content: center; justify-items: center; gap: 18px; padding: clamp(20px, 5vw, 64px); text-align: center; background: radial-gradient(ellipse at 50% 36%, #151b1c 0, #090b0c 62%); color: var(--n-cream, #e8e8dc); }
+.n-gearmulator-machine > strong { color: var(--n-green, #53cf74); font-size: clamp(22px, 4vw, 34px); letter-spacing: .1em; }
+.n-gearmulator-machine > span:not(.n-eyebrow) { max-width: 420px; line-height: 1.5; }
+.n-gearmulator-machine .n-gearmulator-note { color: #a9b3aa; font-size: 12px; }
 .n-native-screen { width: min(620px, 100%); min-height: 210px; display: grid; align-content: center; gap: 20px; padding: clamp(18px, 4vw, 40px); border: 1px solid #3e4848; background: #060909; box-shadow: inset 0 0 44px rgba(91, 140, 109, .08), 0 20px 60px rgba(0, 0, 0, .45); }
 .n-native-screen-head { display: flex; justify-content: space-between; gap: 10px; color: #9baa9a; font: 9px var(--font-mono, monospace); letter-spacing: .09em; text-transform: uppercase; }
 .n-native-screen > strong { color: #e3e7de; font: 600 clamp(20px, 3vw, 32px)/1 var(--font-display, sans-serif); letter-spacing: -.04em; }
