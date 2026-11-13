@@ -93,19 +93,33 @@ juce::AudioProcessorValueTreeState::ParameterLayout Salaryman1999AudioProcessor:
 }
 
 void Salaryman1999AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-  sampleRate_ = juce::jmax(8000.0, sampleRate);
-  maxBlockSize_ = juce::jmax(1, samplesPerBlock);
-  std::lock_guard<std::mutex> lock(gearmulatorMutex_);
-  for (auto& engine : gearmulatorEngines_) {
-    if (!engine || !engine->runtime) continue;
-    engine->output.setSize(6, maxBlockSize_, false, false, true);
-    engine->runtime->setHostSamplerate(static_cast<float>(sampleRate_), static_cast<float>(md::g_samplerate));
-    engine->runtime->setBlockSize(static_cast<uint32_t>(maxBlockSize_));
+  {
+    std::lock_guard<std::mutex> lock(gearmulatorMutex_);
+    sampleRate_ = juce::jmax(8000.0, sampleRate);
+    maxBlockSize_ = juce::jmax(1, samplesPerBlock);
+    for (auto& engine : gearmulatorEngines_) {
+      if (!engine || !engine->runtime) continue;
+      engine->output.setSize(6, maxBlockSize_, false, false, true);
+      engine->runtime->setHostSamplerate(static_cast<float>(sampleRate_), static_cast<float>(md::g_samplerate));
+      engine->runtime->setBlockSize(static_cast<uint32_t>(maxBlockSize_));
+    }
   }
   resetDsp();
 }
 
 void Salaryman1999AudioProcessor::releaseResources() {
+  {
+    std::lock_guard<std::mutex> lock(gearmulatorMutex_);
+    for (auto& engine : gearmulatorEngines_) {
+      if (!engine || !engine->runtime) continue;
+      engine->runtime->addMidiEvent(synthLib::SMidiEvent(
+        synthLib::MidiEventSource::Internal,
+        static_cast<uint8_t>(synthLib::M_ALLNOTESOFF),
+        0,
+        0,
+        0));
+    }
+  }
   resetDsp();
 }
 
@@ -129,6 +143,8 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
   std::array<bool, 2> gearmulatorUsed {};
   for (int track = 0; track < trackCount; ++track) {
+    if (trackKinds_[static_cast<size_t>(track)].load() != 0)
+      continue;
     const auto machineIndex = machineIndexFor(machineForTrack(track));
     const auto gearIndex = gearmulatorIndexForMachine(machineIndex);
     if (gearIndex >= 0)
@@ -137,7 +153,7 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
   for (int track = 0; track < trackCount; ++track) {
     const auto due = gearNoteOffAtSample_[static_cast<size_t>(track)];
-    if (due == 0 || due > blockEnd)
+    if (due == 0 || due >= blockEnd)
       continue;
     const auto modelIndex = gearNoteOffModel_[static_cast<size_t>(track)];
     if (modelIndex >= 0 && modelIndex < static_cast<int>(gearmulatorEngines_.size())) {
@@ -160,9 +176,8 @@ void Salaryman1999AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
   for (const auto metadata : midi) {
     const auto message = metadata.getMessage();
-    const auto firstTrackIsGearmulator =
-      isGearmulatorMachine(machineIndexFor(machineForTrack(1)));
-    if (message.isNoteOn() && trackKinds_[0].load() == 0 && !firstTrackIsGearmulator)
+    if (message.isNoteOn() && trackKinds_[0].load() == 0
+        && !gearmulatorUsed[0] && !gearmulatorUsed[1])
       triggerVoice(1, message.getVelocity(), message.getNoteNumber());
     const auto* rawData = message.getRawData();
     if (rawData == nullptr || message.getRawDataSize() <= 0)
@@ -756,11 +771,15 @@ float Salaryman1999AudioProcessor::renderVoice(Voice& voice, double sampleRate) 
 }
 
 void Salaryman1999AudioProcessor::resetDsp() {
+  processSampleCounter_ = 0;
   samplesUntilStep_ = 0.0;
   heldSample_ = 0.0;
   quantizedLeft_ = quantizedRight_ = 0.0;
   filterLeft_ = filterRight_ = 0.0;
   bassLeft_ = bassRight_ = 0.0;
+  gearNoteOffAtSample_.fill(0);
+  gearNoteOffModel_.fill(-1);
+  gearNoteOffNumber_.fill(-1);
   for (auto& voice : voices_)
     voice = {};
 }

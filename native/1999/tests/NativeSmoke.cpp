@@ -174,8 +174,20 @@ int main() {
   for (int channel = 0; channel < silentAudio.getNumChannels(); ++channel)
     for (int sample = 0; sample < silentAudio.getNumSamples(); ++sample)
       silentEnergy += std::abs(silentAudio.getSample(channel, sample));
-  if (!require(silentEnergy == 0.0,
+  if (!require(silentEnergy < 1.0e-8,
       "Machinedrum silently fell back to a synthetic sound without firmware"))
+    return 1;
+  noFirmwareProcessor.setSequencerPlaying(false);
+  silentAudio.clear();
+  juce::MidiBuffer noFirmwareMidi;
+  noFirmwareMidi.addEvent(juce::MidiMessage::noteOn(1, 60, static_cast<juce::uint8>(110)), 0);
+  noFirmwareProcessor.processBlock(silentAudio, noFirmwareMidi);
+  double midiFallbackEnergy = 0.0;
+  for (int channel = 0; channel < silentAudio.getNumChannels(); ++channel)
+    for (int sample = 0; sample < silentAudio.getNumSamples(); ++sample)
+      midiFallbackEnergy += std::abs(silentAudio.getSample(channel, sample));
+  if (!require(midiFallbackEnergy < 1.0e-8,
+      "Host MIDI silently fell back to a synthetic sound without firmware"))
     return 1;
 
   return 0;

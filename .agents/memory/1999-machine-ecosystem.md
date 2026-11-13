@@ -49,9 +49,11 @@ Keep 1999 interfaces stripped and tool-focused: show controls, short labels, sta
 
 The user wants 1999 to cover recent and classic synths and rhythm machines, including plugins and emulators found on GitHub, and wants machine furniture split into individually placeable pieces. Keep a modular registry that labels each machine as a native browser engine, firmware emulator, external DAW plugin, or companion device, with its source license and firmware/sample requirements. Do not bundle GPL code, manufacturer firmware, ROMs, or samples without checking redistribution rights. For FM-1/SMK-37, project patch state is a user-attached `.fm1save` backup with explicit export/import, not live cross-origin synchronization. For browser-to-VST3 use, route notes through a user-selected Web MIDI output; the browser does not load native VST3 binaries, and MIDI device selection stays local to the browser/device.
 
-**Why:** The user wants a broad, modular instrument and furniture ecosystem. Open-source engines, vendor firmware, and factory sounds have different license boundaries, and browser projects cannot load native VST3 modules or read private state from a cross-origin emulator.
+The user approved GPLv3 distribution of Gearmulator's Machinedrum and Monomachine engines inside the single 1999 VST3. Their firmware/ROM images remain user-supplied and must never be included.
 
-**How to apply:** Use explicit MIDI permission and output selection for live routing; keep project-owned controls, firmware choice, and owner-private patch-file references in Vault. Make each game workstation component separately placeable and connect it to the same machine registry.
+**Why:** The user wants a broad, modular instrument and furniture ecosystem. Open-source engines, vendor firmware, and factory sounds have different license boundaries, and browser projects cannot load native VST3 modules or read private state from a cross-origin emulator. They explicitly approved GPLv3 distribution for these two engines while keeping firmware user-supplied.
+
+**How to apply:** Use explicit MIDI permission and output selection for live routing; keep project-owned controls, firmware choice, and owner-private patch-file references in Vault. Make each game workstation component separately placeable and connect it to the same machine registry. For the approved Gearmulator integration, preserve the source license in the VST3 distribution and load only verified firmware supplied by the user.
 
 Recorded microphone loops must remain playable after a 1999 session is saved and reloaded, with their mixer settings intact.
 

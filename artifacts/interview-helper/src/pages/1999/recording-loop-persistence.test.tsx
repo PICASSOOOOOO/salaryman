@@ -319,6 +319,18 @@ describe("1999 recorded-loop persistence", () => {
     expect(h.apiFetch).not.toHaveBeenCalled();
   });
 
+  it("keeps Gearmulator machines as native-only lanes in browser projects", async () => {
+    await mount();
+    click("row-track-trk-main");
+    setValue("select-machine", "gearmulator_md", "change");
+    await flush();
+
+    const panel = container.querySelector('[data-testid="panel-gearmulator"]');
+    expect(panel?.textContent).toContain("MACHINEDRUM");
+    expect(panel?.textContent).toContain("Open the 1999 VST3");
+    expect(panel?.textContent).toContain("not included or distributed");
+  });
+
   it("restores a guest draft after sign-in and then saves it to Vault", async () => {
     window.sessionStorage.setItem(
       "salaryman.1999.pending-save.v1",

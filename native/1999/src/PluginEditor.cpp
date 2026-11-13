@@ -59,7 +59,7 @@ Salaryman1999AudioProcessorEditor::Salaryman1999AudioProcessorEditor(Salaryman19
     machine.addItemList(machineNames, 1);
     const auto current = processor_.machineForTrack(track);
     for (int index = 0; index < static_cast<int>(Salaryman1999AudioProcessor::machineIds.size()); ++index)
-      if (Salaryman1999AudioProcessor::machineIds[static_cast<size_t>(index)] == current)
+      if (juce::String(Salaryman1999AudioProcessor::machineIds[static_cast<size_t>(index)]) == current)
         machine.setSelectedId(index + 1, juce::dontSendNotification);
     machine.onChange = [this, track, &machine] {
       const auto index = machine.getSelectedId() - 1;
@@ -205,7 +205,7 @@ void Salaryman1999AudioProcessorEditor::loadFirmware(GearmulatorModel model) {
   fileChooser_ = std::make_unique<juce::FileChooser>(
     "Select " + juce::String(modelName) + " firmware",
     juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
-    "*.bin");
+    "*");
   fileChooser_->launchAsync(
     juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
     [this, model, modelName](const juce::FileChooser& chooser) {
