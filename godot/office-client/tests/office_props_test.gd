@@ -18,6 +18,7 @@ func check(value: bool, message: String) -> void:
 
 
 func _run() -> void:
+	check(is_equal_approx(Client.LOBBY_COUCH_SCALE, 1.0), "Native lobby couch must use its human-scale dimensions")
 	for kind in Prop.SUPPORTED_KINDS:
 		var prop := Prop.create(kind)
 		check(prop.get_child_count() > 3, kind + " must have native model parts")
@@ -47,6 +48,9 @@ func _run() -> void:
 	lounge_chair.free()
 	var couch := Prop.create("furniture_couch")
 	check(couch.has_node("LeatherSeatDeck") and couch.has_node("CouchBackUpholstery"), "Furniture-store couch must have its own upholstered seat and back")
+	var couch_base := couch.get_node("WalnutBase") as MeshInstance3D
+	var couch_base_mesh := couch_base.mesh as BoxMesh
+	check(is_equal_approx(couch_base_mesh.size.x, 2.55), "Lobby couch must stay near 2.55 meters wide")
 	couch.free()
 	var sideboard := Prop.create("furniture_sideboard")
 	check(sideboard.has_node("CabinetBody") and sideboard.has_node("BrassPull"), "Furniture-store sideboard must have its own cabinet and brass hardware")

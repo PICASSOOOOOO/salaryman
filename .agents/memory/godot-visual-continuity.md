@@ -65,3 +65,9 @@ Character-review and Tower-tour cameras should use the elevated isometric three-
 **Why:** The user explicitly corrected the review camera to “isometric view like before” and rejected another close-up in place of the full building tour.
 
 **How to apply:** Match the established isometric Tower framing when building character-review scenes and previews.
+
+Keep lobby furniture proportionate to the playable character, and frame gameplay closely enough that the character is easy to see.
+
+**Why:** The user said the couch looked huge beside the character and asked to zoom in so the character is visible.
+
+**How to apply:** Check furniture against the playable avatar and use the closer isometric camera framing for gameplay captures.

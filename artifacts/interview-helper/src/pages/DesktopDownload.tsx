@@ -110,11 +110,18 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const gameplayVideoHref = apiUrl(
-    `/api/storage/public-objects/desktop/godot-gameplay-20261113.${gameplayVideoFormat}`,
+  const gameplayLobbyVideoHref = apiUrl(
+    `/api/storage/public-objects/desktop/godot-gameplay-lobby-20261113.${gameplayVideoFormat}`,
   );
-  const gameplayDetailVideoHref = gameplayVideoHref;
-  const gameplayPosterHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261113.jpg");
+  const gameplayTempleVideoHref = apiUrl(
+    `/api/storage/public-objects/desktop/godot-gameplay-temple-20261113.${gameplayVideoFormat}`,
+  );
+  const gameplayLobbyPosterHref = apiUrl(
+    "/api/storage/public-objects/desktop/godot-gameplay-lobby-20261113.jpg",
+  );
+  const gameplayTemplePosterHref = apiUrl(
+    "/api/storage/public-objects/desktop/godot-gameplay-temple-20261113.jpg",
+  );
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
   const platformMessage = clientPlatform === "other"
     ? "Computer only · macOS, Windows, or Linux · no phone app"
@@ -169,13 +176,13 @@ export default function DesktopDownload() {
             loop
             playsInline
             preload="metadata"
-            src={gameplayVideoHref}
-            poster={gameplayPosterHref}
-            aria-label="Current Godot Tower lobby gameplay, November 2026 capture"
+            src={gameplayLobbyVideoHref}
+            poster={gameplayLobbyPosterHref}
+            aria-label="Current Godot Tower lobby gameplay capture"
           />
           <span className="desktop-download-promo-tag">GODOT DEVELOPMENT GAMEPLAY</span>
           <figcaption>
-            Captured from the current Godot client and Python simulation · 6 seconds at 12 fps.
+            Live Godot gameplay · Tower lobby · player-focused camera.
           </figcaption>
         </figure>
       </section>
@@ -193,21 +200,19 @@ export default function DesktopDownload() {
           <figure className="desktop-download-footage desktop-download-footage-wide">
             <video
               muted
-              autoPlay
-              loop
               playsInline
-              preload="metadata"
-              src={gameplayDetailVideoHref}
-              poster={gameplayPosterHref}
+              preload="none"
+              src={gameplayTempleVideoHref}
+              poster={gameplayTemplePosterHref}
               controls
-              aria-label="Godot Tower lobby movement, development capture"
+              aria-label="Current Godot gameplay in the Floor 7 meditation temple"
             />
-            <figcaption><span>01</span><strong>GODOT TOWER LOBBY</strong><small>Current development capture, repeated here for detail. This is not a verified release build.</small></figcaption>
+            <figcaption><span>02</span><strong>FLOOR 07 / MEDITATION TEMPLE</strong><small>A separate live gameplay capture from the current Godot client.</small></figcaption>
           </figure>
           <article className="desktop-download-signal-card">
-            <span>FREE GAME FEATURE</span>
-            <strong>EXPLORE.<br />DISCOVER.<br />WORK A NEW WAY.</strong>
-            <p>The office simulation is free. SALARYMAN OS is being built to bring professional tools into game-native screens.</p>
+            <span>CURRENT GAMEPLAY AREAS</span>
+            <strong>LOBBY.<br />FLOOR 07.<br />BASEMENTS.</strong>
+            <p>Floors 01 and 06–12 and basements B1–B6 are open. Floors 02–05 remain construction areas.</p>
             <div aria-hidden>
               <i>YOU</i><b />
               <i>TEAM</i><b />

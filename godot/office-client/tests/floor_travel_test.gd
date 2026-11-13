@@ -226,19 +226,24 @@ func _run_tests() -> void:
 	assert(b1_routes["interiorBusinessHalf"] == b1_interior)
 	assert(b1_routes["exteriorLoadingYardHalf"] == b1_yard)
 
-	assert(OfficeClient.CAMERA_DISTANCE_LEVELS.size() == 3)
-	assert(OfficeClient.CAMERA_DEFAULT_ZOOM_INDEX == 0)
+	assert(OfficeClient.CAMERA_DISTANCE_LEVELS.size() == 4)
+	assert(OfficeClient.CAMERA_DEFAULT_ZOOM_INDEX == 1)
 	assert(is_equal_approx(
 		OfficeClient.camera_distance_for_level(OfficeClient.CAMERA_DEFAULT_ZOOM_INDEX),
-		8.0,
+		7.0,
 	))
-	assert(is_equal_approx(OfficeClient.camera_distance_for_level(0), 8.0))
-	assert(is_equal_approx(OfficeClient.camera_distance_for_level(1), 13.0))
-	assert(is_equal_approx(OfficeClient.camera_distance_for_level(2), 21.0))
+	assert(is_equal_approx(OfficeClient.camera_distance_for_level(0), 5.5))
+	assert(is_equal_approx(OfficeClient.camera_distance_for_level(1), 7.0))
+	assert(is_equal_approx(OfficeClient.camera_distance_for_level(2), 11.0))
+	assert(is_equal_approx(OfficeClient.camera_distance_for_level(3), 18.0))
+	assert(is_equal_approx(OfficeClient.camera_ortho_size_for_distance(5.5), 6.725))
+	assert(is_equal_approx(OfficeClient.camera_ortho_size_for_distance(7.0), 7.55))
+	assert(is_equal_approx(OfficeClient.camera_ortho_size_for_distance(11.0), 9.75))
+	assert(is_equal_approx(OfficeClient.camera_ortho_size_for_distance(18.0), 13.6))
 	assert(OfficeClient.next_camera_zoom_level(1, -1) == 0)
 	assert(OfficeClient.next_camera_zoom_level(1, 1) == 2)
 	assert(OfficeClient.next_camera_zoom_level(0, -1) == 0)
-	assert(OfficeClient.next_camera_zoom_level(2, 1) == 2)
+	assert(OfficeClient.next_camera_zoom_level(3, 1) == 3)
 	assert(OfficeClient.terminal_choice_for_key(KEY_1) == 1)
 	assert(OfficeClient.terminal_choice_for_key(KEY_9) == 9)
 	assert(OfficeClient.terminal_choice_for_key(KEY_ESCAPE) == 0)

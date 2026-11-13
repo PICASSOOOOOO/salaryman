@@ -20,14 +20,15 @@ const WORLD_SCALE := 0.01
 const WORLD_ORIGIN_REBASE_THRESHOLD := 1_000_000.0
 const FLOOR_HEIGHT := 0.08
 const WALL_HEIGHT := 2.7
-const CAMERA_DISTANCE_MIN := 8.0
-const CAMERA_DISTANCE_MAX := 22.0
+const CAMERA_DISTANCE_MIN := 5.5
+const CAMERA_DISTANCE_MAX := 18.0
 const DANGER_AUDIO_TRACK_IDS: Array[int] = [11, 17]
-const CAMERA_DISTANCE_LEVELS := [8.0, 13.0, 21.0]
-const CAMERA_DEFAULT_ZOOM_INDEX := 0
-const CAMERA_ORTHO_SIZE_MIN := 9.0
-const CAMERA_ORTHO_SIZE_MAX := 18.0
-const CAMERA_ORTHO_SIZE_BASE := 13.0
+const CAMERA_DISTANCE_LEVELS := [5.5, 7.0, 11.0, 18.0]
+const CAMERA_DEFAULT_ZOOM_INDEX := 1
+const CAMERA_ORTHO_SIZE_MIN := 6.2
+const CAMERA_ORTHO_SIZE_MAX := 16.0
+const CAMERA_ORTHO_SIZE_BASE := 11.4
+const LOBBY_COUCH_SCALE := 1.0
 const CAMERA_FOLLOW_RESPONSE := 5.0
 const CAMERA_ZOOM_RESPONSE := 6.0
 const CAMERA_LOOK_AHEAD_SECONDS := 0.18
@@ -1516,7 +1517,6 @@ func _add_horizontal_wall_segments(node_prefix: String, left: float, right: floa
 
 func _build_static_furniture() -> void:
 	imported_scenes["table"] = load("res://agentshire-assets/furniture/table_medium.gltf")
-	imported_scenes["couch"] = load("res://agentshire-assets/furniture/couch.gltf")
 	imported_scenes["chair"] = load("res://agentshire-assets/furniture/chair_A.gltf")
 	imported_scenes["lamp"] = load("res://agentshire-assets/furniture/lamp_standing.gltf")
 	imported_scenes["character"] = load("res://agentshire-assets/characters/character-male-a.glb")
@@ -1531,7 +1531,11 @@ func _build_static_furniture() -> void:
 	var lounge_center := lobby_spawn + Vector3(-5.5, 0.0, 5.5)
 	var lamp_position := lounge_center + Vector3(3.7, 0.0, -1.7)
 	_add_lobby_rug(lounge_center)
-	_add_imported("LobbyCouch", "couch", lounge_center + Vector3(1.2, 0.0, -1.2), 1.25)
+	var lobby_couch := OfficeProp.create("furniture_couch")
+	lobby_couch.name = "LobbyCouch"
+	lobby_couch.position = lounge_center + Vector3(1.2, 0.0, -1.2)
+	lobby_couch.scale = Vector3.ONE * LOBBY_COUCH_SCALE
+	world_root.add_child(lobby_couch)
 	_add_imported("LobbyLamp", "lamp", lamp_position, 1.1)
 	_build_lobby_decor(lounge_center)
 	if warm_lamp_light != null:
@@ -3683,6 +3687,14 @@ static func camera_distance_for_level(level: int) -> float:
 	return float(CAMERA_DISTANCE_LEVELS[clampi(level, 0, CAMERA_DISTANCE_LEVELS.size() - 1)])
 
 
+static func camera_ortho_size_for_distance(distance: float) -> float:
+	return clampf(
+		CAMERA_ORTHO_SIZE_BASE + (distance - 14.0) * 0.55,
+		CAMERA_ORTHO_SIZE_MIN,
+		CAMERA_ORTHO_SIZE_MAX,
+	)
+
+
 static func next_camera_zoom_level(current_level: int, direction: int) -> int:
 	if direction == 0:
 		return clampi(current_level, 0, CAMERA_DISTANCE_LEVELS.size() - 1)
@@ -4286,7 +4298,7 @@ func _update_camera(delta: float) -> void:
 		camera = Camera3D.new()
 		camera.name = "FollowCamera"
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-		camera.size = CAMERA_ORTHO_SIZE_BASE
+		camera.size = camera_ortho_size_for_distance(camera_distance)
 		camera.near = 0.05
 		camera.far = 120.0
 		add_child(camera)
@@ -4345,11 +4357,7 @@ func _update_camera(delta: float) -> void:
 	else:
 		camera_target = desired_target
 		camera.position = desired_position
-	var desired_size: float = clampf(
-		CAMERA_ORTHO_SIZE_BASE + (effective_camera_distance - 14.0) * 0.55,
-		CAMERA_ORTHO_SIZE_MIN,
-		CAMERA_ORTHO_SIZE_MAX,
-	)
+	var desired_size := camera_ortho_size_for_distance(effective_camera_distance)
 	var zoom_blend := 1.0 - exp(-CAMERA_ZOOM_RESPONSE * delta)
 	camera.size = lerpf(camera.size, desired_size, zoom_blend)
 	camera.look_at(camera_target, Vector3.UP)
