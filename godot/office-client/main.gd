@@ -13,6 +13,7 @@ const ArcadeProp = preload("res://office_arcade_prop.gd")
 const ServiceProp = preload("res://office_service_prop.gd")
 const TowerExteriorWorld = preload("res://exterior_world.gd")
 const NineteenNinetyNineStation = preload("res://nineteen_ninety_nine_station.gd")
+const AtmosphereProfile = preload("res://atmosphere_profile.gd")
 const HOST := "127.0.0.1"
 const PORT := 4242
 const WORLD_SCALE := 0.01
@@ -59,6 +60,10 @@ var last_floor_number := -1
 var last_sequence := -1
 var lobby_light: OmniLight3D
 var rim_light: OmniLight3D
+var atmosphere_environment: Environment
+var atmosphere_sun: DirectionalLight3D
+var atmosphere_mix := 0.0
+var atmosphere_target_mix := 0.0
 var interaction_rings: Array[MeshInstance3D] = []
 
 var world_root: Node3D
@@ -241,6 +246,7 @@ func _build_lighting() -> void:
 	environment_data.ambient_light_color = Color("#b9d4ce")
 	environment_data.ambient_light_energy = 0.42
 	environment_data.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	atmosphere_environment = environment_data
 	environment.environment = environment_data
 	add_child(environment)
 
@@ -250,6 +256,7 @@ func _build_lighting() -> void:
 	sun.light_energy = 0.78
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
+	atmosphere_sun = sun
 	add_child(sun)
 
 	lobby_light = OmniLight3D.new()
@@ -2642,6 +2649,7 @@ func _handle_message(message: Dictionary) -> void:
 
 func _apply_snapshot(message: Dictionary) -> void:
 	var scene_data: Dictionary = message.get("scene", {})
+	atmosphere_target_mix = AtmosphereProfile.deterioration_mix(scene_data)
 	var player: Dictionary = scene_data.get("player", {})
 	player_root.set_danger_state(bool(player.get("inDanger", false)))
 	var room_id := str(scene_data.get("room", ""))
@@ -4350,10 +4358,21 @@ func _update_camera(delta: float) -> void:
 func _update_art_motion(delta: float) -> void:
 	# These accents are renderer-only. Pygame remains the authority for all
 	# positions and interactions; this layer adds a tactile 2.5D presentation.
+	atmosphere_mix = lerpf(atmosphere_mix, atmosphere_target_mix, 1.0 - exp(-delta * 0.8))
+	var atmosphere := AtmosphereProfile.profile(atmosphere_mix)
+	if atmosphere_environment != null:
+		atmosphere_environment.background_color = atmosphere["background"]
+		atmosphere_environment.ambient_light_color = atmosphere["ambient_color"]
+		atmosphere_environment.ambient_light_energy = float(atmosphere["ambient_energy"])
+	if atmosphere_sun != null:
+		atmosphere_sun.light_color = atmosphere["sun_color"]
+		atmosphere_sun.light_energy = float(atmosphere["sun_energy"])
 	if lobby_light:
-		lobby_light.light_energy = 1.42 + sin(animation_clock * 1.7) * 0.06
+		lobby_light.light_color = atmosphere["lobby_color"]
+		lobby_light.light_energy = float(atmosphere["lobby_energy"]) + sin(animation_clock * 1.7) * 0.06
 	if rim_light:
-		rim_light.light_energy = 0.77 + sin(animation_clock * 1.1 + 0.8) * 0.05
+		rim_light.light_color = atmosphere["rim_color"]
+		rim_light.light_energy = float(atmosphere["rim_energy"]) + sin(animation_clock * 1.1 + 0.8) * 0.05
 	for index in range(interaction_rings.size()):
 		var ring := interaction_rings[index]
 		if not is_instance_valid(ring):

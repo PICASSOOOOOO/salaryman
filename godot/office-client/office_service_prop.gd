@@ -3,6 +3,8 @@ extends "res://office_prop.gd"
 ## Service models do not initiate purchases, cash withdrawals, or interactions.
 
 const SERVICE_KINDS := ["chair", "atm", "vending_machine"]
+const ATM_KIT_TEXTURE = preload("res://shadow-tower-assets/atm.png")
+const VENDING_KIT_TEXTURE = preload("res://shadow-tower-assets/vending.png")
 
 
 static func create_service(kind: String) -> Node3D:
@@ -24,6 +26,10 @@ func _build_service(kind: String) -> void:
 			_atm(brass, dark, cream)
 		"vending_machine":
 			_vending(brass, dark, cream)
+	if kind == "atm":
+		_add_kit_artwork(ATM_KIT_TEXTURE, 1.23, 0.30)
+	elif kind == "vending_machine":
+		_add_kit_artwork(VENDING_KIT_TEXTURE, 1.82, 0.33)
 	set_surface_state(100, 100)
 
 
@@ -54,8 +60,21 @@ func _cabinet(width: float, height: float, depth: float, brass: Material, cream:
 		_box("BrassEdge", Vector3(side * (width / 2.0 - 0.025), height / 2.0, depth / 2.0 + 0.029), Vector3(0.015, height - 0.15, 0.015), brass)
 
 
+func _add_kit_artwork(texture: Texture2D, height: float, front_z: float) -> void:
+	var artwork := Sprite3D.new()
+	artwork.name = "ApprovedKitArtwork"
+	artwork.texture = texture
+	artwork.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	artwork.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	artwork.shaded = true
+	artwork.double_sided = true
+	artwork.pixel_size = height / float(texture.get_height())
+	artwork.position = Vector3(0.0, height / 2.0, front_z)
+	add_child(artwork)
+
+
 func _atm(brass: Material, dark: Material, cream: Material) -> void:
-	_cabinet(0.72, 1.24, 0.56, brass, cream)
+	_cabinet(0.76, 1.23, 0.56, brass, cream)
 	_box("ScreenBezel", Vector3(0, 1.00, 0.31), Vector3(0.47, 0.32, 0.04), dark)
 	var screen := _finish("#6c8068")
 	screen.emission_enabled = true
@@ -77,7 +96,7 @@ func _atm(brass: Material, dark: Material, cream: Material) -> void:
 
 
 func _vending(brass: Material, dark: Material, cream: Material) -> void:
-	_cabinet(0.92, 1.88, 0.62, brass, cream)
+	_cabinet(1.18, 1.82, 0.62, brass, cream)
 	_box("DisplayRecess", Vector3(-0.10, 1.11, 0.34), Vector3(0.57, 1.13, 0.025), dark)
 	for row in range(3):
 		var shelf_y := 1.49 - row * 0.32

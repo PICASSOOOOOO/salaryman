@@ -23,6 +23,10 @@ func _run() -> void:
 		check(prop.get_child_count() > 3, kind + " must have native model parts")
 		check(prop.position == Vector3.ZERO, kind + " must use a grounded local origin")
 		prop.set_surface_state(25, 20)
+		if prop.repair_seam == null:
+			check(prop.dust_marks.is_empty(), kind + " without repair detail must not carry dust meshes")
+			prop.free()
+			continue
 		check(prop.repair_seam.visible, kind + " must reflect existing condition")
 		check(prop.dust_marks[0].visible, kind + " must reflect existing cleanliness")
 		check(is_equal_approx(prop.repair_seam.scale.x, 0.75), "Wear must vary continuously")
