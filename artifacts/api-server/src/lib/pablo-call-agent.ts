@@ -242,13 +242,18 @@ export async function getOrCreateSession(
   direction: "inbound" | "outbound" | "screening",
   callerName?: string,
 ) {
-  const existing = await db
+  const [existing] = await db
     .select()
     .from(pabloCallSessionsTable)
     .where(eq(pabloCallSessionsTable.twilioCallSid, callSid))
     .limit(1);
 
-  if (existing[0]) return existing[0];
+  if (existing) {
+    if (existing.userId !== userId) {
+      throw new Error("Pablo call session ownership mismatch");
+    }
+    return existing;
+  }
 
   const [session] = await db
     .insert(pabloCallSessionsTable)
@@ -370,7 +375,10 @@ export async function processPabloTurn(
         ? { status: "completed", outcome: action.type, endedAt: new Date() }
         : {}),
     })
-    .where(eq(pabloCallSessionsTable.id, session.id));
+    .where(and(
+      eq(pabloCallSessionsTable.id, session.id),
+      eq(pabloCallSessionsTable.userId, userId),
+    ));
 
   if (action.type === "create_lead" && mergedInfo.callerName) {
     try {
@@ -435,7 +443,10 @@ async function createOrUpdateContact(
   await db
     .update(pabloCallSessionsTable)
     .set({ contactId })
-    .where(eq(pabloCallSessionsTable.twilioCallSid, callSid));
+    .where(and(
+      eq(pabloCallSessionsTable.twilioCallSid, callSid),
+      eq(pabloCallSessionsTable.userId, userId),
+    ));
 
   await db
     .update(callHistoryTable)
