@@ -1108,7 +1108,7 @@ export default function Salaryman1999() {
     setMidiOutputs(outputs);
     const selected = outputs.some(output => output.id === selectedMidiOutputRef.current)
       ? selectedMidiOutputRef.current
-      : outputs[0]?.id ?? "";
+      : "";
     selectedMidiOutputRef.current = selected;
     setSelectedMidiOutputId(selected);
     setMidiStatus(outputs.length
@@ -2022,7 +2022,20 @@ export default function Salaryman1999() {
               <div className="n-gearmulator-machine" data-testid="panel-gearmulator">
                 <span className="n-eyebrow">NATIVE 1999 VST3</span>
                 <strong>{selectedTrack.machineId === "gearmulator_md" ? "MACHINEDRUM" : "MONOMACHINE"}</strong>
-                <span>Browser playback is unavailable for this machine. Open the 1999 VST3 and load matching firmware from hardware you own.</span>
+                <span>Browser audio is unavailable. Route MIDI OUT to a port your 1999 VST3 receives, then load firmware from hardware you own.</span>
+                <span className="n-gearmulator-midi-status" role="status" aria-live="polite" data-testid="status-gearmulator-midi">
+                  {selectedMidiOutputId
+                    ? `MIDI OUT · ${midiOutputs.find(output => output.id === selectedMidiOutputId)?.name || "SELECTED DEVICE"}`
+                    : "MIDI OUT · NO DEVICE SELECTED"}
+                </span>
+                <button className="n-btn" type="button" data-testid="button-gearmulator-midi-setup" onClick={async () => {
+                  if (!midiConnected) await connectMidi();
+                  const picker = document.getElementById("midi-output-select");
+                  picker?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+                  picker?.focus();
+                }}>
+                  {midiConnected ? "SELECT MIDI OUT" : "CONNECT MIDI OUT"}
+                </button>
                 <span className="n-gearmulator-note">Firmware/ROM files are not included or distributed with SALARYMAN.</span>
               </div>
             ) : selectedTrack?.machineId === "fm1" || selectedTrack?.machineId === "smk37" ? (

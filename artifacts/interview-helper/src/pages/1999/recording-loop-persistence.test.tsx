@@ -67,6 +67,7 @@ let root: Root;
 let container: HTMLDivElement;
 const audioSources: any[] = [];
 const audioGains: any[] = [];
+const audioOscillators: any[] = [];
 const offlineSources: any[] = [];
 const offlineGains: any[] = [];
 const lofiWorkletNodes: any[] = [];
@@ -104,6 +105,17 @@ class FakeAudioContext {
     };
     audioSources.push(source);
     return source as any;
+  }
+  createOscillator() {
+    const oscillator = {
+      type: "sine",
+      frequency: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    audioOscillators.push(oscillator);
+    return oscillator as any;
   }
   createGain() {
     const gain = {
@@ -232,6 +244,7 @@ beforeEach(() => {
   currentUpdatedAt = "2026-11-10T00:00:00.000Z";
   audioSources.length = 0;
   audioGains.length = 0;
+  audioOscillators.length = 0;
   offlineSources.length = 0;
   offlineGains.length = 0;
   lofiWorkletNodes.length = 0;
@@ -327,8 +340,63 @@ describe("1999 recorded-loop persistence", () => {
 
     const panel = container.querySelector('[data-testid="panel-gearmulator"]');
     expect(panel?.textContent).toContain("MACHINEDRUM");
-    expect(panel?.textContent).toContain("Open the 1999 VST3");
+    expect(panel?.textContent).toContain("1999 VST3");
+    expect(panel?.textContent).toContain("Browser audio is unavailable");
     expect(panel?.textContent).toContain("not included or distributed");
+  });
+
+  it.each([
+    ["gearmulator_md", "MACHINEDRUM"],
+    ["gearmulator_mm", "MONOMACHINE"],
+  ])("routes %s sequencer notes only to an explicitly selected MIDI output", async (machineId, machineName) => {
+    const steps = Array(16).fill(0);
+    steps[0] = 100;
+    currentProject = JSON.stringify({
+      ...savedProject,
+      tracks: [
+        { ...savedProject.tracks[0], machineId, steps },
+        savedProject.tracks[1],
+      ],
+    });
+    const output = {
+      id: "1999-vst3-port",
+      name: "1999 VST3 MIDI Port",
+      state: "connected",
+      send: vi.fn(),
+    };
+    const access: any = { inputs: new Map(), outputs: new Map([[output.id, output]]), onstatechange: null };
+    Object.defineProperty(navigator, "requestMIDIAccess", {
+      configurable: true,
+      value: vi.fn(async () => access),
+    });
+    await mount();
+    click("row-track-trk-main");
+
+    const panel = container.querySelector('[data-testid="panel-gearmulator"]');
+    expect(panel?.textContent).toContain(machineName);
+    expect(container.querySelector('[data-testid="status-gearmulator-midi"]')?.textContent)
+      .toContain("NO DEVICE SELECTED");
+
+    click("button-gearmulator-midi-setup");
+    await flush();
+    expect((container.querySelector('[data-testid="select-midi-output"]') as HTMLSelectElement).value).toBe("");
+
+    setValue("select-midi-output", output.id, "change");
+    expect(container.querySelector('[data-testid="status-gearmulator-midi"]')?.textContent)
+      .toContain(output.name);
+    click("button-toggle-playback");
+    await act(async () => { await new Promise(resolve => window.setTimeout(resolve, 35)); });
+    await flush();
+    expect(output.send.mock.calls.some(([message]: [number[]]) => message[0] === 0x90 && message[2] > 0)).toBe(true);
+    expect(audioOscillators).toHaveLength(0);
+    click("button-toggle-playback");
+
+    click("button-save-project");
+    await flush();
+    const put = h.apiFetch.mock.calls.find(([path, init]) => path === "/api/vault/entries/77" && init?.method === "PUT");
+    expect(put).toBeDefined();
+    const saved = JSON.parse(JSON.parse(String(put![1].body)).content);
+    expect(saved.tracks[0].machineId).toBe(machineId);
   });
 
   it("restores a guest draft after sign-in and then saves it to Vault", async () => {
