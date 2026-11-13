@@ -5,15 +5,15 @@ const mocks = vi.hoisted(() => ({
   safeFetch: vi.fn(),
   resendSend: vi.fn(),
   ownerEmails: vi.fn((): string[] => []),
-  isOwnerEmail: vi.fn(() => true),
+  isPlatformAdminEmail: vi.fn(() => true),
 }));
 
 // Admin gate + the email recipient fallback both live in ../lib/plan. We mock
-// isOwnerEmail (admin gate) and ownerEmails (the always-available email channel)
+// platform-admin access and ownerEmails (the always-available email channel)
 // so each test fully controls auth and which channels count as "configured".
 vi.mock("../lib/plan", async (importActual) => ({
   ...(await importActual<typeof import("../lib/plan")>()),
-  isOwnerEmail: mocks.isOwnerEmail,
+  isPlatformAdminEmail: mocks.isPlatformAdminEmail,
   ownerEmails: mocks.ownerEmails,
 }));
 
@@ -62,7 +62,7 @@ beforeEach(() => {
   // Each test starts with an empty dedup window so reusing REPORT doesn't 409.
   __resetIncidentDedup();
   // Defaults: admin caller, no channels configured (no webhook, no recipients).
-  mocks.isOwnerEmail.mockReturnValue(true);
+  mocks.isPlatformAdminEmail.mockReturnValue(true);
   mocks.ownerEmails.mockReturnValue([]);
   mocks.safeFetch.mockResolvedValue({ ok: true, status: 200 } as any);
   mocks.resendSend.mockResolvedValue({ id: "email_1" } as any);
@@ -86,7 +86,7 @@ afterAll(async () => {
 describe("POST /api/art/incident-report", () => {
   it("403 when the caller is not an admin", async () => {
     authState.user = { id: "nobody", email: "not-owner@example.test" };
-    mocks.isOwnerEmail.mockReturnValue(false);
+    mocks.isPlatformAdminEmail.mockReturnValue(false);
     const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
     expect(res.status).toBe(403);
     // Gate trips before any delivery is attempted.

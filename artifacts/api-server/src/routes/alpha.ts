@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, alphaApplicationsTable, ALPHA_ROLES, notificationsTable, usersTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
-import { isOwnerEmail, getPicassoAdminUserIds, isPicassoOrgOwner } from "../lib/plan";
+import { isOwnerEmail, isPlatformAdminEmail, getPicassoAdminUserIds, isPicassoOrgOwner } from "../lib/plan";
 import { guildInviteUrl, assignGuildRole, removeGuildRole } from "../lib/discord-auth";
 
 const router: IRouter = Router();
@@ -41,7 +41,7 @@ async function requireAdmin(req: Request, res: Response): Promise<boolean> {
     res.status(403).json({ error: "Picasso admin access required" });
     return false;
   }
-  if (isOwnerEmail(req.user?.email)) return true;
+  if (isPlatformAdminEmail(req.user?.email)) return true;
   if (req.user?.id && await isPicassoOrgOwner(req.user.id)) return true;
   res.status(403).json({ error: "Picasso admin access required" });
   return false;
@@ -62,7 +62,8 @@ router.get("/alpha/me", async (req, res) => {
       dev: byRole.alpha_dev,
       isApprovedTester: byRole.alpha_tester?.status === "approved",
       isApprovedDev: byRole.alpha_dev?.status === "approved",
-      isAdmin: isOwnerEmail(req.user?.email),
+      isAdmin: isPlatformAdminEmail(req.user?.email)
+        || Boolean(req.user?.id && await isPicassoOrgOwner(req.user.id)),
     });
   } catch (e) {
     console.error("[Alpha] /me failed:", e);

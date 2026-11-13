@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import request from "supertest";
 
 // The labor-summary endpoint gates non-org plans (Pablo plans) behind the
-// global admin check. We mock isOwnerEmail so the test user is treated as an
-// admin and can read any plan's breakdown.
-const mocks = vi.hoisted(() => ({ isOwnerEmail: vi.fn(() => true) }));
+// global admin check. We mock isPlatformAdminEmail so the test user can read
+// any plan's breakdown only when explicitly assigned platform-admin access.
+const mocks = vi.hoisted(() => ({ isPlatformAdminEmail: vi.fn(() => true) }));
 vi.mock("../lib/plan", async (importActual) => ({
   ...(await importActual<typeof import("../lib/plan")>()),
-  isOwnerEmail: mocks.isOwnerEmail,
+  isPlatformAdminEmail: mocks.isPlatformAdminEmail,
 }));
 
 import {
@@ -29,7 +29,7 @@ const app = buildApp();
 
 beforeEach(async () => {
   resetAuthState();
-  mocks.isOwnerEmail.mockReturnValue(true);
+  mocks.isPlatformAdminEmail.mockReturnValue(true);
   await cleanupTestData();
 });
 
@@ -125,10 +125,10 @@ describe("GET /api/world-build/plans/:id/labor-summary", () => {
     expect(res.status).toBe(400);
   });
 
-  it("forbids a non-admin viewing a Pablo plan (403)", async () => {
+  it("forbids an owner-bypass tester without platform-admin status (403)", async () => {
     const planId = await seedPlan();
-    mocks.isOwnerEmail.mockReturnValue(false);
-    authState.user = { id: "stranger", email: "stranger@example.test" };
+    mocks.isPlatformAdminEmail.mockReturnValue(false);
+    authState.user = { id: "tester-only", email: "dcmthree86@gmail.com" };
     const res = await request(app).get(`/api/world-build/plans/${planId}/labor-summary`);
     expect(res.status).toBe(403);
   });

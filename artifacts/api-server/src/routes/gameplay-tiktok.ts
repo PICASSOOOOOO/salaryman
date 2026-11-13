@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createReadStream } from "node:fs";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 import {
   startWeeklyTikTokRun,
   getCurrentTikTokJob,
@@ -18,7 +18,7 @@ function requireOwner(req: Request, res: Response): boolean {
     return false;
   }
   const email = (req.user as { email?: string | null } | undefined)?.email;
-  if (!isOwnerEmail(email)) {
+  if (!isPlatformAdminEmail(email)) {
     res.status(403).json({ error: "Owner only" });
     return false;
   }

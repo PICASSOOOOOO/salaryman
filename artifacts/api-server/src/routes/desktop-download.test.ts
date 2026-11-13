@@ -1,14 +1,23 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import express, { type Express } from "express";
 import request from "supertest";
 
 const mocks = vi.hoisted(() => ({
-  isOwnerEmail: vi.fn(() => false),
+  isPlatformAdminEmail: vi.fn(() => false),
   isPicassoOrgOwner: vi.fn(async () => false),
+  moderatorRows: [] as Array<{ id: string }>,
 }));
 
 vi.mock("@workspace/db", () => ({
-  db: { select: vi.fn() },
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(async () => mocks.moderatorRows),
+        })),
+      })),
+    })),
+  },
   alphaApplicationsTable: {
     id: "id",
     userId: "userId",
@@ -18,17 +27,23 @@ vi.mock("@workspace/db", () => ({
 }));
 
 vi.mock("../lib/plan", () => ({
-  isOwnerEmail: mocks.isOwnerEmail,
+  isPlatformAdminEmail: mocks.isPlatformAdminEmail,
   isPicassoOrgOwner: mocks.isPicassoOrgOwner,
 }));
 
 import desktopDownloadRouter from "./desktop-download";
 
-function buildApp(authenticated: boolean): Express {
+beforeEach(() => {
+  mocks.isPlatformAdminEmail.mockReturnValue(false);
+  mocks.isPicassoOrgOwner.mockResolvedValue(false);
+  mocks.moderatorRows = [];
+});
+
+function buildApp(authenticated: boolean, email = "tester@example.com"): Express {
   const app = express();
   app.use((req, _res, next) => {
     (req as any).isAuthenticated = () => authenticated;
-    if (authenticated) (req as any).user = { id: "user-1", email: "tester@example.com" };
+    if (authenticated) (req as any).user = { id: "user-1", email };
     next();
   });
   app.use("/api", desktopDownloadRouter);
@@ -36,6 +51,30 @@ function buildApp(authenticated: boolean): Express {
 }
 
 describe("desktop download platform allowlist", () => {
+  it("does not grant release access through owner-bypass alone", async () => {
+    const response = await request(buildApp(true, "dcmthree86@gmail.com")).get("/api/desktop/access");
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Admin or approved moderator access required" });
+  });
+
+  it("retains release access for an approved moderator", async () => {
+    mocks.moderatorRows = [{ id: "approved-tester" }];
+    const response = await request(buildApp(true)).get("/api/desktop/access");
+
+    expect(response.status).toBe(200);
+    expect(response.body.allowed).toBe(true);
+    expect(response.body.availablePlatforms).toEqual([]);
+  });
+
+  it("retains release access for Picasso organization owners", async () => {
+    mocks.isPicassoOrgOwner.mockResolvedValue(true);
+    const response = await request(buildApp(true)).get("/api/desktop/access");
+
+    expect(response.status).toBe(200);
+    expect(response.body.allowed).toBe(true);
+  });
+
   it.each(["windows", "macos", "linux"])("requires the existing access gate for %s downloads", async (platform) => {
     const response = await request(buildApp(false)).get(`/api/desktop/download?platform=${platform}`);
 

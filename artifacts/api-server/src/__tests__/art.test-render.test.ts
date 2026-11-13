@@ -5,10 +5,10 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vites
 vi.mock("../lib/art-providers", async () =>
   (await import("./helpers/artProvidersMock")).makeArtProvidersMock(),
 );
-// The art routes are admin-only; treat the test user as an owner.
+// The art routes are admin-only; treat the test user as a platform admin.
 vi.mock("../lib/plan", async (importActual) => ({
   ...(await importActual<typeof import("../lib/plan")>()),
-  isOwnerEmail: vi.fn(() => true),
+  isPlatformAdminEmail: vi.fn(() => true),
 }));
 
 import request from "supertest";
@@ -46,7 +46,7 @@ describe("POST /api/art/test-render", () => {
     const { authState } = await import("./helpers/artTestApp");
     authState.user = { id: "nobody", email: "not-owner@example.test" };
     const planMock = await import("../lib/plan");
-    (planMock.isOwnerEmail as any).mockReturnValueOnce(false);
+    (planMock.isPlatformAdminEmail as any).mockReturnValueOnce(false);
     const res = await request(app).post("/api/art/test-render").send({ backend: NANO_ID });
     expect(res.status).toBe(403);
   });
@@ -138,7 +138,7 @@ describe("GET /api/art/providers", () => {
     const { authState } = await import("./helpers/artTestApp");
     authState.user = { id: "nobody", email: "not-owner@example.test" };
     const planMock = await import("../lib/plan");
-    (planMock.isOwnerEmail as any).mockReturnValueOnce(false);
+    (planMock.isPlatformAdminEmail as any).mockReturnValueOnce(false);
     const res = await request(app).get("/api/art/providers").send();
     expect(res.status).toBe(403);
   });

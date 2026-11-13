@@ -16,7 +16,7 @@ import {
   type LandPlot,
   type ConstructionProject,
 } from "@workspace/db";
-import { isOwnerEmail, isPicassoOrgMemberEmail } from "../lib/plan";
+import { isPlatformAdminEmail, isPicassoOrgMemberEmail } from "../lib/plan";
 
 const router = Router();
 
@@ -61,7 +61,7 @@ async function canApprove(userId: string): Promise<boolean> {
     .from(usersTable)
     .where(eq(usersTable.id, userId))
     .limit(1);
-  return isOwnerEmail(u?.email) || isPicassoOrgMemberEmail(u?.email);
+  return isPlatformAdminEmail(u?.email) || isPicassoOrgMemberEmail(u?.email);
 }
 
 // Resolve the org admin context for a user. Returns org info if user has
@@ -750,7 +750,7 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
         .from(usersTable)
         .where(eq(usersTable.id, userId))
         .limit(1);
-      const globalAdmin = isOwnerEmail(u?.email) || isPicassoOrgMemberEmail(u?.email);
+      const globalAdmin = isPlatformAdminEmail(u?.email) || isPicassoOrgMemberEmail(u?.email);
       if (!globalAdmin) {
         let isOrgAdmin = false;
         if (project.owningOrgId) {

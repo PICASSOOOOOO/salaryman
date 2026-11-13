@@ -2,7 +2,7 @@ import path from "node:path";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, alphaApplicationsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
-import { isOwnerEmail, isPicassoOrgOwner } from "../lib/plan";
+import { isPlatformAdminEmail, isPicassoOrgOwner } from "../lib/plan";
 import { verifyDesktopRelease } from "../lib/desktop-release-verification";
 
 const router: IRouter = Router();
@@ -43,7 +43,7 @@ async function hasDesktopReleaseAccess(req: Request, res: Response): Promise<boo
   }
 
   const user = req.user!;
-  if (isOwnerEmail(user.email) || await isPicassoOrgOwner(user.id)) return true;
+  if (isPlatformAdminEmail(user.email) || await isPicassoOrgOwner(user.id)) return true;
 
   const [moderator] = await db
     .select({ id: alphaApplicationsTable.id })

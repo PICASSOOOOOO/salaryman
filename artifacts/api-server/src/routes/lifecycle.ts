@@ -222,8 +222,8 @@ export async function runUserDataRetentionSweep(): Promise<{
 // POST /api/lifecycle/sweep — admin-only trigger, also run daily by the server.
 router.post("/lifecycle/sweep", async (req, res) => {
   if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const { isOwnerEmail } = await import("../lib/plan");
-  if (!isOwnerEmail(req.user?.email)) { res.status(403).json({ error: "Picasso admin only" }); return; }
+  const { isPlatformAdminEmail } = await import("../lib/plan");
+  if (!isPlatformAdminEmail(req.user?.email)) { res.status(403).json({ error: "Picasso admin only" }); return; }
   if (!isUserDataRetentionEnabled()) {
     res.status(409).json({ error: "Retention sweep is disabled until payment-history protection is verified and enabled for production." });
     return;

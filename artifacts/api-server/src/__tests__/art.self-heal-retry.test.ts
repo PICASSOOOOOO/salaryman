@@ -5,7 +5,7 @@ vi.mock("../lib/art-providers", async () =>
 );
 vi.mock("../lib/plan", async (importActual) => ({
   ...(await importActual<typeof import("../lib/plan")>()),
-  isOwnerEmail: vi.fn(() => true),
+  isPlatformAdminEmail: vi.fn(() => true),
 }));
 
 import request from "supertest";

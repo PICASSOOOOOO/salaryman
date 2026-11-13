@@ -15,7 +15,7 @@ import Stripe from "stripe";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import { getStripe } from "./stripe";
-import { isOwnerEmail } from "../lib/plan";
+import { isOwnerEmail, isPlatformAdminEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
 import { ITEM_CATALOG, type ItemStats } from "../lib/item-catalog";
 import { recordLegacyRecoveryEvent, restoreLegacyRecoveryForUser } from "../lib/legacy-recovery";
@@ -485,7 +485,7 @@ function requireOwner(req: Request, res: any): string | null {
   const userId = requireAuth(req, res);
   if (!userId) return null;
   const email = (req as any).user?.email as string | undefined;
-  if (!isOwnerEmail(email)) {
+  if (!isPlatformAdminEmail(email)) {
     res.status(403).json({ error: "Owner access only" });
     return null;
   }

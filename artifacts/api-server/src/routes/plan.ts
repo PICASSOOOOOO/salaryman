@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUserFeatures, getUserTier, isOwnerEmail, FEATURE_CATALOG, FREE_FEATURES, grantFeature, resolveFeatureKey } from "../lib/plan";
+import { getUserFeatures, getUserTier, isOwnerEmail, isPlatformAdminEmail, FEATURE_CATALOG, FREE_FEATURES, grantFeature, resolveFeatureKey } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey, db, featureTrialsTable } from "@workspace/db";
 import { eq, and, gt, or, type SQL } from "drizzle-orm";
 
@@ -50,7 +50,7 @@ router.get("/plan", async (req, res) => {
 router.post("/plan/grant", async (req, res) => {
   if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Login required" }); return; }
   const caller = req.user;
-  if (!isOwnerEmail(caller.email)) { res.status(403).json({ error: "Not authorized" }); return; }
+  if (!isPlatformAdminEmail(caller.email)) { res.status(403).json({ error: "Not authorized" }); return; }
   const { targetUserId, feature: rawFeature } = req.body ?? {};
   if (!targetUserId) { res.status(400).json({ error: "targetUserId required" }); return; }
   const feature = rawFeature ? resolveFeatureKey(rawFeature) : undefined;

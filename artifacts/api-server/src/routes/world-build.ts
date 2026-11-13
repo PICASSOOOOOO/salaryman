@@ -11,7 +11,7 @@ import {
   type WorldBuildTask,
 } from "@workspace/db";
 import { eq, desc, asc, sql, and, or, ilike, isNull, isNotNull, inArray } from "drizzle-orm";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 
 const router: IRouter = Router();
 
@@ -26,7 +26,7 @@ function uid(req: Request): string {
   return String((req.user as { id: string }).id);
 }
 function isAdmin(req: Request): boolean {
-  return !!req.user && isOwnerEmail(req.user.email);
+  return !!req.user && isPlatformAdminEmail(req.user.email);
 }
 
 // Resolve the org an org admin manages. Returns null if user has no manager+ role.

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, billboardsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 
 const router = Router();
 
@@ -39,7 +39,7 @@ async function ensureBillboards() {
 let initialized = false;
 
 function isAdmin(req: Express.Request): boolean {
-  return !!req.user && isOwnerEmail(req.user.email);
+  return !!req.user && isPlatformAdminEmail(req.user.email);
 }
 
 function getPlayerName(req: Express.Request): string | null {

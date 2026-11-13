@@ -10,7 +10,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, playerCityVisasTable, worldBusinessesTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 
 const router: IRouter = Router();
 
@@ -168,7 +168,7 @@ router.patch("/admin/citizenship/:userId/:cityId", async (req, res) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  if (!isOwnerEmail(req.user.email ?? undefined)) {
+  if (!isPlatformAdminEmail(req.user.email ?? undefined)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }
@@ -214,7 +214,7 @@ router.get("/admin/citizenship/applications", async (req, res) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  if (!isOwnerEmail(req.user.email ?? undefined)) {
+  if (!isPlatformAdminEmail(req.user.email ?? undefined)) {
     res.status(403).json({ error: "Admin access required" });
     return;
   }

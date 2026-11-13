@@ -28,7 +28,7 @@ import {
 } from "../lib/art-polish";
 import { isFalOutage } from "../lib/fal";
 import { getArtQaRecipe, validateArtOutput, type ArtQaResult } from "../lib/art-qa";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 import { generateArtDirectionBrief } from "../lib/art-direction";
 import { listArtFamilies } from "../lib/art-families";
 import {
@@ -45,7 +45,7 @@ import {
 const router = Router();
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!req.user || !isOwnerEmail(req.user.email)) {
+  if (!req.user || !isPlatformAdminEmail(req.user.email)) {
     res.status(403).json({ error: "Admin only" });
     return;
   }

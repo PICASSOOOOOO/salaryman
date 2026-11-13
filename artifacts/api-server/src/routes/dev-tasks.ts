@@ -14,7 +14,7 @@ import {
   DEV_TASK_STATUSES,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 import { getUncachableResendClient } from "../lib/resend";
 
 const router = Router();
@@ -28,7 +28,7 @@ function requireAuth(req: Request, res: Response): req is Request & { user: Expr
 }
 
 function isAdmin(req: Request): boolean {
-  return !!req.user && isOwnerEmail((req.user as Express.User).email);
+  return !!req.user && isPlatformAdminEmail((req.user as Express.User).email);
 }
 
 async function isOrgMember(userId: string): Promise<boolean> {

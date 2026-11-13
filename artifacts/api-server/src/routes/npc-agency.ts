@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 import {
   getSharedNpcAgencySnapshot,
   persistSharedNpcAgencySnapshot,
@@ -91,7 +91,7 @@ function requireAuth(req: Request, res: Response): boolean {
 function requireOwner(req: Request, res: Response): boolean {
   if (!requireAuth(req, res)) return false;
   const email = (req.user as { email?: string } | undefined)?.email;
-  if (!isOwnerEmail(email)) {
+  if (!isPlatformAdminEmail(email)) {
     res.status(403).json({ error: "Owner access required" });
     return false;
   }

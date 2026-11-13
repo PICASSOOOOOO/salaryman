@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, feedbackReportsTable, devTasksTable, notificationsTable, organizationsTable, alphaApplicationsTable, usersTable } from "@workspace/db";
 import { eq, sql, desc, and } from "drizzle-orm";
-import { isOwnerEmail } from "../lib/plan";
+import { isPlatformAdminEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
 import { computeErrorSignature } from "../lib/feedback-signature";
 import { sweepErrorReports } from "../lib/feedback-sweeper";
@@ -14,7 +14,7 @@ function getUserId(req: Express.Request): string | null {
 }
 
 function isAdmin(req: Express.Request): boolean {
-  return !!req.user && isOwnerEmail(req.user.email);
+  return !!req.user && isPlatformAdminEmail(req.user.email);
 }
 
 // Authorized viewer = Picasso admin OR approved alpha tester OR approved alpha
@@ -48,7 +48,7 @@ async function getErrorNotifyUserIds(): Promise<string[]> {
       )),
   ]);
   const ids = new Set<string>();
-  for (const u of admins) if (isOwnerEmail(u.email)) ids.add(u.id);
+  for (const u of admins) if (isPlatformAdminEmail(u.email)) ids.add(u.id);
   for (const a of alphas) if (a.userId) ids.add(a.userId);
   return [...ids];
 }
@@ -74,7 +74,7 @@ async function getOwnerUserIds(): Promise<string[]> {
       )),
   ]);
   return [...new Set([
-    ...admins.filter(u => isOwnerEmail(u.email)).map(u => u.id),
+    ...admins.filter(u => isPlatformAdminEmail(u.email)).map(u => u.id),
     ...devs.map(d => d.userId),
   ])];
 }

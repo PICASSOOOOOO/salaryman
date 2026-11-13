@@ -5,10 +5,10 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vites
 vi.mock("../lib/art-providers", async () =>
   (await import("./helpers/artProvidersMock")).makeArtProvidersMock(),
 );
-// The art routes are admin-only; treat the test user as an owner.
+// The art routes are admin-only; treat the test user as a platform admin.
 vi.mock("../lib/plan", async (importActual) => ({
   ...(await importActual<typeof import("../lib/plan")>()),
-  isOwnerEmail: vi.fn(() => true),
+  isPlatformAdminEmail: vi.fn(() => true),
 }));
 
 import request from "supertest";
