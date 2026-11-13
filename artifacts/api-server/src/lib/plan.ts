@@ -52,9 +52,10 @@ export function isUsdPaidFeature(feature: FeatureKey): boolean {
 // Only these addresses are stitched into the Picasso org as active owners.
 // Feature-only testers must use SALARYMAN_FREE_FEATURE_EMAILS instead.
 const PICASSO_ORG_MEMBER_EMAILS: string[] = [];
+const OWNER_BYPASS_ONLY_EMAILS = new Set(["dcmthree86@gmail.com"]);
 
-// Owner addresses retain existing staff/admin behavior. Do not add ordinary
-// free-feature testers here: isOwnerEmail also grants unrelated privileges.
+// Owner bypass addresses retain existing product perks. Do not use this broad
+// list as a platform-admin role without isPlatformAdminEmail.
 const HARDCODED_OWNER_EMAILS: string[] = [
   ...PICASSO_ORG_MEMBER_EMAILS,
   // Picasso staff — full platform access and alpha-tester approval
@@ -64,8 +65,8 @@ const HARDCODED_OWNER_EMAILS: string[] = [
   "chiphanlien@gmail.com",
   "kozzy2k11@gmail.com",
   "pamwarrenhealth@gmail.com",
-  // Kissy — tester perks (owner bypass + alpha) but removed from PICASSO
-  // org auto-membership.
+  // Tester-only owner-bypass perks. isPlatformAdminEmail deliberately excludes
+  // this entry, so it does not imply platform administration.
   "dcmthree86@gmail.com",
 ];
 
@@ -95,9 +96,18 @@ export function isOwnerEmail(email: string | undefined | null): boolean {
   return isOwnerEmailAddress(email, ownerEmails());
 }
 
+// Owner bypass may grant product/testing perks, but it must not implicitly
+// grant access to platform administration. Picasso org owners are checked
+// separately by the admin authorization helpers.
+export function isPlatformAdminEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return !OWNER_BYPASS_ONLY_EMAILS.has(normalized) && ownerEmails().includes(normalized);
+}
+
 export async function getPicassoAdminUserIds(): Promise<string[]> {
   const rows = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable);
-  const byEmail = rows.filter(r => isOwnerEmail(r.email)).map(r => r.id);
+  const byEmail = rows.filter(r => isPlatformAdminEmail(r.email)).map(r => r.id);
   const featureOnlyIds = new Set(rows.filter(r => isFreeFeatureTesterEmail(r.email)).map(r => r.id));
   // Also include any user who is an active owner-role member of the PICASSO
   // developer org specifically, even if their email isn't on the hardcoded list.

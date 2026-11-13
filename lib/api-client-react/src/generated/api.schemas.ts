@@ -969,6 +969,65 @@ export interface TowerBusinessRestockResponse {
 
 export type AuthorizationSessionHeaderParameter = string;
 
+export type GetWorldMonitoringOnline200PlayersItem = {
+  userId: string;
+  username?: string | null;
+  firstName?: string | null;
+  profileImageUrl?: string | null;
+  status: string;
+  x?: number;
+  y?: number;
+  class?: string | null;
+  company?: string | null;
+  level?: number | null;
+  hp?: number | null;
+  maxHp?: number | null;
+  speaking?: boolean;
+  lastAction?: string | null;
+};
+
+export type GetWorldMonitoringOnline200Scope = typeof GetWorldMonitoringOnline200Scope[keyof typeof GetWorldMonitoringOnline200Scope];
+
+
+export const GetWorldMonitoringOnline200Scope = {
+  platform: 'platform',
+  moderator: 'moderator',
+  organization: 'organization',
+} as const;
+
+export type GetWorldMonitoringOnline200 = {
+  players: GetWorldMonitoringOnline200PlayersItem[];
+  count: number;
+  ts: number;
+  scope: GetWorldMonitoringOnline200Scope;
+  canSeeAdmins: boolean;
+};
+
+export type GetWorldMonitoringSecuritySummary200Scope = typeof GetWorldMonitoringSecuritySummary200Scope[keyof typeof GetWorldMonitoringSecuritySummary200Scope];
+
+
+export const GetWorldMonitoringSecuritySummary200Scope = {
+  platform: 'platform',
+  moderator: 'moderator',
+  organization: 'organization',
+} as const;
+
+export type GetWorldMonitoringSecuritySummary200Security = {
+  activeFlags: number;
+  activeBans: number;
+  openReports: number;
+  loginAttempts24h: number;
+  blockedLogins24h: number;
+};
+
+export type GetWorldMonitoringSecuritySummary200 = {
+  scope: GetWorldMonitoringSecuritySummary200Scope;
+  generatedAt: string;
+  windowHours: 24;
+  detailAccess: boolean;
+  security: GetWorldMonitoringSecuritySummary200Security;
+};
+
 export type BeginDiscordLoginParams = {
 returnTo?: string;
 };

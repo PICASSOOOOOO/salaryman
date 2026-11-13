@@ -29,6 +29,7 @@
 - [Pablo nebula visuals](pablo-nebula-canonical.md) — Approved `/pablo` uses a painterly wave field; see [screenshot orb fallback](pablo-nebula-orb.md).
 - [Pablo voice and chat](pablo-voice-output-gating.md) — gate TTS and keep controls/history visible; see [controls](pablo-frontdoor-controls.md) and [mobile](pablo-mobile-chat-continuity.md).
 - [Tester program](tester-program.md) — 20 slots, atomic approvals, 3-day inactivity sweep, and a dismissible Discord banner.
+- [Platform monitoring privacy](platform-monitoring-privacy.md) — Admins have full scope; moderators/testers get metadata and visuals, while owners see only their own active people.
 - [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — browser and game use one canonical assistant backend; keep its in-game character a visual representation, not a duplicate agent.
 - [Per-user Google Calendar](google-calendar-user-oauth.md) — each user links their own Google account in-app; never use the owner’s Replit Google connection for customer calendars.
 - [Education Classroom feature](classroom-feature.md) — Resolve teacher roles per user; gate only class-specific rooms on shared `/ws/conf`.

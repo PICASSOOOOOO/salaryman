@@ -468,6 +468,7 @@ export default function AdminPanel() {
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [auditLog, setAuditLog] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminAccessDenied, setAdminAccessDenied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [userDetailLoading, setUserDetailLoading] = useState(false);
@@ -838,20 +839,39 @@ export default function AdminPanel() {
     navigate(tab === 'analytics' ? '/profile/admin' : `/profile/admin?tab=${tab}`);
   }, [navigate]);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     setLoading(true);
-    Promise.all([
-      apiFetch('/api/admin/stats').then(r => r.json()).catch(() => null),
-      apiFetch('/api/admin/users').then(r => r.json()).catch(() => ({ users: [] })),
-      apiFetch('/api/admin/orgs').then(r => r.json()).catch(() => ({ orgs: [] })),
-      apiFetch('/api/admin/bans?active=false').then(r => r.json()).catch(() => ({ bans: [] })),
-      apiFetch('/api/admin/analytics').then(r => r.json()).catch(() => null),
-      apiFetch('/api/admin/system-config').then(r => r.json()).catch(() => ({ config: [] })),
-      apiFetch('/api/admin/broadcasts').then(r => r.json()).catch(() => ({ broadcasts: [] })),
-      apiFetch('/api/admin/reports?status=open').then(r => r.json()).catch(() => ({ reports: [] })),
-      apiFetch('/api/admin/audit-log').then(r => r.json()).catch(() => ({ logs: [] })),
-    ]).then(([s, u, o, b, a, c, bc, rp, al]) => {
-      setStats(s);
+    setAdminAccessDenied(false);
+    try {
+      const statsResponse = await apiFetch('/api/admin/stats');
+      if ([401, 403].includes(statsResponse.status)) {
+        setAdminAccessDenied(true);
+        setStats(null);
+        setUsers([]);
+        setOrgs([]);
+        setBans([]);
+        setAnalytics(null);
+        setConfigs([]);
+        setBroadcasts([]);
+        setReports([]);
+        setAuditLog([]);
+        setMonitoringPlayers([]);
+        setMonitoringSecurity(null);
+        return;
+      }
+      if (!statsResponse.ok) throw new Error('Could not check admin access');
+      const statsData = await statsResponse.json();
+      const [u, o, b, a, c, bc, rp, al] = await Promise.all([
+        apiFetch('/api/admin/users').then(r => r.json()).catch(() => ({ users: [] })),
+        apiFetch('/api/admin/orgs').then(r => r.json()).catch(() => ({ orgs: [] })),
+        apiFetch('/api/admin/bans?active=false').then(r => r.json()).catch(() => ({ bans: [] })),
+        apiFetch('/api/admin/analytics').then(r => r.json()).catch(() => null),
+        apiFetch('/api/admin/system-config').then(r => r.json()).catch(() => ({ config: [] })),
+        apiFetch('/api/admin/broadcasts').then(r => r.json()).catch(() => ({ broadcasts: [] })),
+        apiFetch('/api/admin/reports?status=open').then(r => r.json()).catch(() => ({ reports: [] })),
+        apiFetch('/api/admin/audit-log').then(r => r.json()).catch(() => ({ logs: [] })),
+      ]);
+      setStats(statsData);
       setUsers(u.users ?? []);
       setOrgs(o.orgs ?? []);
       setBans(b.bans ?? []);
@@ -860,7 +880,11 @@ export default function AdminPanel() {
       setBroadcasts(bc.broadcasts ?? []);
       setReports(rp.reports ?? []);
       setAuditLog(al.logs ?? []);
-    }).finally(() => setLoading(false));
+    } catch {
+      setStats(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -892,6 +916,12 @@ export default function AdminPanel() {
         apiFetch('/api/world/online'),
         apiFetch('/api/world/monitoring-security'),
       ]);
+      if ([401, 403].includes(presenceResponse.status) || [401, 403].includes(securityResponse.status)) {
+        setAdminAccessDenied(true);
+        setMonitoringPlayers([]);
+        setMonitoringSecurity(null);
+        return;
+      }
       if (!presenceResponse.ok || !securityResponse.ok) {
         throw new Error('Could not load monitoring data');
       }
@@ -1195,7 +1225,7 @@ export default function AdminPanel() {
   if (authLoading || planLoading) {
     return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-amber-400" /></div>;
   }
-  if (!isOwner) {
+  if (!isOwner || adminAccessDenied) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <ShieldCheck className="w-12 h-12 text-zinc-600" />

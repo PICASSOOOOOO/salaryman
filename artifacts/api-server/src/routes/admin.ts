@@ -41,7 +41,7 @@ import {
   RevokeTowerShopStaffResponse,
   TOWER_BUSINESS_STOCK_LINES,
 } from "@workspace/api-zod";
-import { isOwnerEmail, isPicassoOrgMemberEmail, isPicassoOrgOwner } from "../lib/plan";
+import { isOwnerEmail, isPlatformAdminEmail, isPicassoOrgMemberEmail, isPicassoOrgOwner } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
 import { captureLegacyRecoverySnapshots } from "../lib/legacy-recovery";
 import { SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getOnlinePlayers } from "../worldServer";
@@ -128,9 +128,8 @@ function requireAuth(req: Request, res: Response): req is Request & { user: Expr
 async function requirePicassoAdmin(req: Request, res: Response): Promise<boolean> {
   if (!requireAuth(req, res)) return false;
   const user = req.user!;
-  // Allow the hardcoded email allow-list (owners + testers) OR any active
-  // owner-role member of the Picasso developer org.
-  if (isOwnerEmail(user.email ?? undefined)) return true;
+  // Product owner bypasses and tester perks do not grant platform-admin access.
+  if (isPlatformAdminEmail(user.email ?? undefined)) return true;
   if (await isPicassoOrgOwner(user.id)) return true;
   res.status(403).json({ error: "Picasso admin access required" });
   return false;

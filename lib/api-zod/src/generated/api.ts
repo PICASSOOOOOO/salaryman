@@ -9,6 +9,53 @@ import * as zod from 'zod';
 
 
 /**
+ * Platform admins receive the full live snapshot, moderators receive identity visuals and status without admin accounts, and organization owners receive only their active employees.
+ * @summary List live players within the caller's monitoring scope
+ */
+export const GetWorldMonitoringOnlineResponse = zod.object({
+  "players": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string().nullish(),
+  "firstName": zod.string().nullish(),
+  "profileImageUrl": zod.string().nullish(),
+  "status": zod.string(),
+  "x": zod.number().optional(),
+  "y": zod.number().optional(),
+  "class": zod.string().nullish(),
+  "company": zod.string().nullish(),
+  "level": zod.number().nullish(),
+  "hp": zod.number().nullish(),
+  "maxHp": zod.number().nullish(),
+  "speaking": zod.boolean().optional(),
+  "lastAction": zod.string().nullish()
+})),
+  "count": zod.number().int(),
+  "ts": zod.number().int(),
+  "scope": zod.enum(['platform', 'moderator', 'organization']),
+  "canSeeAdmins": zod.boolean()
+})
+
+
+/**
+ * Returns counts only; it never returns login IPs, report text, or flag details. Organization counts are limited to active employees in organizations owned by the caller.
+ * @summary Read security metadata counts within the caller's monitoring scope
+ */
+export const GetWorldMonitoringSecuritySummaryResponse = zod.object({
+  "scope": zod.enum(['platform', 'moderator', 'organization']),
+  "generatedAt": zod.date(),
+  "windowHours": zod.literal(24),
+  "detailAccess": zod.boolean(),
+  "security": zod.object({
+  "activeFlags": zod.number().int(),
+  "activeBans": zod.number().int(),
+  "openReports": zod.number().int(),
+  "loginAttempts24h": zod.number().int(),
+  "blockedLogins24h": zod.number().int()
+})
+})
+
+
+/**
  * @summary Check whether the current user completed browser onboarding
  */
 export const GetBrowserOnboardingStatusResponse = zod.object({

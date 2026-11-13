@@ -49,6 +49,8 @@ import type {
   DesktopBuildingObjectsResponse,
   ErrorEnvelope,
   GetSecureCallRecordingParams,
+  GetWorldMonitoringOnline200,
+  GetWorldMonitoringSecuritySummary200,
   HealthStatus,
   InterviewQuestionInput,
   LeadNoteReviewInput,
@@ -123,6 +125,162 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetWorldMonitoringOnlineUrl = () => {
+
+
+
+
+  return `/api/world/online`
+}
+
+/**
+ * Platform admins receive the full live snapshot, moderators receive identity visuals and status without admin accounts, and organization owners receive only their active employees.
+ * @summary List live players within the caller's monitoring scope
+ */
+export const getWorldMonitoringOnline = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetWorldMonitoringOnline200> => {
+
+  return customFetch<GetWorldMonitoringOnline200>(getGetWorldMonitoringOnlineUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWorldMonitoringOnlineQueryKey = () => {
+    return [
+    `/api/world/online`
+    ] as const;
+    }
+
+
+export const getGetWorldMonitoringOnlineQueryOptions = <TData = Awaited<ReturnType<typeof getWorldMonitoringOnline>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWorldMonitoringOnline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWorldMonitoringOnlineQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWorldMonitoringOnline>>> = ({ signal }) => getWorldMonitoringOnline({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWorldMonitoringOnline>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWorldMonitoringOnlineQueryResult = NonNullable<Awaited<ReturnType<typeof getWorldMonitoringOnline>>>
+export type GetWorldMonitoringOnlineQueryError = ErrorType<void>
+
+
+/**
+ * @summary List live players within the caller's monitoring scope
+ */
+
+export function useGetWorldMonitoringOnline<TData = Awaited<ReturnType<typeof getWorldMonitoringOnline>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWorldMonitoringOnline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWorldMonitoringOnlineQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetWorldMonitoringSecuritySummaryUrl = () => {
+
+
+
+
+  return `/api/world/monitoring-security`
+}
+
+/**
+ * Returns counts only; it never returns login IPs, report text, or flag details. Organization counts are limited to active employees in organizations owned by the caller.
+ * @summary Read security metadata counts within the caller's monitoring scope
+ */
+export const getWorldMonitoringSecuritySummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetWorldMonitoringSecuritySummary200> => {
+
+  return customFetch<GetWorldMonitoringSecuritySummary200>(getGetWorldMonitoringSecuritySummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWorldMonitoringSecuritySummaryQueryKey = () => {
+    return [
+    `/api/world/monitoring-security`
+    ] as const;
+    }
+
+
+export const getGetWorldMonitoringSecuritySummaryQueryOptions = <TData = Awaited<ReturnType<typeof getWorldMonitoringSecuritySummary>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWorldMonitoringSecuritySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWorldMonitoringSecuritySummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWorldMonitoringSecuritySummary>>> = ({ signal }) => getWorldMonitoringSecuritySummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWorldMonitoringSecuritySummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWorldMonitoringSecuritySummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getWorldMonitoringSecuritySummary>>>
+export type GetWorldMonitoringSecuritySummaryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read security metadata counts within the caller's monitoring scope
+ */
+
+export function useGetWorldMonitoringSecuritySummary<TData = Awaited<ReturnType<typeof getWorldMonitoringSecuritySummary>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWorldMonitoringSecuritySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWorldMonitoringSecuritySummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetBrowserOnboardingStatusUrl = () => {
 

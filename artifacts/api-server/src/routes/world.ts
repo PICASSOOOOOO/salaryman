@@ -25,7 +25,7 @@ import { GetBrowserOnboardingStatusResponse } from "@workspace/api-zod";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
 import * as geoip from "geoip-lite";
 import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
-import { getPicassoAdminUserIds, isOwnerEmail } from "../lib/plan";
+import { getPicassoAdminUserIds, isPicassoOrgOwner, isPlatformAdminEmail } from "../lib/plan";
 import { getCompletedOnboarding } from "../middlewares/requireOnboarding";
 import { deriveConditionProfile, repairConditionScore } from "../lib/world-condition";
 
@@ -215,7 +215,6 @@ router.post("/world/attest-paid-wage", async (req, res) => {
 const OUTSIDE_WORLD_PATHS = [
   "/world/locate",
   "/world/population",
-  "/world/online",
   "/world/heartbeat",
   "/world/liberation",
   "/world/buildings",
@@ -1133,10 +1132,13 @@ router.get("/world/my-office", async (req, res) => {
 interface WorldMonitoringAccess {
   scope: "platform" | "moderator" | "organization";
   userIds: string[];
+  platformAdminIds?: string[];
 }
 
 async function resolveWorldMonitoringAccess(userId: string, email?: string | null): Promise<WorldMonitoringAccess | null> {
-  if (isOwnerEmail(email)) return { scope: "platform", userIds: [] };
+  if (isPlatformAdminEmail(email) || await isPicassoOrgOwner(userId)) {
+    return { scope: "platform", userIds: [] };
+  }
   const [modRows, ownedOrgs] = await Promise.all([
     db.select({ userId: alphaApplicationsTable.userId })
       .from(alphaApplicationsTable)
@@ -1149,9 +1151,11 @@ async function resolveWorldMonitoringAccess(userId: string, email?: string | nul
       .from(organizationsTable)
       .where(eq(organizationsTable.ownerUserId, userId)),
   ]);
-  if (modRows.length) return { scope: "moderator", userIds: [] };
+  const platformAdminIds = await getPicassoAdminUserIds();
+  if (modRows.length) return { scope: "moderator", userIds: [], platformAdminIds };
   const orgIds = ownedOrgs.map((org) => org.id);
   if (!orgIds.length) return null;
+  const hiddenAdminIds = new Set(platformAdminIds);
   const memberRows = await db.select({ userId: orgMembersTable.userId, role: orgMembersTable.role })
     .from(orgMembersTable)
     .where(and(
@@ -1161,8 +1165,11 @@ async function resolveWorldMonitoringAccess(userId: string, email?: string | nul
   return {
     scope: "organization",
     userIds: [...new Set(memberRows
-      .filter((row) => row.userId !== userId && String(row.role).toLowerCase() !== "owner")
+      .filter((row) => row.userId !== userId
+        && String(row.role).toLowerCase() !== "owner"
+        && !hiddenAdminIds.has(row.userId))
       .map((row) => row.userId))],
+    platformAdminIds,
   };
 }
 
@@ -1177,13 +1184,14 @@ router.get("/world/online", async (req, res) => {
     return;
   }
   const all = getOnlinePlayers();
+  const hiddenAdminIds = new Set(access.platformAdminIds ?? []);
   let visible = all;
   if (access.scope === "organization") {
     const orgMemberIds = new Set(access.userIds);
-    visible = all.filter((player) => orgMemberIds.has(String(player.userId)));
+    visible = all.filter((player) =>
+      orgMemberIds.has(String(player.userId)) && !hiddenAdminIds.has(String(player.userId)));
   } else if (access.scope === "moderator") {
-    const adminIds = new Set(await getPicassoAdminUserIds());
-    visible = all.filter((player) => !adminIds.has(String(player.userId)));
+    visible = all.filter((player) => !hiddenAdminIds.has(String(player.userId)));
   }
   // Non-admin monitoring is limited to identity visuals and presence status.
   // Do not send gameplay state, contact data, or coordinates to moderators or org owners.
@@ -1223,7 +1231,9 @@ router.get("/world/monitoring-security", async (req, res): Promise<void> => {
     const scopedUsers = orgScoped && userIds.length
       ? await db.select({ email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds))
       : [];
-    const emails = scopedUsers.map((row) => row.email).filter((email): email is string => Boolean(email));
+    const emails = scopedUsers
+      .map((row) => row.email?.trim().toLowerCase())
+      .filter((email): email is string => Boolean(email));
 
     const [flagRows, banRows, reportRows, loginRows, blockedRows] = await Promise.all([
       orgScoped
@@ -1256,7 +1266,7 @@ router.get("/world/monitoring-security", async (req, res): Promise<void> => {
         ? emails.length
           ? db.select({ value: count() }).from(loginAttemptsTable).where(and(
               gte(loginAttemptsTable.createdAt, since),
-              inArray(loginAttemptsTable.email, emails),
+              inArray(sql`lower(${loginAttemptsTable.email})`, emails),
             ))
           : Promise.resolve([{ value: 0 }])
         : db.select({ value: count() }).from(loginAttemptsTable).where(gte(loginAttemptsTable.createdAt, since)),
@@ -1265,7 +1275,7 @@ router.get("/world/monitoring-security", async (req, res): Promise<void> => {
           ? db.select({ value: count() }).from(loginAttemptsTable).where(and(
               gte(loginAttemptsTable.createdAt, since),
               eq(loginAttemptsTable.blocked, true),
-              inArray(loginAttemptsTable.email, emails),
+              inArray(sql`lower(${loginAttemptsTable.email})`, emails),
             ))
           : Promise.resolve([{ value: 0 }])
         : db.select({ value: count() }).from(loginAttemptsTable).where(and(

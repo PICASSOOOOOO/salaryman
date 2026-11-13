@@ -11,6 +11,8 @@ tags:
     description: Health operations
   - name: onboarding
     description: Authenticated browser onboarding status
+  - name: monitoring
+    description: Role-scoped live presence and security summaries
   - name: phone
     description: Authenticated phone recording and archive operations
   - name: workspace
@@ -36,6 +38,87 @@ tags:
   - name: towerShop
     description: Server-authoritative Tower shop inventory
 paths:
+  /world/online:
+    get:
+      operationId: getWorldMonitoringOnline
+      tags: [monitoring]
+      summary: List live players within the caller's monitoring scope
+      description: Platform admins receive the full live snapshot, moderators receive identity visuals and status without admin accounts, and organization owners receive only their active employees.
+      responses:
+        "200":
+          description: Scoped live presence snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [players, count, ts, scope, canSeeAdmins]
+                properties:
+                  players:
+                    type: array
+                    items:
+                      type: object
+                      required: [userId, status]
+                      properties:
+                        userId: { type: string }
+                        username: { type: string, nullable: true }
+                        firstName: { type: string, nullable: true }
+                        profileImageUrl: { type: string, nullable: true }
+                        status: { type: string }
+                        x: { type: number }
+                        y: { type: number }
+                        class: { type: string, nullable: true }
+                        company: { type: string, nullable: true }
+                        level: { type: number, nullable: true }
+                        hp: { type: number, nullable: true }
+                        maxHp: { type: number, nullable: true }
+                        speaking: { type: boolean }
+                        lastAction: { type: string, nullable: true }
+                  count: { type: integer }
+                  ts: { type: integer }
+                  scope:
+                    type: string
+                    enum: [platform, moderator, organization]
+                  canSeeAdmins: { type: boolean }
+        "401":
+          description: Login required
+        "403":
+          description: No monitoring scope is assigned to the caller
+  /world/monitoring-security:
+    get:
+      operationId: getWorldMonitoringSecuritySummary
+      tags: [monitoring]
+      summary: Read security metadata counts within the caller's monitoring scope
+      description: Returns counts only; it never returns login IPs, report text, or flag details. Organization counts are limited to active employees in organizations owned by the caller.
+      responses:
+        "200":
+          description: Security metadata summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scope, generatedAt, windowHours, security, detailAccess]
+                properties:
+                  scope:
+                    type: string
+                    enum: [platform, moderator, organization]
+                  generatedAt: { type: string, format: date-time }
+                  windowHours: { type: integer, const: 24 }
+                  detailAccess: { type: boolean }
+                  security:
+                    type: object
+                    required: [activeFlags, activeBans, openReports, loginAttempts24h, blockedLogins24h]
+                    properties:
+                      activeFlags: { type: integer }
+                      activeBans: { type: integer }
+                      openReports: { type: integer }
+                      loginAttempts24h: { type: integer }
+                      blockedLogins24h: { type: integer }
+        "401":
+          description: Login required
+        "403":
+          description: No monitoring scope is assigned to the caller
+        "500":
+          description: Security summary could not be loaded
   /world/onboarding-status:
     get:
       operationId: getBrowserOnboardingStatus

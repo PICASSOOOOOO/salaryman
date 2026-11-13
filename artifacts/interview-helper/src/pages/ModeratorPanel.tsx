@@ -53,7 +53,7 @@ export default function ModeratorPanel() {
           apiFetch('/api/world/monitoring-security'),
         ]);
         if (!mounted) return;
-        if (presenceResponse.status === 403 || securityResponse.status === 403) {
+        if ([401, 403].includes(presenceResponse.status) || [401, 403].includes(securityResponse.status)) {
           setAccessDenied(true);
           setActiveUsers([]);
           setSecurity(null);

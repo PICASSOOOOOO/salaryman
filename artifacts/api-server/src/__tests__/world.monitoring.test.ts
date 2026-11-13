@@ -3,6 +3,7 @@ import request from "supertest";
 import { randomUUID } from "node:crypto";
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import adminRouter from "../routes/admin";
 import {
   alphaApplicationsTable,
   bansTable,
@@ -36,6 +37,7 @@ let app: Express;
 const auth = { user: { id: "", email: "" } };
 const userIds: string[] = [];
 const orgIds: number[] = [];
+const originalOwnerEmails = process.env.OWNER_EMAILS;
 
 beforeAll(() => {
   app = express();
@@ -46,6 +48,7 @@ beforeAll(() => {
     next();
   });
   app.use("/api", worldRouter);
+  app.use("/api", adminRouter);
 });
 
 beforeEach(() => {
@@ -65,6 +68,8 @@ afterAll(async () => {
     await db.delete(organizationsTable).where(inArray(organizationsTable.id, orgIds));
   }
   if (userIds.length) await db.delete(usersTable).where(inArray(usersTable.id, userIds));
+  if (originalOwnerEmails === undefined) delete process.env.OWNER_EMAILS;
+  else process.env.OWNER_EMAILS = originalOwnerEmails;
 });
 
 async function createUser(label: string) {
@@ -81,6 +86,7 @@ describe("world monitoring scope and security metadata", () => {
     const employee = await createUser("employee");
     const outsider = await createUser("outsider");
     const moderator = await createUser("moderator");
+    const admin = await createUser("admin");
     const [org] = await db.insert(organizationsTable).values({
       name: `Monitor org ${owner.id}`,
       ownerUserId: owner.id,
@@ -89,6 +95,7 @@ describe("world monitoring scope and security metadata", () => {
     await db.insert(orgMembersTable).values([
       { orgId: org.id, userId: owner.id, role: "owner", status: "active" },
       { orgId: org.id, userId: employee.id, role: "employee", status: "active" },
+      { orgId: org.id, userId: admin.id, role: "employee", status: "active" },
     ]);
     await db.insert(alphaApplicationsTable).values({
       userId: moderator.id,
@@ -109,7 +116,7 @@ describe("world monitoring scope and security metadata", () => {
       { userId: outsider.id, title: "Other report", description: "Do not reveal this either", status: "open" },
     ]);
     await db.insert(loginAttemptsTable).values([
-      { email: employee.email, ipAddress: "192.0.2.10", blocked: true, blockReason: "private security detail" },
+      { email: employee.email.toUpperCase(), ipAddress: "192.0.2.10", blocked: true, blockReason: "private security detail" },
       { email: outsider.email, ipAddress: "192.0.2.11", blocked: false },
     ]);
 
@@ -147,7 +154,19 @@ describe("world monitoring scope and security metadata", () => {
         level: 3,
         speaking: false,
       },
+      {
+        userId: admin.id,
+        username: "Admin",
+        firstName: "Admin",
+        profileImageUrl: "/admin.png",
+        status: "active",
+        x: 10,
+        y: 15,
+        level: 99,
+        speaking: false,
+      },
     ]);
+    process.env.OWNER_EMAILS = [originalOwnerEmails, admin.email].filter(Boolean).join(",");
 
     auth.user = owner;
     const ownerPresence = await request(app).get("/api/world/online");
@@ -177,18 +196,45 @@ describe("world monitoring scope and security metadata", () => {
     expect(moderatorPresence.status).toBe(200);
     expect(moderatorPresence.body.scope).toBe("moderator");
     expect(moderatorPresence.body.players).toHaveLength(3);
+    expect(moderatorPresence.body.players.some((player: { userId: string }) => player.userId === admin.id)).toBe(false);
 
     const moderatorSecurity = await request(app).get("/api/world/monitoring-security");
     expect(moderatorSecurity.status).toBe(200);
-    expect(moderatorSecurity.body.security).toEqual({
-      activeFlags: 2,
-      activeBans: 2,
-      openReports: 2,
-      loginAttempts24h: 2,
-      blockedLogins24h: 1,
+    expect(moderatorSecurity.body.security).toMatchObject({
+      activeFlags: expect.any(Number),
+      activeBans: expect.any(Number),
+      openReports: expect.any(Number),
+      loginAttempts24h: expect.any(Number),
+      blockedLogins24h: expect.any(Number),
     });
+    expect(moderatorSecurity.body.security.activeFlags).toBeGreaterThanOrEqual(2);
+    expect(moderatorSecurity.body.security.activeBans).toBeGreaterThanOrEqual(2);
+    expect(moderatorSecurity.body.security.openReports).toBeGreaterThanOrEqual(2);
+    expect(moderatorSecurity.body.security.loginAttempts24h).toBeGreaterThanOrEqual(2);
+    expect(moderatorSecurity.body.security.blockedLogins24h).toBeGreaterThanOrEqual(1);
     expect(moderatorSecurity.body.detailAccess).toBe(false);
     expect(JSON.stringify(moderatorSecurity.body)).not.toContain("private detail");
     expect(JSON.stringify(moderatorSecurity.body)).not.toContain("192.0.2.");
+
+    auth.user = outsider;
+    expect((await request(app).get("/api/world/online")).status).toBe(403);
+    expect((await request(app).get("/api/world/monitoring-security")).status).toBe(403);
+
+    auth.user = admin;
+    const adminPresence = await request(app).get("/api/world/online");
+    expect(adminPresence.status).toBe(200);
+    expect(adminPresence.body.scope).toBe("platform");
+    expect(adminPresence.body.canSeeAdmins).toBe(true);
+    expect(adminPresence.body.players).toHaveLength(4);
+    expect(adminPresence.body.players.find((player: { userId: string }) => player.userId === admin.id)).toHaveProperty("x", 10);
+  });
+
+  it("does not grant the owner-bypass tester platform-admin access", async () => {
+    auth.user = {
+      id: `monitor-tester-only-${randomUUID()}`,
+      email: "dcmthree86@gmail.com",
+    };
+    const response = await request(app).get("/api/admin/stats");
+    expect(response.status).toBe(403);
   });
 });

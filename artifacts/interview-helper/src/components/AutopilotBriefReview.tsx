@@ -158,7 +158,7 @@ export function AutopilotBriefReview() {
                   ))}
                 </ul>
               </div>
-            )}
+            ) : null}
           </>
         ) : !loading && !error ? (
           <p className="mt-3 text-xs text-black/50">No brief data available.</p>
