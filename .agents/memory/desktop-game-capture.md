@@ -26,3 +26,7 @@ and shutdown took much longer than playback.
 For high-resolution requests, set the engine viewport to the requested output
 size, then verify file metadata and inspect frames before delivery. If a static
 review render is also useful, label it separately from gameplay footage.
+
+At 1180×720 and 12 fps, a six-second capture took about 4.5 minutes on the
+workspace's llvmpipe renderer. Keep captures short or run them in the background;
+do not mistake slow rendering for a hung capture.

@@ -56,6 +56,11 @@ export default function DesktopDownload() {
   const [availablePlatforms, setAvailablePlatforms] = useState<AvailablePlatform[]>([]);
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const heroGameplayVideoRef = useRef<HTMLVideoElement>(null);
+  const [gameplayVideoFormat] = useState<"webm" | "mp4">(() => {
+    if (typeof document === "undefined") return "mp4";
+    const videoProbe = document.createElement("video");
+    return videoProbe.canPlayType('video/webm; codecs="vp9"') ? "webm" : "mp4";
+  });
 
   useEffect(() => {
     setClientPlatform(detectDesktopPlatform());
@@ -105,7 +110,9 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const gameplayVideoHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261113.mp4");
+  const gameplayVideoHref = apiUrl(
+    `/api/storage/public-objects/desktop/godot-gameplay-20261113.${gameplayVideoFormat}`,
+  );
   const gameplayDetailVideoHref = gameplayVideoHref;
   const gameplayPosterHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261113.jpg");
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
@@ -164,11 +171,11 @@ export default function DesktopDownload() {
             preload="metadata"
             src={gameplayVideoHref}
             poster={gameplayPosterHref}
-            aria-label="Current Godot development gameplay, reduced-speed capture"
+            aria-label="Current Godot Tower lobby gameplay, November 2026 capture"
           />
           <span className="desktop-download-promo-tag">GODOT DEVELOPMENT GAMEPLAY</span>
           <figcaption>
-             Live Godot client with Python simulation · short excerpt at one-third speed.
+            Captured from the current Godot client and Python simulation · 6 seconds at 12 fps.
           </figcaption>
         </figure>
       </section>
@@ -193,7 +200,7 @@ export default function DesktopDownload() {
               src={gameplayDetailVideoHref}
               poster={gameplayPosterHref}
               controls
-              aria-label="Godot Tower lobby movement, reduced-speed development capture"
+              aria-label="Godot Tower lobby movement, development capture"
             />
             <figcaption><span>01</span><strong>GODOT TOWER LOBBY</strong><small>Current development capture, repeated here for detail. This is not a verified release build.</small></figcaption>
           </figure>

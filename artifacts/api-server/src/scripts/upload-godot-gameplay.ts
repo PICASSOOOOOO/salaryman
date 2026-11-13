@@ -5,6 +5,7 @@ const directory = new ObjectStorageService().getPublicObjectSearchPaths()[0];
 if (!directory) throw new Error("Public asset storage is not configured.");
 const [bucket, ...prefix] = directory.replace(/^\/+/, "").split("/");
 for (const [source, name, contentType] of [
+  ["godot-gameplay.webm", "godot-gameplay-20261113.webm", "video/webm"],
   ["godot-gameplay.mp4", "godot-gameplay-20261113.mp4", "video/mp4"],
   ["godot-gameplay.jpg", "godot-gameplay-20261113.jpg", "image/jpeg"],
 ]) {

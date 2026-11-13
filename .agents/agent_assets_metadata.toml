@@ -2531,3 +2531,31 @@ mtime_ms = 1792341251717
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/cd58710e-96fe-4373-bf0a-d9de74195c2d/acde2609-8625-4461-8df6-4857bbafc776"
 storage_version_token = "1792341271200801"
 content_type = "image/png"
+
+[[outputs]]
+id = "fH0S7-hVieyMd4ewO2CH7"
+uri = "file://generated-artifacts/godot-gameplay.mp4"
+type = "video"
+title = "Updated SALARYMAN gameplay preview"
+description = "Six seconds of footage captured from the current Godot client paired with its Python simulation."
+logical_id = "2cbb6fe5-4ef7-45c5-9cc0-3286b5e2c540"
+content_hash = "sha256:881f1623b1435124512064b0cbd1b9ecb9867070ff9aeb6f226b21397d89e74c"
+size = 166491
+mtime_ms = 1794585578080
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/2cbb6fe5-4ef7-45c5-9cc0-3286b5e2c540/543ea17f-b48a-487a-9999-362489d47737"
+storage_version_token = "1794585881639529"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "C1kMmV90HVbTfBPGpYcST"
+uri = "file://generated-artifacts/godot-gameplay.jpg"
+type = "image"
+title = "Gameplay preview still"
+description = "Poster frame from the updated Godot gameplay capture."
+logical_id = "7497e3ba-fa8d-4354-adff-4d75415bd33d"
+content_hash = "sha256:5d9b242783b688ded389a0ef87d9eadfbbc06eee96b3392e5529372f7caf71e1"
+size = 56758
+mtime_ms = 1794585583493
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7497e3ba-fa8d-4354-adff-4d75415bd33d/73941c6a-ddb8-4f87-82d5-d3b7e96664f3"
+storage_version_token = "1794585882426059"
+content_type = "image/jpeg"
