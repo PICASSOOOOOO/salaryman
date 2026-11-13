@@ -105,9 +105,9 @@ export default function DesktopDownload() {
   const downloadHref = clientRelease
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
-  const gameplayVideoHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261029.mp4");
+  const gameplayVideoHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261113.mp4");
   const gameplayDetailVideoHref = gameplayVideoHref;
-  const gameplayPosterHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261029.jpg");
+  const gameplayPosterHref = apiUrl("/api/storage/public-objects/desktop/godot-gameplay-20261113.jpg");
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
   const platformMessage = clientPlatform === "other"
     ? "Computer only · macOS, Windows, or Linux · no phone app"
