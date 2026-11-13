@@ -88,6 +88,29 @@ interface GameTelemetry {
   generatedAt: string;
 }
 
+interface OnlinePlayer {
+  userId: string;
+  username: string;
+  firstName: string | null;
+  profileImageUrl: string | null;
+  status: string;
+  class?: string | null;
+  company?: string | null;
+  level?: number | null;
+  hp?: number | null;
+  maxHp?: number | null;
+  speaking?: boolean;
+  lastAction?: string | null;
+}
+
+interface MonitoringSecurity {
+  activeFlags: number;
+  activeBans: number;
+  openReports: number;
+  loginAttempts24h: number;
+  blockedLogins24h: number;
+}
+
 interface ConfigRow {
   id: number;
   key: string;
@@ -138,7 +161,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'construction' | 'shopstaff' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship' | 'credit';
+type AdminTab = 'analytics' | 'pulse' | 'monitoring' | 'construction' | 'shopstaff' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship' | 'credit';
 
 interface SalaryQualRow {
   id: number;
@@ -417,7 +440,7 @@ export default function AdminPanel() {
   // a launcher in the tab strip — accepting it here would render a blank
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
-    'analytics', 'pulse', 'construction', 'shopstaff', 'users', 'orgs', 'config', 'toggles', 'broadcast',
+    'analytics', 'pulse', 'monitoring', 'construction', 'shopstaff', 'users', 'orgs', 'config', 'toggles', 'broadcast',
     'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual', 'citizenship', 'credit',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
@@ -437,6 +460,9 @@ export default function AdminPanel() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [telemetry, setTelemetry] = useState<GameTelemetry | null>(null);
   const [telemetryLoading, setTelemetryLoading] = useState(false);
+  const [monitoringPlayers, setMonitoringPlayers] = useState<OnlinePlayer[]>([]);
+  const [monitoringSecurity, setMonitoringSecurity] = useState<MonitoringSecurity | null>(null);
+  const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [configs, setConfigs] = useState<ConfigRow[]>([]);
   const [broadcasts, setBroadcasts] = useState<BroadcastRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
@@ -859,6 +885,30 @@ export default function AdminPanel() {
       .finally(() => setTelemetryLoading(false));
   }, []);
 
+  const loadMonitoring = useCallback(async () => {
+    setMonitoringLoading(true);
+    try {
+      const [presenceResponse, securityResponse] = await Promise.all([
+        apiFetch('/api/world/online'),
+        apiFetch('/api/world/monitoring-security'),
+      ]);
+      if (!presenceResponse.ok || !securityResponse.ok) {
+        throw new Error('Could not load monitoring data');
+      }
+      const [presenceData, securityData] = await Promise.all([
+        presenceResponse.json(),
+        securityResponse.json(),
+      ]);
+      setMonitoringPlayers(Array.isArray(presenceData.players) ? presenceData.players : []);
+      setMonitoringSecurity(securityData.security ?? null);
+    } catch {
+      setMonitoringPlayers([]);
+      setMonitoringSecurity(null);
+    } finally {
+      setMonitoringLoading(false);
+    }
+  }, []);
+
   // Live "WORLD PULSE" — poll every 12s while the tab is open for a real-time feel.
   useEffect(() => {
     if (activeTab !== 'pulse' || !isAuthenticated) return;
@@ -866,6 +916,15 @@ export default function AdminPanel() {
     const id = setInterval(loadTelemetry, 12000);
     return () => clearInterval(id);
   }, [activeTab, isAuthenticated, loadTelemetry]);
+
+  useEffect(() => {
+    if (activeTab !== 'monitoring' || !isAuthenticated) return;
+    void loadMonitoring();
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') void loadMonitoring();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [activeTab, isAuthenticated, loadMonitoring]);
 
   const loadUserDetail = async (userId: string) => {
     setUserDetailLoading(true);
@@ -1153,10 +1212,12 @@ export default function AdminPanel() {
   });
 
   const configMap = new Map<string, string>(configs.map(c => [c.key, c.value]));
+  const monitoringUserById = new Map(users.map(user => [user.id, user]));
 
   const tabs: { key: AdminTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }[] = [
     { key: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
     { key: 'pulse', label: 'WORLD PULSE', icon: Activity },
+    { key: 'monitoring', label: 'USER MONITOR', icon: Eye },
     { key: 'construction', label: 'CONSTRUCTION', icon: HardHat },
     { key: 'shopstaff', label: 'SHOP STAFF', icon: UserCog },
     { key: 'alpha', label: 'ALPHA APPS', icon: UserPlus, badge: alphaPending },
@@ -1478,6 +1539,89 @@ export default function AdminPanel() {
                   )}
                 </>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === 'monitoring' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-xs font-mono tracking-widest uppercase text-emerald-300">LIVE USER MONITORING</h3>
+                  <p className="mt-1 text-[10px] text-zinc-500">Platform-wide account presence and security metadata · refreshes every 15 seconds</p>
+                </div>
+                <button
+                  data-testid="button-admin-monitoring-security"
+                  type="button"
+                  onClick={() => setTab('security')}
+                  className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 text-red-300"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" /> SECURITY DETAILS
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <StatCard label="ONLINE NOW" value={monitoringPlayers.length} color="emerald" icon={Users} />
+                <StatCard label="ACTIVE FLAGS" value={monitoringSecurity?.activeFlags ?? '—'} color="amber" icon={AlertTriangle} />
+                <StatCard label="ACTIVE BANS" value={monitoringSecurity?.activeBans ?? '—'} color="red" icon={Ban} />
+                <StatCard label="BLOCKED LOGINS · 24H" value={monitoringSecurity?.blockedLogins24h ?? '—'} color="sky" icon={ShieldAlert} />
+              </div>
+
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/10">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-400">PLAYERS ONLINE</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-600">Admin view</span>
+                </div>
+                {monitoringLoading && monitoringPlayers.length === 0 ? (
+                  <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                ) : monitoringPlayers.length === 0 ? (
+                  <div className="px-4 py-10 text-center text-sm text-zinc-600">No players are online right now.</div>
+                ) : (
+                  <div className="divide-y divide-border/50">
+                    {monitoringPlayers.map((player) => {
+                      const account = monitoringUserById.get(player.userId);
+                      const displayName = [account?.firstName || player.firstName, account?.lastName]
+                        .filter(Boolean)
+                        .join(' ') || player.username || 'Unknown user';
+                      const isOnline = player.status === 'online' || player.status === 'active';
+                      return (
+                        <div data-testid={`admin-monitor-user-${player.userId}`} key={player.userId} className="flex items-center gap-3 px-4 py-3">
+                          {resolveAvatarUrl(player.profileImageUrl || account?.profileImageUrl) ? (
+                            <img
+                              src={resolveAvatarUrl(player.profileImageUrl || account?.profileImageUrl)}
+                              alt=""
+                              className="w-8 h-8 rounded-lg object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-xs font-mono text-emerald-300 shrink-0">
+                              {(displayName[0] || '?').toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-foreground truncate">{displayName}</p>
+                            <p className="text-[10px] font-mono text-zinc-600 truncate">{account?.email || player.userId}</p>
+                          </div>
+                          <div className="hidden sm:block text-right">
+                            <p className="text-[10px] text-zinc-400">{player.company || player.class || 'In world'}</p>
+                            <p className="text-[9px] font-mono text-zinc-600">
+                              {player.level != null ? `LEVEL ${player.level} · ` : ''}{player.speaking ? 'SPEAKING' : player.lastAction || player.status.toUpperCase()}
+                            </p>
+                          </div>
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="px-4 py-3 border-t border-border/50 text-[10px] text-zinc-600">
+                  Security totals are summaries. Detailed login and account-security records are in the Email Security section.
+                  {monitoringSecurity && (
+                    <span className="ml-1">Open reports: {monitoringSecurity.openReports} · Login attempts: {monitoringSecurity.loginAttempts24h} in 24h.</span>
+                  )}
+                </div>
+              </div>
             </motion.div>
           )}
 

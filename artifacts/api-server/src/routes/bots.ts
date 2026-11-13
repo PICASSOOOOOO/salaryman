@@ -29,6 +29,7 @@ import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
 import { hasFeature, isOwnerEmail, isPicassoOrgMember } from "../lib/plan";
+import { canDoInOrg } from "../lib/org-permissions";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel, OPENAI_FALLBACK_TEXT_MODEL } from "../lib/openai-models";
 
@@ -474,13 +475,20 @@ router.get("/bots/:id", requireBotAuth, async (req, res) => {
       .select()
       .from(botPlatformConnectionsTable)
       .where(eq(botPlatformConnectionsTable.botId, botId));
-    const connections = rawConnections.map(c => ({ ...c, credentials: undefined }));
+    const isOwner = bot.ownerId === userId;
+    const connections = rawConnections.map(c => ({
+      ...c,
+      credentials: undefined,
+      ...(!isOwner ? { webhookSecret: undefined, webhookUrl: undefined } : {}),
+    }));
 
-    const memories = await db
-      .select()
-      .from(botMemoryTable)
-      .where(eq(botMemoryTable.botId, botId))
-      .orderBy(desc(botMemoryTable.updatedAt));
+    const memories = isOwner
+      ? await db
+          .select()
+          .from(botMemoryTable)
+          .where(eq(botMemoryTable.botId, botId))
+          .orderBy(desc(botMemoryTable.updatedAt))
+      : [];
 
     const tasks = await db
       .select()
@@ -832,6 +840,13 @@ router.get("/bots/:id/logs", requireBotAuth, async (req, res) => {
       res.status(404).json({ error: "Bot not found" });
       return;
     }
+    if (bot.ownerId !== userId && bot.orgId) {
+      const permission = await canDoInOrg(userId, bot.orgId, "crm.view");
+      if (!permission.allowed) {
+        res.status(403).json({ error: "CRM view permission is required to access bot conversation logs" });
+        return;
+      }
+    }
 
     const logs = await db
       .select()
@@ -873,7 +888,7 @@ router.post("/bots/:id/test-chat", requireBotWrite, async (req, res) => {
       platform: "telegram",
       externalUserId: `test:${userId}`,
       text: message.trim(),
-    });
+    }, { allowPersistentMemory: bot.ownerId === userId });
 
     res.json({ response });
   } catch (err) {
@@ -891,6 +906,10 @@ router.get("/bots/:id/memory", requireBotAuth, async (req, res) => {
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+    if (bot.ownerId !== userId) {
+      res.status(403).json({ error: "Only the bot owner can access its private memory" });
       return;
     }
 
@@ -917,6 +936,10 @@ router.delete("/bots/:id/memory/:memoryId", requireBotWrite, async (req, res) =>
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+    if (bot.ownerId !== userId) {
+      res.status(403).json({ error: "Only the bot owner can manage its private memory" });
       return;
     }
 

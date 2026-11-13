@@ -410,7 +410,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
   const togglePrivacyMode = async () => {
     if (privacyToggling) return;
     const next = !privacyMode;
-    if (next && !confirm('Turn on privacy mode? This will permanently delete all of your existing Pablo conversation history. Future conversations and memory will not be saved.')) {
+    if (next && !confirm('Turn on direct-chat privacy? This permanently deletes your saved Pablo conversations and the personal knowledge bank shown here. Future direct chats and this knowledge bank will not be saved. Scheduled organization automations remain active.')) {
       return;
     }
     setPrivacyToggling(true);
@@ -691,7 +691,7 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
 
               <Panel title="Pablo AI Memory" icon={Brain}>
                 <div className="flex items-center justify-between mb-3 border-b border-black/10 pb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-black">Privacy Mode</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-black">Direct Chat Privacy</span>
                   <button
                     onClick={togglePrivacyMode}
                     disabled={privacyToggling}
@@ -700,6 +700,9 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
                     {privacyMode ? 'ENGAGED' : 'DISABLED'}
                   </button>
                 </div>
+                <p data-testid="text-direct-chat-privacy-scope" className="mb-3 text-[10px] leading-relaxed text-black/60">
+                  This controls saved direct Pablo chats and the personal knowledge bank shown here. It does not pause scheduled organization automations or change separate Pixel Agent records.
+                </p>
                 <textarea
                   value={memoryDraft}
                   onChange={e => setMemoryDraft(e.target.value)}
@@ -722,6 +725,10 @@ function AccountTab({ view }: { view: 'profile' | 'settings' }) {
               </Panel>
 
               <Panel title="Security & Data" icon={Database}>
+                <div data-testid="text-automation-data-scope" className="mb-3 border border-black/15 bg-black/5 p-2 text-[10px] leading-relaxed text-black/70">
+                  <strong className="block text-black">Always-on data isolation</strong>
+                  Private assistant data is scoped to your account. Shared organization data is available only through your organization’s role permissions. Scheduled automations stay active.
+                </div>
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="border border-black p-2 bg-black/5">
                     <div className="text-[9px] font-mono text-black/60 uppercase">Contacts</div>

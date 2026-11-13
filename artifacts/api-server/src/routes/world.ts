@@ -1,12 +1,31 @@
 import { Router } from "express";
 import { createHash } from "node:crypto";
-import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable, alphaApplicationsTable, verifiedPaidWagesTable, normalizeOrgName } from "@workspace/db";
+import { eq, sql, desc, and, or, inArray, isNotNull, count, gte, isNull, gt } from "drizzle-orm";
+import {
+  db,
+  worldBusinessesTable,
+  businessTransactionsTable,
+  businessSnapshotsTable,
+  organizationsTable,
+  orgMembersTable,
+  cityBuildingsTable,
+  botSubscriptionsTable,
+  botMarketplaceTable,
+  playerProfilesTable,
+  usersTable,
+  alphaApplicationsTable,
+  flaggedUsersTable,
+  loginAttemptsTable,
+  bansTable,
+  feedbackReportsTable,
+  verifiedPaidWagesTable,
+  normalizeOrgName,
+} from "@workspace/db";
 import { GetBrowserOnboardingStatusResponse } from "@workspace/api-zod";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
 import * as geoip from "geoip-lite";
 import { OUTSIDE_WORLD_DISABLED_BODY, OUTSIDE_WORLD_ENABLED } from "../lib/outside-world";
-import { isOwnerEmail } from "../lib/plan";
+import { getPicassoAdminUserIds, isOwnerEmail } from "../lib/plan";
 import { getCompletedOnboarding } from "../middlewares/requireOnboarding";
 import { deriveConditionProfile, repairConditionScore } from "../lib/world-condition";
 
@@ -1111,52 +1130,167 @@ router.get("/world/my-office", async (req, res) => {
   }
 });
 
+interface WorldMonitoringAccess {
+  scope: "platform" | "moderator" | "organization";
+  userIds: string[];
+}
+
+async function resolveWorldMonitoringAccess(userId: string, email?: string | null): Promise<WorldMonitoringAccess | null> {
+  if (isOwnerEmail(email)) return { scope: "platform", userIds: [] };
+  const [modRows, ownedOrgs] = await Promise.all([
+    db.select({ userId: alphaApplicationsTable.userId })
+      .from(alphaApplicationsTable)
+      .where(and(
+        eq(alphaApplicationsTable.userId, userId),
+        eq(alphaApplicationsTable.role, "alpha_tester"),
+        eq(alphaApplicationsTable.status, "approved"),
+      )),
+    db.select({ id: organizationsTable.id })
+      .from(organizationsTable)
+      .where(eq(organizationsTable.ownerUserId, userId)),
+  ]);
+  if (modRows.length) return { scope: "moderator", userIds: [] };
+  const orgIds = ownedOrgs.map((org) => org.id);
+  if (!orgIds.length) return null;
+  const memberRows = await db.select({ userId: orgMembersTable.userId, role: orgMembersTable.role })
+    .from(orgMembersTable)
+    .where(and(
+      inArray(orgMembersTable.orgId, orgIds),
+      eq(orgMembersTable.status, "active"),
+    ));
+  return {
+    scope: "organization",
+    userIds: [...new Set(memberRows
+      .filter((row) => row.userId !== userId && String(row.role).toLowerCase() !== "owner")
+      .map((row) => row.userId))],
+  };
+}
+
 router.get("/world/online", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  const requesterId = String(req.user.id);
-  const admin = isOwnerEmail(req.user.email);
-  const [modRows, adminRows, memberships] = await Promise.all([
-    db.select({ userId: alphaApplicationsTable.userId })
-      .from(alphaApplicationsTable)
-      .where(and(
-        eq(alphaApplicationsTable.userId, requesterId),
-        eq(alphaApplicationsTable.role, "alpha_tester"),
-        eq(alphaApplicationsTable.status, "approved"),
-      )),
-    db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable),
-    db.select({ orgId: orgMembersTable.orgId, role: orgMembersTable.role })
-      .from(orgMembersTable)
-      .where(and(eq(orgMembersTable.userId, requesterId), eq(orgMembersTable.status, "active"))),
-  ]);
-  const moderator = modRows.length > 0;
-  const adminIds = new Set(adminRows.filter(u => isOwnerEmail(u.email)).map(u => String(u.id)));
-  const executiveOrgIds = new Set(
-    memberships
-      .filter(m => ["owner", "ceo", "executive", "director"].includes(String(m.role).toLowerCase()))
-      .map(m => m.orgId),
-  );
-
-  if (!admin && !moderator && executiveOrgIds.size === 0) {
-    res.status(403).json({ error: "Moderator, administrator, or organization executive access required" });
+  const access = await resolveWorldMonitoringAccess(String(req.user.id), req.user.email);
+  if (!access) {
+    res.status(403).json({ error: "Approved moderator, administrator, or organization owner access required" });
     return;
   }
-
   const all = getOnlinePlayers();
-  // The live world snapshot is intentionally broad for platform staff, but
-  // moderators must never receive administrator locations or identity data.
-  const visible = admin
-    ? all
-    : all.filter((player) => !adminIds.has(String(player.userId)));
+  let visible = all;
+  if (access.scope === "organization") {
+    const orgMemberIds = new Set(access.userIds);
+    visible = all.filter((player) => orgMemberIds.has(String(player.userId)));
+  } else if (access.scope === "moderator") {
+    const adminIds = new Set(await getPicassoAdminUserIds());
+    visible = all.filter((player) => !adminIds.has(String(player.userId)));
+  }
+  // Non-admin monitoring is limited to identity visuals and presence status.
+  // Do not send gameplay state, contact data, or coordinates to moderators or org owners.
+  const safePlayers = access.scope === "platform"
+    ? visible
+    : visible.map((player) => ({
+        userId: player.userId,
+        username: player.username,
+        firstName: player.firstName,
+        profileImageUrl: player.profileImageUrl,
+        status: player.status,
+      }));
   res.json({
-    players: visible,
-    count: visible.length,
+    players: safePlayers,
+    count: safePlayers.length,
     ts: Date.now(),
-    scope: admin ? "platform" : moderator ? "moderator" : "organization",
-    canSeeAdmins: admin,
+    scope: access.scope,
+    canSeeAdmins: access.scope === "platform",
   });
+});
+
+router.get("/world/monitoring-security", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const access = await resolveWorldMonitoringAccess(String(req.user.id), req.user.email);
+    if (!access) {
+      res.status(403).json({ error: "Approved moderator, administrator, or organization owner access required" });
+      return;
+    }
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const orgScoped = access.scope === "organization";
+    const userIds = access.userIds;
+    const scopedUsers = orgScoped && userIds.length
+      ? await db.select({ email: usersTable.email }).from(usersTable).where(inArray(usersTable.id, userIds))
+      : [];
+    const emails = scopedUsers.map((row) => row.email).filter((email): email is string => Boolean(email));
+
+    const [flagRows, banRows, reportRows, loginRows, blockedRows] = await Promise.all([
+      orgScoped
+        ? userIds.length
+          ? db.select({ value: count() }).from(flaggedUsersTable)
+              .where(and(eq(flaggedUsersTable.resolved, false), inArray(flaggedUsersTable.userId, userIds)))
+          : Promise.resolve([{ value: 0 }])
+        : db.select({ value: count() }).from(flaggedUsersTable).where(eq(flaggedUsersTable.resolved, false)),
+      orgScoped
+        ? userIds.length
+          ? db.select({ value: count() }).from(bansTable).where(and(
+              eq(bansTable.active, true),
+              or(isNull(bansTable.expiresAt), gt(bansTable.expiresAt, new Date())),
+              inArray(bansTable.userId, userIds),
+            ))
+          : Promise.resolve([{ value: 0 }])
+        : db.select({ value: count() }).from(bansTable).where(and(
+            eq(bansTable.active, true),
+            or(isNull(bansTable.expiresAt), gt(bansTable.expiresAt, new Date())),
+          )),
+      orgScoped
+        ? userIds.length
+          ? db.select({ value: count() }).from(feedbackReportsTable).where(and(
+              eq(feedbackReportsTable.status, "open"),
+              inArray(feedbackReportsTable.userId, userIds),
+            ))
+          : Promise.resolve([{ value: 0 }])
+        : db.select({ value: count() }).from(feedbackReportsTable).where(eq(feedbackReportsTable.status, "open")),
+      orgScoped
+        ? emails.length
+          ? db.select({ value: count() }).from(loginAttemptsTable).where(and(
+              gte(loginAttemptsTable.createdAt, since),
+              inArray(loginAttemptsTable.email, emails),
+            ))
+          : Promise.resolve([{ value: 0 }])
+        : db.select({ value: count() }).from(loginAttemptsTable).where(gte(loginAttemptsTable.createdAt, since)),
+      orgScoped
+        ? emails.length
+          ? db.select({ value: count() }).from(loginAttemptsTable).where(and(
+              gte(loginAttemptsTable.createdAt, since),
+              eq(loginAttemptsTable.blocked, true),
+              inArray(loginAttemptsTable.email, emails),
+            ))
+          : Promise.resolve([{ value: 0 }])
+        : db.select({ value: count() }).from(loginAttemptsTable).where(and(
+            gte(loginAttemptsTable.createdAt, since),
+            eq(loginAttemptsTable.blocked, true),
+          )),
+    ]);
+
+    res.json({
+      scope: access.scope,
+      generatedAt: new Date().toISOString(),
+      windowHours: 24,
+      security: {
+        activeFlags: Number(flagRows[0]?.value ?? 0),
+        activeBans: Number(banRows[0]?.value ?? 0),
+        openReports: Number(reportRows[0]?.value ?? 0),
+        loginAttempts24h: Number(loginRows[0]?.value ?? 0),
+        blockedLogins24h: Number(blockedRows[0]?.value ?? 0),
+      },
+      detailAccess: access.scope === "platform",
+    });
+  } catch (error) {
+    req.log?.error({ error }, "World monitoring security summary failed");
+    res.status(500).json({ error: "Could not load security summary" });
+  }
 });
 
 router.get("/world/server-status", (_req, res) => {

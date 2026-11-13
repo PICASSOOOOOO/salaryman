@@ -5,19 +5,21 @@ type OutcomeCounts = { success: number; noop: number; blocked: number; error: nu
 type Brief = {
   generatedAt: string;
   windowStart: string;
-  newLeads: number;
-  activeLeads: number;
-  calls: { total: number; inbound: number; outbound: number };
-  pendingApprovals: number;
+  crm: {
+    newLeads: number;
+    activeLeads: number;
+    calls: { total: number; inbound: number; outbound: number };
+    pendingApprovals: number;
+    recentCalls: Array<{
+      id: number;
+      leadName: string;
+      startedAt: string;
+      summary: string;
+      hasProposal: boolean;
+      proposalStatus: string | null;
+    }>;
+  } | null;
   automationRuns: OutcomeCounts;
-  recentCalls: Array<{
-    id: number;
-    leadName: string;
-    startedAt: string;
-    summary: string;
-    hasProposal: boolean;
-    proposalStatus: string | null;
-  }>;
 };
 type ReviewItem = {
   id: number;
@@ -38,6 +40,7 @@ const labelClass = "text-[9px] font-bold uppercase tracking-[0.1em] text-black/4
 export function AutopilotBriefReview() {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [items, setItems] = useState<ReviewItem[]>([]);
+  const [crmAccessDenied, setCrmAccessDenied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -48,10 +51,15 @@ export function AutopilotBriefReview() {
         apiFetch("api/autopilot/brief"),
         apiFetch("api/autopilot/approval-queue"),
       ]);
-      if (!briefResponse.ok || !queueResponse.ok) throw new Error("Couldn't load the daily brief and review queue.");
-      const [briefData, queueData] = await Promise.all([briefResponse.json(), queueResponse.json()]);
+      if (!briefResponse.ok) throw new Error("Couldn't load the daily brief.");
+      if (!queueResponse.ok && queueResponse.status !== 403) {
+        throw new Error("Couldn't load the review queue.");
+      }
+      const briefData = await briefResponse.json();
+      const queueData = queueResponse.ok ? await queueResponse.json() : { items: [] };
       setBrief(briefData);
       setItems(Array.isArray(queueData.items) ? queueData.items : []);
+      setCrmAccessDenied(queueResponse.status === 403 || briefData.crm == null);
       setError("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Couldn't load Autopilot review.");
@@ -81,7 +89,12 @@ export function AutopilotBriefReview() {
       if (!response.ok) throw new Error(data.error || "Couldn't save this decision.");
       setItems((current) => current.filter((candidate) => candidate.id !== item.id));
       setBrief((current) => current
-        ? { ...current, pendingApprovals: Math.max(0, current.pendingApprovals - 1) }
+        ? {
+            ...current,
+            crm: current.crm
+              ? { ...current.crm, pendingApprovals: Math.max(0, current.crm.pendingApprovals - 1) }
+              : null,
+          }
         : current);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Couldn't save this decision.");
@@ -91,7 +104,7 @@ export function AutopilotBriefReview() {
   };
 
   return (
-    <section className="mb-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]" aria-label="Daily business brief and approval queue">
+    <section data-testid="section-autopilot-brief-review" className="mb-5 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]" aria-label="Daily business brief and approval queue">
       <div className="border border-black/15 bg-[#f7f4ee] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -102,6 +115,7 @@ export function AutopilotBriefReview() {
             type="button"
             onClick={() => void load()}
             disabled={loading}
+            data-testid="button-refresh-autopilot-brief"
             className="border border-black/20 bg-white px-2 py-1 text-[10px] font-bold disabled:opacity-50"
           >
             {loading ? "Loading…" : "Refresh"}
@@ -112,22 +126,31 @@ export function AutopilotBriefReview() {
 
         {brief ? (
           <>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className={countClass}><div className={labelClass}>New leads</div><div className="mt-1 text-lg font-bold">{brief.newLeads}</div></div>
-              <div className={countClass}><div className={labelClass}>Active leads</div><div className="mt-1 text-lg font-bold">{brief.activeLeads}</div></div>
-              <div className={countClass}><div className={labelClass}>Calls</div><div className="mt-1 text-lg font-bold">{brief.calls.total}</div></div>
-              <div className={countClass}><div className={labelClass}>Needs review</div><div className="mt-1 text-lg font-bold">{brief.pendingApprovals}</div></div>
-            </div>
+            {brief.crm ? (
+              <>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className={countClass}><div className={labelClass}>New leads</div><div className="mt-1 text-lg font-bold">{brief.crm.newLeads}</div></div>
+                  <div className={countClass}><div className={labelClass}>Active leads</div><div className="mt-1 text-lg font-bold">{brief.crm.activeLeads}</div></div>
+                  <div className={countClass}><div className={labelClass}>Calls</div><div className="mt-1 text-lg font-bold">{brief.crm.calls.total}</div></div>
+                  <div className={countClass}><div className={labelClass}>Needs review</div><div className="mt-1 text-lg font-bold">{brief.crm.pendingApprovals}</div></div>
+                </div>
+                <p className="mt-2 text-[10px] text-black/50">
+                  Calls: {brief.crm.calls.inbound} inbound · {brief.crm.calls.outbound} outbound
+                </p>
+              </>
+            ) : (
+              <p data-testid="status-crm-details-hidden" className="mt-3 border border-black/10 bg-white px-2 py-2 text-[10px] text-black/65">
+                CRM details and call-linked reviews are hidden for this role. Organization automations remain active.
+              </p>
+            )}
             <p className="mt-2 text-[10px] text-black/50">
-              Calls: {brief.calls.inbound} inbound · {brief.calls.outbound} outbound
-              <span className="px-1.5">|</span>
               Automation: {brief.automationRuns.success} successful, {brief.automationRuns.blocked} blocked
             </p>
-            {brief.recentCalls.length > 0 && (
+            {brief.crm?.recentCalls.length ? (
               <div className="mt-3 border-t border-black/10 pt-2">
                 <h3 className={labelClass}>Recent completed calls</h3>
                 <ul className="mt-1 space-y-1">
-                  {brief.recentCalls.slice(0, 4).map((call) => (
+                  {brief.crm.recentCalls.slice(0, 4).map((call) => (
                     <li key={call.id} className="flex items-start justify-between gap-2 text-[10px]">
                       <span className="min-w-0"><strong>{call.leadName}</strong> · {call.summary}</span>
                       <span className="shrink-0 text-black/40">{call.proposalStatus ?? "—"}</span>
@@ -151,7 +174,13 @@ export function AutopilotBriefReview() {
           <span className="min-w-7 border border-black/15 bg-[#f7f4ee] px-2 py-1 text-center text-xs font-bold">{items.length}</span>
         </div>
         {items.length === 0 ? (
-          <p className="mt-4 text-xs text-black/50">{loading ? "Loading review items…" : "No follow-up suggestions need review."}</p>
+          <p data-testid="status-autopilot-approval-queue" className="mt-4 text-xs text-black/50">
+            {loading
+              ? "Loading review items…"
+              : crmAccessDenied
+                ? "CRM view permission is required to see call-linked review items."
+                : "No follow-up suggestions need review."}
+          </p>
         ) : (
           <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
             {items.map((item) => (

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Eye, Activity, Users, AlertTriangle, Shield,
-  Clock, MapPin, MessageSquare, Gamepad2, TrendingUp,
-  Loader2, Ban, FileText, Search,
+  MapPin, Loader2, FileText,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -14,11 +13,16 @@ import { useLocation } from 'wouter';
 interface ActiveUser {
   userId: string;
   firstName: string | null;
-  email: string | null;
   profileImageUrl: string | null;
-  lastSeen: string;
-  currentZone: string | null;
   status: string;
+}
+
+interface SecuritySummary {
+  activeFlags: number;
+  activeBans: number;
+  openReports: number;
+  loginAttempts24h: number;
+  blockedLogins24h: number;
 }
 
 export default function ModeratorPanel() {
@@ -27,65 +31,74 @@ export default function ModeratorPanel() {
   const [, navigate] = useLocation();
 
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+  const [security, setSecurity] = useState<SecuritySummary | null>(null);
+  const [scope, setScope] = useState<'platform' | 'moderator' | 'organization' | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setActiveUsers([]);
+      setSecurity(null);
+      setScope(null);
+      setAccessDenied(false);
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+    const loadMonitor = async () => {
+      try {
+        const [presenceResponse, securityResponse] = await Promise.all([
+          apiFetch('/api/world/online'),
+          apiFetch('/api/world/monitoring-security'),
+        ]);
+        if (!mounted) return;
+        if (presenceResponse.status === 403 || securityResponse.status === 403) {
+          setAccessDenied(true);
+          setActiveUsers([]);
+          setSecurity(null);
+          setScope(null);
+          return;
+        }
+        if (!presenceResponse.ok || !securityResponse.ok) throw new Error('Could not load monitoring data');
+        const [presenceData, securityData] = await Promise.all([
+          presenceResponse.json(),
+          securityResponse.json(),
+        ]);
+        if (!mounted) return;
+        setScope(presenceData.scope);
+        setActiveUsers(Array.isArray(presenceData.players) ? presenceData.players.map((player: ActiveUser) => ({
+          userId: player.userId,
+          firstName: player.firstName,
+          profileImageUrl: player.profileImageUrl,
+          status: player.status,
+        })) : []);
+        setSecurity(securityData.security ?? null);
+        setAccessDenied(false);
+      } catch {
+        if (mounted) setSecurity(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
     setLoading(true);
-    setAccessDenied(false);
-    apiFetch('/api/world/online')
-      .then(async r => {
-        if (r.status === 403) { setAccessDenied(true); return null; }
-        return r.json();
-      })
-      .then(d => {
-        if (!d) return;
-        const players = (d.players ?? []).map((p: any) => ({
-          userId: p.userId ?? p.id,
-          firstName: p.firstName ?? p.username ?? null,
-          email: p.email ?? null,
-          profileImageUrl: p.profileImageUrl ?? null,
-          lastSeen: p.lastSeen ?? new Date().toISOString(),
-          currentZone: p.zone ?? p.currentZone ?? 'Unknown',
-          status: p.status ?? 'online',
-        }));
-        setActiveUsers(players);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-
+    void loadMonitor();
     const interval = setInterval(() => {
-      apiFetch('/api/world/online')
-        .then(async r => {
-          if (r.status === 403) { setAccessDenied(true); return null; }
-          return r.json();
-        })
-        .then(d => {
-          if (!d) return;
-          const players = (d.players ?? []).map((p: any) => ({
-            userId: p.userId ?? p.id,
-            firstName: p.firstName ?? p.username ?? null,
-            email: p.email ?? null,
-            profileImageUrl: p.profileImageUrl ?? null,
-            lastSeen: p.lastSeen ?? new Date().toISOString(),
-            currentZone: p.zone ?? p.currentZone ?? 'Unknown',
-            status: p.status ?? 'online',
-          }));
-          setActiveUsers(players);
-        })
-        .catch(() => {});
+      if (document.visibilityState === 'visible') void loadMonitor();
     }, 15000);
-
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, [isAuthenticated]);
 
-  const filtered = activeUsers.filter(u => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (u.firstName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.currentZone?.toLowerCase().includes(q));
-  });
+  const scopeTitle = scope === 'platform'
+    ? 'ADMIN MONITOR'
+    : scope === 'organization'
+      ? 'ORGANIZATION MONITOR'
+      : scope === 'moderator'
+        ? 'MODERATOR WATCHTOWER'
+        : 'LIVE MONITOR';
 
   return (
     <div className="p-6 max-w-5xl mx-auto w-full">
@@ -94,31 +107,37 @@ export default function ModeratorPanel() {
           <Eye className="w-5 h-5 text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'MODERATOR WATCHTOWER' : 'WATCHTOWER'}</h2>
-          <p className="text-sm text-muted-foreground">World-wide player oversight, separate from platform administration</p>
+          <h2 className="text-xl font-bold text-foreground">{boomerMode ? scopeTitle : 'WATCHTOWER'}</h2>
+          <p className="text-sm text-muted-foreground">
+            {scope === 'organization'
+              ? 'Your organization’s active people only · security metadata and avatar presence'
+              : scope === 'platform'
+                ? 'Platform-wide user presence and security monitoring'
+                : 'Global security metadata and avatar presence · no private conversation content'}
+          </p>
         </div>
       </div>
 
       {accessDenied && (
         <div className="mb-6 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-4">
-          <p className="text-sm font-semibold text-amber-200">Moderator access required</p>
-          <p className="mt-1 text-xs text-amber-100/70">This watchtower is for approved moderators, administrators, and organization executives viewing their own people.</p>
+          <p className="text-sm font-semibold text-amber-200">Monitoring access unavailable</p>
+          <p className="mt-1 text-xs text-amber-100/70">Access is limited to approved platform staff or organization owners viewing their own people.</p>
         </div>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: 'ONLINE NOW', value: activeUsers.length, icon: Users, color: 'emerald' },
-          { label: 'FLAGGED', value: 0, icon: AlertTriangle, color: 'amber' },
-          { label: 'ACTIVE BANS', value: 0, icon: Ban, color: 'red' },
-          { label: 'REPORTS', value: 0, icon: FileText, color: 'sky' },
+          { label: 'OPEN FLAGS', value: security?.activeFlags ?? '—', icon: AlertTriangle, color: 'amber' },
+          { label: 'BLOCKED LOGINS · 24H', value: security?.blockedLogins24h ?? '—', icon: Shield, color: 'red' },
+          { label: 'OPEN REPORTS', value: security?.openReports ?? '—', icon: FileText, color: 'sky' },
         ].map(stat => (
           <div key={stat.label} className={`bg-${stat.color}-500/5 border border-${stat.color}-500/15 rounded-xl px-4 py-3`}>
             <div className="flex items-center gap-2 mb-1">
               <stat.icon className={`w-3.5 h-3.5 text-${stat.color}-400`} />
               <span className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase">{stat.label}</span>
             </div>
-            <p className={`text-xl font-bold text-${stat.color}-400`}>{stat.value}</p>
+              <p data-testid={`monitor-stat-${stat.label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`} className={`text-xl font-bold text-${stat.color}-400`}>{stat.value}</p>
           </div>
         ))}
       </div>
@@ -129,7 +148,7 @@ export default function ModeratorPanel() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/10">
             <div className="flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">LIVE ACTIVITY FEED</span>
+                <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">LIVE USER PRESENCE</span>
             </div>
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           </div>
@@ -145,7 +164,7 @@ export default function ModeratorPanel() {
               </div>
             ) : (
               activeUsers.map(u => (
-                <div key={u.userId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
+                <div data-testid={`monitor-user-${u.userId}`} key={u.userId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
                   <div className="relative">
                     {resolveAvatarUrl(u.profileImageUrl) ? (
                       <img src={resolveAvatarUrl(u.profileImageUrl)} alt="" className="w-7 h-7 rounded-md object-cover" />
@@ -155,19 +174,17 @@ export default function ModeratorPanel() {
                       </div>
                     )}
                     <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0a0a0b] ${
-                      u.status === 'online' ? 'bg-emerald-400' : 'bg-zinc-600'
+                      u.status === 'online' || u.status === 'active' ? 'bg-emerald-400' : 'bg-zinc-600'
                     }`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-foreground truncate">{u.firstName || 'Anonymous'}</p>
                     <div className="flex items-center gap-2">
                       <MapPin className="w-2.5 h-2.5 text-zinc-600" />
-                      <span className="text-[10px] text-zinc-500">{u.currentZone || 'Unknown Zone'}</span>
+                      <span className="text-[10px] text-zinc-500">Live world presence</span>
                     </div>
                   </div>
-                  <span className="text-[9px] text-zinc-600 font-mono">
-                    {new Date(u.lastSeen).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  <span className="text-[9px] text-zinc-600 font-mono">{u.status.toUpperCase()}</span>
                 </div>
               ))
             )}
@@ -179,29 +196,42 @@ export default function ModeratorPanel() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/10">
             <div className="flex items-center gap-2">
               <Shield className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">MODERATION ACTIONS</span>
+              <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">SECURITY SCOPE</span>
             </div>
           </div>
           <div className="p-4 space-y-3">
-            {[
-              { label: 'MANAGE BANS', desc: 'Issue warnings, temporary bans, and permanent bans', icon: Ban, path: '/profile/admin?tab=bans', color: 'red' },
-              { label: 'CHAT MONITOR', desc: 'Review public and private chat messages for violations', icon: MessageSquare, path: '#', color: 'sky' },
-              { label: 'FLAGGED CONTENT', desc: 'User-reported content awaiting moderator review', icon: AlertTriangle, path: '#', color: 'amber' },
-            ].map(item => (
+            <div data-testid="text-monitoring-privacy" className="border border-border bg-muted/10 p-3">
+              <p className="text-xs font-bold text-foreground">Metadata only</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">
+                This view shows account security counts and avatar presence. It does not expose private chats, call content, login IP addresses, or report text.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="border border-border bg-muted/10 p-3">
+                <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Active bans</p>
+                <p data-testid="monitor-stat-active-bans" className="mt-1 text-lg font-bold text-foreground">{security?.activeBans ?? '—'}</p>
+              </div>
+              <div className="border border-border bg-muted/10 p-3">
+                <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Login attempts · 24h</p>
+                <p data-testid="monitor-stat-login-attempts" className="mt-1 text-lg font-bold text-foreground">{security?.loginAttempts24h ?? '—'}</p>
+              </div>
+            </div>
+            {scope === 'platform' && (
               <button
-                key={item.label}
-                onClick={() => item.path !== '#' && navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-${item.color}-500/5 border border-${item.color}-500/10 hover:border-${item.color}-500/25 transition-colors text-left`}
+                data-testid="button-open-admin-security"
+                type="button"
+                onClick={() => navigate('/profile/admin?tab=security')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/10 hover:border-red-500/25 transition-colors text-left"
               >
-                <div className={`w-8 h-8 rounded-lg bg-${item.color}-500/15 flex items-center justify-center`}>
-                  <item.icon className={`w-4 h-4 text-${item.color}-400`} />
+                <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-red-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-foreground">{item.label}</p>
-                  <p className="text-[10px] text-zinc-500">{item.desc}</p>
+                  <p className="text-xs font-bold text-foreground">OPEN ADMIN SECURITY</p>
+                  <p className="text-[10px] text-zinc-500">Review detailed security records and take administrative action.</p>
                 </div>
               </button>
-            ))}
+            )}
           </div>
         </motion.div>
       </div>
@@ -210,15 +240,13 @@ export default function ModeratorPanel() {
         className="mt-6 bg-card border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/10">
           <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-sky-400" />
-            <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">MODERATION LOG</span>
+            <Activity className="w-3.5 h-3.5 text-sky-400" />
+            <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">LIVE MONITORING</span>
           </div>
           <span className="text-[10px] text-zinc-600 font-mono">Auto-refreshes every 15s</span>
         </div>
-        <div className="px-4 py-12 text-center">
-          <Clock className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-          <p className="text-sm text-zinc-600">No moderation actions recorded</p>
-          <p className="text-[10px] text-zinc-700 mt-1">Actions taken by moderators will appear here with full audit trail</p>
+        <div className="px-4 py-4 text-[10px] leading-relaxed text-zinc-500">
+          Security totals cover the last 24 hours where noted. Counts refresh from the server; account-level actions and private report details remain in the platform admin console.
         </div>
       </motion.div>
     </div>

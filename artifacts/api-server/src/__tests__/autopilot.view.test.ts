@@ -261,4 +261,59 @@ describe("GET /api/autopilot — permission gating (autopilot.manage)", () => {
     expect(ownerFeed.body.activity).toHaveLength(1);
     expect(ownerFeed.body.activity[0].detail.amountFiat).toBe(1200);
   });
+
+  it("hides CRM call content from Autopilot managers without crm.view", async () => {
+    const owner = await createUser();
+    const manager = await createUser();
+    const orgId = await createOrg(owner.id, [{ userId: manager.id, role: "manager" }]);
+    await db.insert(orgPermissionsTable).values({
+      orgId,
+      permissionKey: "crm.view",
+      minRole: "owner",
+    });
+    await db.insert(autopilotActivityLogTable).values([
+      {
+        orgId,
+        domain: "crm_calls",
+        action: "sms_followup",
+        summary: "Sent an SMS follow-up to Private Contact",
+        outcome: "success",
+        detail: { phone: "+15550001234", body: "Private follow-up text" },
+      },
+      {
+        orgId,
+        domain: "marketing",
+        action: "draft_post",
+        summary: "Drafted a marketing post",
+        outcome: "success",
+        detail: {},
+      },
+    ]);
+    actAs(manager);
+
+    const controlSurface = await request(app).get("/api/autopilot");
+    expect(controlSurface.status).toBe(200);
+    expect(controlSurface.body.crm.canView).toBe(false);
+    expect(controlSurface.body.activity.map((row: { domain: string }) => row.domain)).toContain("marketing");
+    expect(controlSurface.body.activity.some((row: { domain: string }) => row.domain === "crm_calls")).toBe(false);
+
+    const activity = await request(app).get("/api/autopilot/activity");
+    expect(activity.status).toBe(200);
+    expect(activity.body.activity.some((row: { domain: string }) => row.domain === "crm_calls")).toBe(false);
+    const crmActivity = await request(app).get("/api/autopilot/activity?domain=crm_calls");
+    expect(crmActivity.status).toBe(403);
+
+    const brief = await request(app).get("/api/autopilot/brief");
+    expect(brief.status).toBe(200);
+    expect(brief.body.crm).toBeNull();
+    expect(brief.body).not.toHaveProperty("recentCalls");
+
+    expect((await request(app).get("/api/autopilot/approval-queue")).status).toBe(403);
+    expect((await request(app)
+      .post("/api/autopilot/follow-up-suggestions")
+      .send({ callHistoryId: 1 })).status).toBe(403);
+    expect((await request(app)
+      .post("/api/autopilot/approval-queue/1/decision")
+      .send({ decision: "approved" })).status).toBe(403);
+  });
 });

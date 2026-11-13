@@ -146,7 +146,8 @@ function checkRateLimit(bot: Bot): boolean {
 
 export async function processIncomingMessage(
   bot: Bot,
-  msg: IncomingMessage
+  msg: IncomingMessage,
+  options: { allowPersistentMemory?: boolean } = {},
 ): Promise<string> {
   if (!checkRateLimit(bot)) {
     return "I'm receiving too many messages right now. Please try again in a moment.";
@@ -164,12 +165,17 @@ export async function processIncomingMessage(
     content: msg.text,
   });
 
-  const memories = await db
-    .select()
-    .from(botMemoryTable)
-    .where(eq(botMemoryTable.botId, bot.id))
-    .orderBy(desc(botMemoryTable.updatedAt))
-    .limit(20);
+  // Shared bot memory may contain information learned in another person's
+  // conversation. Only trusted, owner-initiated test chats may load or update it.
+  const allowPersistentMemory = options.allowPersistentMemory === true;
+  const memories = allowPersistentMemory
+    ? await db
+        .select()
+        .from(botMemoryTable)
+        .where(eq(botMemoryTable.botId, bot.id))
+        .orderBy(desc(botMemoryTable.updatedAt))
+        .limit(20)
+    : [];
 
   const recentLogs = await db
     .select()
@@ -218,7 +224,9 @@ export async function processIncomingMessage(
       directiveContext,
       permissionContext,
       skillCatalogHint,
-      "\n\nIMPORTANT: If the user shares important information (their name, preferences, facts they want you to remember), prefix your internal note with [MEMORY:key=value] to save it. The user won't see this tag.",
+       ...(allowPersistentMemory
+         ? ["\n\nIMPORTANT: If the bot owner shares important information (preferences or facts they want remembered), prefix your internal note with [MEMORY:key=value] to save it. The user won't see this tag."]
+         : []),
     ].filter(Boolean).join("\n");
 
     await streamWithRouter(
@@ -231,25 +239,27 @@ export async function processIncomingMessage(
     );
   }
 
-  const memoryMatches = fullResponse.matchAll(/\[MEMORY:(\w+)=([^\]]+)\]/g);
-  for (const match of memoryMatches) {
-    const [, key, value] = match;
-    const existing = await db
-      .select()
-      .from(botMemoryTable)
-      .where(and(eq(botMemoryTable.botId, bot.id), eq(botMemoryTable.key, key)));
-    if (existing.length > 0) {
-      await db
-        .update(botMemoryTable)
-        .set({ value, context: msg.platform })
-        .where(eq(botMemoryTable.id, existing[0].id));
-    } else {
-      await db.insert(botMemoryTable).values({
-        botId: bot.id,
-        key,
-        value,
-        context: msg.platform,
-      });
+  if (allowPersistentMemory) {
+    const memoryMatches = fullResponse.matchAll(/\[MEMORY:(\w+)=([^\]]+)\]/g);
+    for (const match of memoryMatches) {
+      const [, key, value] = match;
+      const existing = await db
+        .select()
+        .from(botMemoryTable)
+        .where(and(eq(botMemoryTable.botId, bot.id), eq(botMemoryTable.key, key)));
+      if (existing.length > 0) {
+        await db
+          .update(botMemoryTable)
+          .set({ value, context: msg.platform })
+          .where(eq(botMemoryTable.id, existing[0].id));
+      } else {
+        await db.insert(botMemoryTable).values({
+          botId: bot.id,
+          key,
+          value,
+          context: msg.platform,
+        });
+      }
     }
   }
 

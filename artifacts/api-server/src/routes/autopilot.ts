@@ -146,8 +146,7 @@ function toApprovalItem(row: typeof autopilotReviewItemsTable.$inferSelect) {
 
 /**
  * GET /api/autopilot/brief — read-only snapshot of the last 24 hours for the
- * active organization. The response contract deliberately contains no finance
- * fields, so it cannot disclose financial data to non-finance viewers.
+ * active organization. CRM details and finance fields are permission-scoped.
  */
 router.get("/autopilot/brief", requireAutomationSubscription, async (req, res): Promise<void> => {
   const access = await getManageableOrg(req, res);
@@ -156,54 +155,8 @@ router.get("/autopilot/brief", requireAutomationSubscription, async (req, res): 
     const { orgId } = access;
     const generatedAt = new Date();
     const windowStart = new Date(generatedAt.getTime() - 24 * 60 * 60 * 1000);
-    const orgScope = eq(leadRecordsTable.orgId, orgId);
-    const [
-      [newLeadCount],
-      [activeLeadCount],
-      [totalCallCount],
-      [inboundCallCount],
-      [outboundCallCount],
-      [pendingApprovalCount],
-      recentCalls,
-      runRows,
-    ] = await Promise.all([
-      db.select({ value: count() }).from(leadRecordsTable)
-        .where(and(orgScope, gte(leadRecordsTable.createdAt, windowStart))),
-      db.select({ value: count() }).from(leadRecordsTable)
-        .where(and(orgScope, notInArray(leadRecordsTable.status, ["closed_won", "closed_lost"]))),
-      db.select({ value: count() }).from(callHistoryTable)
-        .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart))),
-      db.select({ value: count() }).from(callHistoryTable)
-        .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart), eq(callHistoryTable.direction, "inbound"))),
-      db.select({ value: count() }).from(callHistoryTable)
-        .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart), eq(callHistoryTable.direction, "outbound"))),
-      db.select({ value: count() }).from(autopilotReviewItemsTable)
-        .where(and(eq(autopilotReviewItemsTable.orgId, orgId), eq(autopilotReviewItemsTable.status, "pending"))),
-      db.select({
-        id: callHistoryTable.id,
-        callerName: callHistoryTable.callerName,
-        startedAt: callHistoryTable.startedAt,
-        summary: callHistoryTable.summary,
-        crmLeadName: leadRecordsTable.name,
-        crmContactName: crmActivitiesTable.contactName,
-      }).from(callHistoryTable)
-        .innerJoin(crmActivitiesTable, and(
-          eq(crmActivitiesTable.orgId, orgId),
-          eq(crmActivitiesTable.channel, "call"),
-          eq(crmActivitiesTable.twilioSid, callHistoryTable.twilioCallSid),
-        ))
-        .leftJoin(leadRecordsTable, and(
-          eq(leadRecordsTable.id, crmActivitiesTable.leadId),
-          eq(leadRecordsTable.orgId, orgId),
-        ))
-        .where(and(
-          eq(callHistoryTable.orgId, orgId),
-          gte(callHistoryTable.startedAt, windowStart),
-          eq(callHistoryTable.status, "completed"),
-          isNotNull(callHistoryTable.summary),
-        ))
-        .orderBy(desc(callHistoryTable.startedAt))
-        .limit(10),
+    const [crmView, runRows] = await Promise.all([
+      canDoInOrg(access.userId, orgId, "crm.view"),
       db.select({
         outcome: autopilotActivityLogTable.outcome,
         count: count(),
@@ -211,44 +164,111 @@ router.get("/autopilot/brief", requireAutomationSubscription, async (req, res): 
         .where(and(eq(autopilotActivityLogTable.orgId, orgId), gte(autopilotActivityLogTable.createdAt, windowStart)))
         .groupBy(autopilotActivityLogTable.outcome),
     ]);
-    const recentCallIds = recentCalls.map((call) => call.id);
-    const proposals = recentCallIds.length
-      ? await db.select({
-          sourceCallId: autopilotReviewItemsTable.sourceCallId,
-          status: autopilotReviewItemsTable.status,
-        }).from(autopilotReviewItemsTable)
-          .where(and(
-            eq(autopilotReviewItemsTable.orgId, orgId),
-            inArray(autopilotReviewItemsTable.sourceCallId, recentCallIds),
-          ))
-      : [];
-    const proposalByCall = new Map(proposals.map((proposal) => [proposal.sourceCallId, proposal.status]));
     const automationRuns = { success: 0, noop: 0, blocked: 0, error: 0, skipped: 0 };
     for (const row of runRows) {
       if (row.outcome in automationRuns) {
         automationRuns[row.outcome as keyof typeof automationRuns] += Number(row.count);
       }
     }
+    let crm: {
+      newLeads: number;
+      activeLeads: number;
+      calls: { total: number; inbound: number; outbound: number };
+      pendingApprovals: number;
+      recentCalls: Array<{
+        id: number;
+        leadName: string;
+        startedAt: Date;
+        summary: string;
+        hasProposal: boolean;
+        proposalStatus: string | null;
+      }>;
+    } | null = null;
+    if (crmView.allowed) {
+      const orgScope = eq(leadRecordsTable.orgId, orgId);
+      const [
+        [newLeadCount],
+        [activeLeadCount],
+        [totalCallCount],
+        [inboundCallCount],
+        [outboundCallCount],
+        [pendingApprovalCount],
+        recentCalls,
+      ] = await Promise.all([
+        db.select({ value: count() }).from(leadRecordsTable)
+          .where(and(orgScope, gte(leadRecordsTable.createdAt, windowStart))),
+        db.select({ value: count() }).from(leadRecordsTable)
+          .where(and(orgScope, notInArray(leadRecordsTable.status, ["closed_won", "closed_lost"]))),
+        db.select({ value: count() }).from(callHistoryTable)
+          .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart))),
+        db.select({ value: count() }).from(callHistoryTable)
+          .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart), eq(callHistoryTable.direction, "inbound"))),
+        db.select({ value: count() }).from(callHistoryTable)
+          .where(and(eq(callHistoryTable.orgId, orgId), gte(callHistoryTable.startedAt, windowStart), eq(callHistoryTable.direction, "outbound"))),
+        db.select({ value: count() }).from(autopilotReviewItemsTable)
+          .where(and(eq(autopilotReviewItemsTable.orgId, orgId), eq(autopilotReviewItemsTable.status, "pending"))),
+        db.select({
+          id: callHistoryTable.id,
+          callerName: callHistoryTable.callerName,
+          startedAt: callHistoryTable.startedAt,
+          summary: callHistoryTable.summary,
+          crmLeadName: leadRecordsTable.name,
+          crmContactName: crmActivitiesTable.contactName,
+        }).from(callHistoryTable)
+          .innerJoin(crmActivitiesTable, and(
+            eq(crmActivitiesTable.orgId, orgId),
+            eq(crmActivitiesTable.channel, "call"),
+            eq(crmActivitiesTable.twilioSid, callHistoryTable.twilioCallSid),
+          ))
+          .leftJoin(leadRecordsTable, and(
+            eq(leadRecordsTable.id, crmActivitiesTable.leadId),
+            eq(leadRecordsTable.orgId, orgId),
+          ))
+          .where(and(
+            eq(callHistoryTable.orgId, orgId),
+            gte(callHistoryTable.startedAt, windowStart),
+            eq(callHistoryTable.status, "completed"),
+            isNotNull(callHistoryTable.summary),
+          ))
+          .orderBy(desc(callHistoryTable.startedAt))
+          .limit(10),
+      ]);
+      const recentCallIds = recentCalls.map((call) => call.id);
+      const proposals = recentCallIds.length
+        ? await db.select({
+            sourceCallId: autopilotReviewItemsTable.sourceCallId,
+            status: autopilotReviewItemsTable.status,
+          }).from(autopilotReviewItemsTable)
+            .where(and(
+              eq(autopilotReviewItemsTable.orgId, orgId),
+              inArray(autopilotReviewItemsTable.sourceCallId, recentCallIds),
+            ))
+        : [];
+      const proposalByCall = new Map(proposals.map((proposal) => [proposal.sourceCallId, proposal.status]));
+      crm = {
+        newLeads: Number(newLeadCount?.value ?? 0),
+        activeLeads: Number(activeLeadCount?.value ?? 0),
+        calls: {
+          total: Number(totalCallCount?.value ?? 0),
+          inbound: Number(inboundCallCount?.value ?? 0),
+          outbound: Number(outboundCallCount?.value ?? 0),
+        },
+        pendingApprovals: Number(pendingApprovalCount?.value ?? 0),
+        recentCalls: recentCalls.map((call) => ({
+          id: call.id,
+          leadName: call.crmLeadName || call.crmContactName || call.callerName || "Lead",
+          startedAt: call.startedAt,
+          summary: (call.summary || "").slice(0, 1000),
+          hasProposal: proposalByCall.has(call.id),
+          proposalStatus: proposalByCall.get(call.id) ?? null,
+        })),
+      };
+    }
     res.json({
       generatedAt,
       windowStart,
-      newLeads: Number(newLeadCount?.value ?? 0),
-      activeLeads: Number(activeLeadCount?.value ?? 0),
-      calls: {
-        total: Number(totalCallCount?.value ?? 0),
-        inbound: Number(inboundCallCount?.value ?? 0),
-        outbound: Number(outboundCallCount?.value ?? 0),
-      },
-      pendingApprovals: Number(pendingApprovalCount?.value ?? 0),
+      crm,
       automationRuns,
-      recentCalls: recentCalls.map((call) => ({
-        id: call.id,
-        leadName: call.crmLeadName || call.crmContactName || call.callerName || "Lead",
-        startedAt: call.startedAt,
-        summary: (call.summary || "").slice(0, 1000),
-        hasProposal: proposalByCall.has(call.id),
-        proposalStatus: proposalByCall.get(call.id) ?? null,
-      })),
     });
   } catch (err) {
     req.log?.error({ err }, "Autopilot daily brief failed");
@@ -259,6 +279,11 @@ router.get("/autopilot/brief", requireAutomationSubscription, async (req, res): 
 router.get("/autopilot/approval-queue", requireAutomationSubscription, async (req, res): Promise<void> => {
   const access = await getManageableOrg(req, res);
   if (!access) return;
+  const crmView = await canDoInOrg(access.userId, access.orgId, "crm.view");
+  if (!crmView.allowed) {
+    res.status(403).json({ error: "CRM view permission is required to access call-linked automation reviews" });
+    return;
+  }
   try {
     const rows = await db.select().from(autopilotReviewItemsTable)
       .where(and(
@@ -277,6 +302,11 @@ router.get("/autopilot/approval-queue", requireAutomationSubscription, async (re
 router.post("/autopilot/follow-up-suggestions", requireAutomationSubscription, async (req, res): Promise<void> => {
   const access = await getManageableOrg(req, res);
   if (!access) return;
+  const crmView = await canDoInOrg(access.userId, access.orgId, "crm.view");
+  if (!crmView.allowed) {
+    res.status(403).json({ error: "CRM view permission is required to create call-linked automation reviews" });
+    return;
+  }
   const callHistoryId = Number(req.body?.callHistoryId);
   if (!Number.isInteger(callHistoryId) || callHistoryId < 1) {
     res.status(400).json({ error: "A valid call history ID is required" });
@@ -357,6 +387,11 @@ router.post("/autopilot/follow-up-suggestions", requireAutomationSubscription, a
 router.post("/autopilot/approval-queue/:id/decision", requireAutomationSubscription, async (req, res): Promise<void> => {
   const access = await getManageableOrg(req, res);
   if (!access) return;
+  const crmView = await canDoInOrg(access.userId, access.orgId, "crm.view");
+  if (!crmView.allowed) {
+    res.status(403).json({ error: "CRM view permission is required to decide call-linked automation reviews" });
+    return;
+  }
   const id = Number(req.params.id);
   const decision = req.body?.decision;
   if (!Number.isInteger(id) || id < 1 || (decision !== "approved" && decision !== "dismissed")) {
@@ -434,7 +469,7 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
       return;
     }
 
-    const [domains, org, financeView, financeManage] = await Promise.all([
+    const [domains, org, financeView, financeManage, crmView] = await Promise.all([
       getOrgAutopilotView(orgId),
       db.select({ ownerUserId: organizationsTable.ownerUserId })
         .from(organizationsTable)
@@ -443,12 +478,16 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
         .then((rows) => rows[0]),
       canDoInOrg(userId, orgId, "finance.view"),
       canDoInOrg(userId, orgId, "finance.manage"),
+      canDoInOrg(userId, orgId, "crm.view"),
     ]);
     const canManageCreative = org?.ownerUserId === userId;
+    const excludedDomains: AutopilotDomain[] = [];
+    if (!financeView.allowed) excludedDomains.push("accounting");
+    if (!crmView.allowed) excludedDomains.push("crm_calls");
     const activity = await getRecentAutopilotActivity(orgId, {
       limit: 50,
       excludeDomain: canManageCreative ? undefined : "market_research",
-      excludeDomains: financeView.allowed ? undefined : ["accounting"],
+      excludeDomains: excludedDomains.length ? excludedDomains : undefined,
     });
     const creativeProjects = canManageCreative
       ? await db.select({
@@ -500,6 +539,7 @@ router.get("/autopilot", requireAutomationSubscription, async (req, res) => {
         canApproveImageGeneration: org?.ownerUserId === userId,
       },
       crm: {
+        canView: crmView.allowed,
         leadStatuses: AUTOPILOT_CRM_LEAD_STATUSES.map((id) => ({ id, label: CRM_LEAD_STATUS_LABELS[id] ?? id })),
       },
       domains: visibleDomains,
@@ -577,17 +617,27 @@ router.get("/autopilot/activity", requireAutomationSubscription, async (req, res
     const limit = Number.isFinite(rawLimit) ? rawLimit : 50;
     const rawBefore = Number(req.query.before);
     const before = Number.isFinite(rawBefore) && rawBefore > 0 ? rawBefore : undefined;
+    const [orgRows, financeView, crmView] = await Promise.all([
+      db.select({ ownerUserId: organizationsTable.ownerUserId })
+        .from(organizationsTable)
+        .where(eq(organizationsTable.id, orgId))
+        .limit(1),
+      canDoInOrg(userId, orgId, "finance.view"),
+      canDoInOrg(userId, orgId, "crm.view"),
+    ]);
+    const org = orgRows[0];
+    if (domain === "crm_calls" && !crmView.allowed) {
+      res.status(403).json({ error: "CRM view permission is required to access CRM automation activity" });
+      return;
+    }
 
-    const [org] = await db
-      .select({ ownerUserId: organizationsTable.ownerUserId })
-      .from(organizationsTable)
-      .where(eq(organizationsTable.id, orgId))
-      .limit(1);
-    const financeView = await canDoInOrg(userId, orgId, "finance.view");
     const activity = await getRecentAutopilotActivity(orgId, {
       domain,
       excludeDomain: org?.ownerUserId === userId ? undefined : "market_research",
-      excludeDomains: financeView.allowed ? undefined : ["accounting" as AutopilotDomain],
+      excludeDomains: [
+        ...(!financeView.allowed ? ["accounting" as AutopilotDomain] : []),
+        ...(!crmView.allowed ? ["crm_calls" as AutopilotDomain] : []),
+      ],
       limit,
       before,
     });

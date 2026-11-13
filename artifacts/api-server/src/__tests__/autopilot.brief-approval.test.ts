@@ -88,10 +88,10 @@ describe("Autopilot business brief and post-call approval queue", () => {
 
     const brief = await request(app).get("/api/autopilot/brief");
     expect(brief.status).toBe(200);
-    expect(brief.body.newLeads).toBe(1);
-    expect(brief.body.activeLeads).toBe(1);
-    expect(brief.body.calls).toEqual({ total: 2, inbound: 0, outbound: 2 });
-    expect(brief.body.recentCalls[0]).toMatchObject({
+    expect(brief.body.crm.newLeads).toBe(1);
+    expect(brief.body.crm.activeLeads).toBe(1);
+    expect(brief.body.crm.calls).toEqual({ total: 2, inbound: 0, outbound: 2 });
+    expect(brief.body.crm.recentCalls[0]).toMatchObject({
       id: call.id,
       leadName: "Acme contact",
       hasProposal: false,
@@ -119,8 +119,8 @@ describe("Autopilot business brief and post-call approval queue", () => {
     expect(duplicate.body.item.id).toBe(suggestion.body.item.id);
 
     const briefAfterDraft = await request(app).get("/api/autopilot/brief");
-    expect(briefAfterDraft.body.pendingApprovals).toBe(1);
-    expect(briefAfterDraft.body.recentCalls[0].proposalStatus).toBe("pending");
+    expect(briefAfterDraft.body.crm.pendingApprovals).toBe(1);
+    expect(briefAfterDraft.body.crm.recentCalls[0].proposalStatus).toBe("pending");
 
     const queue = await request(app).get("/api/autopilot/approval-queue");
     expect(queue.status).toBe(200);
