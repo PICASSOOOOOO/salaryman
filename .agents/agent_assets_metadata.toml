@@ -2559,3 +2559,31 @@ mtime_ms = 1794585583493
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/7497e3ba-fa8d-4354-adff-4d75415bd33d/73941c6a-ddb8-4f87-82d5-d3b7e96664f3"
 storage_version_token = "1794585882426059"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "ShKJohKT9lFoziYFLWd91"
+uri = "file://generated-artifacts/godot-gameplay-lobby.mp4"
+type = "video"
+title = "SALARYMAN lobby gameplay"
+description = "Live Godot capture with the proportionate lobby couch and a clear player jump."
+logical_id = "c855b2d8-2674-4f6c-838c-4dce145354bc"
+content_hash = "sha256:34184c6bac7a65ec01fd18938407318fec1a5105afcc7d2d1ebbc64bbde99de8"
+size = 367493
+mtime_ms = 1794590464467
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c855b2d8-2674-4f6c-838c-4dce145354bc/d2410a20-f267-4a94-8132-d57d98adf64f"
+storage_version_token = "1794590495065351"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "tPc0sCZGcGgLRjIN6709w"
+uri = "file://generated-artifacts/godot-gameplay-lobby.jpg"
+type = "image"
+title = "Lobby gameplay poster"
+description = "The avatar and seating area are visible together at the closer default camera framing."
+logical_id = "63fe5086-232a-4d25-8b5c-eab292a0c248"
+content_hash = "sha256:e995b7417688fe0f9a9a0048408f0ae621f1a35be2a99d9275b91dae6764d32c"
+size = 66200
+mtime_ms = 1794590468691
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/63fe5086-232a-4d25-8b5c-eab292a0c248/cb3fc144-0508-47b4-ae4d-e27511ceb726"
+storage_version_token = "1794590496001825"
+content_type = "image/jpeg"

@@ -111,16 +111,16 @@ export default function DesktopDownload() {
     ? apiUrl(`/api/desktop/download?platform=${clientRelease.id}`)
     : "";
   const gameplayLobbyVideoHref = apiUrl(
-    `/api/storage/public-objects/desktop/godot-gameplay-lobby-20261113.${gameplayVideoFormat}`,
+    `/api/storage/public-objects/desktop/godot-gameplay-lobby-20261114.${gameplayVideoFormat}`,
   );
   const gameplayTempleVideoHref = apiUrl(
-    `/api/storage/public-objects/desktop/godot-gameplay-temple-20261113.${gameplayVideoFormat}`,
+    `/api/storage/public-objects/desktop/godot-gameplay-temple-20261114.${gameplayVideoFormat}`,
   );
   const gameplayLobbyPosterHref = apiUrl(
-    "/api/storage/public-objects/desktop/godot-gameplay-lobby-20261113.jpg",
+    "/api/storage/public-objects/desktop/godot-gameplay-lobby-20261114.jpg",
   );
   const gameplayTemplePosterHref = apiUrl(
-    "/api/storage/public-objects/desktop/godot-gameplay-temple-20261113.jpg",
+    "/api/storage/public-objects/desktop/godot-gameplay-temple-20261114.jpg",
   );
   const salarymanLogoHref = `${import.meta.env.BASE_URL}icon-192.png`;
   const platformMessage = clientPlatform === "other"

@@ -1533,7 +1533,7 @@ func _build_static_furniture() -> void:
 	_add_lobby_rug(lounge_center)
 	var lobby_couch := OfficeProp.create("furniture_couch")
 	lobby_couch.name = "LobbyCouch"
-	lobby_couch.position = lounge_center + Vector3(1.2, 0.0, -1.2)
+	lobby_couch.position = lounge_center + Vector3(2.8, 0.0, -2.8)
 	lobby_couch.scale = Vector3.ONE * LOBBY_COUCH_SCALE
 	world_root.add_child(lobby_couch)
 	_add_imported("LobbyLamp", "lamp", lamp_position, 1.1)
