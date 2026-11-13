@@ -10,7 +10,7 @@ type OsTopic = "controls" | "locations" | "finance";
 
 const TOPICS: { id: OsTopic; label: string; icon: typeof Gamepad2 }[] = [
   { id: "controls", label: "GAME SETTINGS", icon: Gamepad2 },
-  { id: "locations", label: "OFFICE LOCATIONS", icon: MapPin },
+  { id: "locations", label: "CITY SERVERS", icon: MapPin },
   { id: "finance", label: "ECONOMY & FINANCE", icon: Landmark },
 ];
 
@@ -86,9 +86,9 @@ export default function SalarymanOSSettings() {
         )}
 
         {topic === "locations" && (
-          <section aria-labelledby="office-locations-title" className="space-y-4">
+          <section aria-labelledby="city-servers-title" className="space-y-4">
             <div>
-              <h2 id="office-locations-title" className="text-lg font-bold">Office locations</h2>
+              <h2 id="city-servers-title" className="text-lg font-bold">City servers</h2>
               <p className="mt-1 text-sm text-black/60">These are the two live SALARYMAN city servers.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

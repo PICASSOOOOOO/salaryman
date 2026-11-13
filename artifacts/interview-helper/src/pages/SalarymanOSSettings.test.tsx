@@ -53,7 +53,7 @@ describe("SALARYMAN OS settings", () => {
 
     act(() => {
       Array.from(container.querySelectorAll("button"))
-        .find((button) => button.textContent?.includes("OFFICE LOCATIONS"))
+        .find((button) => button.textContent?.includes("CITY SERVERS"))
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(container.textContent).toContain("MINX CITY");

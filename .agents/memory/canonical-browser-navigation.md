@@ -11,8 +11,8 @@ Within feature areas, let users open supporting tools as optional widgets/panels
 
 Preserve existing product names, workspace titles, and branding: do not rename CRM or PABLO PRIME's automation workspace, and keep 1999 and Hummingbird as they are. Use Hummingbird's existing logo/icon where its shortcut is shown; do not substitute a generic music icon.
 
-Keep Tower and other game-only features out of the shared product menu. Banco Ombra belongs under Wallet/Net Worth; game supplies and property belong in game settings. Keep notifications user-opened, include persisted system alerts and unread COMMS, and link to announcements/updates and upgrades without auto-opening a panel.
+Keep game-specific links under Settings > SALARYMAN OS rather than the general feature sections. There, group game settings, economy and banking, and show exactly Minx City and Huda City as the two live servers with their configured time zones. Business exposes its own finance and accounting tools. Do not present Tower as a game server or server location. Keep notifications user-opened, include persisted system alerts and unread COMMS, and link to announcements/updates and upgrades without auto-opening a panel.
 
 **Why:** The user wants seven recognizable feature areas, less menu-diving, and a workspace where related tools can be combined. They explicitly corrected the prior three-direct-destination navigation.
 
-**How to apply:** Preserve each area’s existing route behavior through in-area tabs or widgets and legacy redirects. Deduplicate exact paths, keep distinct scopes, and verify desktop and 320px without hiding the real homepage.
+**How to apply:** Preserve each area’s existing route behavior through in-area tabs or widgets and legacy redirects. Deduplicate exact paths, keep business finance separate from game economy/banking, and verify desktop and 320px without hiding the real homepage.
