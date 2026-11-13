@@ -109,7 +109,19 @@ describe("authenticated world movement authority", () => {
   });
 
   it("loads or creates persisted authenticated positions before admission", () => {
-    expect(source).toMatch(/worldPlayerPositionsTable[\s\S]{0,1200}AUTHENTICATED_CITY_SPAWN[\s\S]{0,800}const player: Player/);
+    const queryStart = source.indexOf("const [persisted] = await db.select({");
+    const playerStart = source.indexOf("const player: Player", queryStart);
+    expect(queryStart).toBeGreaterThanOrEqual(0);
+    expect(playerStart).toBeGreaterThan(queryStart);
+
+    const admission = source.slice(queryStart, playerStart);
+    expect(admission).toContain("x: worldPlayerPositionsTable.x");
+    expect(admission).toContain("y: worldPlayerPositionsTable.y");
+    expect(admission).toContain("admittedX = persistedValid ? persisted.x : AUTHENTICATED_CITY_SPAWN.x");
+    expect(admission).toContain("admittedY = persistedValid ? persisted.y : AUTHENTICATED_CITY_SPAWN.y");
+    expect(admission).toContain("if (!persistedValid)");
+    expect(admission).toContain("await db.insert(worldPlayerPositionsTable).values({");
+    expect(admission).toContain("target: [worldPlayerPositionsTable.userId, worldPlayerPositionsTable.cityId]");
   });
 
   it("keeps the canonical authenticated spawn inside world bounds", () => {

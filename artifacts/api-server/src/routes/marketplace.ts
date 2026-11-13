@@ -198,6 +198,7 @@ router.post("/marketplace/items", async (req: Request, res: Response) => {
         quantity,
         priceFiat,
         cityId,
+        status: "active",
         description: typeof req.body?.description === "string" ? req.body.description.trim().slice(0, 1000) : item.blurb,
         artKey: typeof req.body?.artKey === "string" ? req.body.artKey.trim().slice(0, 256) || null : itemId,
         escrowed: true,

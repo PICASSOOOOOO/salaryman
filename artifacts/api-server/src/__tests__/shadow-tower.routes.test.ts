@@ -30,7 +30,12 @@ async function user() {
   const email = `tower-${randomUUID()}@test.local`;
   const [created] = await db.insert(usersTable).values({ email }).returning();
   users.push(created.id);
-  await db.insert(bankAccountsTable).values({ userId: created.id, kind: "checking", label: "CHECKING", balance: 4_000_000 });
+  await db.insert(bankAccountsTable).values({
+    userId: created.id,
+    kind: "checking",
+    label: "CHECKING",
+    balance: minimumPropertyStartingFiat() * 5,
+  });
   return created.id;
 }
 async function freeSaleFloor(city: "minx_city" | "huda_city") {
