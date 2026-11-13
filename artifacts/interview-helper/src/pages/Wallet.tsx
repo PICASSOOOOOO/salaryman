@@ -146,7 +146,7 @@ export default function Wallet() {
             )}
           </>
         ) : (
-          <p style={{ color: "#64748b", fontSize: ".8rem" }}>UNAFFILIATED · No active organization. <Link href="/orgs" style={{ color: "#38bdf8" }}>Join or found one →</Link></p>
+          <p style={{ color: "#64748b", fontSize: ".8rem" }}>UNAFFILIATED · No active organization. <Link href="/organizations" style={{ color: "#38bdf8" }}>Join or found one →</Link></p>
         )}
       </Section>
 
@@ -216,7 +216,7 @@ export default function Wallet() {
       {/* ===== PROJECTS ===== */}
       <Section title={`PROJECTS (${projects.length})`}>
         {projects.length === 0 ? (
-          <p style={{ color: "#64748b", fontSize: ".8rem" }}>No ventures yet. <Link href="/projects" style={{ color: "#38bdf8" }}>Start one →</Link></p>
+          <p style={{ color: "#64748b", fontSize: ".8rem" }}>No ventures yet. <Link href="/pablo/deck" style={{ color: "#38bdf8" }}>Start one →</Link></p>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
             {projects.map((p) => (

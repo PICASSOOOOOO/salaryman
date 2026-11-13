@@ -245,7 +245,8 @@ export const WORKSPACE_MENU_SECTIONS: WorkspaceMenuSection[] = [
       appEntry("bots", {
         hint: "AUTOMATION WORKSPACE",
         children: [
-          { id: "ai-agents", path: "/pablo/deck", label: "AI AGENTS", icon: Bot },
+          { id: "ai-agents", path: "/bots/factory", label: "AI AGENTS", icon: Bot },
+          { id: "pablo-deck", path: "/pablo/deck", label: "PABLO DECK", icon: Bot },
         ],
       }),
     ],

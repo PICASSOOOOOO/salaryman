@@ -423,7 +423,7 @@ export default function JobBoard() {
                               Apply Now
                             </button>
                           ) : (
-                            <a href="/login" className="flex items-center gap-1.5 rounded-lg bg-sky-500/20 border border-sky-500/30 px-4 py-2 font-mono text-xs text-sky-300">
+                            <a href="/sign-in?returnTo=%2Fbusiness%2Fjobs" className="flex items-center gap-1.5 rounded-lg bg-sky-500/20 border border-sky-500/30 px-4 py-2 font-mono text-xs text-sky-300">
                               Sign in to Apply
                             </a>
                           )}

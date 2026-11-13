@@ -133,11 +133,16 @@ async function loadEndpoint(key: string, path: string): Promise<EndpointResult> 
   try {
     const response = await apiFetch(path);
     const data = await readPayload(response);
+    const accessReason = typeof data.error === 'string' ? data.error.trim() : '';
     return {
       key,
       ok: response.ok,
       data,
-      error: response.ok ? null : `${endpointLabels[key] ?? key} unavailable (${response.status})`,
+      error: response.ok
+        ? null
+        : response.status === 403 && accessReason
+          ? accessReason
+          : `${endpointLabels[key] ?? key} unavailable (${response.status})`,
     };
   } catch {
     return { key, ok: false, data: {}, error: `${endpointLabels[key] ?? key} could not be loaded` };
@@ -315,7 +320,7 @@ export default function CrmWorkspace() {
       ? summaryResult.data.summary as Record<string, unknown>
       : summaryResult?.data ?? {});
     setActivities(arrayValue<ActivityRecord>(activitiesResult?.data ?? {}, 'activities'));
-    setErrors(results.flatMap(result => result.error ? [result.error] : []));
+    setErrors([...new Set(results.flatMap(result => result.error ? [result.error] : []))]);
     setLoading(false);
   }, [isAuthenticated]);
 
@@ -483,6 +488,16 @@ export default function CrmWorkspace() {
             <AlertTriangle size={14} className="shrink-0" />
             <span className="min-w-0 break-words">{allRequestsFailed ? 'DATA UNAVAILABLE:' : 'PARTIAL ERROR:'} {errors.join(' · ')}</span>
           </div>
+          {errors.some(error => /organization|required.*organization|member of any organization/i.test(error)) && (
+            <Link href="/organizations" className="flex shrink-0 items-center gap-1 uppercase font-bold hover:text-white">
+              <Building2 size={12} /> OPEN ORGANIZATION
+            </Link>
+          )}
+          {errors.some(error => /crm.*permission|permission.*crm/i.test(error)) && (
+            <Link href="/business/team" className="flex shrink-0 items-center gap-1 uppercase font-bold hover:text-white">
+              <Users size={12} /> CHECK TEAM ACCESS
+            </Link>
+          )}
           <button onClick={() => void loadWorkspace()} className="flex shrink-0 items-center gap-1 uppercase font-bold hover:text-white">
             <RefreshCw size={12} /> RETRY
           </button>

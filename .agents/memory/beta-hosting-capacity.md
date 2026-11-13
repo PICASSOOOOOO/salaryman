@@ -7,6 +7,15 @@ The user plans to deploy SALARYMAN from GitHub onto other server systems rather
 than host it on Replit. GitHub is the source for deployment, not the hosting
 platform. The destination system has not yet been selected.
 
+After migrating hosting, the user requires a container image/layer limit above
+Replit's 8 GiB ceiling.
+
+**Why:** the user specified that the layer limit must increase once hosting is
+migrated after the current publish exceeded Replit's limit.
+
+**How to apply:** when comparing hosting providers, verify their image-size limit
+exceeds 8 GiB and has headroom for SALARYMAN's growing assets and dependencies.
+
 The user has not chosen the beta hosting provider and wants a daily reminder
 through the same phone-health email channel at 9:00 AM Da Nang time
 (Asia/Ho_Chi_Minh). Stop reminders when the provider is chosen.

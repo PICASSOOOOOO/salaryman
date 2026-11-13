@@ -24,4 +24,10 @@ generated-artifacts/
 # production builds. Keep dist/releases: the API serves those downloads.
 exports/
 build/
+
+# These workspace-only sources and intermediate outputs are not used by the
+# deployed API or web app. Keep the downloadable releases above.
+/native/
+/artifacts/mockup-sandbox/
+/dist/salaryman-office/
 generated-artifacts/

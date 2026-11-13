@@ -342,7 +342,11 @@ export default function CalllHomePage() {
             fontSize: '0.48rem', color: warning(0.7), letterSpacing: '0.08em',
             display: 'flex', alignItems: 'center', gap: 8 }} role="status" aria-live="polite">
             <AlertTriangle size={12} />
-            <span style={{ flex: 1 }}>Phone service is temporarily unavailable. The system will keep trying to reconnect.</span>
+            <span style={{ flex: 1 }}>
+              {systemStatus === 'unconfigured'
+                ? 'CALLL HOME needs valid Twilio account credentials. The site owner must correct the project Secrets before calling can connect.'
+                : 'Twilio is not responding or rejected the account credentials. Check the project Secrets, then retry.'}
+            </span>
             <button
               type="button"
               onClick={() => setStatusRetryKey(value => value + 1)}

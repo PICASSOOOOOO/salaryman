@@ -7,6 +7,7 @@ const PUBLIC_EXACT_PATHS = new Set([
   "/alpha",
   "/pablo/promo",
   "/legal",
+  "/sms-opt-in",
 ]);
 
 export function requiresAppSignIn(pathname: string): boolean {

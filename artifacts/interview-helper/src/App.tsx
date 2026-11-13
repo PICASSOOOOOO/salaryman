@@ -647,6 +647,7 @@ function AppShell() {
             <Route path="/business/tasks" component={TaskBoard} />
             <Route path="/business/team" component={TeamDirectory} />
             <Route path="/business/autopilot" component={Autopilot} />
+            <Route path="/claude-templates" component={ClaudeTemplates} />
             <Route path="/business/partnerships" component={Partnerships} />
             <Route path="/business/announcements" component={Announcements} />
             <Route path="/business/estimates" component={Estimates} />
@@ -805,6 +806,7 @@ function AppShell() {
                 VendingMachine "homebase" tab was a non-persisting V1 stub. */}
             <Route path="/store/realty" component={RealtyStore} />
             <Route path="/cutscene" component={CutscenePage} />
+            <Route path="/bots/factory" component={BotFactory} />
             <Route path="/bots">{() => <Redirect to="/business/autopilot" />}</Route>
             <Route path="/bots/:rest*">{() => <Redirect to="/business/autopilot" />}</Route>
 

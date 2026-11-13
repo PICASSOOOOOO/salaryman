@@ -74,7 +74,7 @@ export default function BusinessFloorPlanner() {
               </button>
             </div>
           ) : (
-            <>Acquire or lease a Shadow Tower business floor before commissioning a fit-out. <Link href="/realty" className="underline">VIEW FLOORS</Link></>
+            <>Acquire or lease a Shadow Tower business floor before commissioning a fit-out. <Link href="/store/realty" className="underline">VIEW FLOORS</Link></>
           )}
         </div>
       )}

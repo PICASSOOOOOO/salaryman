@@ -140,6 +140,6 @@ describe("consolidated workspace navigation", () => {
     const automation = menuDestinations.filter((entry) => entry.path === "/business/autopilot");
     expect(automation).toHaveLength(1);
     expect(automation[0]).toMatchObject({ label: "PABLO PRIME", hint: "AUTOMATION WORKSPACE" });
-    expect(automation[0].children?.some((entry) => entry.label === "AI AGENTS" && entry.path === "/pablo/deck")).toBe(true);
+    expect(automation[0].children?.some((entry) => entry.label === "AI AGENTS" && entry.path === "/bots/factory")).toBe(true);
   });
 });
