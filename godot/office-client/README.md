@@ -49,6 +49,15 @@ experience.
 - `T`: toggle automatic breaks
 - `R`: reconnect to the game simulation
 
+## Isolated pixel side-view prototype
+
+Run `python scripts/run_side_scroller_prototype.py` from the workspace root to
+open the alternate 2D scene with the live Python simulation. It uses a temporary
+save file and starts on Floor 06; the normal `Main.tscn` and saved game remain
+untouched. The prototype reuses the existing floor/object data and pixel sprites.
+Use `A`/`D` to move, `W`/`S` for room depth, `Space` to jump, `E` to interact,
+and `PageUp`/`PageDown` near an elevator or stairs to change floors.
+
 ## Reference and asset notices
 
 - The room observation/mission shape is an original adaptation of MiniGrid's

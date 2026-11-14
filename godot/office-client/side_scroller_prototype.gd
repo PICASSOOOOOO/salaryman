@@ -16,9 +16,8 @@ const PC_SPRITE: Texture2D = preload("res://pixel-agents/assets/furniture/PC/PC_
 
 const ACTIVE_FLOOR_Y := 510.0
 const FLOOR_SPACING := 156.0
-const DEPTH_LANE_HEIGHT := 34.0
+const DEPTH_LANE_HEIGHT := 90.0
 const WORLD_VIEW_LEFT := 72.0
-const WORLD_VIEW_RIGHT := 910.0
 const INPUT_SEND_INTERVAL := 0.12
 const JUMP_DURATION := 0.72
 
@@ -27,6 +26,8 @@ var receive_buffer := ""
 var snapshot: Dictionary = {}
 var scene_data: Dictionary = {}
 var command_sequence := 0
+var pending_commands: Dictionary = {}
+var held_keys: Dictionary = {}
 var send_elapsed := 0.0
 var animation_clock := 0.0
 var bridge_status := "CONNECTING TO PYTHON SIMULATION…"
@@ -162,9 +163,19 @@ func _input(event: InputEvent) -> void:
 	if not event is InputEventKey:
 		return
 	var key_event := event as InputEventKey
+	var movement_keys := [
+		KEY_A, KEY_D, KEY_W, KEY_S,
+		KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
+		KEY_SHIFT,
+	]
+	if key_event.keycode in movement_keys:
+		if key_event.pressed:
+			held_keys[key_event.keycode] = true
+		else:
+			held_keys.erase(key_event.keycode)
+		return
 	if not key_event.pressed or key_event.echo:
 		return
-	print("Side-view prototype key: %s" % key_event.as_text())
 	match key_event.keycode:
 		KEY_E:
 			_interact()
@@ -179,16 +190,20 @@ func _input(event: InputEvent) -> void:
 
 
 func _movement_input() -> Vector2:
-	var x := float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT))
-	x -= float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
-	var y := float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN))
-	y -= float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
+	var x := float(_is_key_held(KEY_D) or _is_key_held(KEY_RIGHT))
+	x -= float(_is_key_held(KEY_A) or _is_key_held(KEY_LEFT))
+	var y := float(_is_key_held(KEY_S) or _is_key_held(KEY_DOWN))
+	y -= float(_is_key_held(KEY_W) or _is_key_held(KEY_UP))
 	var movement := Vector2(x, y).limit_length(1.0)
 	if movement.x < -0.1:
 		facing_left = true
 	elif movement.x > 0.1:
 		facing_left = false
 	return movement
+
+
+func _is_key_held(keycode: int) -> bool:
+	return bool(held_keys.get(keycode, false)) or Input.is_key_pressed(keycode)
 
 
 func _send_current_input() -> void:
@@ -201,14 +216,17 @@ func _send_current_input() -> void:
 		{
 			"x": movement.x,
 			"y": movement.y,
-			"sprint": Input.is_key_pressed(KEY_SHIFT),
+			"sprint": _is_key_held(KEY_SHIFT),
 		},
 	)
 
 
 func _page_is_open() -> bool:
 	var office_value: Variant = snapshot.get("office", {})
-	return office_value is Dictionary and not str(office_value.get("activePage", "")).is_empty()
+	if not office_value is Dictionary:
+		return false
+	var active_page: Variant = office_value.get("activePage", "")
+	return active_page is String and not active_page.is_empty()
 
 
 func _read_messages() -> void:
@@ -261,6 +279,11 @@ func _handle_message(message: Dictionary) -> void:
 					notice = "ARRIVED ON FLOOR %02d" % int(scene_data.get("floor", 1))
 					notice_remaining = 2.5
 		"result":
+			var command_id := str(message.get("id", ""))
+			var command_name := str(pending_commands.get(command_id, ""))
+			pending_commands.erase(command_id)
+			if command_name == "set_input":
+				return
 			if bool(message.get("ok", false)):
 				notice = str(message.get("message", "ACTION COMPLETE"))
 			else:
@@ -282,6 +305,7 @@ func _send_command(command_name: String, payload: Dictionary = {}) -> String:
 		"name": command_name,
 		"payload": payload,
 	}
+	pending_commands[command_id] = command_name
 	connection.put_data((JSON.stringify(message) + "\n").to_utf8_buffer())
 	return command_id
 
@@ -389,7 +413,8 @@ func _draw_floor_stack(size: Vector2) -> void:
 		draw_rect(Rect2(58.0, floor_y + 13.0, shaft.position.x - 58.0, 72.0), Color("#efe8c9") if active else Color("#d3dfc4"))
 		draw_line(Vector2(58.0, floor_y + 85.0), Vector2(shaft.position.x, floor_y + 85.0), Color("#8a7552"), 2.0)
 		var label_color := Color("#315f52") if active else Color("#607961")
-		_draw_text("FLOOR %02d" % floor_number, Vector2(72.0, floor_y - 14.0), 12 if active else 10, label_color)
+		if not active:
+			_draw_text("FLOOR %02d" % floor_number, Vector2(72.0, floor_y - 14.0), 10, label_color)
 		var car_y := floor_y - 67.0
 		draw_rect(Rect2(shaft.position.x + 43.0, car_y, 73.0, 61.0), Color("#b4d5bd") if active else Color("#c2d8b9"))
 		draw_rect(Rect2(shaft.position.x + 43.0, car_y, 73.0, 61.0), beam_color if active else Color("#7b9872"), false, 2.0)
@@ -436,7 +461,7 @@ func _draw_world_object(item: Dictionary, screen_position: Vector2) -> void:
 	var nearby := bool(item.get("nearby", false))
 	if sprite != null:
 		var image_size := sprite.get_size()
-		var scale := 1.5
+		var scale := 1.2
 		var rect := Rect2(
 			screen_position.x - image_size.x * scale / 2.0,
 			screen_position.y - image_size.y * scale,
@@ -480,8 +505,11 @@ func _draw_hud(size: Vector2) -> void:
 	_draw_text("SALARYMAN  /  TOWER SIDE VIEW", Vector2(38.0, 46.0), 20, Color("#f3e4b1"))
 	_draw_text("FLOOR %02d  ·  %s" % [floor_number, room_name.replace("_", " ").to_upper()], Vector2(40.0, 108.0), 12, Color("#315f52"))
 	_draw_text(bridge_status, Vector2(40.0, size.y - 48.0), 10, Color("#315f52"))
-	var message := notice if notice_remaining > 0.0 else "A / D MOVE   W / S DEPTH   SPACE JUMP   E INTERACT"
-	_draw_text(message, Vector2(40.0, size.y - 27.0), 10, Color("#f3e4b1"))
+	var showing_notice := notice_remaining > 0.0
+	var message := notice if showing_notice else "A / D MOVE   W / S DEPTH   SPACE JUMP   E INTERACT"
+	var message_color := Color("#f1c96f") if showing_notice else Color("#f3e4b1")
+	_draw_text(message, Vector2(40.0, size.y - 27.0), 10, message_color)
+	_draw_text("MOVE TO LIFT / STAIRS  ·  PGUP / PGDN CHANGE FLOORS", Vector2(size.x - 405.0, size.y - 27.0), 9, Color("#315f52"))
 
 
 func _draw_text(text: String, position: Vector2, font_size: int, color: Color) -> void:

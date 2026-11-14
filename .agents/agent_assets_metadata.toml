@@ -2587,3 +2587,45 @@ mtime_ms = 1794590468691
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/63fe5086-232a-4d25-8b5c-eab292a0c248/cb3fc144-0508-47b4-ae4d-e27511ceb726"
 storage_version_token = "1794590496001825"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "z47HaoaJQYM0ync3xdg6R"
+uri = "file://generated-artifacts/side-scroller-floor06-final.png"
+type = "image"
+title = "Tower side-view prototype — Floor 06"
+description = "Live Floor 06 screenshot from the separate pixel-art side-view scene."
+logical_id = "0c41e034-a6da-459c-9b81-e38322e9f5c4"
+content_hash = "sha256:19fb1fc069206cf1fa8f4ecca307a6a4e476c8cf3d353c58ef321f0a1c714d1e"
+size = 26220
+mtime_ms = 1794626208856
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/0c41e034-a6da-459c-9b81-e38322e9f5c4/8b97d36a-5267-4037-8ba1-413f1ee840f4"
+storage_version_token = "1794626258012346"
+content_type = "image/png"
+
+[[outputs]]
+id = "DgVFV9D8X0ZGYdK0Kb86N"
+uri = "file://generated-artifacts/side-scroller-floor07-final.png"
+type = "image"
+title = "Tower side-view prototype — Floor 07"
+description = "The same prototype after an elevator trip to Floor 07."
+logical_id = "928e1d49-1555-47bb-bb94-cb5b7cb860ab"
+content_hash = "sha256:dc528243d61fc2dc9e0a0888995f0d85f1d4213f01837cc6ab0893758d523def"
+size = 25966
+mtime_ms = 1794626228556
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/928e1d49-1555-47bb-bb94-cb5b7cb860ab/986d7290-0dd0-4618-ae16-6d80b47437ff"
+storage_version_token = "1794626258737263"
+content_type = "image/png"
+
+[[outputs]]
+id = "edELIXhTnmktvb0axKOvx"
+uri = "file://generated-artifacts/side-scroller-interaction-feedback.png"
+type = "image"
+title = "Tower side-view prototype — interaction feedback"
+description = "The prototype shows a prompt when the player is not close enough to an interactive object."
+logical_id = "c40bdc72-54e8-46f0-bcdf-5a890a5a603e"
+content_hash = "sha256:954328b7f6629b4fd9287c512b2b4673dde995e5dcb2fa11baabf0453a894c60"
+size = 26190
+mtime_ms = 1794626209408
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c40bdc72-54e8-46f0-bcdf-5a890a5a603e/2aefdff4-cb55-43ed-a4b0-05229ab7de7f"
+storage_version_token = "1794626301708776"
+content_type = "image/png"

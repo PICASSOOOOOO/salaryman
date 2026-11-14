@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,4 +41,11 @@ def build_side_scroller_scene():
 if __name__ == "__main__":
     app.launch_godot = launch_side_scroller
     app.build_tower_scene = build_side_scroller_scene
-    raise SystemExit(app.run(sys.argv[1:]))
+    if any(
+        arg == "--save-file" or arg.startswith("--save-file=")
+        for arg in sys.argv[1:]
+    ):
+        raise SystemExit("The side-view prototype always uses a temporary save file.")
+    with tempfile.TemporaryDirectory(prefix="salaryman-side-view-") as temp_dir:
+        save_path = str(Path(temp_dir) / "office.json")
+        raise SystemExit(app.run(["--save-file", save_path, *sys.argv[1:]]))
