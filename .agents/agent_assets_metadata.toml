@@ -2657,3 +2657,17 @@ mtime_ms = 1794628777056
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/41907118-65e3-4bd5-a3d1-aed594422697/a7248c78-19c3-4e64-96d0-ec5f68b083bf"
 storage_version_token = "1794628821532773"
 content_type = "image/png"
+
+[[outputs]]
+id = "W5fLhXepFsewWMUV_DiOy"
+uri = "file://generated-artifacts/floor06-purposeful-npcs.mp4"
+type = "video"
+title = "Floor 06: purposeful NPCs in live gameplay"
+description = "Four-second live Godot capture showing the player approaching five named, interactive coworkers around the video-meeting table."
+logical_id = "bf12574a-1e32-41fd-b773-636c3f4761c5"
+content_hash = "sha256:6d628c6fc3e112a383d98d100b14549597597adac1c2d66357ae4dc01d7e7fd3"
+size = 279226
+mtime_ms = 1794636348040
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/bf12574a-1e32-41fd-b773-636c3f4761c5/9e973e73-a178-4633-bb0e-9a72e2cca9c7"
+storage_version_token = "1794636428522872"
+content_type = "video/mp4"

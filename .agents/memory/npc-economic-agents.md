@@ -315,7 +315,9 @@ for each NPC's bounded work; keep identity, job, goal, and route connected.
 Structure business stock with stable product families and version metadata so
 future NPC growth can build on it, while clearly distinguishing data readiness
 from live behavior. Keep each NPC's tools and decisions limited to its own job
-and improvement domain.
+and improvement domain. Show purposeful characters in the live Tower near the
+spaces they serve, with identity and activity labels drawn from real simulation
+state; do not add idle filler or claim unperformed automation work.
 
 ## Pablo Corp workforce rentals and Prime secretary
 

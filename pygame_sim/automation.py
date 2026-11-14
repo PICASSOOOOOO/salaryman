@@ -38,13 +38,13 @@ class AutomationCharacter:
     phase_seconds: float = 0.0
 
 
-# Routes stay inside the existing Floor 6 rooms. They are deliberately
-# separate from the employee loops so each automation has its own work circuit.
+# Routes stay inside the existing Floor 6 rooms, near the work areas they serve.
+# They are deliberately separate from the employee loops.
 AUTOMATION_CHARACTERS = (
     AutomationCharacter(
         "business_ops", "PIP", "SHIFT COORDINATOR", "office_03",
         "characters/char_1.png", (91, 208, 155),
-        ((5_250, 37_413), (6_700, 37_413), (6_700, 37_913), (5_250, 37_913)),
+        ((10_700, 51_200), (9_700, 51_200), (9_700, 50_200), (10_700, 50_200)),
         ("SORT TASKS", "CHECK STAFFING", "ROUTE WORK", "UPDATE BOARD"),
         76.0,
         app_label="JOB COMMAND",
@@ -89,7 +89,7 @@ AUTOMATION_CHARACTERS = (
     AutomationCharacter(
         "market_research", "SCOUT", "MARKET ANALYST", "office_03",
         "characters/char_1.png", (114, 187, 231),
-        ((5_300, 38_563), (6_700, 38_563), (6_700, 39_113), (5_300, 39_113)),
+        ((22_200, 35_600), (23_200, 35_600), (23_200, 36_600), (22_200, 36_600)),
         ("SCAN SOURCES", "COMPARE SIGNALS", "BUILD BRIEF", "QUEUE REVIEW"),
         70.0,
         app_label="INTELLIGENCE REPORTS",

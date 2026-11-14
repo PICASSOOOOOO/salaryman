@@ -69,6 +69,7 @@ var interaction_rings: Array[MeshInstance3D] = []
 var world_root: Node3D
 var dynamic_root: Node3D
 var automation_root: Node3D
+var office_worker_root: Node3D
 var basement_actor_root: Node3D
 var player_root: PlayerController
 var player_shadow: MeshInstance3D
@@ -143,6 +144,9 @@ var imported_scenes: Dictionary = {}
 var automation_actors: Dictionary = {}
 var automation_animations: Dictionary = {}
 var automation_targets: Dictionary = {}
+var office_worker_actors: Dictionary = {}
+var office_worker_animations: Dictionary = {}
+var office_worker_targets: Dictionary = {}
 var basement_actor_nodes: Dictionary = {}
 var danger_audio_rng := RandomNumberGenerator.new()
 var danger_audio_player: AudioStreamPlayer
@@ -299,6 +303,10 @@ func _build_building_shell() -> void:
 	automation_root = Node3D.new()
 	automation_root.name = "AutomationCharacters"
 	world_root.add_child(automation_root)
+
+	office_worker_root = Node3D.new()
+	office_worker_root.name = "OfficeWorkers"
+	world_root.add_child(office_worker_root)
 
 	basement_actor_root = Node3D.new()
 	basement_actor_root.name = "BasementPestsAndCrew"
@@ -2086,6 +2094,18 @@ func _sync_automation_characters(characters: Array) -> void:
 			if accent.size() >= 3:
 				name_tag.modulate = Color8(int(accent[0]), int(accent[1]), int(accent[2]))
 			actor_root.add_child(name_tag)
+
+			var role_tag := Label3D.new()
+			role_tag.name = "RoleTag"
+			role_tag.font_size = 14
+			role_tag.pixel_size = 0.005
+			role_tag.position = Vector3(0.0, 1.48, 0.0)
+			role_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			role_tag.modulate = Color("#f2eee2")
+			role_tag.outline_size = 6
+			role_tag.outline_modulate = Color("#14211e")
+			actor_root.add_child(role_tag)
+
 			automation_root.add_child(actor_root)
 			automation_actors[domain] = actor_root
 			automation_animations[domain] = actor_animation
@@ -2093,6 +2113,26 @@ func _sync_automation_characters(characters: Array) -> void:
 		var character_model := actor_root.get_node_or_null("CharacterModel") as Node3D
 		if character_model != null:
 			AvatarStyle.set_wardrobe(character_model, wardrobe)
+		var name_tag := actor_root.get_node_or_null("NameTag") as Label3D
+		if name_tag != null:
+			name_tag.text = str(character.get("name", domain)).to_upper()
+		var role_tag := actor_root.get_node_or_null("RoleTag") as Label3D
+		if role_tag != null:
+			var sync_state := str(character.get("syncState", "error")).to_lower()
+			var enabled: Variant = character.get("enabled", null)
+			var status := "SYNC ERROR"
+			if sync_state == "connected":
+				status = "ENABLED" if enabled == true else (
+					"PAUSED" if enabled == false else "STATUS UNKNOWN"
+				)
+			elif sync_state == "unlinked":
+				status = "LINK REQUIRED"
+			elif sync_state == "connecting":
+				status = "SYNCING"
+			role_tag.text = "%s · %s" % [
+				str(character.get("role", "SPECIALIST")).to_upper(),
+				status,
+			]
 
 	for domain in automation_actors.keys():
 		if active_domains.has(domain):
@@ -2120,6 +2160,114 @@ func _smooth_automation_characters(delta: float) -> void:
 		if moving and model != null:
 			model.rotation.y = atan2(direction.x, -direction.z)
 		var actor_animation: AnimationPlayer = automation_animations.get(domain)
+		if actor_animation != null:
+			var desired_animation := "walk" if moving else "idle"
+			if actor_animation.current_animation != desired_animation:
+				actor_animation.play(desired_animation)
+
+
+func _sync_office_workers(workers: Array) -> void:
+	var active_worker_ids: Dictionary = {}
+	for worker_value in workers:
+		if not worker_value is Dictionary:
+			continue
+		var worker: Dictionary = worker_value
+		var worker_id := str(worker.get("id", ""))
+		if worker_id.is_empty():
+			continue
+		active_worker_ids[worker_id] = true
+		var worker_name := str(worker.get("name", "OFFICE WORKER"))
+		var worker_role := str(worker.get("role", "OFFICE STAFF")).to_upper()
+		var identity := "%s · %s" % [worker_name, worker_role]
+		var target := _pygame_to_world(
+			float(worker.get("x", 0)),
+			float(worker.get("y", 0)),
+			str(worker.get("room", "")),
+		)
+		var actor_root: Node3D = office_worker_actors.get(worker_id)
+		if actor_root == null or not is_instance_valid(actor_root):
+			var packed := imported_scenes.get("character") as PackedScene
+			if packed == null:
+				push_error("Godot character scene is missing for office worker %s." % worker_id)
+				continue
+			actor_root = Node3D.new()
+			actor_root.name = "OfficeWorker-" + worker_id
+			actor_root.position = target
+			var model := packed.instantiate() as Node3D
+			model.name = "CharacterModel"
+			actor_root.add_child(model)
+			var wardrobe := AvatarStyle.wardrobe_for_npc(identity)
+			var actor_animation := PlayerController.configure_character_model(
+				model, PlayerController.MODEL_SCALE, wardrobe
+			)
+			if actor_animation != null:
+				actor_animation.play("idle")
+			_add_character_shadow(actor_root, 0.34)
+
+			var name_tag := Label3D.new()
+			name_tag.name = "NameTag"
+			name_tag.font_size = 22
+			name_tag.pixel_size = 0.0055
+			name_tag.position = Vector3(0.0, 1.9, 0.0)
+			name_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			name_tag.outline_size = 7
+			name_tag.outline_modulate = Color("#14211e")
+			var accent: Array = worker.get("accent", [])
+			if accent.size() >= 3:
+				name_tag.modulate = Color8(int(accent[0]), int(accent[1]), int(accent[2]))
+			actor_root.add_child(name_tag)
+
+			var activity_tag := Label3D.new()
+			activity_tag.name = "ActivityTag"
+			activity_tag.font_size = 14
+			activity_tag.pixel_size = 0.005
+			activity_tag.position = Vector3(0.0, 1.66, 0.0)
+			activity_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			activity_tag.modulate = Color("#f2eee2")
+			activity_tag.outline_size = 6
+			activity_tag.outline_modulate = Color("#14211e")
+			actor_root.add_child(activity_tag)
+
+			office_worker_root.add_child(actor_root)
+			office_worker_actors[worker_id] = actor_root
+			office_worker_animations[worker_id] = actor_animation
+		office_worker_targets[worker_id] = target
+		var name_tag := actor_root.get_node_or_null("NameTag") as Label3D
+		if name_tag != null:
+			name_tag.text = worker_name.to_upper()
+		var activity_tag := actor_root.get_node_or_null("ActivityTag") as Label3D
+		if activity_tag != null:
+			activity_tag.text = "%s · %s" % [
+				worker_role,
+				str(worker.get("activity", "READY FOR SHIFT")).to_upper(),
+			]
+
+	for worker_id in office_worker_actors.keys():
+		if active_worker_ids.has(worker_id):
+			continue
+		var stale_root: Node3D = office_worker_actors[worker_id]
+		if is_instance_valid(stale_root):
+			stale_root.queue_free()
+		office_worker_actors.erase(worker_id)
+		office_worker_animations.erase(worker_id)
+		office_worker_targets.erase(worker_id)
+
+
+func _smooth_office_workers(delta: float) -> void:
+	for worker_id in office_worker_actors.keys():
+		var actor_root: Node3D = office_worker_actors.get(worker_id)
+		if actor_root == null or not is_instance_valid(actor_root):
+			continue
+		var target: Vector3 = office_worker_targets.get(worker_id, actor_root.position)
+		var direction := target - actor_root.position
+		direction.y = 0.0
+		var moving := direction.length() > 0.035
+		var blend := 1.0 - exp(-10.0 * delta)
+		actor_root.position = actor_root.position.lerp(target, blend)
+		var model := actor_root.get_node_or_null("CharacterModel") as Node3D
+		if moving and model != null:
+			model.rotation.y = atan2(direction.x, -direction.z)
+		var actor_animation: AnimationPlayer = office_worker_animations.get(worker_id)
 		if actor_animation != null:
 			var desired_animation := "walk" if moving else "idle"
 			if actor_animation.current_animation != desired_animation:
@@ -2678,6 +2826,7 @@ func _apply_snapshot(message: Dictionary) -> void:
 	_sync_prop_surfaces(scene_data.get("objects", []))
 	_sync_door_states(scene_data.get("objects", []))
 	_sync_automation_characters(scene_data.get("automationCharacters", []))
+	_sync_office_workers(scene_data.get("officeWorkers", []))
 	_sync_basement_actors(scene_data.get("basement", {}), room_id)
 
 
@@ -2813,6 +2962,7 @@ func _smooth_visual_player(delta: float) -> void:
 		if player_shadow != null:
 			player_shadow.position.y = PLAYER_GROUND_Y - player_root.global_position.y + 0.02
 	_smooth_automation_characters(delta)
+	_smooth_office_workers(delta)
 
 
 func _rebuild_bridge_objects(objects: Array) -> void:
@@ -2842,6 +2992,7 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 			collision_extents,
 		)
 		marker.name = object_id
+		_add_coworker_nameplate(marker, object)
 		marker.rotation.y = deg_to_rad(float(object.get("rotationDegrees", 0)))
 		marker.set_meta("material_kind", str(object.get("material", "unknown")))
 		marker.set_meta("damage", int(object.get("damage", 0)))
@@ -2876,6 +3027,38 @@ func _rebuild_bridge_objects(objects: Array) -> void:
 			marker.add_child(fire)
 		if bool(object.get("nearby", false)):
 			_add_interaction_ring(position)
+
+
+func _add_coworker_nameplate(actor: Node3D, object: Dictionary) -> void:
+	var npc_name := str(object.get("npcName", "")).strip_edges()
+	if npc_name.is_empty():
+		return
+	var department := str(object.get("npcDepartment", "COWORKER")).strip_edges().to_upper()
+	var personality := str(object.get("npcTrait", "")).strip_edges().to_upper()
+
+	var name_tag := Label3D.new()
+	name_tag.name = "CoworkerName"
+	name_tag.text = npc_name.to_upper()
+	name_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	name_tag.font_size = 24
+	name_tag.pixel_size = 0.004
+	name_tag.outline_size = 8
+	name_tag.outline_modulate = Color("#14211e")
+	name_tag.position.y = 1.72
+	name_tag.modulate = Color("#f0e9d7")
+	actor.add_child(name_tag)
+
+	var role_tag := Label3D.new()
+	role_tag.name = "CoworkerRole"
+	role_tag.text = "%s · %s" % [department, personality]
+	role_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	role_tag.font_size = 16
+	role_tag.pixel_size = 0.004
+	role_tag.outline_size = 7
+	role_tag.outline_modulate = Color("#14211e")
+	role_tag.position.y = 1.43
+	role_tag.modulate = Color("#a9e0cf")
+	actor.add_child(role_tag)
 
 
 func _sync_basement_actors(basement_value: Variant, room_id: String) -> void:

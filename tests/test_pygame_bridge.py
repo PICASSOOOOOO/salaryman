@@ -49,6 +49,49 @@ class PygameBridgeTests(unittest.TestCase):
         )
         self.assertLessEqual(len(encoded.encode("utf-8")), MAX_OUTBOUND_LINE_BYTES)
 
+    def test_snapshot_sends_live_office_worker_routes_and_status(self):
+        self.assertTrue(self.scene.select_floor(6))
+        self.assertTrue(self.scene.select_room("office_03"))
+        worker = self.state.roster.workers[0]
+        worker.status_note = "PRODUCING VALUE"
+
+        first_snapshot = build_snapshot(self.state, self.scene, sequence=8)
+        first_workers = first_snapshot["scene"]["officeWorkers"]
+        self.assertEqual(len(first_workers), 2)
+        self.assertEqual(first_workers[0]["name"], worker.name)
+        self.assertEqual(first_workers[0]["role"], worker.role)
+        self.assertEqual(first_workers[0]["activity"], "PRODUCING VALUE")
+        first_position = (first_workers[0]["x"], first_workers[0]["y"])
+
+        self.scene.update_npc_motion(1.0)
+        second_snapshot = build_snapshot(self.state, self.scene, sequence=9)
+        second_workers = second_snapshot["scene"]["officeWorkers"]
+        self.assertNotEqual(
+            first_position,
+            (second_workers[0]["x"], second_workers[0]["y"]),
+        )
+
+        self.assertTrue(self.scene.select_floor(1))
+        lobby_snapshot = build_snapshot(self.state, self.scene, sequence=10)
+        self.assertEqual(lobby_snapshot["scene"]["officeWorkers"], [])
+
+    def test_snapshot_labels_interactive_coworkers_with_real_identity(self):
+        self.assertTrue(self.scene.select_floor(6))
+        self.assertTrue(self.scene.select_room("office_03"))
+        coworker = self.state.rivalry.coworker("coworker-1")
+        self.assertIsNotNone(coworker)
+        department = self.state.rivalry.departments[coworker.department_id]
+
+        snapshot = build_snapshot(self.state, self.scene, sequence=11)
+        actor = next(
+            item for item in snapshot["scene"]["objects"]
+            if item["id"] == "coworker-1"
+        )
+
+        self.assertEqual(actor["npcName"], coworker.name)
+        self.assertEqual(actor["npcDepartment"], department.name)
+        self.assertEqual(actor["npcTrait"], coworker.trait_name.replace("_", " "))
+
     def test_business_door_snapshot_tracks_open_hours_for_godot(self):
         door = self.scene.objects.get("floor-02-business-01-door")
         self.assertIsNotNone(door)

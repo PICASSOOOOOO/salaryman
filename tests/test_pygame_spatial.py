@@ -40,7 +40,34 @@ class PygameSpatialTests(unittest.TestCase):
         meeting_table = scene.objects.get("floor-06-meeting-table")
         self.assertIsNotNone(meeting_table)
         self.assertEqual(meeting_table.label, "VIDEO MEETING TABLE")
+        self.assertEqual(meeting_table.collision_half_extents, (200, 100))
         self.assertEqual((scene.width, scene.height), (100_000_000, 100_000_000))
+
+    def test_floor_six_coworkers_cluster_around_the_meeting_table(self):
+        scene = build_tower_scene()
+        self.assertTrue(scene.select_floor(6))
+        self.assertTrue(scene.select_room("office_03"))
+        table = scene.objects.get("floor-06-meeting-table")
+        self.assertIsNotNone(table)
+
+        coworkers = [
+            scene.objects.get(f"coworker-{index}")
+            for index in range(1, 6)
+        ]
+        self.assertTrue(all(coworkers))
+        for coworker in coworkers:
+            self.assertLess(
+                abs(coworker.position[0] - table.position[0])
+                + abs(coworker.position[1] - table.position[1]),
+                500,
+            )
+            self.assertTrue(scene._room_position_is_walkable(coworker.position))
+            self.assertFalse(scene._collides_with_object(coworker.position))
+
+        scene.player_position = (10_950, 52_000)
+        scene.move(200, 0)
+        self.assertEqual(scene.nearby_object.id, "coworker-1")
+        self.assertEqual(scene.player_position, (11_150, 52_000))
 
     def test_floor_plan_is_continuous_and_office_doors_land_on_boundary(self):
         scene = build_tower_scene()

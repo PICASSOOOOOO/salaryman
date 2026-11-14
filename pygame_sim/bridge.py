@@ -1272,6 +1272,21 @@ def apply_command(
     return result
 
 
+def _coworker_actor_metadata(state: OfficeState, item: Any) -> dict[str, str]:
+    if not item.id.startswith("coworker-"):
+        return {}
+    coworker = state.rivalry.coworker(item.id)
+    if coworker is None or not coworker.alive:
+        return {}
+    department = state.rivalry.departments[coworker.department_id]
+    return {
+        "npcName": coworker.name,
+        "npcDepartment": department.name,
+        "npcTrait": coworker.trait_name.replace("_", " "),
+        "npcState": coworker.state.replace("_", " "),
+    }
+
+
 def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict[str, Any]:
     """Build a versioned, JSON-safe snapshot for Godot rendering."""
     current_room = scene.room
@@ -1294,6 +1309,24 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
         if state.active_object_id is not None
         else None
     )
+    office_workers: list[dict[str, object]] = []
+    if not scene.is_basement:
+        for index, worker in enumerate(state.roster.workers[:5]):
+            pose = scene.npc_pose(scene.current_room, index)
+            if pose is None:
+                continue
+            (worker_x, worker_y), facing = pose
+            office_workers.append({
+                "id": f"office-worker-{index}",
+                "name": worker.name,
+                "role": worker.role,
+                "activity": worker.status_note,
+                "accent": list(worker.accent),
+                "room": scene.current_room,
+                "x": worker_x,
+                "y": worker_y,
+                "facing": facing,
+            })
     return {
         "type": "snapshot",
         "version": PROTOCOL_VERSION,
@@ -1332,6 +1365,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
                     "id": item.id,
                     "kind": item.kind,
                     "label": item.label,
+                    **_coworker_actor_metadata(state, item),
                     "room": item.room,
                     "x": item.position[0],
                     "y": item.position[1],
@@ -1386,6 +1420,7 @@ def build_snapshot(state: OfficeState, scene: TowerScene, sequence: int) -> dict
             "automationCharacters": (
                 [] if scene.is_basement else scene.automation_character_states()
             ),
+            "officeWorkers": office_workers,
             "cameraFocusObjectId": (
                 state.active_object_id or scene.camera_focus_object_id
             ),

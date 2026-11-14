@@ -736,8 +736,8 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
 
     registry = OfficeObjectRegistry(auto_scale_legacy_coordinates=True)
     for index, position in enumerate(
-        ((8_000, 43_000), (13_000, 43_000), (18_000, 43_000),
-         (8_000, 56_000), (18_000, 56_000)),
+        ((11_150, 52_000), (11_850, 52_000), (11_350, 51_750),
+         (11_650, 51_750), (11_500, 52_250)),
         start=1,
     ):
         registry.add(
@@ -1407,7 +1407,7 @@ def build_tower_object_registry() -> OfficeObjectRegistry:
             "office_03",
             (11_500, 52_000),
             "START VIDEO MEETING",
-            solid_half_extents=(520, 300),
+            solid_half_extents=(200, 100),
         ),
         scale_legacy_coordinates=False,
     )

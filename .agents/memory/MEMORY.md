@@ -148,3 +148,4 @@
 - [SampQOL reference boundary](1999-sampqol-reference.md) — adapt documented sampler workflows independently; do not bundle or redistribute the MPC firmware mod.
 - [1999 + creative stations](1999-machine-ecosystem.md) — free browser workstation plus one very expensive, placeable in-game recording terminal.
 - [SALARYMAN community mods](salaryman-mod-platform.md) — “firmware” means installable game-feature add-ons; personal code rewrites belong in local source forks.
+- [Failed patch recovery](agent-patch-recovery.md) — reread target files after a failed multi-hunk patch; earlier hunks may already have applied.

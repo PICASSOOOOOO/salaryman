@@ -32,7 +32,7 @@ OBJECT_INTERACTION_RADIUS = 1_400
 
 
 def _build_office_npc_routes() -> dict[str, tuple[tuple[tuple[int, int], ...], ...]]:
-    """Give floor-six office workers small, deterministic routes within their suites."""
+    """Keep floor-six workers moving close to the business stations they support."""
     offices = {
         str(item["id"]): tuple(int(value) for value in item["bounds"])
         for item in FLOOR_PLAN["baseLayout"]["offices"]
@@ -40,16 +40,26 @@ def _build_office_npc_routes() -> dict[str, tuple[tuple[tuple[int, int], ...], .
     routes: dict[str, list[tuple[tuple[int, int], ...]]] = {}
     for business in FLOOR_PLAN["playableFloors"]["6"]["businesses"]:
         room_id = str(business["officeRoom"])
-        x, y, width, height = offices[room_id]
-        half_width = width // 2
-        half_x = x if business["officeHalf"] == "west" else x + half_width
-        inset = 1_500
-        route = (
-            (half_x + inset, y + inset),
-            (half_x + half_width - inset, y + inset),
-            (half_x + half_width - inset, y + height - inset),
-            (half_x + inset, y + height - inset),
-        )
+        if business["businessKey"] == "meeting_room":
+            route = (
+                (9_300, 51_300),
+                (9_800, 51_300),
+                (9_800, 52_700),
+                (9_300, 52_700),
+            )
+        else:
+            x, y, width, height = offices[room_id]
+            half_width = width // 2
+            half_x = x if business["officeHalf"] == "west" else x + half_width
+            station_x = half_x + half_width // 2
+            station_y = y + 4_200
+            radius = 700
+            route = (
+                (station_x - radius, station_y - radius),
+                (station_x + radius, station_y - radius),
+                (station_x + radius, station_y + radius),
+                (station_x - radius, station_y + radius),
+            )
         routes.setdefault(room_id, []).append(route)
     routes["basement_b2"] = [
         ((4_000, 6_500), (5_500, 6_500), (5_500, 7_500), (4_000, 7_500)),

@@ -168,6 +168,30 @@ class PygameAutomationTests(unittest.TestCase):
         self.assertEqual(snapshot["scene"]["automationCharacters"][0]["domain"], "business_ops")
         self.assertNotIn("sm_desktop_", json.dumps(snapshot))
 
+    def test_floor_six_specialists_stay_near_their_real_workspaces_when_unlinked(self):
+        scene = build_tower_scene()
+        self.assertTrue(scene.select_floor(6))
+        self.assertTrue(scene.select_room("office_03"))
+
+        characters = {
+            character["domain"]: character
+            for character in scene.automation_character_states()
+        }
+        for domain, object_id in (
+            ("business_ops", "floor-06-meeting-table"),
+            ("market_research", "floor-06-business-06"),
+        ):
+            character = characters[domain]
+            station = scene.objects.get(object_id)
+            self.assertIsNotNone(station)
+            self.assertLess(
+                abs(character["x"] - station.position[0])
+                + abs(character["y"] - station.position[1]),
+                1_800,
+            )
+            self.assertEqual(character["syncState"], "unlinked")
+            self.assertEqual(character["activity"], "NO DESKTOP LINK")
+
 
 if __name__ == "__main__":
     unittest.main()
