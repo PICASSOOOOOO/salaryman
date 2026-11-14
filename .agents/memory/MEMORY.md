@@ -84,6 +84,7 @@
 - [Global multi-broker trade bot](global-trade-bot.md) — Trade Bot supports multiple brokers and currencies; amounts use native major units and analysis uses POST.
 - [Currency boundaries](fiat-gold-rail.md) — keep FIAT, GOLD, Credits, and external balances distinct; see [cross-client](cross-client-economy.md) and [banking](real-banking-overview.md).
 - [Godot game visual language](godot-game-visual-language.md) — ASCII motifs can extend into selected world art; confine CRT treatments to physical terminal and TV screens.
+- [Tower pixel-art visual quality](tower-sideview-visual-quality.md) — Pixel art is welcome, but curate recognizable art; avoid generic box/computer stand-ins and mismatched character frames.
 - [Workspace light surfaces](workspace-light-surfaces.md) — browser/control-plane UI is strictly cream/white and black; all cyberpunk color belongs only to the downloadable game.
 - [SALARYMAN product manifesto](pablo-creation-workspace.md) — Gamified office automation; browser funnels users to desktop and free creator tools.
 - [Lab naming](lab-name-1999.md) — the lab is called 1999; preserve established project names and do not rename them.
