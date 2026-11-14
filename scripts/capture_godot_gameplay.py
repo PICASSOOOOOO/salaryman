@@ -14,6 +14,10 @@ from pygame_sim import app
 CAPTURE_FPS = int(os.environ.get("SALARYMAN_CAPTURE_FPS", "12"))
 CAPTURE_SECONDS = int(os.environ.get("SALARYMAN_CAPTURE_SECONDS", "6"))
 CAPTURE_FLOOR = int(os.environ.get("SALARYMAN_CAPTURE_FLOOR", "1"))
+CAPTURE_ROOM = os.environ.get("SALARYMAN_CAPTURE_ROOM", "").strip()
+CAPTURE_START_X = os.environ.get("SALARYMAN_CAPTURE_START_X")
+CAPTURE_START_Y = os.environ.get("SALARYMAN_CAPTURE_START_Y")
+CAPTURE_ZOOM_OUT_STEPS = int(os.environ.get("SALARYMAN_CAPTURE_ZOOM_OUT_STEPS", "0"))
 CAPTURE_KEYS = [
     key.strip().lower()
     for key in os.environ.get("SALARYMAN_CAPTURE_KEYS", "space").split(",")
@@ -28,6 +32,10 @@ if CAPTURE_FLOOR not in {1, 6, 7, *range(8, 13)}:
     raise ValueError("Capture floor must be a current playable Tower floor.")
 if not CAPTURE_KEYS or any(key not in {"w", "a", "s", "d", "space"} for key in CAPTURE_KEYS):
     raise ValueError("Gameplay capture keys must be a comma-separated list of W, A, S, D, or SPACE.")
+if bool(CAPTURE_START_X) != bool(CAPTURE_START_Y):
+    raise ValueError("Set both SALARYMAN_CAPTURE_START_X and SALARYMAN_CAPTURE_START_Y, or neither.")
+if not 0 <= CAPTURE_ZOOM_OUT_STEPS <= 3:
+    raise ValueError("SALARYMAN_CAPTURE_ZOOM_OUT_STEPS must be between 0 and 3.")
 OUTPUT = ROOT / "generated-artifacts" / OUTPUT_NAME
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
 
@@ -55,6 +63,9 @@ def steer(process):
     if process.poll() is not None:
         return
     key_duration = min(30.0, max(1.0, CAPTURE_SECONDS * 5.0))
+    for _ in range(CAPTURE_ZOOM_OUT_STEPS):
+        subprocess.run(["xdotool", "key", "x"], check=True)
+        time.sleep(0.2)
     print("Sending movement input to the Godot capture window.", flush=True)
     for key in CAPTURE_KEYS:
         try:
@@ -84,13 +95,23 @@ def capture(runtime, *, headless=False):
 
 if __name__ == "__main__":
     app.launch_godot = capture
-    if CAPTURE_FLOOR != 1:
+    if CAPTURE_FLOOR != 1 or CAPTURE_ROOM or CAPTURE_START_X is not None:
         original_build_scene = app.build_tower_scene
 
         def build_capture_scene():
             scene = original_build_scene()
-            if not scene.select_floor(CAPTURE_FLOOR):
+            if CAPTURE_FLOOR != 1 and not scene.select_floor(CAPTURE_FLOOR):
                 raise RuntimeError(f"Floor {CAPTURE_FLOOR} is not playable in the current Tower.")
+            if CAPTURE_ROOM and not scene.select_room(CAPTURE_ROOM):
+                raise RuntimeError(
+                    f"Room {CAPTURE_ROOM!r} is not available on Floor {CAPTURE_FLOOR}."
+                )
+            if CAPTURE_START_X is not None and CAPTURE_START_Y is not None:
+                scene.player_position = (int(CAPTURE_START_X), int(CAPTURE_START_Y))
+                if not scene._room_position_is_walkable(scene.player_position):
+                    raise RuntimeError(
+                        f"Capture start position is not walkable in room {scene.current_room!r}."
+                    )
             return scene
 
         app.build_tower_scene = build_capture_scene

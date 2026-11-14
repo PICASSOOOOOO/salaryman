@@ -71,3 +71,9 @@ Keep lobby furniture proportionate to the playable character, and frame gameplay
 **Why:** The user said the couch looked huge beside the character and asked to zoom in so the character is visible.
 
 **How to apply:** Check furniture against the playable avatar and use the closer isometric camera framing for gameplay captures.
+
+Do not place a couch in the lobby.
+
+**Why:** The user said they never asked for a lobby couch.
+
+**How to apply:** Keep the lobby couch-free; this does not remove couch products from furniture shops.

@@ -28,7 +28,6 @@ const CAMERA_DEFAULT_ZOOM_INDEX := 1
 const CAMERA_ORTHO_SIZE_MIN := 6.2
 const CAMERA_ORTHO_SIZE_MAX := 16.0
 const CAMERA_ORTHO_SIZE_BASE := 11.4
-const LOBBY_COUCH_SCALE := 1.0
 const CAMERA_FOLLOW_RESPONSE := 5.0
 const CAMERA_ZOOM_RESPONSE := 6.0
 const CAMERA_LOOK_AHEAD_SECONDS := 0.18
@@ -173,6 +172,8 @@ func _ready() -> void:
 	_build_building_shell()
 	_build_static_furniture()
 	_build_interface()
+	if OS.get_environment("SALARYMAN_CAPTURE_HIDE_HUD") == "1":
+		interface_root.visible = false
 	_load_player()
 	_connect_to_pygame()
 
@@ -1531,11 +1532,6 @@ func _build_static_furniture() -> void:
 	var lounge_center := lobby_spawn + Vector3(-5.5, 0.0, 5.5)
 	var lamp_position := lounge_center + Vector3(3.7, 0.0, -1.7)
 	_add_lobby_rug(lounge_center)
-	var lobby_couch := OfficeProp.create("furniture_couch")
-	lobby_couch.name = "LobbyCouch"
-	lobby_couch.position = lounge_center + Vector3(2.8, 0.0, -2.8)
-	lobby_couch.scale = Vector3.ONE * LOBBY_COUCH_SCALE
-	world_root.add_child(lobby_couch)
 	_add_imported("LobbyLamp", "lamp", lamp_position, 1.1)
 	_build_lobby_decor(lounge_center)
 	if warm_lamp_light != null:
