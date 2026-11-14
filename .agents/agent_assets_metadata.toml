@@ -2629,3 +2629,31 @@ mtime_ms = 1794626209408
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/c40bdc72-54e8-46f0-bcdf-5a890a5a603e/2aefdff4-cb55-43ed-a4b0-05229ab7de7f"
 storage_version_token = "1794626301708776"
 content_type = "image/png"
+
+[[outputs]]
+id = "psEpwnirnOk3xzfSsNPjk"
+uri = "file://generated-artifacts/side-scroller-native-final.png"
+type = "image"
+title = "Native Tower side-view preview"
+description = "The alternate Floor 06 view now uses native Godot character and prop renderings in a clean cutaway; the default 3D game remains unchanged."
+logical_id = "6516335d-b569-40c3-bfb4-83205e48936f"
+content_hash = "sha256:2fb24642add57e76dbd95ab71f15f0065f1174b9e3e2ce3b07394d5a46b986a5"
+size = 61052
+mtime_ms = 1794628434000
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/6516335d-b569-40c3-bfb4-83205e48936f/e8dbdd3b-e468-4ca3-8ff5-6358c5816e8b"
+storage_version_token = "1794628485653690"
+content_type = "image/png"
+
+[[outputs]]
+id = "DxqoSG1U18-ZsT8W7gfGw"
+uri = "file://generated-artifacts/salaryman-3d-demo-moved.png"
+type = "image"
+title = "SALARYMAN full 3D game demo"
+description = "Live Godot game with the Python simulation connected; player movement is working and the session uses a temporary save."
+logical_id = "41907118-65e3-4bd5-a3d1-aed594422697"
+content_hash = "sha256:fd2bf766d45ea3e8130e5650e712700bbf44b3c9763d7ff15d78c3e32970425b"
+size = 175792
+mtime_ms = 1794628777056
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/41907118-65e3-4bd5-a3d1-aed594422697/a7248c78-19c3-4e64-96d0-ec5f68b083bf"
+storage_version_token = "1794628821532773"
+content_type = "image/png"

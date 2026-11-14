@@ -49,14 +49,16 @@ experience.
 - `T`: toggle automatic breaks
 - `R`: reconnect to the game simulation
 
-## Isolated pixel side-view prototype
+## Isolated Godot-rendered side-view prototype
 
 Run `python scripts/run_side_scroller_prototype.py` from the workspace root to
-open the alternate 2D scene with the live Python simulation. It uses a temporary
-save file and starts on Floor 06; the normal `Main.tscn` and saved game remain
-untouched. The prototype reuses the existing floor/object data and pixel sprites.
-Use `A`/`D` to move, `W`/`S` for room depth, `Space` to jump, `E` to interact,
-and `PageUp`/`PageDown` near an elevator or stairs to change floors.
+open the alternate side camera on the native Godot Tower scene. It uses the
+existing voxel character, Godot-built furniture, lighting, and Python-backed
+interactions rather than Pygame sprite sheets or generic object placeholders.
+The cutaway shows only the active Floor 06 or 07 shell to avoid overlapping
+building geometry. The runner uses a temporary save and starts on Floor 06;
+`Main.tscn` and the regular saved game remain untouched. Movement, interactions,
+and elevator travel use the normal desktop-game controls and simulation rules.
 
 ## Reference and asset notices
 

@@ -32,9 +32,11 @@ original_build_tower_scene = app.build_tower_scene
 def build_side_scroller_scene():
     scene = original_build_tower_scene()
     # Floors 06 and 07 are consecutive playable floors and provide a real
-    # elevator transition without inventing data for unfinished levels.
+    # elevator transition without inventing data for unfinished levels. The
+    # object cluster is a compact, walkable showcase of native Godot props.
     if not scene.select_floor(6):
         raise RuntimeError("The side-view prototype could not start on Floor 06.")
+    scene.player_position = (31_500, 1_500)
     return scene
 
 
