@@ -18,6 +18,8 @@ CAPTURE_ROOM = os.environ.get("SALARYMAN_CAPTURE_ROOM", "").strip()
 CAPTURE_START_X = os.environ.get("SALARYMAN_CAPTURE_START_X")
 CAPTURE_START_Y = os.environ.get("SALARYMAN_CAPTURE_START_Y")
 CAPTURE_ZOOM_OUT_STEPS = int(os.environ.get("SALARYMAN_CAPTURE_ZOOM_OUT_STEPS", "0"))
+CAPTURE_INPUT_DELAY = float(os.environ.get("SALARYMAN_CAPTURE_INPUT_DELAY", "2"))
+CAPTURE_MOVE_SECONDS = float(os.environ.get("SALARYMAN_CAPTURE_MOVE_SECONDS", "4"))
 CAPTURE_KEYS = [
     key.strip().lower()
     for key in os.environ.get("SALARYMAN_CAPTURE_KEYS", "space").split(",")
@@ -36,6 +38,10 @@ if bool(CAPTURE_START_X) != bool(CAPTURE_START_Y):
     raise ValueError("Set both SALARYMAN_CAPTURE_START_X and SALARYMAN_CAPTURE_START_Y, or neither.")
 if not 0 <= CAPTURE_ZOOM_OUT_STEPS <= 3:
     raise ValueError("SALARYMAN_CAPTURE_ZOOM_OUT_STEPS must be between 0 and 3.")
+if not 0 <= CAPTURE_INPUT_DELAY <= 15:
+    raise ValueError("SALARYMAN_CAPTURE_INPUT_DELAY must be between 0 and 15 seconds.")
+if not 0.25 <= CAPTURE_MOVE_SECONDS <= 30:
+    raise ValueError("SALARYMAN_CAPTURE_MOVE_SECONDS must be between 0.25 and 30 seconds.")
 OUTPUT = ROOT / "generated-artifacts" / OUTPUT_NAME
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
 
@@ -59,10 +65,9 @@ def steer(process):
         return
     window = found[-1]
     subprocess.run(["xdotool", "windowfocus", "--sync", window], check=True)
-    time.sleep(min(24.0, max(10.0, CAPTURE_SECONDS * 3.0)))
+    time.sleep(CAPTURE_INPUT_DELAY)
     if process.poll() is not None:
         return
-    key_duration = min(30.0, max(1.0, CAPTURE_SECONDS * 5.0))
     for _ in range(CAPTURE_ZOOM_OUT_STEPS):
         subprocess.run(["xdotool", "key", "x"], check=True)
         time.sleep(0.2)
@@ -70,7 +75,11 @@ def steer(process):
     for key in CAPTURE_KEYS:
         try:
             subprocess.run(["xdotool", "keydown", key], check=True)
-            time.sleep(min(5.0, max(1.0, float(CAPTURE_SECONDS))) if key == "space" else key_duration)
+            time.sleep(
+                min(5.0, max(1.0, float(CAPTURE_SECONDS)))
+                if key == "space"
+                else CAPTURE_MOVE_SECONDS
+            )
             subprocess.run(["xdotool", "keyup", key], check=True)
         except subprocess.CalledProcessError:
             print("Godot closed before movement capture finished.", flush=True)
