@@ -885,7 +885,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [72, 94, 130],
       "material": "hall_floor",
-      "spawn": [31113, 4243]
+      "spawn": [15256, 31513]
     },
     {
       "id": "commercial_floor",
@@ -909,7 +909,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [84, 111, 103],
       "material": "hall_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "floor09_business",
@@ -917,7 +917,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [90, 103, 119],
       "material": "hall_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "floor10_business",
@@ -925,7 +925,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [122, 96, 73],
       "material": "hall_floor",
-      "spawn": [31113, 4243]
+      "spawn": [15256, 31513]
     },
     {
       "id": "floor11_business",
@@ -933,7 +933,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [84, 110, 119],
       "material": "hall_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "floor12_business",
@@ -941,7 +941,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [113, 91, 104],
       "material": "hall_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "pablo_operations",
@@ -973,7 +973,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [126, 104, 78],
       "material": "construction_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "construction_f03",
@@ -981,7 +981,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [126, 104, 78],
       "material": "construction_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "construction_f04",
@@ -989,7 +989,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [126, 104, 78],
       "material": "construction_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "construction_f05",
@@ -997,7 +997,7 @@
       "bounds": [0, 0, 62225, 70711],
       "accent": [126, 104, 78],
       "material": "construction_floor",
-      "spawn": [31113, 4243]
+      "spawn": [22884, 31513]
     },
     {
       "id": "executive",

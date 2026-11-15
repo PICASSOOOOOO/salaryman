@@ -2671,3 +2671,17 @@ mtime_ms = 1794636348040
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/bf12574a-1e32-41fd-b773-636c3f4761c5/9e973e73-a178-4633-bb0e-9a72e2cca9c7"
 storage_version_token = "1794636428522872"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "oCqB9OnqiaCRxRhn7b76b"
+uri = "file://generated-artifacts/tower-storefront-final2.jpg"
+type = "image"
+title = "Live gameplay: Floor 08 shop entrance"
+description = "Godot capture showing the player, a real shop entrance, walls, counter, display area, and an open route into the store."
+logical_id = "66e81970-f28f-4d9b-b913-47893619e299"
+content_hash = "sha256:014624ca8bba22e57f85a893aacb9eced1345c72f598718974748acd7c730c45"
+size = 78102
+mtime_ms = 1794725057341
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:4cd4455d-8664-45df-88b0-61c0445e96ff/66e81970-f28f-4d9b-b913-47893619e299/ed6e946d-cc87-4dc2-9eeb-48bfb4dce3ad"
+storage_version_token = "1794725160196590"
+content_type = "image/jpeg"

@@ -66,6 +66,25 @@ class TowerFloorTravelTests(unittest.TestCase):
             self.assertFalse(scene.is_playable_floor(floor), floor)
         self.assertEqual(scene.floor_status(13), "under_construction")
 
+    def test_business_floor_arrivals_land_at_the_shop_access_corridor(self):
+        scene = TowerScene()
+        for floor in (2, 3, 4, 5, 8, 9, 11, 12):
+            with self.subTest(floor=floor):
+                self.assertTrue(scene.select_floor(floor))
+                self.assertEqual(scene.current_room, FLOOR_PLAN["playableFloors"][str(floor)]["room"])
+                self.assertEqual(scene.player_position, (22_884, 31_513))
+                self.assertTrue(scene._room_position_is_walkable(scene.player_position))
+                scene.move(0, -1_000)
+                self.assertEqual(
+                    scene.current_room,
+                    FLOOR_PLAN["playableFloors"][str(floor)]["room"],
+                    "overlapping Floor 06 offices must not steal this shop floor",
+                )
+        self.assertTrue(scene.select_floor(10))
+        self.assertEqual(scene.player_position, (15_256, 31_513))
+        self.assertTrue(scene.select_floor(6))
+        self.assertEqual(scene.player_position, (15_256, 31_513))
+
     def test_new_floors_have_the_agreed_suite_counts_and_floor_ten_uses_four_large_units(self):
         scene = TowerScene()
         expected_counts = {8: 8, 9: 8, 10: 4, 11: 8, 12: 8}

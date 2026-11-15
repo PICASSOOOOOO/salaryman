@@ -152,6 +152,25 @@ func _run_tests() -> void:
 				assert(client.world_root.get_node_or_null(
 					"Floor%02dUnit%02d%s" % [floor_number, unit_number, display_markers[business_key]]
 				) != null)
+	var floor08_entry_counter: MeshInstance3D = client.world_root.get_node("Floor08Unit02DisplayPrimary")
+	var floor08_shop_door := client._pygame_to_world(22_884, 31_113, "floor08_business")
+	assert((floor08_entry_counter.mesh as BoxMesh).size.x <= 3.5)
+	assert(
+		absf(floor08_entry_counter.position.z - floor08_shop_door.z) <= 8.1,
+		"Shop service counters must be visible from the real entrance, not deep inside the oversized suite.",
+	)
+	for entry_bay_node in [
+		"Floor08Unit02EntryBayFloor",
+		"Floor08Unit02EntryBaySideLSkinA",
+		"Floor08Unit02EntryBaySideRSkinA",
+		"Floor08Unit02EntryBayBackLSkinA",
+		"Floor08Unit02EntryBayBackRSkinA",
+	]:
+		assert(
+			client.world_root.get_node_or_null(entry_bay_node) != null,
+			"Missing rendered shop entrance feature: " + entry_bay_node,
+		)
+	assert(client.get_node_or_null("Floor08Unit02StorefrontSign") != null)
 	var floor_four_businesses: Array = floor_plan["playableFloors"]["4"]["businesses"]
 	assert(floor_four_businesses.back()["businessKey"] == "public_locker_shop")
 	var locker_display: MeshInstance3D = client.world_root.get_node("Floor04Unit08DisplayPrimary")
@@ -181,7 +200,7 @@ func _run_tests() -> void:
 			var high_floor_business: Dictionary = business_value
 			assert(client.world_root.get_node_or_null(
 				"Floor%02dUnit%02dDisplayPrimary" % [floor_number, int(high_floor_business["unitNumber"])]
-			) == null)
+			) != null)
 	var base_layout: Dictionary = floor_plan["baseLayout"]
 	var lobby_bounds: Array = base_layout["elevatorLobby"]["bounds"]
 	var main_hall: Array = base_layout["hallways"][0]

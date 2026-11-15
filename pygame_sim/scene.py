@@ -724,10 +724,21 @@ class TowerScene:
         # office as well. Prefer the smallest physical room that contains the
         # player; otherwise any movement inside an office immediately snapped
         # the scene back to the empty lobby.
+        playable_floors: dict[str, dict[str, str]] = FLOOR_PLAN.get("playableFloors", {})
+        active_floor_data = playable_floors.get(str(self.current_floor), {})
+        allowed_room_ids = {str(active_floor_data.get("room", ""))}
+        if self.current_floor == 6:
+            allowed_room_ids.update({
+                "executive",
+                "public",
+                "office_03",
+                "office_04",
+                "executive_suite",
+            })
         containing_rooms = [
             candidate
             for candidate in self.rooms
-            if candidate.id != "lobby"
+            if candidate.id in allowed_room_ids
             and not candidate.id.startswith("basement_b")
             and candidate.contains(self.player_position)
         ]

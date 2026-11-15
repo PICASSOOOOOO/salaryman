@@ -736,6 +736,7 @@ func _build_business_suite_layout(floor_plan: Dictionary) -> void:
 			"Floor06Unit%02d" % int(business.get("unitNumber", 0)),
 			half_bounds,
 			business,
+			"south" if int(bounds[1]) == 0 else "north",
 		)
 		_add_business_suite_sign(room, business, half_bounds)
 
@@ -909,8 +910,77 @@ func _add_business_suite_finish(
 		_add_box("%sStoreThreshold" % tag, threshold, Vector3(minf(span_x * 0.35, 2.4), 0.025, 0.16), finish["trim"])
 	_add_business_storage_room(room, tag, x, y, width, height, door_side, finish)
 	var tagged_floor := tag.substr(5, 2).to_int() if tag.begins_with("Floor") and tag.length() >= 7 else 0
-	if tagged_floor == 0 or tagged_floor <= 7:
+	if tagged_floor == 0 or tagged_floor <= 12:
 		_add_business_customer_displays(room, tag, x, y, width, height, door_side, business, finish)
+	if tagged_floor in [2, 3, 4, 5, 8, 9, 10, 11, 12]:
+		_add_business_entry_bay(room, tag, x, y, width, height, business, door_side, finish)
+
+
+func _add_business_entry_bay(
+	room: String,
+	tag: String,
+	x: int,
+	y: int,
+	width: int,
+	height: int,
+	business: Dictionary,
+	door_side: String,
+	finish: Dictionary,
+) -> void:
+	var center_x := float(x) + float(width) / 2.0
+	var entry_y := float(y + height) if door_side == "south" else float(y)
+	var inward := -1.0 if door_side == "south" else 1.0
+	var bay_width := minf(float(width) * 0.5, 1_200.0)
+	var bay_half_width := bay_width / 2.0
+	var bay_depth := minf(float(height) * 0.35, 1_800.0)
+	var rear_y := entry_y + inward * bay_depth
+
+	var zone_center := _pygame_to_world(center_x, (entry_y + rear_y) / 2.0, room)
+	zone_center.y = FLOOR_HEIGHT + 0.085
+	_add_box(
+		"%sEntryBayFloor" % tag,
+		zone_center,
+		Vector3(bay_width * WORLD_SCALE - 0.2, 0.02, bay_depth * WORLD_SCALE - 0.2),
+		finish["trim"],
+	)
+
+	for side in [-1.0, 1.0]:
+		var side_wall := _pygame_to_world(
+			center_x + side * bay_half_width,
+			(entry_y + rear_y) / 2.0,
+			room,
+		)
+		side_wall.y = WALL_HEIGHT / 2.0
+		_add_structural_wall(
+			"%sEntryBaySide%s" % [tag, "L" if side < 0.0 else "R"],
+			side_wall,
+			bay_depth * WORLD_SCALE,
+			false,
+		)
+
+	var rear_opening := 360.0
+	var rear_segment := maxf((bay_width - rear_opening) / 2.0, 0.0)
+	for side in [-1.0, 1.0]:
+		var rear_wall_x: float = center_x + side * (rear_opening / 2.0 + rear_segment / 2.0)
+		var rear_wall := _pygame_to_world(rear_wall_x, rear_y, room)
+		rear_wall.y = WALL_HEIGHT / 2.0
+		_add_structural_wall(
+			"%sEntryBayBack%s" % [tag, "L" if side < 0.0 else "R"],
+			rear_wall,
+			rear_segment * WORLD_SCALE,
+			true,
+		)
+
+	var sign := Label3D.new()
+	sign.name = "%sStorefrontSign" % tag
+	sign.text = str(business.get("label", "BUSINESS"))
+	sign.font_size = 24
+	sign.pixel_size = 0.006
+	sign.modulate = Color("#f1e3c7")
+	var sign_position := _pygame_to_world(center_x, entry_y + inward * 100.0, room)
+	sign_position.y = WALL_HEIGHT + 0.15
+	sign.position = sign_position
+	add_child(sign)
 
 
 func _add_business_storage_room(
@@ -973,14 +1043,18 @@ func _add_business_customer_displays(
 ) -> void:
 	var storage_depth := int(height * 0.25)
 	var customer_depth := height - storage_depth
-	var showroom_start := y + storage_depth if door_side == "south" else y
-	var front_offset := int(customer_depth * 0.22)
-	var sales_y := showroom_start + customer_depth - front_offset if door_side == "south" else showroom_start + front_offset
-	var island_y := showroom_start + int(customer_depth * 0.58) if door_side == "south" else showroom_start + int(customer_depth * 0.42)
+	# Put the service counter and first product displays near the actual shop
+	# entrance. Suite coordinates are intentionally large, so proportional
+	# placement used to leave the visible storefront empty for dozens of meters.
+	var front_offset := mini(int(customer_depth * 0.22), 800)
+	var sales_y := y + height - front_offset if door_side == "south" else y + front_offset
+	var island_offset := 1_350
+	var island_y := y + height - island_offset if door_side == "south" else y + island_offset
+	var secondary_island_y := island_y + 800 if door_side == "south" else island_y - 800
 	var center_x := x + width / 2.0
 	var world_scale_x := float(width) * WORLD_SCALE
-	var counter_width := clampf(world_scale_x * 0.28, 2.4, 8.5)
-	var fixture_width := clampf(world_scale_x * 0.11, 1.4, 3.8)
+	var counter_width := clampf(world_scale_x * 0.16, 1.8, 3.4)
+	var fixture_width := clampf(world_scale_x * 0.04, 1.2, 2.4)
 	var fixture_depth := clampf(float(height) * WORLD_SCALE * 0.035, 1.2, 2.8)
 	var business_key := str(business.get("businessKey", ""))
 	var profile := _business_finish_style(business_key)
@@ -1015,16 +1089,16 @@ func _add_business_customer_displays(
 			_add_display_island(room, "%sDisplayRightPlinth" % tag, right_x, island_y, Vector3(fixture_width, 0.38, fixture_depth), top_material)
 		"workshop":
 			_add_display_cabinet(room, "%sDisplayBench" % tag, center_x, island_y, counter_width * 0.82, 0.9, fixture_depth, body_material, top_material)
-			_add_display_island(room, "%sDisplayToolTable" % tag, right_x, showroom_start + int(customer_depth * 0.34), Vector3(fixture_width, 0.78, fixture_depth), top_material)
+			_add_display_island(room, "%sDisplayToolTable" % tag, right_x, secondary_island_y, Vector3(fixture_width, 0.78, fixture_depth), top_material)
 		"executive":
 			_add_display_island(room, "%sDisplayServiceDesk" % tag, center_x, island_y, Vector3(counter_width * 0.72, 0.86, fixture_depth), top_material)
-			_add_display_island(room, "%sDisplayWaitingTable" % tag, right_x, showroom_start + int(customer_depth * 0.33), Vector3(fixture_width, 0.46, fixture_depth), body_material)
+			_add_display_island(room, "%sDisplayWaitingTable" % tag, right_x, secondary_island_y, Vector3(fixture_width, 0.46, fixture_depth), body_material)
 		"comfort":
 			_add_display_island(room, "%sDisplayFurniturePlinth" % tag, center_x, island_y, Vector3(counter_width * 0.82, 0.42, fixture_depth * 1.5), top_material)
-			_add_display_island(room, "%sDisplaySideTable" % tag, right_x, showroom_start + int(customer_depth * 0.34), Vector3(fixture_width, 0.52, fixture_depth), body_material)
+			_add_display_island(room, "%sDisplaySideTable" % tag, right_x, secondary_island_y, Vector3(fixture_width, 0.52, fixture_depth), body_material)
 		"industrial":
 			_add_display_cabinet(room, "%sDisplayWorktable" % tag, center_x, island_y, counter_width * 0.84, 0.88, fixture_depth, body_material, top_material)
-			_add_display_island(room, "%sDisplaySupplyTable" % tag, right_x, showroom_start + int(customer_depth * 0.34), Vector3(fixture_width, 0.76, fixture_depth), top_material)
+			_add_display_island(room, "%sDisplaySupplyTable" % tag, right_x, secondary_island_y, Vector3(fixture_width, 0.76, fixture_depth), top_material)
 		_:
 			_add_display_island(room, "%sDisplayLeftCase" % tag, left_x, island_y, Vector3(fixture_width, 0.9, fixture_depth), top_material)
 			_add_display_island(room, "%sDisplayRightCase" % tag, right_x, island_y, Vector3(fixture_width, 0.9, fixture_depth), top_material)
