@@ -61,6 +61,15 @@ extension rather than letting legacy bot IDs influence current runs.
 **How to apply:** current automation is grouped under Pablo. Any later per-domain
 agent ownership is a separate product change with explicit routing and guardrails.
 
+Pablo Prime is the only user-facing automation contact. Do not expose legacy
+assistant launchers such as Hemingway's "Ask Terrence" as automation entry points.
+
+**Why:** the user clarified that Pablo Prime is the only one who deals with
+automation now.
+
+**How to apply:** route automation access through Pablo Prime and remove
+superseded assistant launchers from the surfaces the user identifies.
+
 ## Activation and paid access
 A successful paid Prime activation automatically enables the four currently
 supported workflows. Users can pause any workflow; payment-event retries must not

@@ -11,7 +11,6 @@ import {
   Menu, X as XIcon,
 } from 'lucide-react';
 import { speakWithTTS, WRITER_VOICES, loadWriterVoice, saveWriterVoice, type WriterVoiceOption } from '@/lib/tts';
-import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
 import {
   lineSyllables, alliterationLetters,
   fetchRhymes, fetchNearRhymes, fetchMeansLike, fetchSynonyms, fetchAdjectives,
@@ -1560,18 +1559,6 @@ export default function WriterStudio() {
         )}
       </div>
 
-      {/* TERRENCE live-assist drawer — only renders for owners; ownership is
-          checked inside the component. We surface it everywhere in HEMINGWAY
-          (not just music genres) since a novelist can also want sound advice. */}
-      <TerrenceAssistDrawer
-        surface="writer"
-        getContext={() => ({
-          genre: project?.genre ?? 'fiction',
-          bpm: project?.bpm ?? 90,
-          timeSignature: '4/4',
-          lyricSnippet: chapter?.content ?? '',
-        })}
-      />
     </div>
   );
 }
