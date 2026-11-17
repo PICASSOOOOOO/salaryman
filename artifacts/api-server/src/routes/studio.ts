@@ -11,6 +11,7 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { generateImage as nanoBananaGenerate, isNanoBananaConfigured, type AspectRatio } from "../lib/nano-banana";
 import { createVideoJob, getVideoJob, VideoCapError, type VideoOrientation } from "../lib/video-maker";
 import { createReadStream } from "node:fs";
+import { buildEssayWriterPrompt, ESSAY_WRITER_SYSTEM_PROMPT, isMissingEssayProofreadDraft } from "../lib/writer-prompts";
 
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
@@ -286,8 +287,16 @@ router.post("/studio/writer", requireClaw, async (req: Request, res: Response) =
   const timeSignature = str(body.timeSignature, '4/4');
   const bpm           = Math.max(40, Math.min(220, Number(body.bpm)         || 90));
   const linesPerBar   = Math.max(1,  Math.min(8,   Number(body.linesPerBar) || 4));
+  const essayPlan = body.essayPlan && typeof body.essayPlan === "object"
+    ? body.essayPlan as Record<string, unknown>
+    : {};
+  const essayValue = (key: string) => str(essayPlan[key]);
 
   if (!action) { res.status(400).json({ error: "Action required" }); return; }
+  if (isMissingEssayProofreadDraft(genre, action, chapterContent)) {
+    res.status(400).json({ error: "Draft text required" });
+    return;
+  }
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -361,7 +370,22 @@ Be honest but constructive. This is a working draft, not a finished piece.
 ${projectCtx}${contentCtx}`,
     };
 
-    const userPrompt = actionPrompts[action] ?? actionPrompts.write_section;
+    const essayPrompt = genre === "essay"
+      ? buildEssayWriterPrompt({
+          action,
+          title,
+          chapterTitle,
+          assignment: essayValue("assignment"),
+          thesis: essayValue("thesis"),
+          outline: essayValue("outline"),
+          argument: essayValue("argument"),
+          evidence: essayValue("evidence"),
+          revisionGoal: essayValue("revisionGoal"),
+          chapterContent,
+        })
+      : null;
+    const isEssayAction = essayPrompt !== null;
+    const userPrompt = essayPrompt ?? actionPrompts[action] ?? actionPrompts.write_section;
 
     // ===========================================================
     // SONGWRITING KNOWLEDGE BLOCK
@@ -499,11 +523,11 @@ SECTION LENGTHS (typical):
 
     const stream = await openai.chat.completions.create({
       model: getOpenAiTextModel(),
-      max_completion_tokens: 8000,
+      max_completion_tokens: action === "proofread" ? 3500 : 8000,
       messages: [
         {
           role: "system",
-          content: `You are Pablo, a world-class creative writer and editor. You write with the depth of literary fiction, the pacing of a thriller, and the emotional truth of memoir. You are NOT a corporate copywriter — you are a novelist, poet, and storyteller.
+          content: isEssayAction ? ESSAY_WRITER_SYSTEM_PROMPT : `You are Pablo, a world-class creative writer and editor. You write with the depth of literary fiction, the pacing of a thriller, and the emotional truth of memoir. You are NOT a corporate copywriter — you are a novelist, poet, and storyteller.
 
 Your writing is:
 - Vivid and sensory — readers should feel, smell, hear the world

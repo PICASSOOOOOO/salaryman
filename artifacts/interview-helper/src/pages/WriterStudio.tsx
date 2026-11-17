@@ -20,6 +20,18 @@ import {
 import { useTrackPicker } from '@/components/TrackPicker';
 import { HummingbirdIcon } from '@/components/HummingbirdIcon';
 import type { Track as HumTrack } from '@/contexts/MusicPlayerContext';
+import EssayWorkspaceTools from '@/components/EssayWorkspaceTools';
+import {
+  EMPTY_ESSAY_PLAN,
+  applyEssaySuggestion,
+  formatEssayCitation,
+  formatEssayDocument,
+  parseEssaySuggestions,
+  type EssayCitationStyle,
+  type EssayPlan,
+  type EssaySource,
+  type EssaySuggestion,
+} from '@/lib/essay-tools';
 
 // Beat-dock repeat modes:
 //   off  — play once and stop
@@ -57,6 +69,9 @@ interface Project {
   // Persisted with the project so each track keeps its own tempo + bar grid.
   bpm?: number;          // beats per minute (default 90)
   linesPerBar?: number;  // lines that count as one bar in the bar counter (default 4)
+  essayPlan?: EssayPlan;
+  essaySources?: EssaySource[];
+  citationStyle?: EssayCitationStyle;
 }
 
 const GENRES: { id: Genre; label: string; desc: string }[] = [
@@ -115,14 +130,14 @@ function newChapter(title = 'UNTITLED CHAPTER'): Chapter {
   return { id: uid(), title, content: '', notes: '', wordCount: 0 };
 }
 
-function newProject(): Project {
+function newProject(genre: Genre = 'fiction'): Project {
   return {
     id: uid(),
-    title: 'UNTITLED PROJECT',
-    genre: 'fiction',
+    title: genre === 'essay' ? 'UNTITLED ESSAY' : 'UNTITLED PROJECT',
+    genre,
     tone: 'literary',
     synopsis: '',
-    chapters: [newChapter('CHAPTER 1')],
+    chapters: [newChapter(genre === 'essay' ? 'ESSAY DRAFT' : 'CHAPTER 1')],
     createdAt: Date.now(),
     updatedAt: Date.now(),
     bpm: 90,
@@ -137,6 +152,7 @@ export default function WriterStudio() {
   const [activeChapterIdx, setActiveChapterIdx] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [streamText, setStreamText] = useState('');
+  const [outputAction, setOutputAction] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -147,9 +163,31 @@ export default function WriterStudio() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [showEssayTools, setShowEssayTools] = useState(false);
+  const [essaySuggestions, setEssaySuggestions] = useState<EssaySuggestion[]>([]);
+  const [essayNotice, setEssayNotice] = useState('');
 
   const project = projects.find(p => p.id === activeProjectId) ?? null;
   const chapter = project?.chapters[activeChapterIdx] ?? null;
+  const isEssay = project?.genre === 'essay';
+  const essayPlan = project?.essayPlan ?? EMPTY_ESSAY_PLAN;
+  const essaySources = project?.essaySources ?? [];
+  const citationStyle = project?.citationStyle ?? 'APA7';
+  const citationPreviews = useMemo(
+    () => Object.fromEntries(essaySources.map(source => [source.id, formatEssayCitation(source, citationStyle)])),
+    [essaySources, citationStyle],
+  );
+
+  useEffect(() => {
+    abortRef.current?.abort();
+    setGenerating(false);
+    setAiAction(null);
+    setOutputAction(null);
+    setStreamText('');
+    setShowEssayTools(project?.genre === 'essay');
+    setEssaySuggestions([]);
+    setEssayNotice('');
+  }, [project?.id, project?.genre, activeChapterIdx]);
 
   // Debounced localStorage flush. JSON.stringify on a large novel can be
   // megabytes; doing that synchronously on every keystroke (the old behavior)
@@ -206,6 +244,27 @@ export default function WriterStudio() {
       chapters: p.chapters.map((c, i) => i === activeChapterIdx ? fn({ ...c }) : c),
     }));
   }, [updateProject, activeChapterIdx]);
+
+  const updateEssayPlan = (partial: Partial<EssayPlan>) => {
+    updateProject(p => ({
+      ...p,
+      essayPlan: { ...EMPTY_ESSAY_PLAN, ...p.essayPlan, ...partial },
+    }));
+  };
+
+  const addEssaySource = (source: Omit<EssaySource, 'id'>) => {
+    updateProject(p => ({
+      ...p,
+      essaySources: [...(p.essaySources ?? []), { ...source, id: uid() }],
+    }));
+  };
+
+  const removeEssaySource = (id: string) => {
+    updateProject(p => ({
+      ...p,
+      essaySources: (p.essaySources ?? []).filter(source => source.id !== id),
+    }));
+  };
 
   // ===========================================================
   // MUSIC TOOLS — togglable accessories that work for ANY genre.
@@ -281,6 +340,39 @@ export default function WriterStudio() {
       try { ta.setSelectionRange(pos, pos); } catch {}
     });
   }, [chapter, updateChapter]);
+
+  const insertEssayCitation = (sourceId: string) => {
+    const preview = citationPreviews[sourceId];
+    if (!preview?.inText) {
+      setEssayNotice('Add an author or title before inserting this citation.');
+      return;
+    }
+    insertAtCursor(preview.inText);
+    setEssayNotice('Citation inserted into the draft.');
+  };
+
+  const acceptEssaySuggestion = (id: string) => {
+    if (!chapter) return;
+    const suggestion = essaySuggestions.find(item => item.id === id);
+    if (!suggestion) return;
+    const result = applyEssaySuggestion(chapter.content, suggestion);
+    if (!result.ok) {
+      setEssayNotice(
+        result.reason === 'ambiguous'
+          ? 'This text appears more than once. The suggestion was not applied.'
+          : 'The draft changed since this review. The suggestion was not applied.',
+      );
+      return;
+    }
+    updateChapter(c => ({ ...c, content: result.content, wordCount: wordCount(result.content) }));
+    setEssaySuggestions(items => items.filter(item => item.id !== id));
+    setEssayNotice('Suggestion applied.');
+  };
+
+  const rejectEssaySuggestion = (id: string) => {
+    setEssaySuggestions(items => items.filter(item => item.id !== id));
+    setEssayNotice('Original wording kept.');
+  };
 
   // Apply lightweight markdown formatting to the editor selection. The
   // chapter body is markdown (export wraps it as `# title\n\n{content}`),
@@ -554,8 +646,8 @@ export default function WriterStudio() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCreateProject = () => {
-    const p = newProject();
+  const handleCreateProject = (genre: Genre = 'fiction') => {
+    const p = newProject(genre);
     const updated = [...projects, p];
     persist(updated);
     setActiveProjectId(p.id);
@@ -576,7 +668,7 @@ export default function WriterStudio() {
     const idx = project.chapters.length;
     updateProject(p => ({
       ...p,
-      chapters: [...p.chapters, newChapter(`CHAPTER ${idx + 1}`)],
+      chapters: [...p.chapters, newChapter(`${p.genre === 'essay' ? 'SECTION' : 'CHAPTER'} ${idx + 1}`)],
     }));
     setActiveChapterIdx(idx);
   };
@@ -596,6 +688,7 @@ export default function WriterStudio() {
     if (generating) return;
     setGenerating(true);
     setAiAction(action);
+    setOutputAction(action);
     setStreamText('');
 
     // Abort any in-flight stream so a second click doesn't double-write the chapter.
@@ -617,6 +710,7 @@ export default function WriterStudio() {
           chapterContent: chapter?.content ?? '',
           chapterNotes: chapter?.notes ?? '',
           context,
+          essayPlan: project?.essayPlan ?? EMPTY_ESSAY_PLAN,
           // Songwriting context — only meaningful for rap/song but cheap to
           // always send. Server uses these to tailor flow/meter advice.
           bpm: project?.bpm ?? 90,
@@ -628,17 +722,29 @@ export default function WriterStudio() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
-        setStreamText(`Error: ${err.error ?? 'Something went wrong'}`);
+        setOutputAction(null);
+        if (action === 'proofread') {
+          setEssayNotice(err.error ?? 'Review failed. Please try again.');
+        } else {
+          setStreamText(`Error: ${err.error ?? 'Something went wrong'}`);
+        }
         setGenerating(false);
         setAiAction(null);
         return;
       }
 
       const reader = res.body?.getReader();
-      if (!reader) { setGenerating(false); setAiAction(null); return; }
+      if (!reader) {
+        setOutputAction(null);
+        if (action === 'proofread') setEssayNotice('Review was unavailable. Please try again.');
+        setGenerating(false);
+        setAiAction(null);
+        return;
+      }
       const decoder = new TextDecoder();
       let buffer = '';
       let full = '';
+      let streamError = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -652,18 +758,38 @@ export default function WriterStudio() {
             const data = JSON.parse(line.slice(6));
             if (data.content) {
               full += data.content;
-              setStreamText(full);
+              if (action !== 'proofread') setStreamText(full);
             }
+            if (data.error) streamError = String(data.error);
           } catch {}
         }
       }
 
-      if (action === 'continue' || action === 'write_section') {
+      if (streamError) throw new Error(streamError);
+      if (action === 'proofread') {
+        try {
+          const parsed = parseEssaySuggestions(full);
+          setEssaySuggestions(parsed.map(suggestion => ({ ...suggestion, id: uid() })));
+          setEssayNotice(parsed.length ? `${parsed.length} suggestions are ready to review.` : 'No suggestions found for this draft.');
+          setShowEssayTools(true);
+          setStreamText('');
+        } catch {
+          setEssaySuggestions([]);
+          setEssayNotice('The review could not be read. Please try again.');
+          setStreamText('');
+        }
+      } else if (
+        action === 'continue' ||
+        (action === 'write_section' && project?.genre !== 'essay')
+      ) {
         updateChapter(c => {
           const sep = c.content.trim() ? '\n\n' : '';
           const merged = c.content + sep + full;
           return { ...c, content: merged, wordCount: wordCount(merged) };
         });
+      } else if (action === 'essay_outline') {
+        setShowOutline(true);
+        setShowEssayTools(true);
       } else if (action === 'outline') {
         setShowOutline(true);
       } else if (action === 'rewrite') {
@@ -671,7 +797,12 @@ export default function WriterStudio() {
       }
     } catch (err: unknown) {
       if ((err as Error).name !== 'AbortError') {
-        setStreamText('Generation failed. Please try again.');
+        setOutputAction(null);
+        if (action === 'proofread') {
+          setEssayNotice('Review failed. Please try again.');
+        } else {
+          setStreamText('Generation failed. Please try again.');
+        }
       }
     }
 
@@ -684,7 +815,14 @@ export default function WriterStudio() {
     const text = project.chapters.map(c =>
       `# ${c.title}\n\n${c.content}`
     ).join('\n\n---\n\n');
-    const full = `${project.title}\nGenre: ${project.genre} | Tone: ${project.tone}\n${project.synopsis ? `\nSynopsis: ${project.synopsis}\n` : ''}\n${'='.repeat(60)}\n\n${text}`;
+    const full = project.genre === 'essay'
+      ? formatEssayDocument(
+          project.title,
+          project.chapters.map(c => c.content).filter(Boolean).join('\n\n'),
+          project.essaySources ?? [],
+          project.citationStyle ?? 'APA7',
+        )
+      : `${project.title}\nGenre: ${project.genre} | Tone: ${project.tone}\n${project.synopsis ? `\nSynopsis: ${project.synopsis}\n` : ''}\n${'='.repeat(60)}\n\n${text}`;
     const blob = new Blob([full], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -851,18 +989,29 @@ export default function WriterStudio() {
           shrink-0 border-r border-white/[0.06] flex-col bg-[#09090b] overflow-y-auto
         `}>
           <div className="p-3 border-b border-white/[0.04]">
-            <button
-              onClick={handleCreateProject}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-[10px] tracking-widest uppercase text-amber-400 border border-amber-500/25 rounded hover:bg-amber-500/10 transition-colors"
-            >
-              <Plus className="w-3 h-3" /> NEW PROJECT
-            </button>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => handleCreateProject()}
+                data-testid="button-new-writing-project"
+                className="min-w-0 flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-[10px] tracking-widest uppercase text-amber-400 border border-amber-500/25 rounded hover:bg-amber-500/10 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> NEW PROJECT
+              </button>
+              <button
+                onClick={() => handleCreateProject('essay')}
+                data-testid="button-new-essay"
+                className="min-w-0 flex-1 flex items-center justify-center gap-1 px-2 py-2 text-[10px] tracking-widest uppercase text-amber-200 border border-amber-500/35 rounded bg-amber-500/[0.06] hover:bg-amber-500/10 transition-colors"
+              >
+                <FileText className="w-3 h-3" /> NEW ESSAY
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
             {projects.map(p => (
               <div
                 key={p.id}
+                data-testid={`card-writing-project-${p.id}`}
                 className={`group px-3 py-2.5 cursor-pointer border-b border-white/[0.03] transition-colors ${
                   p.id === activeProjectId
                     ? 'bg-amber-500/8 border-l-2 border-l-amber-500/50'
@@ -892,11 +1041,11 @@ export default function WriterStudio() {
           {project && (
             <div className="border-t border-white/[0.06]">
               <div className="px-3 py-2 flex items-center justify-between">
-                <span className="text-[9px] text-zinc-600 tracking-widest uppercase">CHAPTERS</span>
+                <span className="text-[9px] text-zinc-600 tracking-widest uppercase">{project.genre === 'essay' ? 'SECTIONS' : 'CHAPTERS'}</span>
                 <button
                   onClick={handleAddChapter}
-                  title="Add a new chapter"
-                  aria-label="Add a new chapter"
+                  title={project.genre === 'essay' ? 'Add a new essay section' : 'Add a new chapter'}
+                  aria-label={project.genre === 'essay' ? 'Add a new essay section' : 'Add a new chapter'}
                   data-testid="hemingway-add-chapter-icon"
                   className="flex items-center justify-center w-5 h-5 text-zinc-500 hover:text-amber-400 border border-white/[0.06] rounded hover:border-amber-500/25 hover:bg-amber-500/5 transition-colors"
                 >
@@ -931,7 +1080,7 @@ export default function WriterStudio() {
                 data-testid="hemingway-add-chapter"
                 className="w-full flex items-center justify-center gap-1.5 mt-1 px-3 py-2 text-[9px] tracking-widest uppercase text-zinc-500 hover:text-amber-400 border-t border-white/[0.06] hover:bg-amber-500/5 transition-colors"
               >
-                <Plus className="w-3 h-3" /> ADD CHAPTER
+                <Plus className="w-3 h-3" /> ADD {project.genre === 'essay' ? 'SECTION' : 'CHAPTER'}
               </button>
             </div>
           )}
@@ -1024,12 +1173,27 @@ export default function WriterStudio() {
             {/* AI toolbar */}
             <div className="px-6 py-2 border-b border-white/[0.06] flex items-center gap-1.5 overflow-x-auto">
               <button
-                onClick={() => streamFromAI('outline', '')}
+                onClick={() => streamFromAI(isEssay ? 'essay_outline' : 'outline', '')}
                 disabled={generating}
                 className="flex items-center gap-1 px-2.5 py-1 text-[9px] tracking-wider text-zinc-500 hover:text-amber-400 border border-white/[0.06] rounded hover:border-amber-500/25 hover:bg-amber-500/5 transition-colors disabled:opacity-30 shrink-0"
               >
                 <Lightbulb className="w-3 h-3" /> OUTLINE
               </button>
+              {isEssay && (
+                <button
+                  type="button"
+                  onClick={() => setShowEssayTools(value => !value)}
+                  aria-expanded={showEssayTools}
+                  data-testid="button-toggle-essay-tools"
+                  className={`flex items-center gap-1 px-2.5 py-1 text-[9px] tracking-wider border rounded transition-colors shrink-0 ${
+                    showEssayTools
+                      ? 'text-amber-300 border-amber-500/30 bg-amber-500/10'
+                      : 'text-zinc-500 border-white/[0.06] hover:text-amber-400 hover:border-amber-500/25'
+                  }`}
+                >
+                  <FileText className="w-3 h-3" /> ESSAY TOOLS
+                </button>
+              )}
               <button
                 onClick={() => streamFromAI('write_section', '')}
                 disabled={generating}
@@ -1151,6 +1315,30 @@ export default function WriterStudio() {
               </div>
             )}
 
+            {isEssay && showEssayTools && (
+              <div className="max-h-[40dvh] shrink-0 overflow-y-auto border-b border-white/[0.06] bg-black/10 px-3 py-3 sm:px-5" data-testid="hemingway-essay-tools-panel">
+                <EssayWorkspaceTools
+                  plan={essayPlan}
+                  sources={essaySources}
+                  citationStyle={citationStyle}
+                  suggestions={essaySuggestions}
+                  notice={essayNotice}
+                  isProofreading={generating && aiAction === 'proofread'}
+                  isBusy={generating}
+                  canProofread={Boolean(chapter.content.trim())}
+                  citationPreviews={citationPreviews}
+                  onPlanChange={updateEssayPlan}
+                  onCitationStyleChange={style => updateProject(p => ({ ...p, citationStyle: style }))}
+                  onAddSource={addEssaySource}
+                  onRemoveSource={removeEssaySource}
+                  onInsertCitation={insertEssayCitation}
+                  onProofread={() => streamFromAI('proofread', '')}
+                  onAcceptSuggestion={acceptEssaySuggestion}
+                  onRejectSuggestion={rejectEssaySuggestion}
+                />
+              </div>
+            )}
+
             {/* Editor + AI output */}
             <div className="flex-1 flex overflow-hidden">
               <div className="flex-1 flex overflow-hidden">
@@ -1186,9 +1374,15 @@ export default function WriterStudio() {
                   value={chapter.content}
                   onChange={e => {
                     const val = e.target.value;
+                    if (isEssay && essaySuggestions.length) {
+                      setEssaySuggestions([]);
+                      setEssayNotice('Suggestions cleared because the draft changed.');
+                    }
                     updateChapter(c => ({ ...c, content: val, wordCount: wordCount(val) }));
                   }}
-                  placeholder="Start writing, or use the toolbar above to let Pablo write for you..."
+                  placeholder={isEssay
+                    ? "Draft your essay here. Add source details and review suggestions in Essay Tools..."
+                    : "Start writing, or use the toolbar above to let Pablo write for you..."}
                   className="flex-1 bg-transparent text-zinc-300 text-sm outline-none resize-none placeholder:text-zinc-800 px-8 py-6"
                   style={{
                     fontFamily: showRhymeBook ? "var(--font-sans)" : "'Georgia', 'Times New Roman', serif",
@@ -1329,10 +1523,10 @@ export default function WriterStudio() {
                 <div className="w-80 shrink-0 border-l border-white/[0.06] bg-white/[0.01] flex flex-col overflow-hidden">
                   <div className="px-3 py-2 border-b border-white/[0.04] flex items-center justify-between">
                     <span className="text-[9px] text-amber-400/60 tracking-widest uppercase">
-                      {aiAction === 'outline' ? 'OUTLINE' : aiAction === 'critique' ? 'CRITIQUE' : 'PABLO OUTPUT'}
+                      {outputAction === 'essay_outline' || outputAction === 'outline' ? 'OUTLINE' : outputAction === 'critique' ? 'CRITIQUE' : 'PABLO OUTPUT'}
                     </span>
                     <button
-                      onClick={() => { setStreamText(''); setShowOutline(false); }}
+                      onClick={() => { setStreamText(''); setOutputAction(null); setShowOutline(false); }}
                       className="text-zinc-700 hover:text-zinc-400 transition-colors text-[9px]"
                     >
                       CLOSE
@@ -1341,20 +1535,28 @@ export default function WriterStudio() {
                   <div className="flex-1 overflow-y-auto px-4 py-3 text-xs text-zinc-400 leading-6 whitespace-pre-wrap">
                     {streamText}
                   </div>
-                  {streamText && !generating && aiAction !== 'continue' && aiAction !== 'rewrite' && (
+                  {streamText && !generating && Boolean(outputAction) && (isEssay
+                    ? outputAction === 'essay_outline' || outputAction === 'write_section'
+                    : outputAction !== 'continue' && outputAction !== 'rewrite') && (
                     <div className="px-3 py-2 border-t border-white/[0.04] flex gap-2">
                       <button
                         onClick={() => {
-                          updateChapter(c => {
-                            const sep = c.content.trim() ? '\n\n' : '';
-                            const merged = c.content + sep + streamText;
-                            return { ...c, content: merged, wordCount: wordCount(merged) };
-                          });
+                          if (outputAction === 'essay_outline') {
+                            updateEssayPlan({ outline: streamText });
+                            setShowEssayTools(true);
+                            setEssayNotice('Outline added to your plan.');
+                          } else {
+                            updateChapter(c => {
+                              const sep = c.content.trim() ? '\n\n' : '';
+                              const merged = c.content + sep + streamText;
+                              return { ...c, content: merged, wordCount: wordCount(merged) };
+                            });
+                          }
                           setStreamText('');
                         }}
                         className="flex-1 text-[9px] tracking-wider text-amber-400 border border-amber-500/25 rounded py-1 hover:bg-amber-500/10 transition-colors"
                       >
-                        INSERT INTO CHAPTER
+                        {outputAction === 'essay_outline' ? 'USE AS OUTLINE' : 'INSERT INTO CHAPTER'}
                       </button>
                     </div>
                   )}
@@ -1549,7 +1751,7 @@ export default function WriterStudio() {
               <BookOpen className="w-16 h-16 text-amber-400/10 mx-auto" />
               <p className="text-zinc-600 text-xs tracking-widest uppercase">NO PROJECT SELECTED</p>
               <button
-                onClick={handleCreateProject}
+                onClick={() => handleCreateProject()}
                 className="flex items-center gap-1.5 px-4 py-2 text-[10px] tracking-widest uppercase text-amber-400 border border-amber-500/25 rounded hover:bg-amber-500/10 transition-colors mx-auto"
               >
                 <Plus className="w-3 h-3" /> CREATE YOUR FIRST PROJECT
