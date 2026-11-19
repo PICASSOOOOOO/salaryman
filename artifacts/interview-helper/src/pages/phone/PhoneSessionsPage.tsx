@@ -247,7 +247,7 @@ export default function PhoneSessionsPage() {
                     key={m.key}
                     onClick={() => { if (!locked) setDialingMode(m.key); }}
                     disabled={locked}
-                    title={locked ? 'Available on Custom CALLL HOME plans' : undefined}
+                    title={locked ? 'Requires an active CALLL HOME plan' : undefined}
                     style={{
                       padding: '14px 16px', textAlign: 'left', borderRadius: 8, cursor: locked ? 'not-allowed' : 'pointer',
                       opacity: locked ? 0.45 : 1,

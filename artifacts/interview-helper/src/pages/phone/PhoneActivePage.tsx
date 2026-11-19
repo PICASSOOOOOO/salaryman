@@ -35,7 +35,7 @@ interface DialingSession {
 interface DialingAttempt {
   id: number;
   queueIndex: number | null;
-  callSid: string;
+  callSid: string | null;
   phone: string;
   name: string | null;
   status: string;
@@ -226,7 +226,9 @@ export default function PhoneActivePage() {
           : prev);
       }
 
-      const sessionCallSids = new Set(dialingAttempts.map(attempt => attempt.callSid).filter(Boolean));
+      const sessionCallSids = new Set(dialingAttempts.flatMap(attempt =>
+        attempt.callSid ? [attempt.callSid] : [],
+      ));
       const sessionCalls = activeCalls.filter(call => sessionCallSids.has(call.callSid));
       const target = selectPredictiveBridgeTarget(sessionCalls);
       if (!target) return;

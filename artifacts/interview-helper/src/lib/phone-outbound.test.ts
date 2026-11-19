@@ -64,7 +64,7 @@ describe("runOutboundBridge", () => {
     const connectToConference = vi.fn();
     const created = { calls: [{ callSid: "CA1", conferenceName: "conf-1" }] };
     await expect(runOutboundBridge({
-      ensureDeviceReady: vi.fn(),
+      ensureDeviceReady: async () => {},
       create: async () => created,
       getLegs: value => value.calls,
       connectToConference,

@@ -407,7 +407,7 @@ export default function PhoneDialerPage() {
                       key={m.key}
                       onClick={() => { if (!locked) setDialingMode(m.key); }}
                       disabled={locked}
-                      title={locked ? 'Available on Custom CALLL HOME plans' : undefined}
+                      title={locked ? 'Requires an active CALLL HOME plan' : undefined}
                       style={{
                         flex: 1, padding: '10px 8px', textAlign: 'center', borderRadius: 8, cursor: locked ? 'not-allowed' : 'pointer',
                         opacity: locked ? 0.45 : 1,
