@@ -967,6 +967,32 @@ export interface TowerBusinessRestockResponse {
   stock: TowerBusinessInventoryStock;
 }
 
+export interface ClassroomWritingReviewFindings {
+  /**
+     * @maxItems 5
+     * @items.maxLength 300
+     */
+  potentialPatterns: string[];
+  /**
+     * @maxItems 5
+     * @items.maxLength 300
+     */
+  alternativeExplanations: string[];
+  /**
+     * @maxItems 5
+     * @items.maxLength 220
+     */
+  conversationQuestions: string[];
+}
+
+export interface ClassroomSubmissionWritingReviewResponse {
+  findings: ClassroomWritingReviewFindings;
+  limitations: string[];
+  /** @minimum 0 */
+  reviewedCharacters: number;
+  truncated: boolean;
+}
+
 export type AuthorizationSessionHeaderParameter = string;
 
 export type GetWorldMonitoringOnline200PlayersItem = {

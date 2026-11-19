@@ -12,6 +12,17 @@ export type PhoneSystemStatusDecision = {
   retry: boolean;
 };
 
+export function formatPhoneSystemDiagnostic(httpStatus: number, payload: unknown): string {
+  const body = payload && typeof payload === 'object' && !Array.isArray(payload)
+    ? payload as Record<string, unknown>
+    : {};
+  const code = typeof body.code === 'string' && /^[A-Z0-9_]{1,64}$/.test(body.code)
+    ? body.code
+    : null;
+  const safeError = body.error === 'Login required' ? body.error : null;
+  return [`HTTP ${httpStatus}`, code ?? safeError].filter(Boolean).join(' · ');
+}
+
 const RETRY_DELAYS_MS = [3_000, 6_000, 12_000, 24_000, 60_000] as const;
 
 export function getPhoneSystemStatusRetryDelay(attempt: number): number {

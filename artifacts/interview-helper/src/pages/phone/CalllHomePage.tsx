@@ -12,6 +12,7 @@ import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 import { useLocation } from 'wouter';
 import {
   classifyPhoneSystemResponse,
+  formatPhoneSystemDiagnostic,
   getPhoneSystemStatusRetryDelay,
   type PhoneSystemStatus,
 } from '@/lib/phone-system-status';
@@ -74,14 +75,16 @@ function TabContent({
   aiSubMode,
   setAiSubMode,
   systemStatus,
+  statusDiagnostic,
 }: {
   tab: TabKey;
   aiSubMode: AiSubMode;
   setAiSubMode: (m: AiSubMode) => void;
   systemStatus: PhoneSystemStatus;
+  statusDiagnostic: string | null;
 }) {
   switch (tab) {
-    case 'cmd': return <PhoneCommandCenter systemStatus={systemStatus} />;
+    case 'cmd': return <PhoneCommandCenter systemStatus={systemStatus} statusDiagnostic={statusDiagnostic} />;
     case 'contacts': return <PhoneContactsPage />;
     case 'dial': return <PhoneDialerPage />;
     case 'live': return <PhoneActivePage />;
@@ -145,6 +148,7 @@ export default function CalllHomePage() {
   }, [showTabSettings]);
 
   const [systemStatus, setSystemStatus] = useState<PhoneSystemStatus>('checking');
+  const [statusDiagnostic, setStatusDiagnostic] = useState<string | null>(null);
   const [statusRetryKey, setStatusRetryKey] = useState(0);
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -193,11 +197,13 @@ export default function CalllHomePage() {
         const result = classifyPhoneSystemResponse(response.status, payload);
         if (stopped) return;
         setSystemStatus(result.status);
+        setStatusDiagnostic(response.ok ? null : formatPhoneSystemDiagnostic(response.status, payload));
         if (result.status === 'no_subscription') navigate('/pricing');
         if (result.retry) scheduleRetry();
       } catch {
         if (stopped) return;
         setSystemStatus('unavailable');
+        setStatusDiagnostic(controller.signal.aborted ? 'Request timed out' : 'Network check failed');
         scheduleRetry();
       } finally {
         clearTimeout(timeout);
@@ -346,6 +352,11 @@ export default function CalllHomePage() {
               {systemStatus === 'unconfigured'
                 ? 'CALLL HOME needs valid Twilio account credentials. The site owner must correct the project Secrets before calling can connect.'
                 : 'Twilio is not responding or rejected the account credentials. Check the project Secrets, then retry.'}
+              {statusDiagnostic && (
+                <small data-testid="phone-status-diagnostic" style={{ display: 'block', marginTop: 4, letterSpacing: '0.04em' }}>
+                  CHECK: {statusDiagnostic}
+                </small>
+              )}
             </span>
             <button
               type="button"
@@ -551,7 +562,7 @@ export default function CalllHomePage() {
                     </button>
                   </div>
                 ) : (
-                  <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} systemStatus={systemStatus} />
+                  <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} systemStatus={systemStatus} statusDiagnostic={statusDiagnostic} />
                 )}
               </Suspense>
             </CalllHomeProvider>

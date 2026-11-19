@@ -1,8 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyPhoneSystemResponse,
+  formatPhoneSystemDiagnostic,
   getPhoneSystemStatusRetryDelay,
 } from './phone-system-status';
+
+describe('formatPhoneSystemDiagnostic', () => {
+  it('includes safe provider error codes without exposing arbitrary response text', () => {
+    expect(formatPhoneSystemDiagnostic(503, {
+      status: 'unavailable',
+      code: 'TWILIO_AUTH_REJECTED',
+    })).toBe('HTTP 503 · TWILIO_AUTH_REJECTED');
+    expect(formatPhoneSystemDiagnostic(401, {
+      error: 'Login required',
+      detail: 'private response content',
+    })).toBe('HTTP 401 · Login required');
+    expect(formatPhoneSystemDiagnostic(500, {
+      code: 'error: private detail',
+      error: 'private response content',
+    })).toBe('HTTP 500');
+  });
+});
 
 describe('classifyPhoneSystemResponse', () => {
   it('marks successful checks online', () => {

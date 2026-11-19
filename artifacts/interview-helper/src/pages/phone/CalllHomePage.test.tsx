@@ -101,8 +101,9 @@ describe("CALLL HOME page", () => {
     });
 
     expect(container.textContent).toContain(
-      "Phone service is temporarily unavailable.",
+      "Twilio is not responding or rejected the account credentials.",
     );
+    expect(container.textContent).toContain("HTTP 503");
     expect(mocks.ensureDeviceReady).not.toHaveBeenCalled();
     expect(mocks.apiFetch).toHaveBeenCalledTimes(1);
 

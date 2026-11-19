@@ -1482,6 +1482,47 @@ export const RevokeTowerShopStaffResponse = zod.object({
 
 
 /**
+ * Teacher-only, temporary qualitative review. It returns possible writing patterns, alternative explanations, and neutral conversation questions. It does not determine authorship, grade, accuse, report, discipline, or save the submission text or review result.
+ * @summary Review submitted writing for discussion with the student
+ */
+
+
+
+
+export const ReviewClassroomSubmissionWritingParams = zod.object({
+  "id": zod.coerce.number().int().min(1),
+  "submissionId": zod.coerce.number().int().min(1)
+})
+
+export const reviewClassroomSubmissionWritingResponseFindingsPotentialPatternsItemMax = 300;
+
+export const reviewClassroomSubmissionWritingResponseFindingsPotentialPatternsMax = 5;
+
+export const reviewClassroomSubmissionWritingResponseFindingsAlternativeExplanationsItemMax = 300;
+
+export const reviewClassroomSubmissionWritingResponseFindingsAlternativeExplanationsMax = 5;
+
+export const reviewClassroomSubmissionWritingResponseFindingsConversationQuestionsItemMax = 220;
+
+export const reviewClassroomSubmissionWritingResponseFindingsConversationQuestionsMax = 5;
+
+export const reviewClassroomSubmissionWritingResponseReviewedCharactersMin = 0;
+
+
+
+export const ReviewClassroomSubmissionWritingResponse = zod.object({
+  "findings": zod.object({
+  "potentialPatterns": zod.array(zod.string().max(reviewClassroomSubmissionWritingResponseFindingsPotentialPatternsItemMax)).max(reviewClassroomSubmissionWritingResponseFindingsPotentialPatternsMax),
+  "alternativeExplanations": zod.array(zod.string().max(reviewClassroomSubmissionWritingResponseFindingsAlternativeExplanationsItemMax)).max(reviewClassroomSubmissionWritingResponseFindingsAlternativeExplanationsMax),
+  "conversationQuestions": zod.array(zod.string().max(reviewClassroomSubmissionWritingResponseFindingsConversationQuestionsItemMax)).max(reviewClassroomSubmissionWritingResponseFindingsConversationQuestionsMax)
+}),
+  "limitations": zod.array(zod.string()),
+  "reviewedCharacters": zod.number().int().min(reviewClassroomSubmissionWritingResponseReviewedCharactersMin),
+  "truncated": zod.boolean()
+})
+
+
+/**
  * @summary Move stored stock onto an assigned shop's shelf
  */
 export const RestockTowerBusinessItemHeader = zod.object({

@@ -29,6 +29,7 @@ import type {
   AutopilotFollowUpSuggestionResponse,
   BeginDiscordLoginParams,
   BrowserOnboardingStatusResponse,
+  ClassroomSubmissionWritingReviewResponse,
   CompleteCrmGoogleSheetsParams,
   ConnectCrmGoogleSheets200,
   ConnectCrmGoogleSheetsParams,
@@ -4846,6 +4847,83 @@ export const useRevokeTowerShopStaff = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRevokeTowerShopStaffMutationOptions(options));
+    }
+
+export const getReviewClassroomSubmissionWritingUrl = (id: number,
+    submissionId: number,) => {
+
+
+
+
+  return `/api/education/classrooms/${id}/submissions/${submissionId}/writing-review`
+}
+
+/**
+ * Teacher-only, temporary qualitative review. It returns possible writing patterns, alternative explanations, and neutral conversation questions. It does not determine authorship, grade, accuse, report, discipline, or save the submission text or review result.
+ * @summary Review submitted writing for discussion with the student
+ */
+export const reviewClassroomSubmissionWriting = async (id: number,
+    submissionId: number, options?: Parameters<typeof customFetch>[1]): Promise<ClassroomSubmissionWritingReviewResponse> => {
+
+  return customFetch<ClassroomSubmissionWritingReviewResponse>(getReviewClassroomSubmissionWritingUrl(id,submissionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReviewClassroomSubmissionWritingMutationKey = () => ['reviewClassroomSubmissionWriting'] as const;
+
+export const getReviewClassroomSubmissionWritingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewClassroomSubmissionWriting>>, TError,ReviewClassroomSubmissionWritingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewClassroomSubmissionWriting>>, TError,ReviewClassroomSubmissionWritingMutationVariables, TContext> => {
+
+const mutationKey = getReviewClassroomSubmissionWritingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewClassroomSubmissionWriting>>, ReviewClassroomSubmissionWritingMutationVariables> = (props) => {
+          const {id,submissionId} = props ?? {};
+
+          return  reviewClassroomSubmissionWriting(id,submissionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewClassroomSubmissionWritingMutationResult = NonNullable<Awaited<ReturnType<typeof reviewClassroomSubmissionWriting>>>
+
+    export type ReviewClassroomSubmissionWritingMutationError = ErrorType<void>
+    export type ReviewClassroomSubmissionWritingMutationVariables = {id: number;submissionId: number}
+
+    /**
+ * @summary Review submitted writing for discussion with the student
+ */
+export const useReviewClassroomSubmissionWriting = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewClassroomSubmissionWriting>>, TError,ReviewClassroomSubmissionWritingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewClassroomSubmissionWriting>>,
+        TError,
+        ReviewClassroomSubmissionWritingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewClassroomSubmissionWritingMutationOptions(options));
     }
 
 export const getRestockTowerBusinessItemUrl = () => {

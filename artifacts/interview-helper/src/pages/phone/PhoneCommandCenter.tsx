@@ -117,7 +117,13 @@ function ActiveCallCard({
   );
 }
 
-export default function PhoneCommandCenter({ systemStatus }: { systemStatus: PhoneSystemStatus }) {
+export default function PhoneCommandCenter({
+  systemStatus,
+  statusDiagnostic,
+}: {
+  systemStatus: PhoneSystemStatus;
+  statusDiagnostic: string | null;
+}) {
   const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
@@ -159,7 +165,13 @@ export default function PhoneCommandCenter({ systemStatus }: { systemStatus: Pho
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
     if (systemStatus !== 'online') {
-      setError('Phone service is unavailable. Wait for it to reconnect before calling.');
+      if (systemStatus === 'checking') {
+        setError('CALLL HOME is still checking the phone service. Wait for CALLING READY before calling.');
+      } else if (statusDiagnostic) {
+        setError(`Phone service is unavailable (${statusDiagnostic}). Retry the connection check before calling.`);
+      } else {
+        setError('Phone service is unavailable. Wait for it to reconnect before calling.');
+      }
       return;
     }
     if (!validatePhoneNumber(phone)) { setError('Invalid phone number'); return; }

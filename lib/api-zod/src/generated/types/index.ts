@@ -25,6 +25,8 @@ export * from './autopilotRecentCall';
 export * from './autopilotRecentCallProposalStatus';
 export * from './beginDiscordLoginParams';
 export * from './browserOnboardingStatusResponse';
+export * from './classroomSubmissionWritingReviewResponse';
+export * from './classroomWritingReviewFindings';
 export * from './completeCrmGoogleSheetsParams';
 export * from './connectCrmGoogleSheets200';
 export * from './connectCrmGoogleSheetsParams';

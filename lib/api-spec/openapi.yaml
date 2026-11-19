@@ -37,6 +37,8 @@ tags:
     description: Picasso admin-only Tower shop staff management
   - name: towerShop
     description: Server-authoritative Tower shop inventory
+  - name: education
+    description: Teacher-only classroom writing review
 paths:
   /world/online:
     get:
@@ -1179,6 +1181,48 @@ paths:
           description: Picasso admin access required
         "404":
           description: Assignment not found
+  /education/classrooms/{id}/submissions/{submissionId}/writing-review:
+    post:
+      operationId: reviewClassroomSubmissionWriting
+      tags: [education]
+      summary: Review submitted writing for discussion with the student
+      description: >
+        Teacher-only, temporary qualitative review. It returns possible writing
+        patterns, alternative explanations, and neutral conversation questions.
+        It does not determine authorship, grade, accuse, report, discipline, or
+        save the submission text or review result.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Temporary qualitative writing review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassroomSubmissionWritingReviewResponse"
+        "400":
+          description: Invalid classroom or submission identifier
+        "401":
+          description: Login required
+        "403":
+          description: Teacher access required
+        "404":
+          description: Submission not found in this classroom
+        "409":
+          description: Only submitted work can be reviewed
+        "503":
+          description: Writing review is temporarily unavailable
   /items/tower-business/restock:
     post:
       operationId: restockTowerBusinessItem
@@ -2018,6 +2062,43 @@ components:
           type: boolean
         stock:
           $ref: "#/components/schemas/TowerBusinessInventoryStock"
+    ClassroomWritingReviewFindings:
+      type: object
+      required: [potentialPatterns, alternativeExplanations, conversationQuestions]
+      properties:
+        potentialPatterns:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 300
+        alternativeExplanations:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 300
+        conversationQuestions:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 220
+    ClassroomSubmissionWritingReviewResponse:
+      type: object
+      required: [findings, limitations, reviewedCharacters, truncated]
+      properties:
+        findings:
+          $ref: "#/components/schemas/ClassroomWritingReviewFindings"
+        limitations:
+          type: array
+          items:
+            type: string
+        reviewedCharacters:
+          type: integer
+          minimum: 0
+        truncated:
+          type: boolean
   parameters:
     AuthorizationSessionHeader:
       name: Authorization

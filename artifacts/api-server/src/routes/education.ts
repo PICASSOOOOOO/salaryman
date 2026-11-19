@@ -1,7 +1,15 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, eq, desc, inArray, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import {
+  ReviewClassroomSubmissionWritingParams,
+  ReviewClassroomSubmissionWritingResponse,
+} from "@workspace/api-zod";
 import { getOpenAiTextModel } from "../lib/openai-models";
+import {
+  MAX_CLASSROOM_REVIEW_CHARS,
+  reviewClassroomWriting,
+} from "../lib/classroom-writing-review";
 import {
   db,
   classroomsTable,
@@ -708,6 +716,71 @@ router.post("/education/classrooms/:id/check", async (req: Request, res: Respons
     res.status(500).json({ error: "Checker temporarily unavailable" });
   }
 });
+
+// ── POST /api/education/classrooms/:id/submissions/:submissionId/writing-review ──
+// Teacher-only and deliberately transient: never write the text or review to a row.
+router.post(
+  "/education/classrooms/:id/submissions/:submissionId/writing-review",
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = requireAuth(req, res);
+    if (!userId) return;
+    const classroom = await requireTeacher(req, res, userId);
+    if (!classroom) return;
+
+    const params = ReviewClassroomSubmissionWritingParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid classroom or submission identifier" });
+      return;
+    }
+
+    try {
+      const [submission] = await db
+        .select({
+          content: classroomSubmissionsTable.content,
+          status: classroomSubmissionsTable.status,
+        })
+        .from(classroomSubmissionsTable)
+        .where(and(
+          eq(classroomSubmissionsTable.id, params.data.submissionId),
+          eq(classroomSubmissionsTable.classroomId, classroom.id),
+        ))
+        .limit(1);
+
+      if (!submission) {
+        res.status(404).json({ error: "Submission not found in this classroom" });
+        return;
+      }
+      if (submission.status !== "submitted" && submission.status !== "graded") {
+        res.status(409).json({ error: "Only submitted work can be reviewed" });
+        return;
+      }
+      if (submission.content.trim().length < 20) {
+        res.status(400).json({ error: "Submission must contain at least 20 characters" });
+        return;
+      }
+
+      const reviewedText = submission.content.slice(0, MAX_CLASSROOM_REVIEW_CHARS);
+      const findings = await reviewClassroomWriting(reviewedText);
+      const result = ReviewClassroomSubmissionWritingResponse.parse({
+        findings,
+        limitations: [
+          "Text style cannot reliably determine authorship; these observations are not proof of AI use.",
+          "Human writing, revision tools, tutoring, language background, and assignment prompts can produce similar patterns.",
+          "Use these notes only to support a neutral conversation, never for grading, accusations, reporting, or discipline.",
+        ],
+        reviewedCharacters: reviewedText.length,
+        truncated: submission.content.length > reviewedText.length,
+      });
+      res.json(result);
+    } catch (err) {
+      req.log?.error(
+        { errorType: err instanceof Error ? err.name : "UnknownError" },
+        "Classroom writing review failed",
+      );
+      res.status(503).json({ error: "Writing review is temporarily unavailable" });
+    }
+  },
+);
 
 // ── POST /api/education/classrooms/:id/live/start — teacher hosts live lesson ──
 router.post("/education/classrooms/:id/live/start", async (req: Request, res: Response) => {
