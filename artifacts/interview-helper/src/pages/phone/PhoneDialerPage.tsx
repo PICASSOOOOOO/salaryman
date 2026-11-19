@@ -203,7 +203,10 @@ export default function PhoneDialerPage() {
           body: JSON.stringify({ mode: dialingMode, contactIds: recentContacts.map(c => c.id), settings: {}, countryCode: dialCountry }) });
         if (await handleFetchError(r)) throw new Error('Dialing session request failed');
         return r.json();
-      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), { allowNoLegs: true });
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), {
+        allowNoLegs: true,
+        deferConferenceJoin: dialingMode === 'predictive',
+      });
       const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
       const newActiveCalls: ActiveCall[] = batchCalls
         .filter(c => c.ok && c.callSid)

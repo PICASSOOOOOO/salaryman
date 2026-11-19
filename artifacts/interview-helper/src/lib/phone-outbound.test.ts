@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { actionablePhoneError, reconcilePolledCalls, runOutboundBridge } from "./phone-outbound";
+import { actionablePhoneError, reconcilePolledCalls, runOutboundBridge, selectPredictiveBridgeTarget } from "./phone-outbound";
 
 describe("runOutboundBridge", () => {
   it("does not create a PSTN leg until the browser device is ready", async () => {
@@ -60,6 +60,20 @@ describe("runOutboundBridge", () => {
     expect(joined).toEqual(["conf-1", "conf-2"]);
   });
 
+  it("can defer joining predictive legs until one answer is selected", async () => {
+    const connectToConference = vi.fn();
+    const created = { calls: [{ callSid: "CA1", conferenceName: "conf-1" }] };
+    await expect(runOutboundBridge({
+      ensureDeviceReady: vi.fn(),
+      create: async () => created,
+      getLegs: value => value.calls,
+      connectToConference,
+      cleanup: vi.fn(),
+      deferConferenceJoin: true,
+    })).resolves.toBe(created);
+    expect(connectToConference).not.toHaveBeenCalled();
+  });
+
   it("explains token failures without creating a misleading active state", () => {
     expect(actionablePhoneError(new Error("token fetch 401"))).toMatch(/authenticate/i);
   });
@@ -74,6 +88,27 @@ describe("runOutboundBridge", () => {
       allowNoLegs: true,
     });
     expect(result).toEqual({ completed: true });
+  });
+});
+
+describe("selectPredictiveBridgeTarget", () => {
+  it("selects one answered call and identifies other live legs for cleanup", () => {
+    expect(selectPredictiveBridgeTarget([
+      { callSid: "CA1", status: "ringing", conferenceName: "conf-1" },
+      { callSid: "CA2", status: "in-progress", conferenceName: "conf-2" },
+      { callSid: "CA3", status: "in-progress", conferenceName: "conf-3" },
+      { callSid: "CA4", status: "completed", conferenceName: "conf-4" },
+    ])).toEqual({
+      callSid: "CA2",
+      conferenceName: "conf-2",
+      otherLiveCallSids: ["CA1", "CA3"],
+    });
+  });
+
+  it("does not select a call until a conference leg is answered", () => {
+    expect(selectPredictiveBridgeTarget([
+      { callSid: "CA1", status: "ringing", conferenceName: "conf-1" },
+    ])).toBeUndefined();
   });
 });
 

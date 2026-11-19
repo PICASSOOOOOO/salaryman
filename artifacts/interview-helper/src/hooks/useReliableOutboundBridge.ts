@@ -12,7 +12,7 @@ export function useReliableOutboundBridge(apiUrl: (path: string) => string) {
   return useCallback(async <T,>(
     create: () => Promise<T>,
     getLegs: (created: T) => OutboundBridgeLeg[],
-    options?: { allowNoLegs?: boolean },
+    options?: { allowNoLegs?: boolean; deferConferenceJoin?: boolean },
   ): Promise<T> => runOutboundBridge({
     ensureDeviceReady,
     create,
@@ -20,5 +20,6 @@ export function useReliableOutboundBridge(apiUrl: (path: string) => string) {
     connectToConference,
     cleanup: (callSids) => cleanupOutboundCalls(apiUrl, callSids),
     allowNoLegs: options?.allowNoLegs,
+    deferConferenceJoin: options?.deferConferenceJoin,
   }), [apiUrl, connectToConference, ensureDeviceReady]);
 }

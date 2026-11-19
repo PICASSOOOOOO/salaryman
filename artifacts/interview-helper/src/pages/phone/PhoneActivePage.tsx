@@ -14,6 +14,7 @@ import {
   type ActiveCall } from '@/lib/phone-utils';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
+import { cleanupOutboundCalls, selectPredictiveBridgeTarget } from '@/lib/phone-outbound';
 import { getTranslationLanguage, getTranslationPreferences, translateFreeText } from '@/lib/translate';
 
 const SESSION_KEY = 'phone_dialing_session';
@@ -26,6 +27,7 @@ interface DialingSession {
   queue?: Array<{ phone: string; name?: string }>;
   concurrency?: number;
   delayBetweenCalls?: number;
+  winnerCallSid?: string;
   paused?: boolean;
   error?: string;
 }
@@ -33,6 +35,7 @@ interface DialingSession {
 interface DialingAttempt {
   id: number;
   queueIndex: number | null;
+  callSid: string;
   phone: string;
   name: string | null;
   status: string;
@@ -111,6 +114,7 @@ export default function PhoneActivePage() {
   const [dialingAttempts, setDialingAttempts] = useState<DialingAttempt[]>([]);
   const [expandedCall, setExpandedCall] = useState<string | null>(null);
   const connectedConferenceRef = useRef<string | null>(null);
+  const predictiveWinnerCallSidRef = useRef<string | null>(null);
   const [phoneTranslationEnabled, setPhoneTranslationEnabled] = useState(() => {
     try { return localStorage.getItem('sm_translation_conversation') === '1'; } catch { return false; }
   });
@@ -139,6 +143,10 @@ export default function PhoneActivePage() {
         if (cancelled) return;
         setDialingAttempts(d.attempts ?? []);
         if (d.session) {
+          const settings = (() => {
+            try { return JSON.parse(d.session.settingsJson ?? '{}') as { winnerCallSid?: string }; }
+            catch { return {}; }
+          })();
           if (d.session.status === 'completed') {
             setDialingSession(null);
             return;
@@ -148,6 +156,7 @@ export default function PhoneActivePage() {
             ...prev,
             dialed: d.session.dialedCount ?? prev.dialed,
             total: d.session.totalNumbers ?? prev.total,
+            winnerCallSid: settings.winnerCallSid,
             paused: prev.paused || sessionStopped,
             error: prev.error ?? (sessionStopped ? 'This dialing session is stopped. Review call history before restarting.' : undefined),
           } : null);
@@ -194,20 +203,82 @@ export default function PhoneActivePage() {
   }, [apiUrl, userId, navigate]);
 
   useEffect(() => {
-    const newlyAnswered = activeCalls.find(ac => {
-      return ac.status === 'in-progress' && ac.conferenceName && ac.conferenceName !== connectedConferenceRef.current;
-    });
+    if (!dialingSession) {
+      predictiveWinnerCallSidRef.current = null;
+      connectedConferenceRef.current = null;
+      return;
+    }
+
+    if (dialingSession.mode === 'predictive') {
+      const currentWinnerSid = predictiveWinnerCallSidRef.current ?? dialingSession.winnerCallSid ?? null;
+      if (currentWinnerSid) {
+        const winnerIsLive = activeCalls.some(call =>
+          call.callSid === currentWinnerSid && !ENDED_STATUSES.includes(call.status),
+        );
+        if (winnerIsLive) {
+          predictiveWinnerCallSidRef.current = currentWinnerSid;
+          return;
+        }
+        predictiveWinnerCallSidRef.current = null;
+        connectedConferenceRef.current = null;
+        setDialingSession(prev => prev?.winnerCallSid
+          ? { ...prev, winnerCallSid: undefined }
+          : prev);
+      }
+
+      const sessionCallSids = new Set(dialingAttempts.map(attempt => attempt.callSid).filter(Boolean));
+      const sessionCalls = activeCalls.filter(call => sessionCallSids.has(call.callSid));
+      const target = selectPredictiveBridgeTarget(sessionCalls);
+      if (!target) return;
+
+      predictiveWinnerCallSidRef.current = target.callSid;
+      connectedConferenceRef.current = target.conferenceName;
+      setDialingSession(prev => prev ? { ...prev, winnerCallSid: target.callSid } : prev);
+      connectToConference(target.conferenceName).then(async () => {
+        setError('');
+        if (target.otherLiveCallSids.length > 0) {
+          try {
+            await cleanupOutboundCalls(apiUrl, target.otherLiveCallSids);
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Could not end the other predictive calls';
+            await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), {
+              method: 'POST',
+              credentials: 'include',
+            }).catch(() => {});
+            setDialingSession(prev => prev ? { ...prev, paused: true, error: message } : prev);
+            setError(`Connected to one call, but other calls could not be ended. The session was stopped: ${message}`);
+          }
+        }
+      }).catch(async err => {
+        console.warn('[CalllHome] predictive conference connection failed:', err instanceof Error ? err.message : err);
+        const message = err instanceof Error ? err.message : 'Could not connect browser audio';
+        await apiFetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(() => {});
+        predictiveWinnerCallSidRef.current = null;
+        connectedConferenceRef.current = null;
+        setDialingSession(prev => prev ? { ...prev, paused: true, error: message } : prev);
+        setError(`The predictive session was stopped because browser audio could not connect. ${message}`);
+      });
+      return;
+    }
+
+    const newlyAnswered = activeCalls.find(ac =>
+      ac.status === 'in-progress' && ac.conferenceName && ac.conferenceName !== connectedConferenceRef.current,
+    );
     if (newlyAnswered?.conferenceName) {
       const confName = newlyAnswered.conferenceName;
+      connectedConferenceRef.current = confName;
       connectToConference(confName).then(() => {
-        connectedConferenceRef.current = confName;
         setError('');
       }).catch(err => {
+        connectedConferenceRef.current = null;
         console.warn('[CalllHome] auto-reconnect to answered conference failed:', err instanceof Error ? err.message : err);
         setError(err instanceof Error ? err.message : 'Could not reconnect browser audio. Use RECONNECT and try again.');
       });
     }
-  }, [activeCalls, connectToConference]);
+  }, [activeCalls, apiFetch, apiUrl, connectToConference, dialingAttempts, dialingSession]);
 
   useEffect(() => {
     if (!activeCalls.some(ac => ac.status === 'in-progress' && ac.conferenceName)) {
@@ -236,7 +307,10 @@ export default function PhoneActivePage() {
           throw new Error(body.error || 'Failed to advance session');
         }
         return body;
-      }, created => created.callSid ? [{ callSid: created.callSid, conferenceName: created.conferenceName }] : [], { allowNoLegs: true });
+      }, created => created.callSid ? [{ callSid: created.callSid, conferenceName: created.conferenceName }] : [], {
+        allowNoLegs: true,
+        deferConferenceJoin: dialingSession.mode === 'predictive',
+      });
       if (d.paused) {
         setDialingSession(prev => prev ? { ...prev, paused: true, error: d.error } : null);
         setError(d.error || 'Dialing stopped. Review call history before restarting.');
@@ -268,6 +342,7 @@ export default function PhoneActivePage() {
   useEffect(() => {
     if (!dialingSession || dialingSession.paused || advancingNext || dialingSession.dialed >= dialingSession.total) return;
     if (dialingSession.mode !== 'auto' && dialingSession.mode !== 'predictive') return;
+    if (dialingSession.mode === 'predictive' && predictiveWinnerCallSidRef.current) return;
     const terminal = new Set(['completed', 'failed', 'busy', 'no-answer', 'canceled']);
     const liveCount = activeCalls.filter(call => !terminal.has(call.status)).length;
     const targetConcurrency = dialingSession.mode === 'predictive' ? (dialingSession.concurrency ?? 3) : 1;

@@ -116,7 +116,10 @@ export default function PhoneSessionsPage() {
         if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
         if (!r.ok) throw new Error(body.error || 'Failed to start dialing session');
         return body;
-      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), { allowNoLegs: true });
+        }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })), {
+          allowNoLegs: true,
+          deferConferenceJoin: dialingMode === 'predictive',
+        });
       {
         const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
         const newActiveCalls: ActiveCall[] = batchCalls

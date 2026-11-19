@@ -11,6 +11,7 @@ export interface OutboundBridgeOptions<T> {
   connectToConference: (conferenceName: string) => Promise<unknown>;
   cleanup: (callSids: string[]) => Promise<void>;
   allowNoLegs?: boolean;
+  deferConferenceJoin?: boolean;
 }
 
 export class PhoneBridgeError extends Error {
@@ -54,9 +55,9 @@ export async function cleanupOutboundCalls(
 }
 
 /**
- * The only valid outbound ordering:
- * browser device READY -> create PSTN leg(s) -> join returned conference.
- * Created PSTN legs are rolled back if the browser bridge cannot join.
+ * The standard outbound ordering is browser device READY -> create PSTN leg(s)
+ * -> join returned conference. Predictive sessions defer joining until one
+ * answered leg has been selected. Created legs are rolled back if joining fails.
  */
 export async function runOutboundBridge<T>(options: OutboundBridgeOptions<T>): Promise<T> {
   try {
@@ -75,6 +76,8 @@ export async function runOutboundBridge<T>(options: OutboundBridgeOptions<T>): P
     } catch {}
     throw new PhoneBridgeError("The phone provider did not return an audio conference. The call was canceled; reconnect and try again.");
   }
+
+  if (options.deferConferenceJoin) return created;
 
   try {
     for (const leg of bridgeLegs) {
@@ -96,6 +99,21 @@ export async function runOutboundBridge<T>(options: OutboundBridgeOptions<T>): P
       error,
     );
   }
+}
+
+export function selectPredictiveBridgeTarget(
+  calls: Array<{ callSid: string; status: string; conferenceName?: string }>,
+): { callSid: string; conferenceName: string; otherLiveCallSids: string[] } | undefined {
+  const terminalStatuses = new Set(["completed", "failed", "busy", "no-answer", "canceled"]);
+  const winner = calls.find(call => call.status === "in-progress" && call.conferenceName);
+  if (!winner?.conferenceName) return undefined;
+  return {
+    callSid: winner.callSid,
+    conferenceName: winner.conferenceName,
+    otherLiveCallSids: calls
+      .filter(call => call.callSid !== winner.callSid && !terminalStatuses.has(call.status))
+      .map(call => call.callSid),
+  };
 }
 
 export function reconcilePolledCalls<T extends { callSid: string; status: string }>(
