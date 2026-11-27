@@ -5,6 +5,7 @@ import ArtFamilyMatrix from '@/components/ArtFamilyMatrix';
 import GameAssetGallery from '@/components/GameAssetGallery';
 import GeneratedArtReviewBoard from '@/components/GeneratedArtReviewBoard';
 import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2, Copy, Check, Send, Download } from 'lucide-react';
+import { summarizeCharacterArtQa } from '@/lib/character-art-qa';
 
 /**
  * Admin art library — the "Unreal-style Art Factory" control surface.
@@ -1041,6 +1042,60 @@ export default function ArtLibrary() {
             Refresh
           </button>
         </div>
+
+        {!accessDenied && (() => {
+          const qa = summarizeCharacterArtQa(assets);
+          const blockedAssets = assets.filter(asset => asset.category === 'character' && asset.status !== 'ready');
+          return (
+            <section
+              className={`mb-5 rounded-lg border p-3 ${qa.releaseReady
+                ? 'border-emerald-500/25 bg-emerald-500/[0.04]'
+                : 'border-rose-500/30 bg-rose-500/[0.05]'}`}
+              data-testid="character-art-qa"
+              aria-label="Named character art quality report"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-mono text-[11px] font-bold tracking-[.18em] text-zinc-200">NAMED CHARACTER ART QA</h2>
+                  <p className="mt-1 font-mono text-[9px] text-zinc-500">
+                    Pixel Agents, Tower identities, and player portrait assets in the art kit
+                  </p>
+                </div>
+                <span className={`rounded border px-2 py-1 font-mono text-[10px] font-bold tracking-widest ${
+                  qa.releaseReady
+                    ? 'border-emerald-500/30 text-emerald-300'
+                    : 'border-rose-500/40 text-rose-300'
+                }`}>
+                  {qa.releaseReady ? 'ART READY' : 'DO NOT PROMOTE'}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="rounded border border-white/10 px-2 py-1 font-mono text-[9px] text-zinc-300">{qa.expected} named assets</span>
+                <span className="rounded border border-emerald-500/20 px-2 py-1 font-mono text-[9px] text-emerald-300">{qa.ready} ready</span>
+                <span className="rounded border border-amber-500/20 px-2 py-1 font-mono text-[9px] text-amber-300">{qa.pending} pending</span>
+                <span className="rounded border border-rose-500/20 px-2 py-1 font-mono text-[9px] text-rose-300">{qa.failed + qa.unclassified} missing or failed</span>
+              </div>
+              {blockedAssets.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1" aria-label="Character assets needing attention">
+                  {blockedAssets.slice(0, 8).map(asset => (
+                    <span key={asset.key} className="font-mono text-[8px] text-rose-200/70">
+                      {asset.key} · {asset.status}
+                    </span>
+                  ))}
+                  {blockedAssets.length > 8 && (
+                    <span className="font-mono text-[8px] text-zinc-500">+{blockedAssets.length - 8} more in the library</span>
+                  )}
+                </div>
+              )}
+              {!qa.releaseReady && (
+                <p className="mt-2 font-mono text-[9px] leading-4 text-rose-200/80">
+                  Hold production promotion until every registered character identity has a ready named asset.
+                  Procedural portraits are not accepted as substitutes.
+                </p>
+              )}
+            </section>
+          );
+        })()}
 
         {/* Full-fleet health summary — same breakdown (online / offline /
             not configured / unknown) and wording as the copied incident report,

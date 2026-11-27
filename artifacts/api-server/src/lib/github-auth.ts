@@ -9,6 +9,7 @@ export const GITHUB_EMAILS_URL = "https://api.github.com/user/emails";
 // `read:user` for the basic profile, `user:email` so we can read the user's
 // verified email addresses (the /user endpoint omits private emails).
 export const GITHUB_SCOPES = "read:user user:email";
+export const GITHUB_REPOSITORY_SCOPES = "repo read:user";
 
 export interface GithubCreds {
   clientId: string;
@@ -52,6 +53,22 @@ export function resolveGithubCreds(host: string): GithubCreds | null {
   return null;
 }
 
+// Pablo repository access uses a separate OAuth application from account
+// sign-in. That keeps read-only identity linking from being reused as a code
+// access grant and permits the two flows to be revoked independently.
+export function resolveGithubRepositoryCreds(host: string): GithubCreds | null {
+  if (isDevelopmentHost(host)) {
+    const clientId = process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_SECRET;
+    return clientId && clientSecret ? { clientId, clientSecret } : null;
+  }
+  // GitHub OAuth Apps have one callback URL; do not reuse the dev app in
+  // production or the redirect URI will fail (and could target the wrong app).
+  const clientId = process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_ID_PROD;
+  const clientSecret = process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_SECRET_PROD;
+  return clientId && clientSecret ? { clientId, clientSecret } : null;
+}
+
 export function githubConfigured(host: string): boolean {
   return !!resolveGithubCreds(host);
 }
@@ -68,10 +85,11 @@ export function buildGithubAuthUrl(params: {
   redirectUri: string;
   state: string;
   creds: GithubCreds;
+  scope?: string;
 }): string {
   const url = new URL(GITHUB_AUTHORIZE_URL);
   url.searchParams.set("client_id", params.creds.clientId);
-  url.searchParams.set("scope", GITHUB_SCOPES);
+  url.searchParams.set("scope", params.scope ?? GITHUB_SCOPES);
   url.searchParams.set("redirect_uri", params.redirectUri);
   url.searchParams.set("state", params.state);
   url.searchParams.set("allow_signup", "true");
@@ -114,7 +132,7 @@ export async function exchangeGithubCode(params: {
   return data.access_token;
 }
 
-function githubHeaders(accessToken: string): Record<string, string> {
+export function githubApiHeaders(accessToken: string): Record<string, string> {
   return {
     Authorization: `Bearer ${accessToken}`,
     Accept: "application/vnd.github+json",
@@ -128,7 +146,7 @@ export async function fetchGithubProfile(
   accessToken: string,
 ): Promise<GithubProfile> {
   const res = await fetch(GITHUB_USER_URL, {
-    headers: githubHeaders(accessToken),
+    headers: githubApiHeaders(accessToken),
   });
 
   if (!res.ok) {
@@ -155,7 +173,7 @@ export async function fetchGithubPrimaryEmail(
 ): Promise<string | null> {
   try {
     const res = await fetch(GITHUB_EMAILS_URL, {
-      headers: githubHeaders(accessToken),
+      headers: githubApiHeaders(accessToken),
     });
     if (!res.ok) return null;
 

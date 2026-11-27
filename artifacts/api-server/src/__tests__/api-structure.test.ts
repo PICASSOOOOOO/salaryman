@@ -63,6 +63,7 @@ describe("API structure: browser-facing routes", () => {
 
 describe("API structure: auth-enforced routes return 401 (not 404/500)", () => {
   const authRoutes: { method: "get" | "post"; path: string }[] = [
+    { method: "get", path: "/api/account/workspace" },
     { method: "get", path: "/api/account/settings" },
     { method: "post", path: "/api/salaryman/saves/ensure" },
     { method: "get", path: "/api/economy/bank/accounts" },
@@ -72,6 +73,7 @@ describe("API structure: auth-enforced routes return 401 (not 404/500)", () => {
     { method: "get", path: "/api/admin/connections/status" },
     { method: "get", path: "/api/bots" },
     { method: "post", path: "/api/bots/marketplace/activate" },
+    { method: "get", path: "/api/github-repositories/changes" },
   ];
 
   it.each(authRoutes)("$method $path → 401", async ({ method, path }) => {
@@ -87,6 +89,7 @@ describe("API structure: critical routers are mounted (never 404)", () => {
   const mounted: { method: "get" | "post"; path: string }[] = [
     { method: "get", path: "/api/healthz" }, // health
     { method: "get", path: "/api/version" }, // version
+    { method: "get", path: "/api/account/workspace" }, // account workspace
     { method: "get", path: "/api/account/settings" }, // account
     { method: "get", path: "/api/economy/bank/accounts" }, // bank
     { method: "post", path: "/api/twilio/call" }, // twilio
@@ -96,6 +99,7 @@ describe("API structure: critical routers are mounted (never 404)", () => {
     { method: "post", path: "/api/gameplay/fiat/action" }, // gameplay fiat
     { method: "get", path: "/api/bots" }, // canonical Pixel Agent surface
     { method: "post", path: "/api/bots/marketplace/activate" }, // activation lifecycle
+    { method: "get", path: "/api/github-repositories/changes" }, // Pablo's selected-repository workspace
   ];
 
   it.each(mounted)("$method $path is mounted", async ({ method, path }) => {

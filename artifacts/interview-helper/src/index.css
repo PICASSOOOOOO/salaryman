@@ -1378,7 +1378,7 @@ iframe[src*="feedback"] {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: none !important;
+  filter: brightness(0) !important;
   opacity: 1 !important;
 }
 
@@ -1481,9 +1481,8 @@ body.workspace-light #root {
   color: #000000 !important;
 }
 
-/* One navigation contract at every viewport size. The phone composition is the
-   canonical browser chrome; desktop must not silently switch to a second nav
-   component or hide the primary tabs behind a different START WORK menu. */
+/* One grouped navigation contract at every viewport size. Desktop and phone
+   share the same cream/black header, menu, and notification entry. */
 .desktop-app-nav {
   display: none !important;
 }
@@ -2501,12 +2500,15 @@ html.low-gfx canvas[data-gfx="heavy"] {
     padding-bottom: 0;
   }
 
-  .mobile-app-nav-top,
   .mobile-app-nav-bottom {
     display: none !important;
   }
 
   .desktop-app-nav {
+    display: none !important;
+  }
+
+  .mobile-app-nav-top {
     display: flex !important;
     min-height: calc(3.5rem + env(safe-area-inset-top, 0px));
   }

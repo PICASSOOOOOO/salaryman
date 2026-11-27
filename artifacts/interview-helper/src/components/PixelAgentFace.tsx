@@ -1,106 +1,11 @@
-import { useMemo } from "react";
-
-// Deterministic procedural pixel-art portrait for a Pixel Agent. Same seed
-// (the bot slug) always produces the same face, so every agent has a stable,
-// unique "face" with zero network cost — it renders instantly and never fails.
-// The agents share one steel chassis so they read as a unified robot family,
-// with eyes / mouth / antenna glowing in their division's accent color.
+import { useArtAsset } from "@/lib/art";
+import { characterArtKey } from "@/lib/character-art";
 
 export interface PixelFaceTheme {
   base: string;
   baseDark: string;
   accent: string;
   accentDim: string;
-}
-
-function hashStr(s: string): number {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function mulberry32(a: number) {
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const GW = 11;
-const GH = 12;
-
-// Cell codes: 0 empty · 1 base metal · 2 metal shadow · 4 accent glow · 5 accent dim
-function buildFace(seed: string): number[][] {
-  const rng = mulberry32(hashStr(seed));
-  const g: number[][] = Array.from({ length: GH }, () => new Array(GW).fill(0));
-  const sym = (r: number, c: number, v: number) => {
-    if (r < 0 || r >= GH || c < 0 || c >= GW) return;
-    g[r][c] = v;
-    g[r][GW - 1 - c] = v;
-  };
-
-  // Head — rounded rect, cols 2..8, rows 1..8 (paint left half, mirror).
-  const headTop = 1;
-  const headBot = 8;
-  const headLeft = 2;
-  for (let r = headTop; r <= headBot; r++) {
-    for (let c = headLeft; c <= 5; c++) sym(r, c, 1);
-  }
-  // Round the head corners.
-  sym(headTop, headLeft, 0);
-  sym(headBot, headLeft, 0);
-
-  // Optional side "ears" / sensors.
-  if (rng() < 0.6) {
-    sym(4, 1, 2);
-    sym(5, 1, 2);
-  }
-
-  // Shoulders / body block, rows 9..10, wider than head.
-  const bodyTop = 9;
-  const bodyBot = 10;
-  const bodyLeft = 1;
-  for (let r = bodyTop; r <= bodyBot; r++) {
-    for (let c = bodyLeft; c <= 5; c++) sym(r, c, 1);
-  }
-  sym(bodyTop, bodyLeft, 0);
-
-  // Paneled metallic shading on the head interior (symmetric).
-  for (let r = headTop; r <= headBot; r++) {
-    for (let c = headLeft; c <= 5; c++) {
-      if (g[r][c] === 1 && rng() < 0.3) sym(r, c, 2);
-    }
-  }
-
-  // Antenna.
-  if (rng() < 0.7) {
-    g[0][5] = 5;
-  }
-
-  // Eyes — either a single eye on each side or a full visor bar.
-  const eyeRow = 4;
-  if (rng() < 0.4) {
-    for (let c = 3; c <= 5; c++) sym(eyeRow, c, 4); // visor
-  } else {
-    sym(eyeRow, 3, 4); // two eyes (mirrored)
-    if (rng() < 0.35) sym(eyeRow, 2, 5); // brow accent
-  }
-
-  // Mouth / grille, row 6.
-  const mouthRow = 6;
-  const half = rng() < 0.5 ? 1 : 2;
-  for (let c = 5 - half; c <= 5; c++) sym(mouthRow, c, 5);
-
-  // Collar accent on the shoulders.
-  if (rng() < 0.6) sym(bodyTop, 3, 5);
-
-  return g;
 }
 
 export function PixelAgentFace({
@@ -112,78 +17,53 @@ export function PixelAgentFace({
   theme: PixelFaceTheme;
   className?: string;
 }) {
-  const grid = useMemo(() => buildFace(seed), [seed]);
-  const gid = useMemo(() => `agf-${hashStr(seed).toString(36)}`, [seed]);
+  const assetKey = characterArtKey("pixel_agent", seed);
+  const imageUrl = useArtAsset(assetKey, 4000, { retryOnFail: true });
 
-  const color = (v: number): string => {
-    switch (v) {
-      case 1:
-        return theme.base;
-      case 2:
-        return theme.baseDark;
-      case 4:
-        return theme.accent;
-      case 5:
-        return theme.accentDim;
-      default:
-        return "transparent";
-    }
-  };
-
-  const rects: React.ReactNode[] = [];
-  for (let r = 0; r < GH; r++) {
-    for (let c = 0; c < GW; c++) {
-      const v = grid[r][c];
-      if (v === 0) continue;
-      rects.push(
-        <rect
-          key={`${r}-${c}`}
-          x={c}
-          y={r}
-          width={1.02}
-          height={1.02}
-          fill={color(v)}
-          filter={v === 4 ? `url(#${gid})` : undefined}
-        />,
-      );
-    }
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        className={className}
+        alt={`Named art for ${seed}`}
+        loading="lazy"
+        style={{ objectFit: "contain", imageRendering: "pixelated" }}
+        data-character-art-key={assetKey}
+      />
+    );
   }
 
   return (
-    <svg
-      viewBox={`0 0 ${GW} ${GH}`}
-      className={className}
-      shapeRendering="crispEdges"
+    <div
+      className={`flex h-full w-full flex-col items-center justify-center gap-1 border border-dashed ${className ?? ""}`}
+      style={{
+        borderColor: theme.accent,
+        background: "linear-gradient(145deg, rgba(12,12,20,.96), rgba(26,16,36,.96))",
+        color: theme.accent,
+        fontFamily: "monospace",
+        textAlign: "center",
+      }}
       role="img"
-      aria-label="Pixel agent portrait"
+      aria-label={`${seed} named art is not ready`}
+      data-testid="character-art-missing"
+      data-character-art-key={assetKey}
     >
-      <defs>
-        <filter id={gid} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="0.22" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <radialGradient id={`${gid}-bg`} cx="50%" cy="38%" r="70%">
-          <stop offset="0%" stopColor={theme.accent} stopOpacity={0.28} />
-          <stop offset="100%" stopColor={theme.accent} stopOpacity={0} />
-        </radialGradient>
-      </defs>
-      <rect x={0} y={0} width={GW} height={GH} fill={`url(#${gid}-bg)`} />
-      {rects}
-    </svg>
+      <span style={{ fontSize: "clamp(7px, 1.6vw, 11px)", fontWeight: 800, letterSpacing: ".12em" }}>
+        ART NOT READY
+      </span>
+      <span style={{ maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", fontSize: "clamp(6px, 1.2vw, 9px)" }}>
+        {seed.toUpperCase()}
+      </span>
+    </div>
   );
 }
 
-// Division (category) → display label, accent color, and a metal/glow theme for
-// the face. One steel chassis across all agents; the division tints the glow.
 const STEEL_BASE = "#c7d3e0";
 const STEEL_DARK = "#74849a";
 
 export interface DivisionMeta {
   label: string;
-  accent: string; // tailwind-ish hex used for borders/glow
+  accent: string;
   theme: PixelFaceTheme;
 }
 

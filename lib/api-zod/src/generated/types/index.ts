@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './accountWorkspaceResponse';
 export * from './assignPhoneInternalLine200';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
@@ -63,6 +64,18 @@ export * from './getWorldMonitoringOnline200Scope';
 export * from './getWorldMonitoringSecuritySummary200';
 export * from './getWorldMonitoringSecuritySummary200Scope';
 export * from './getWorldMonitoringSecuritySummary200Security';
+export * from './githubRepository';
+export * from './githubRepositoryChange';
+export * from './githubRepositoryChangeApprovalInput';
+export * from './githubRepositoryChangeDetailsResponse';
+export * from './githubRepositoryChangeResponse';
+export * from './githubRepositoryChangesResponse';
+export * from './githubRepositoryChangeStatus';
+export * from './githubRepositoryConnectionStatus';
+export * from './githubRepositoryDisconnectResponse';
+export * from './githubRepositoryListResponse';
+export * from './githubRepositorySelectionInput';
+export * from './githubSelectedRepository';
 export * from './healthStatus';
 export * from './interviewQuestionInput';
 export * from './interviewQuestionInputMode';
@@ -147,5 +160,7 @@ export * from './towerShopStaffRevokeResponse';
 export * from './towerShopStaffRoster';
 export * from './towerShopStaffShop';
 export * from './workspaceGeneratedNote';
+export * from './workspaceLayout';
+export * from './workspaceLayoutVersion';
 export * from './workspaceProjectGenerationInput';
 export * from './workspaceProjectGenerationResponse';

@@ -881,14 +881,14 @@ function FileManagerSection() {
   );
 }
 
-export default function Documents() {
+export default function Documents({ embedded = false }: { embedded?: boolean } = {}) {
   const { isAuthenticated } = useAuth();
   usePlan();
   const [tab, setTab] = useState<ActiveTab>('invoices');
   const boomerMode = BOOMER_MODE_ENABLED;
 
-  const pageTitle = boomerMode ? 'DOCUMENTS' : 'ARCHIVE-X VAULT';
-  const pageSubtitle = boomerMode ? 'Invoices, Contracts & File Storage' : 'SECURE DOCUMENT FABRICATION & FILE STORAGE UNIT';
+  const pageTitle = embedded ? 'HEMINGWAY / DOCUMENTS' : boomerMode ? 'DOCUMENTS' : 'ARCHIVE-X VAULT';
+  const pageSubtitle = embedded ? 'Writing files, contracts, and document storage' : boomerMode ? 'Invoices, Contracts & File Storage' : 'SECURE DOCUMENT FABRICATION & FILE STORAGE UNIT';
 
   const TABS = [
     { id: 'invoices' as const, label: boomerMode ? 'INVOICES' : 'INVOICE GEN', icon: FilePen },
@@ -904,7 +904,7 @@ export default function Documents() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ minHeight: '100vh', background: '#09090b', padding: '24px', paddingTop: '16px' }}
+      style={{ minHeight: embedded ? 'auto' : '100vh', background: '#09090b', padding: '24px', paddingTop: '16px' }}
     >
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         <div style={{ marginBottom: '20px' }}>
@@ -916,7 +916,7 @@ export default function Documents() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.1)', paddingBottom: '0' }}>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.1)', paddingBottom: '0', overflowX: 'auto' }}>
           {TABS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               style={{

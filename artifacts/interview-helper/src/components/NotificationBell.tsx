@@ -11,7 +11,7 @@ import { useNotifications } from '../hooks/use-notifications';
 // so it overlays everything regardless of the host's stacking context and
 // works the same whether the bell sits in a static or sticky bar.
 export function NotificationBell({
-  buttonClassName = 'relative p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md hover:bg-sky-500/8',
+  buttonClassName = 'relative inline-flex items-center gap-1.5 px-1.5 py-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md hover:bg-sky-500/8',
   iconClassName = 'w-3.5 h-3.5',
 }: {
   buttonClassName?: string;
@@ -58,11 +58,13 @@ export function NotificationBell({
         ref={btnRef}
         onClick={() => setOpen(o => !o)}
         title="Notifications"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        aria-expanded={open}
         className={buttonClassName}
       >
-        <Bell className={iconClassName} />
+        <Bell className={`${iconClassName} shrink-0`} aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
+          <span className="inline-flex min-w-[16px] h-4 shrink-0 items-center justify-center rounded-full border border-[#0a0a0b] bg-red-500 px-1 text-[9px] font-bold leading-none tabular-nums text-white">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

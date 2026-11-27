@@ -10,10 +10,18 @@ const mocks = vi.hoisted(() => ({
   rejectIncomingCall: vi.fn(),
   openPledgePopup: vi.fn(),
   navigate: vi.fn(),
+  setHideNavBar: vi.fn(),
+  isMobile: false,
 }));
 
 vi.mock("@/lib/api-client", () => ({ apiFetch: mocks.apiFetch }));
-vi.mock("@/hooks/use-mobile", () => ({ useBoomerMode: () => [false] }));
+vi.mock("@/hooks/use-mobile", () => ({
+  useBoomerMode: () => [false],
+  useIsMobile: () => mocks.isMobile,
+}));
+vi.mock("@/hooks/use-navbar-visibility", () => ({
+  useNavBarVisibility: () => ({ setHideNavBar: mocks.setHideNavBar }),
+}));
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({ isAuthenticated: true, isLoading: false }),
 }));
@@ -82,6 +90,8 @@ describe("CALLL HOME page", () => {
     mocks.rejectIncomingCall.mockReset();
     mocks.openPledgePopup.mockReset();
     mocks.navigate.mockReset();
+    mocks.setHideNavBar.mockReset();
+    mocks.isMobile = false;
   });
 
   afterEach(async () => {
@@ -142,5 +152,42 @@ describe("CALLL HOME page", () => {
     expect(window.location.search).toContain("tab=dial");
     expect(container.querySelector('[data-testid="phone-dialer"]')).not.toBeNull();
     expect(mocks.ensureDeviceReady).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows CALLL HOME features directly without a MORE dropdown", async () => {
+    mocks.apiFetch.mockResolvedValue(response(200));
+
+    await act(async () => {
+      root.render(<CalllHomePage />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    for (const tab of ["cmd", "dial", "auto", "cc", "contacts", "sms", "numbers", "log", "rec", "vm", "conf", "ai"]) {
+      expect(container.querySelector(`[data-testid="tab-${tab}"]`)).not.toBeNull();
+    }
+    expect(container.querySelector('[data-testid="tab-ai"]')?.textContent).toContain("VOICE COACH");
+    expect(container.querySelector('[data-testid="button-tab-settings"]')).toBeNull();
+    expect(container.querySelector('[data-testid="tab-settings-menu"]')).toBeNull();
+  });
+
+  it("uses the full mobile viewport and keeps a back action for CALLL HOME", async () => {
+    mocks.isMobile = true;
+    mocks.apiFetch.mockResolvedValue(response(200));
+
+    await act(async () => {
+      root.render(<CalllHomePage />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(mocks.setHideNavBar).toHaveBeenCalledWith(true);
+    const backButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Back to workspace"]',
+    );
+    expect(backButton).not.toBeNull();
+
+    await act(async () => {
+      backButton?.click();
+    });
+    expect(mocks.navigate).toHaveBeenCalledWith("/workspace", { replace: true });
   });
 });

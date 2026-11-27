@@ -9,6 +9,51 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Get the authenticated user's workspace layout
+ */
+export const getAccountWorkspaceLayoutResponseLayoutOneSlotsItemMax = 300;
+
+export const getAccountWorkspaceLayoutResponseLayoutOneSlotsMax = 9;
+
+
+
+export const GetAccountWorkspaceLayoutResponse = zod.object({
+  "layout": zod.union([zod.object({
+  "version": zod.literal(2),
+  "slots": zod.array(zod.string().min(1).max(getAccountWorkspaceLayoutResponseLayoutOneSlotsItemMax).nullable()).min(1).max(getAccountWorkspaceLayoutResponseLayoutOneSlotsMax)
+}),zod.null()])
+})
+
+
+/**
+ * @summary Save the authenticated user's workspace layout
+ */
+export const updateAccountWorkspaceLayoutBodySlotsItemMax = 300;
+
+export const updateAccountWorkspaceLayoutBodySlotsMax = 9;
+
+
+
+export const UpdateAccountWorkspaceLayoutBody = zod.object({
+  "version": zod.literal(2),
+  "slots": zod.array(zod.string().min(1).max(updateAccountWorkspaceLayoutBodySlotsItemMax).nullable()).min(1).max(updateAccountWorkspaceLayoutBodySlotsMax)
+})
+
+export const updateAccountWorkspaceLayoutResponseLayoutOneSlotsItemMax = 300;
+
+export const updateAccountWorkspaceLayoutResponseLayoutOneSlotsMax = 9;
+
+
+
+export const UpdateAccountWorkspaceLayoutResponse = zod.object({
+  "layout": zod.union([zod.object({
+  "version": zod.literal(2),
+  "slots": zod.array(zod.string().min(1).max(updateAccountWorkspaceLayoutResponseLayoutOneSlotsItemMax).nullable()).min(1).max(updateAccountWorkspaceLayoutResponseLayoutOneSlotsMax)
+}),zod.null()])
+})
+
+
+/**
  * Platform admins receive the full live snapshot, moderators receive identity visuals and status without admin accounts, and organization owners receive only their active employees.
  * @summary List live players within the caller's monitoring scope
  */
@@ -1410,6 +1455,188 @@ export const DecideAutopilotApprovalResponse = zod.object({
   "createdAt": zod.date()
 }),
   "businessTaskId": zod.number().int().nullable()
+})
+
+
+/**
+ * @summary Read the signed-in user's GitHub repository connection status
+ */
+export const GetGithubRepositoryConnectionStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "login": zod.string().nullable(),
+  "selectedRepositories": zod.array(zod.object({
+  "id": zod.string(),
+  "fullName": zod.string(),
+  "defaultBranch": zod.string(),
+  "private": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Start the separate GitHub repository authorization flow
+ */
+export const ConnectGithubRepositoriesResponse = zod.void()
+
+
+/**
+ * @summary Complete GitHub repository authorization
+ */
+export const CompleteGithubRepositoryConnectionResponse = zod.void()
+
+
+/**
+ * @summary List repositories the user can select for Pablo
+ */
+export const ListGithubRepositoriesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "fullName": zod.string(),
+  "defaultBranch": zod.string(),
+  "private": zod.boolean(),
+  "selected": zod.boolean()
+})),
+  "selectedRepositories": zod.array(zod.object({
+  "id": zod.string(),
+  "fullName": zod.string(),
+  "defaultBranch": zod.string(),
+  "private": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Select repositories Pablo may access
+ */
+export const updateGithubRepositorySelectionBodyRepositoryIdsItemMax = 40;
+
+export const updateGithubRepositorySelectionBodyRepositoryIdsMax = 50;
+
+
+
+export const UpdateGithubRepositorySelectionBody = zod.object({
+  "repositoryIds": zod.array(zod.string().min(1).max(updateGithubRepositorySelectionBodyRepositoryIdsItemMax)).max(updateGithubRepositorySelectionBodyRepositoryIdsMax)
+})
+
+export const UpdateGithubRepositorySelectionResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "fullName": zod.string(),
+  "defaultBranch": zod.string(),
+  "private": zod.boolean(),
+  "selected": zod.boolean()
+})),
+  "selectedRepositories": zod.array(zod.object({
+  "id": zod.string(),
+  "fullName": zod.string(),
+  "defaultBranch": zod.string(),
+  "private": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Revoke Pablo's stored GitHub repository access
+ */
+export const DisconnectGithubRepositoriesResponse = zod.object({
+  "disconnected": zod.boolean()
+})
+
+
+/**
+ * @summary List the signed-in user's proposed repository changes
+ */
+export const ListGithubRepositoryChangesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "repositoryFullName": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['pending', 'opened', 'rejected', 'failed']),
+  "diffHash": zod.string(),
+  "branchName": zod.string().nullable(),
+  "pullRequestUrl": zod.string().url().nullable(),
+  "createdAt": zod.date()
+}))
+})
+
+
+/**
+ * @summary Read a proposed diff for review
+ */
+export const GetGithubRepositoryChangeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetGithubRepositoryChangeResponse = zod.object({
+  "change": zod.object({
+  "id": zod.string().uuid(),
+  "repositoryFullName": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['pending', 'opened', 'rejected', 'failed']),
+  "diffHash": zod.string(),
+  "branchName": zod.string().nullable(),
+  "pullRequestUrl": zod.string().url().nullable(),
+  "createdAt": zod.date()
+}),
+  "diff": zod.string()
+})
+
+
+/**
+ * @summary Approve the exact reviewed diff and open a draft pull request
+ */
+export const ApproveGithubRepositoryChangeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const approveGithubRepositoryChangeBodyDiffHashMin = 64;
+export const approveGithubRepositoryChangeBodyDiffHashMax = 64;
+
+
+export const approveGithubRepositoryChangeBodyDiffHashRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const ApproveGithubRepositoryChangeBody = zod.object({
+  "diffHash": zod.string().min(approveGithubRepositoryChangeBodyDiffHashMin).max(approveGithubRepositoryChangeBodyDiffHashMax).regex(approveGithubRepositoryChangeBodyDiffHashRegExp)
+})
+
+export const ApproveGithubRepositoryChangeResponse = zod.object({
+  "change": zod.object({
+  "id": zod.string().uuid(),
+  "repositoryFullName": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['pending', 'opened', 'rejected', 'failed']),
+  "diffHash": zod.string(),
+  "branchName": zod.string().nullable(),
+  "pullRequestUrl": zod.string().url().nullable(),
+  "createdAt": zod.date()
+})
+})
+
+
+/**
+ * @summary Reject a pending repository diff
+ */
+export const RejectGithubRepositoryChangeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RejectGithubRepositoryChangeResponse = zod.object({
+  "change": zod.object({
+  "id": zod.string().uuid(),
+  "repositoryFullName": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['pending', 'opened', 'rejected', 'failed']),
+  "diffHash": zod.string(),
+  "branchName": zod.string().nullable(),
+  "pullRequestUrl": zod.string().url().nullable(),
+  "createdAt": zod.date()
+})
 })
 
 

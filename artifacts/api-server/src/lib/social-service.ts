@@ -53,6 +53,7 @@ export const SOCIAL_PLATFORMS = [
   "tiktok",
   "youtube",
   "bluesky",
+  "discord",
 ] as const;
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 
@@ -69,6 +70,7 @@ const CHAR_LIMITS: Record<string, number> = {
   tiktok: 300,
   youtube: 5000,
   bluesky: 300,
+  discord: 2000,
 };
 
 export interface GenerateCopyInput {
@@ -286,6 +288,16 @@ export async function publishSocialPost(opts: {
     .from(socialConnectionsTable)
     .where(and(eq(socialConnectionsTable.userId, userId), eq(socialConnectionsTable.provider, post.platform)));
 
+  if (provider?.supportsPublishing === false) {
+    return {
+      ok: false,
+      status: 409,
+      error: `${provider.label} live publishing is COMING SOON while its provider connection is being verified.`,
+      platform: post.platform,
+      needsConnection: post.platform,
+    };
+  }
+
   // A user who connected while subscribed and later downgraded must NOT keep
   // publishing for real — fall through to the in-game simulation instead.
   const canPublishLive = await hasFeature(userId, email ?? undefined, "claw_bot");
@@ -328,6 +340,14 @@ export async function publishSocialPost(opts: {
         .where(eq(socialConnectionsTable.id, conn.id));
       return { ok: false, status: 502, error: result.error || "Publish failed", platform: post.platform };
     }
+    if (typeof result.externalId !== "string" || !result.externalId.trim()) {
+      const error = `${provider.label} did not return a post ID; the draft was left unchanged.`;
+      await db
+        .update(socialConnectionsTable)
+        .set({ lastError: error, updatedAt: new Date() })
+        .where(eq(socialConnectionsTable.id, conn.id));
+      return { ok: false, status: 502, error, platform: post.platform };
+    }
     const [updated] = await db
       .update(socialPostsTable)
       .set({
@@ -361,6 +381,14 @@ export async function publishSocialPost(opts: {
       });
       if (!result.ok) {
         return { ok: false, status: 502, error: result.error || "Publish failed", platform: post.platform };
+      }
+      if (typeof result.externalId !== "string" || !result.externalId.trim()) {
+        return {
+          ok: false,
+          status: 502,
+          error: `${provider.label} did not return a post ID; the draft was left unchanged.`,
+          platform: post.platform,
+        };
       }
       const [updated] = await db
         .update(socialPostsTable)

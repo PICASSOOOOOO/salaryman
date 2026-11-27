@@ -5,12 +5,13 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X, Zap, PhoneOutgoing, Check, Briefcase, Smile, Settings2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
+import { PabloAutomationNav } from '@/components/PabloAutomationNav';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   slate, warning, primary, destructive, accent,
   type SecretaryConfig } from '@/lib/phone-utils';
 
-export default function PhoneSecretaryPage() {
+export default function PhoneSecretaryPage({ embedded = false }: { embedded?: boolean } = {}) {
   const isMobile = useIsMobile();
 
   const [boomerMode] = useBoomerMode();
@@ -101,23 +102,25 @@ export default function PhoneSecretaryPage() {
   ];
 
   if (loading) return (
-    <PhonePageLayout title="AI SECRETARY" subtitle="Loading configuration..." icon={<Bot size={24} style={{ color: primary(0.8) }} />}>
+    <PhonePageLayout title="CALL HANDLING" subtitle="Loading call-handling settings..." icon={<Bot size={24} style={{ color: primary(0.8) }} />}>
+      {!embedded && <PabloAutomationNav />}
       <div style={{ padding: '60px 0', textAlign: 'center' }}>
         <Loader2 size={24} className="animate-spin" style={{ color: slate(0.55), marginBottom: 12 }} />
-        <div style={{ fontSize: '0.55rem', color: slate(0.55), letterSpacing: '0.15em' }}>LOADING SECRETARY CONFIGURATION...</div>
+        <div style={{ fontSize: '0.55rem', color: slate(0.55), letterSpacing: '0.15em' }}>LOADING PABLO CALL-HANDLING SETTINGS...</div>
       </div>
     </PhonePageLayout>
   );
 
   if (needsLogin) return (
-    <PhonePageLayout title="AI SECRETARY" subtitle="Authentication required" icon={<Bot size={24} style={{ color: primary(0.8) }} />}>
+    <PhonePageLayout title="CALL HANDLING" subtitle="Authentication required" icon={<Bot size={24} style={{ color: primary(0.8) }} />}>
+      {!embedded && <PabloAutomationNav />}
       <div style={{ padding: '60px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
         <AlertTriangle size={32} style={{ color: warning(0.6) }} />
         <div style={{ fontSize: '0.65rem', color: warning(0.8), letterSpacing: '0.15em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
           SESSION EXPIRED
         </div>
         <div style={{ fontSize: '0.55rem', color: slate(0.55), letterSpacing: '0.08em', maxWidth: 320, lineHeight: 1.7 }}>
-          Your session has expired or you are not logged in. Please sign in again to access your secretary configuration.
+          Your session has expired or you are not logged in. Please sign in again to access PABLO PRIME call-handling settings.
         </div>
         <button
           onClick={() => login()}
@@ -137,8 +140,7 @@ export default function PhoneSecretaryPage() {
 
   return (
     <PhonePageLayout
-      title="AI SECRETARY"
-      subtitle="Configure your AI-powered secretary — personality, business hours, screening rules"
+      title="CALL HANDLING"
       icon={<Bot size={24} style={{ color: primary(0.8) }} />}
       statusLine={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -148,7 +150,7 @@ export default function PhoneSecretaryPage() {
 
             animation: isEnabled ? 'pulse 2s infinite' : 'none' }} />
           <span style={{ color: isEnabled ? slate(0.5) : slate(0.2) }}>
-            {isEnabled ? 'SECRETARY ACTIVE' : 'SECRETARY DISABLED'}
+            {isEnabled ? 'PABLO CALL HANDLING ACTIVE' : 'PABLO CALL HANDLING DISABLED'}
           </span>
         </div>
       }
@@ -159,6 +161,7 @@ export default function PhoneSecretaryPage() {
         </PhoneBtn>
       }
     >
+      {!embedded && <PabloAutomationNav />}
       {error && (
         <div style={{ marginBottom: 16, padding: '12px 18px', background: slate(0.02), border: `1px solid ${destructive(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: destructive(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -195,12 +198,12 @@ export default function PhoneSecretaryPage() {
             </div>
             <div>
               <div style={{ fontSize: '0.8rem', color: slate(isEnabled ? 0.9 : 0.5) }}>
-                AI SECRETARY IS {isEnabled ? 'ENABLED' : 'DISABLED'}
+                PABLO CALL HANDLING IS {isEnabled ? 'ENABLED' : 'DISABLED'}
               </div>
               <div style={{ fontSize: '0.48rem', color: slate(0.55), marginTop: 3, maxWidth: 400 }}>
                 {isEnabled
-                  ? 'Your AI secretary is actively handling incoming calls. It will greet callers, screen them, and route according to your configuration.'
-                  : 'Enable the secretary to have AI handle your incoming calls. It will answer, screen, and route calls based on your preferences.'}
+                  ? 'PABLO PRIME is handling incoming calls using your configuration.'
+                  : 'Enable PABLO call handling to greet, screen, and route incoming calls using your preferences.'}
               </div>
             </div>
           </div>
@@ -370,7 +373,7 @@ export default function PhoneSecretaryPage() {
 
       <PhoneCard style={{ marginTop: 20 }}>
         <PhoneCardHeader accent={accent(0.5)}>
-          <Zap size={10} style={{ marginRight: 4 }} /> PABLO AUTONOMOUS AGENT
+          <Zap size={10} style={{ marginRight: 4 }} /> PABLO PRIME CALL WORKFLOW
         </PhoneCardHeader>
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{

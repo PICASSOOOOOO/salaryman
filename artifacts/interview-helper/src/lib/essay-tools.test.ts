@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyAllWritingSuggestions,
   applyEssaySuggestion,
   formatEssayCitation,
   formatEssayDocument,
@@ -93,12 +94,14 @@ describe("Hemingway academic writing helpers", () => {
     const parsed = parseEssaySuggestions(JSON.stringify({
       suggestions: [
         { original: "The policy improve", replacement: "The policy improves", category: "grammar", explanation: "Match the verb to its singular subject." },
+        { original: "the proposal is nice", replacement: "the proposal is useful", category: "style", explanation: "Use a more specific description." },
         { original: "", replacement: "x", category: "clarity", explanation: "Empty excerpt." },
         { original: "bad", replacement: "good", category: "authorship", explanation: "Invalid category." },
       ],
     }));
-    expect(parsed).toHaveLength(1);
+    expect(parsed).toHaveLength(2);
     expect(parsed[0].category).toBe("grammar");
+    expect(parsed[1].category).toBe("style");
   });
 
   it("applies only a single exact match and leaves missing or ambiguous text unchanged", () => {
@@ -116,5 +119,21 @@ describe("Hemingway academic writing helpers", () => {
       original: "policy improve",
       replacement: "policy improves",
     })).toEqual({ ok: false, reason: "ambiguous" });
+  });
+
+  it("applies safe non-overlapping corrections and skips stale or ambiguous excerpts", () => {
+    expect(applyAllWritingSuggestions("The policy improve access. The proposal is nice.", [
+      { original: "policy improve", replacement: "policy improves" },
+      { original: "proposal is nice", replacement: "proposal is useful" },
+      { original: "not present", replacement: "ignored" },
+    ])).toEqual({
+      content: "The policy improves access. The proposal is useful.",
+      applied: 2,
+      skipped: 1,
+    });
+
+    expect(applyAllWritingSuggestions("echo echo", [
+      { original: "echo", replacement: "sound" },
+    ])).toMatchObject({ content: "echo echo", applied: 0, skipped: 1 });
   });
 });

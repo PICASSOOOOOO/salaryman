@@ -1,15 +1,15 @@
 import { pgTable, serial, varchar, integer, timestamp, text, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-// Unified, ORG-SCOPED record of every telephony interaction (phone calls,
-// voicemails, SMS) so the whole organization shares one CRM timeline. Each row
+// Unified, ORG-SCOPED record of every CRM interaction (calls, voicemail,
+// SMS, email, and internal COMMS) so the whole organization shares one timeline. Each row
 // is attributed to the handling user (userId) and, when resolvable, linked to a
 // CRM lead (leadId). `industry` snapshots the org's industry at record time so
 // reporting can be adjusted/segmented per industry without a back-join.
 //
 // Plain integer org_id / lead_id (no hard FK) mirrors call_history/phone_numbers
 // to avoid the circular import with organizations.ts.
-export const CRM_ACTIVITY_CHANNELS = ["call", "voicemail", "sms", "comms"] as const;
+export const CRM_ACTIVITY_CHANNELS = ["call", "voicemail", "sms", "email", "comms"] as const;
 export type CrmActivityChannel = (typeof CRM_ACTIVITY_CHANNELS)[number];
 
 export const crmActivitiesTable = pgTable("crm_activities", {

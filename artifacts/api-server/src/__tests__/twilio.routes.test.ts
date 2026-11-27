@@ -364,12 +364,159 @@ describe("dialing sessions", () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.mode).toBe(mode);
+    expect(spies.callsCreate).toHaveBeenCalledWith(expect.objectContaining({
+      machineDetection: "Enable",
+      machineDetectionTimeout: 12,
+      url: expect.stringContaining("/api/twilio/dialing/voice"),
+    }));
+    if (mode === "predictive") expect(res.body.settings.concurrency).toBe(1);
 
     const stop = await request(app)
       .post(`/api/twilio/dialing/${res.body.sessionId}/stop`)
       .send();
     expect(stop.status).toBe(200);
     expect(stop.body.stoppedCalls).toBe(1);
+  });
+
+  it("hangs up on detected voicemail without leaving a message and flags the CRM contact", async () => {
+    const contact = await createDialContact("+15551117778");
+    const started = await request(app).post("/api/twilio/dialing/start").send({
+      mode: "auto",
+      contactIds: [contact.id],
+    });
+    const callSid = started.body.calls[0].callSid as string;
+
+    const response = await request(app)
+      .post("/api/twilio/dialing/voice")
+      .set("x-twilio-signature", "sig")
+      .send({ CallSid: callSid, AnsweredBy: "machine_end" });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("<Hangup/>");
+    expect(response.text).not.toContain("<Play>");
+    const notes = await db.select().from(contactInteractionsTable)
+      .where(and(eq(contactInteractionsTable.contactId, contact.id), eq(contactInteractionsTable.userId, TEST_USER.id)));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ type: "phone_health_review" });
+    expect(notes[0].note).toContain("without leaving a message");
+  });
+
+  it("rejects an unsigned answering-machine callback", async () => {
+    const response = await request(app)
+      .post("/api/twilio/dialing/voice")
+      .send({ CallSid: "CAunsigned000000000000000000000000", AnsweredBy: "human" });
+
+    expect(response.status).toBe(403);
+    expect(spies.callsCreate).not.toHaveBeenCalled();
+  });
+
+  it("connects only a detected human and records that the contact was reachable", async () => {
+    const contact = await createDialContact("+15551117779");
+    const started = await request(app).post("/api/twilio/dialing/start").send({
+      mode: "auto",
+      contactIds: [contact.id],
+    });
+    const callSid = started.body.calls[0].callSid as string;
+
+    const response = await request(app)
+      .post("/api/twilio/dialing/voice")
+      .set("x-twilio-signature", "sig")
+      .send({ CallSid: callSid, AnsweredBy: "human" });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("<Conference");
+    expect(response.text).not.toContain("<Hangup/>");
+    const notes = await db.select().from(contactInteractionsTable)
+      .where(and(eq(contactInteractionsTable.contactId, contact.id), eq(contactInteractionsTable.userId, TEST_USER.id)));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ type: "phone_health_ok" });
+    expect(notes[0].note).toContain("reachable during the call");
+  });
+
+  it("uses signed callback metadata if the answer arrives before call history is stored", async () => {
+    const contact = await createDialContact("+15551117782");
+    const response = await request(app)
+      .post(`/api/twilio/dialing/voice?userId=${encodeURIComponent(TEST_USER.id)}&contactId=${contact.id}&callType=auto_dialing&conferenceName=conf-race`)
+      .set("x-twilio-signature", "sig")
+      .send({ CallSid: "CArace0000000000000000000000000001", AnsweredBy: "human" });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("<Conference");
+    const notes = await db.select().from(contactInteractionsTable)
+      .where(and(eq(contactInteractionsTable.contactId, contact.id), eq(contactInteractionsTable.userId, TEST_USER.id)));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ type: "phone_health_ok" });
+  });
+
+  it("flags a busy dialing-session number for review without calling it invalid", async () => {
+    const contact = await createDialContact("+15551117780");
+    const started = await request(app).post("/api/twilio/dialing/start").send({
+      mode: "auto",
+      contactIds: [contact.id],
+    });
+    const callSid = started.body.calls[0].callSid as string;
+
+    const response = await request(app)
+      .post("/api/twilio/webhook/status")
+      .set("x-twilio-signature", "sig")
+      .send({ CallSid: callSid, CallStatus: "busy", Direction: "outbound-api" });
+
+    expect(response.status).toBe(204);
+    const notes = await db.select().from(contactInteractionsTable)
+      .where(and(eq(contactInteractionsTable.contactId, contact.id), eq(contactInteractionsTable.userId, TEST_USER.id)));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ type: "phone_health_review" });
+    expect(notes[0].note).toContain("does not prove the number is invalid");
+  });
+
+  it("records a provider-confirmed invalid destination for CRM review", async () => {
+    const contact = await createDialContact("+15551117781");
+    const started = await request(app).post("/api/twilio/dialing/start").send({
+      mode: "auto",
+      contactIds: [contact.id],
+    });
+    const callSid = started.body.calls[0].callSid as string;
+
+    const response = await request(app)
+      .post("/api/twilio/webhook/status")
+      .set("x-twilio-signature", "sig")
+      .send({ CallSid: callSid, CallStatus: "failed", ErrorCode: "21211", Direction: "outbound-api" });
+
+    expect(response.status).toBe(204);
+    const notes = await db.select().from(contactInteractionsTable)
+      .where(and(eq(contactInteractionsTable.contactId, contact.id), eq(contactInteractionsTable.userId, TEST_USER.id)));
+    expect(notes).toHaveLength(1);
+    expect(notes[0].note).toContain("invalid destination number");
+  });
+
+  it("records a busy CRM outcome if the status callback beats call-history creation", async () => {
+    const contact = await createDialContact("+15551117783");
+    const callSid = "CAbusy-first00000000000000000000001";
+    const response = await request(app)
+      .post(`/api/twilio/webhook/status?userId=${encodeURIComponent(TEST_USER.id)}&callType=auto_dialing&contactId=${contact.id}&conferenceName=conf-busy&dialingSessionId=9876&dialingQueueIndex=2`)
+      .set("x-twilio-signature", "sig")
+      .send({
+        CallSid: callSid,
+        CallStatus: "busy",
+        Direction: "outbound-api",
+        From: "+15550001111",
+        To: contact.phone,
+      });
+
+    expect(response.status).toBe(204);
+    const [call] = await db.select().from(callHistoryTable)
+      .where(eq(callHistoryTable.twilioCallSid, callSid));
+    expect(call).toMatchObject({
+      contactId: contact.id,
+      callType: "auto_dialing",
+      dialingSessionId: 9876,
+      dialingQueueIndex: 2,
+    });
+    const notes = await db.select().from(contactInteractionsTable)
+      .where(and(eq(contactInteractionsTable.contactId, contact.id), eq(contactInteractionsTable.userId, TEST_USER.id)));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ type: "phone_health_review" });
+    expect(notes[0].note).toContain("line was busy");
   });
 
   it.each(["auto", "predictive"] as const)("rejects %s dialing from pasted phone numbers", async (mode) => {

@@ -369,7 +369,7 @@ router.post("/services/:id/complete", async (req: Request, res: Response) => {
       }
 
       const [updated] = await tx.update(serviceListingsTable)
-        .set({ status: "complete", completedAt: new Date(), updatedAt: new Date() })
+        .set({ status: "complete", completedAt: new Date(), escrowFiat: 0, updatedAt: new Date() })
         .where(eq(serviceListingsTable.id, id))
         .returning();
       return {

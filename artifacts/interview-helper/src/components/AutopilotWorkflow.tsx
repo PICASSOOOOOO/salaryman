@@ -12,8 +12,8 @@ const DOMAIN_FLOW: Record<WorkflowDomain, { guard: string; actions: string[] }> 
     actions: ["Draft with saved tone + topics", "Publish through social service", "Live or simulated outcome"],
   },
   crm_calls: {
-    guard: "Organization permission · paid Prime schedule · consent + phone-system checks",
-    actions: ["Select eligible due leads", "Suppress opted-out contacts", "Send consent-aware SMS only"],
+    guard: "Organization permission · paid Prime schedule · saved email preference checks",
+    actions: ["Select eligible due leads", "Suppress email opt-outs", "Send follow-up emails"],
   },
   accounting: {
     guard: "Organization permission · paid Prime schedule · action cap",

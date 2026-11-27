@@ -166,7 +166,7 @@ export default function PhoneSessionsPage() {
   const MODES: { key: DialMode; label: string; desc: string; details: string; color: (o: number) => string; icon: React.ReactNode }[] = [
     { key: 'power', label: 'POWER DIALING', desc: 'Manual queue advancement', details: 'Call one contact at a time. When a call ends, you manually advance to the next contact in the queue.', color: slate, icon: <Zap size={14} /> },
     { key: 'auto', label: 'AUTO DIALING', desc: 'Automatic queue progression', details: 'Automatically dials the next contact after the current call completes. Configurable delay between calls.', color: primary, icon: <RefreshCw size={14} /> },
-    { key: 'predictive', label: 'PREDICTIVE DIALING', desc: 'Multi-line simultaneous (3x)', details: 'Dials multiple numbers simultaneously to maximize connect rate. Connects you to the first person who answers.', color: accent, icon: <Rocket size={14} /> },
+    { key: 'predictive', label: 'PREDICTIVE DIALING', desc: 'One live target per available agent', details: 'Keeps one outbound target per agent so an answered call is not competing for the same agent.', color: accent, icon: <Rocket size={14} /> },
   ];
 
   const sessionProgress = dialingSession ? Math.round((dialingSession.dialed / dialingSession.total) * 100) : 0;
@@ -277,12 +277,13 @@ export default function PhoneSessionsPage() {
             <PhoneCardHeader>SPEED & INTENSITY</PhoneCardHeader>
             <div style={{ padding: 16, display: 'grid', gap: 12 }}>
               <label style={{ display: 'grid', gap: 5, fontSize: '0.48rem', color: slate(0.65) }}>
-                SIMULTANEOUS LINES · {concurrency}
+                SIMULTANEOUS LINES · {dialingMode === 'predictive' ? 1 : concurrency}
                 <input
                   type="range"
                   min={1}
-                  max={policy.maxConcurrency}
-                  value={concurrency}
+                  max={dialingMode === 'predictive' ? 1 : policy.maxConcurrency}
+                  value={dialingMode === 'predictive' ? 1 : concurrency}
+                  disabled={dialingMode === 'predictive'}
                   onChange={e => setConcurrency(Number(e.target.value))}
                 />
               </label>
@@ -298,6 +299,9 @@ export default function PhoneSessionsPage() {
                 />
               </label>
               <div style={{ fontSize: '0.42rem', lineHeight: 1.6, color: slate(0.5) }}>
+                {dialingMode === 'predictive'
+                  ? 'One live target per available agent prevents multiple answered calls competing for the same agent. '
+                  : ''}
                 Organization limit: {policy.maxConcurrency} simultaneous lines, {policy.minDelaySeconds}s minimum delay, {policy.maxQueueSize} numbers per queue.
                 {canManagePolicy ? ' Managers and directors can update these limits.' : ''}
               </div>

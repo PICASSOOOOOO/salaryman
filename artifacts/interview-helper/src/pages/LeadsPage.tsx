@@ -116,7 +116,7 @@ interface CallRecord {
 interface CrmActivity {
   id: number;
   userId: string;
-  channel: "call" | "voicemail" | "sms" | "comms";
+  channel: "call" | "voicemail" | "sms" | "email" | "comms";
   direction: string;
   phone: string;
   contactName: string | null;

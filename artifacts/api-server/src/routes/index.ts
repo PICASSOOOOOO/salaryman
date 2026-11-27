@@ -128,6 +128,7 @@ import crmAdaptiveRouter from "./crm-adaptive";
 import crmSyncRouter from "./crm-sync";
 import desktopDownloadRouter from "./desktop-download";
 import npcAgencyRouter from "./npc-agency";
+import githubRepositoriesRouter from "./github-repositories";
 import { requireOnboardingForMutation } from "../middlewares/requireOnboarding";
 
 const router: IRouter = Router();
@@ -183,6 +184,7 @@ router.use(devTasksRouter);
 router.use(tradingRouter);
 router.use(prospectingRouter);
 router.use(chatRouter);
+router.use(githubRepositoriesRouter);
 router.use(leadsRouter);
 router.use(insuranceRouter);
 router.use(platformApiRouter);
@@ -263,5 +265,6 @@ router.use(desktopBasementRouter);
   router.use(marketplaceRouter);
   router.use(desktopDownloadRouter);
   router.use(npcAgencyRouter);
+router.use(githubRepositoriesRouter);
 
 export default router;

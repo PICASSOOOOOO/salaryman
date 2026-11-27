@@ -704,6 +704,24 @@ export default function PabloDeck() {
               <Sparkles className="w-5 h-5 text-violet-300" /> PABLO COMMAND DECK
             </h1>
             <p className="text-xs text-zinc-400 font-mono">Deploy your agents. Build your empire. Hear the report.</p>
+            <nav className="mt-2 flex flex-wrap gap-1.5" aria-label="Pablo workspaces">
+              <button
+                type="button"
+                onClick={() => navigate("/pablo")}
+                className="inline-flex min-h-7 items-center gap-1 rounded-md border border-violet-400/30 px-2 font-mono text-[9px] tracking-wider text-violet-200 transition-colors hover:border-violet-300/60 hover:bg-violet-500/10"
+              >
+                <Sparkles className="h-3 w-3" aria-hidden="true" />
+                PABLO AI
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/business/autopilot")}
+                className="inline-flex min-h-7 items-center gap-1 rounded-md border border-violet-400/30 px-2 font-mono text-[9px] tracking-wider text-violet-200 transition-colors hover:border-violet-300/60 hover:bg-violet-500/10"
+              >
+                <BotIcon className="h-3 w-3" aria-hidden="true" />
+                PABLO PRIME
+              </button>
+            </nav>
           </div>
           <PabloControlsMenu showHummingbird />
           <button

@@ -440,6 +440,100 @@ async function hasRecordedPhoneCallConsent(userId: string, contactId: number): P
   );
 }
 
+type DialerPhoneOutcome = "reachable" | "voicemail" | "fax" | "unknown" | "busy" | "no-answer" | "failed";
+
+function describeDialerPhoneOutcome(outcome: DialerPhoneOutcome, providerCode?: string): {
+  type: "phone_health_ok" | "phone_health_review";
+  note: string;
+} {
+  if (outcome === "reachable") {
+    return {
+      type: "phone_health_ok",
+      note: "A person answered; this number was reachable during the call.",
+    };
+  }
+  if (outcome === "voicemail") {
+    return {
+      type: "phone_health_review",
+      note: "Voicemail or an answering machine was detected. The call ended without leaving a message.",
+    };
+  }
+  if (outcome === "fax") {
+    return {
+      type: "phone_health_review",
+      note: "A fax endpoint was detected. Review this number before another call.",
+    };
+  }
+  if (outcome === "busy") {
+    return {
+      type: "phone_health_review",
+      note: "The line was busy. This does not prove the number is invalid; review before retrying.",
+    };
+  }
+  if (outcome === "no-answer") {
+    return {
+      type: "phone_health_review",
+      note: "The call was not answered. This does not prove the number is invalid; review before retrying.",
+    };
+  }
+  if (outcome === "failed") {
+    const code = providerCode && /^[A-Za-z0-9_-]{1,32}$/.test(providerCode)
+      ? ` (provider code ${providerCode})`
+      : "";
+    return {
+      type: "phone_health_review",
+      note: providerCode === "21211"
+        ? "Twilio rejected this as an invalid destination number. Review, correct, or delete the contact before another call."
+        : `The call failed or was rejected${code}. Review the number and provider result before retrying.`,
+    };
+  }
+  return {
+    type: "phone_health_review",
+    note: "The call endpoint could not be reliably identified as a person. The call ended without leaving a message.",
+  };
+}
+
+async function recordDialerPhoneOutcome(args: {
+  userId: string;
+  contactId?: number | null;
+  callSid: string;
+  outcome: DialerPhoneOutcome;
+  providerCode?: string;
+}): Promise<void> {
+  const { userId, callSid, outcome, providerCode } = args;
+  const contactId = args.contactId && Number.isInteger(args.contactId) ? args.contactId : null;
+  if (!userId || !callSid || !contactId) return;
+
+  const disposition = describeDialerPhoneOutcome(outcome, providerCode);
+  const note = `${disposition.note} [dialer-call:${callSid}]`;
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${callSid}))`);
+    const [contact] = await tx.select({ id: contactsTable.id })
+      .from(contactsTable)
+      .where(and(eq(contactsTable.id, contactId), eq(contactsTable.userId, userId)))
+      .limit(1);
+    if (!contact) return;
+
+    const [existing] = await tx.select({ id: contactInteractionsTable.id })
+      .from(contactInteractionsTable)
+      .where(and(
+        eq(contactInteractionsTable.contactId, contactId),
+        eq(contactInteractionsTable.userId, userId),
+        eq(contactInteractionsTable.type, disposition.type),
+        eq(contactInteractionsTable.note, note),
+      ))
+      .limit(1);
+    if (existing) return;
+
+    await tx.insert(contactInteractionsTable).values({
+      contactId,
+      userId,
+      type: disposition.type,
+      note,
+    });
+  });
+}
+
 async function persistSmsPreference(userId: string, contactId: number, smsOptIn: boolean): Promise<void> {
   const where = and(
     eq(contactChannelPrefsTable.userId, userId),
@@ -1708,6 +1802,74 @@ router.post("/twilio/conference/:roomName/end", requireAuth, requireFeature("pho
   }
 });
 
+router.post("/twilio/dialing/voice", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      req.log?.warn("Dialing voice webhook rejected an invalid Twilio signature");
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const callSid = typeof req.body?.CallSid === "string" ? req.body.CallSid : "";
+    const answeredBy = typeof req.body?.AnsweredBy === "string"
+      ? req.body.AnsweredBy.toLowerCase()
+      : "unknown";
+    if (!callSid) {
+      res.status(400).send("Missing CallSid");
+      return;
+    }
+
+    const [call] = await db.select().from(callHistoryTable)
+      .where(eq(callHistoryTable.twilioCallSid, callSid))
+      .limit(1);
+    const hintedUserId = typeof req.query.userId === "string" ? req.query.userId : "";
+    const hintedContactId = Number(req.query.contactId);
+    const hintedCallType = typeof req.query.callType === "string" ? req.query.callType : "";
+    const userId = call?.userId ?? hintedUserId;
+    const contactId = call?.contactId ?? (Number.isInteger(hintedContactId) && hintedContactId > 0 ? hintedContactId : null);
+    const callType = call?.callType ?? hintedCallType;
+    const conferenceName = call?.conferenceName
+      ?? (typeof req.query.conferenceName === "string" ? req.query.conferenceName : "");
+    if (!userId || !["power_dialing", "auto_dialing", "predictive_dialing"].includes(callType) || !conferenceName) {
+      req.log?.warn({ callSid }, "Dialing AMD callback had no matching session call");
+      res.type("text/xml").send("<Response><Hangup/></Response>");
+      return;
+    }
+
+    if (answeredBy !== "human") {
+      const outcome: DialerPhoneOutcome =
+        answeredBy.startsWith("machine") ? "voicemail"
+          : answeredBy === "fax" ? "fax"
+            : "unknown";
+      await recordDialerPhoneOutcome({
+        userId,
+        contactId,
+        callSid,
+        outcome,
+      });
+      res.type("text/xml").send("<Response><Hangup/></Response>");
+      return;
+    }
+
+    await recordDialerPhoneOutcome({
+      userId,
+      contactId,
+      callSid,
+      outcome: "reachable",
+    });
+    const recordingCallback = appAbsoluteUrl(
+      req,
+      `/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=${encodeURIComponent(callType)}&conferenceName=${encodeURIComponent(conferenceName)}`,
+    );
+    const orgId = call?.orgId ?? await getUserOrgId(userId);
+    const recordingEnabled = await isCallRecordingEnabled(userId, orgId);
+    const conference = `<Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl=""${recordingAttrs(recordingEnabled, "record-from-start", recordingCallback)}>${escapeTwiml(conferenceName)}</Conference>`;
+    res.type("text/xml").send(`<Response><Dial>${conference}</Dial></Response>`);
+  } catch (err: unknown) {
+    req.log?.error({ err }, "Dialing voice disposition failed");
+    res.type("text/xml").send("<Response><Hangup/></Response>");
+  }
+});
+
 router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
@@ -1802,7 +1964,7 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     const requestedConcurrency = Math.floor(Number(settings?.concurrency) || 3);
     const requestedDelay = Number(settings?.delayBetweenCalls);
     const effectiveSettings = {
-      concurrency: Math.min(policy.maxConcurrency, Math.max(1, requestedConcurrency)),
+      concurrency: mode === "predictive" ? 1 : Math.min(policy.maxConcurrency, Math.max(1, requestedConcurrency)),
       delayBetweenCalls: Math.max(policy.minDelaySeconds, Number.isFinite(requestedDelay) ? requestedDelay : 5),
       countryCode: dialCountry,
       recording: await isCallRecordingEnabled(userId, orgContext.orgId),
@@ -1825,10 +1987,6 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     const settingsConcurrency = effectiveSettings.concurrency;
     let dialCount = mode === "predictive" ? Math.min(settingsConcurrency, queue.length) : 1;
     const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string; conferenceName?: string }> = [];
-    const _dialingHost = getAppHost();
-    const _dialingStatusUrl = _dialingHost
-      ? `https://${_dialingHost}/api/twilio/webhook/status?userId=${encodeURIComponent(userId)}&callType=${encodeURIComponent(`${mode}_dialing`)}`
-      : undefined;
     let pauseReason: string | undefined;
 
     const { consumeUsage, throttleResponse: throttleResp } = await import("../lib/usage-meter");
@@ -1861,22 +2019,25 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
       let createdCallSid: string | undefined;
       try {
         const confName = `conf-${userId}-${Date.now()}-${i}`;
-        const recordingCallback = _dialingHost
-          ? `https://${_dialingHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=${encodeURIComponent(`${mode}_dialing`)}&conferenceName=${encodeURIComponent(confName)}`
-          : "";
-        const conference = `<Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl=""${recordingAttrs(effectiveSettings.recording, "record-from-start", recordingCallback)}>${confName}</Conference>`;
-        const twiml = mode === "auto" && settings?.recordingUrl
-          ? `<Response><Play>${settings.recordingUrl}</Play><Dial>${conference}</Dial></Response>`
-          : `<Response><Dial>${conference}</Dial></Response>`;
+        const callbackParams = new URLSearchParams({
+          userId,
+          callType: `${mode}_dialing`,
+          conferenceName: confName,
+          dialingSessionId: String(session.id),
+          dialingQueueIndex: String(i),
+        });
+        if (dialCrmMatch?.contactId) callbackParams.set("contactId", String(dialCrmMatch.contactId));
+        const callbackQuery = callbackParams.toString();
         const call = await client.calls.create({
           to: e164,
           from: fromNumber,
-          twiml,
-          ...(_dialingStatusUrl && {
-            statusCallback: _dialingStatusUrl,
-            statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-            statusCallbackMethod: "POST",
-          }),
+          url: appAbsoluteUrl(req, `/api/twilio/dialing/voice?${callbackQuery}`),
+          method: "POST",
+          machineDetection: "Enable",
+          machineDetectionTimeout: 12,
+          statusCallback: appAbsoluteUrl(req, `/api/twilio/webhook/status?${callbackQuery}`),
+          statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+          statusCallbackMethod: "POST",
         });
         createdCallSid = call.sid;
         const dialOrgId = await getUserOrgId(userId);
@@ -2063,10 +2224,6 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
     }
     const client = getTwilioClient();
     const fromNumber = await getUserOutboundNumber(userId);
-    const _nextHost = getAppHost();
-    const _nextStatusUrl = _nextHost
-      ? `https://${_nextHost}/api/twilio/webhook/status?userId=${encodeURIComponent(userId)}&callType=${encodeURIComponent(`${session.mode}_dialing`)}`
-      : undefined;
     const { consumeUsage, throttleResponse: tr } = await import("../lib/usage-meter");
     const g = await consumeUsage(userId, req.user?.email, "voice_minutes", 1);
     if (!g.allowed) {
@@ -2075,21 +2232,27 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
       return;
     }
     const confName = `conf-${userId}-${Date.now()}`;
-    const recordingCallback = _nextHost
-      ? `https://${_nextHost}/api/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call&callType=${encodeURIComponent(`${session.mode}_dialing`)}&conferenceName=${encodeURIComponent(confName)}`
-      : "";
     const nextOrgId = await getUserOrgId(userId);
-    const recordingEnabled = await isCallRecordingEnabled(userId, nextOrgId);
+    const callbackParams = new URLSearchParams({
+      userId,
+      callType: `${session.mode}_dialing`,
+      conferenceName: confName,
+      dialingSessionId: String(sessionId),
+      dialingQueueIndex: String(dialed),
+    });
+    if (nextCrmMatch?.contactId) callbackParams.set("contactId", String(nextCrmMatch.contactId));
+    const callbackQuery = callbackParams.toString();
     try {
       const call = await client.calls.create({
         to: e164,
         from: fromNumber,
-        twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl=""${recordingAttrs(recordingEnabled, "record-from-start", recordingCallback)}>${confName}</Conference></Dial></Response>`,
-        ...(_nextStatusUrl && {
-          statusCallback: _nextStatusUrl,
-          statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-          statusCallbackMethod: "POST",
-        }),
+        url: appAbsoluteUrl(req, `/api/twilio/dialing/voice?${callbackQuery}`),
+        method: "POST",
+        machineDetection: "Enable",
+        machineDetectionTimeout: 12,
+        statusCallback: appAbsoluteUrl(req, `/api/twilio/webhook/status?${callbackQuery}`),
+        statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+        statusCallbackMethod: "POST",
       });
       createdCallSid = call.sid;
       await persistCallHistory({
@@ -5453,6 +5616,7 @@ router.post("/twilio/webhook/status", async (req, res) => {
       From,
       To,
       Direction,
+      ErrorCode,
     } = req.body;
 
     if (!CallSid || !CallStatus) {
@@ -5467,11 +5631,19 @@ router.post("/twilio/webhook/status", async (req, res) => {
       destinationNumber: callDirection === "inbound" ? To : From,
       hintedUserId,
     });
-    const callbackOrgId = callbackOwner?.orgId
-      ?? (callbackOwner?.userId ? await getUserOrgId(callbackOwner.userId) : null);
     const callbackCallType = typeof req.query.callType === "string"
       ? req.query.callType.slice(0, 32)
       : "single";
+    const callbackUserId = callbackOwner?.userId
+      ?? (callbackCallType.endsWith("_dialing") ? hintedUserId : undefined);
+    const callbackOrgId = callbackOwner?.orgId
+      ?? (callbackUserId ? await getUserOrgId(callbackUserId) : null);
+    const callbackContactId = Number(req.query.contactId);
+    const callbackSessionId = Number(req.query.dialingSessionId);
+    const callbackQueueIndex = Number(req.query.dialingQueueIndex);
+    const callbackConferenceName = typeof req.query.conferenceName === "string"
+      ? req.query.conferenceName.slice(0, 160)
+      : "";
     const parsedDuration = CallDuration == null ? NaN : Number.parseInt(String(CallDuration), 10);
 
     const updated = await db.transaction(async (tx) => {
@@ -5500,10 +5672,10 @@ router.post("/twilio/webhook/status", async (req, res) => {
         isTerminal && ["no-answer", "busy", "failed"].includes(CallStatus)
         && before && !TERMINAL_CALL_STATUSES.has(before.status),
       );
-      if (!before && callbackOwner?.userId) {
+      if (!before && callbackUserId) {
         const recipientNumber = (callDirection === "inbound" ? From : To) || "unknown";
         const [inserted] = await tx.insert(callHistoryTable).values({
-          userId: callbackOwner.userId,
+          userId: callbackUserId,
           orgId: callbackOrgId ?? undefined,
           callerName: typeof req.query.contactName === "string" ? req.query.contactName.slice(0, 64) : null,
           recipientNumber,
@@ -5513,6 +5685,10 @@ router.post("/twilio/webhook/status", async (req, res) => {
           callType: callbackCallType,
           consentGiven: false,
           recordingRetainUntil: getRetentionDate(),
+          ...(Number.isInteger(callbackContactId) && callbackContactId > 0 && { contactId: callbackContactId }),
+          ...(Number.isInteger(callbackSessionId) && callbackSessionId > 0 && { dialingSessionId: callbackSessionId }),
+          ...(Number.isInteger(callbackQueueIndex) && callbackQueueIndex >= 0 && { dialingQueueIndex: callbackQueueIndex }),
+          ...(callbackConferenceName && { conferenceName: callbackConferenceName }),
           ...(Number.isFinite(parsedDuration) && parsedDuration >= 0 && { durationSeconds: parsedDuration }),
           ...(isTerminal && { endedAt: new Date() }),
         }).onConflictDoNothing().returning();
@@ -5536,6 +5712,23 @@ router.post("/twilio/webhook/status", async (req, res) => {
 
     if (updated.rows[0]) {
       const c = updated.rows[0];
+      if (c.callType.endsWith("_dialing")) {
+        const normalizedStatus = String(CallStatus).toLowerCase();
+        const outcome: DialerPhoneOutcome | null =
+          normalizedStatus === "busy" ? "busy"
+            : normalizedStatus === "no-answer" ? "no-answer"
+              : normalizedStatus === "failed" ? "failed"
+                : null;
+        if (outcome) {
+          await recordDialerPhoneOutcome({
+            userId: c.userId,
+            contactId: c.contactId,
+            callSid: CallSid,
+            outcome,
+            providerCode: typeof ErrorCode === "string" ? ErrorCode : undefined,
+          });
+        }
+      }
       await recordTelephonyActivity({
         userId: c.userId,
         orgId: c.orgId ?? null,

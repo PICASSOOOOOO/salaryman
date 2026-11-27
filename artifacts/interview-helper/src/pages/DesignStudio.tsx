@@ -719,7 +719,9 @@ function DesignsPanel({ canvaKey }: { canvaKey: string }) {
 export default function DesignStudio() {
   const [boomerMode] = useBoomerMode();
   const { isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<StudioTab>('create');
+  const [activeTab, setActiveTab] = useState<StudioTab>(() =>
+    new URLSearchParams(window.location.search).get('tab') === 'settings' ? 'settings' : 'create',
+  );
 
   const [canvaKey, setCanvaKey] = useState(() => sessionStorage.getItem('ds_canva_key') || '');
   const [nanoKey, setNanoKey] = useState(() => sessionStorage.getItem('ds_nano_key') || '');

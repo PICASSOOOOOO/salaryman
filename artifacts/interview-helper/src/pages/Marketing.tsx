@@ -2,9 +2,11 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'wouter';
+import { PabloAutomationNav } from '@/components/PabloAutomationNav';
 import {
-  Linkedin, Instagram, Facebook, Music2, Megaphone, Loader2, Wand2,
-  Trash2, Copy, Check, Image as ImageIcon, Bot, Users, Hash, Download,
+  Linkedin, Instagram, Facebook, Music2, Megaphone, Loader2, Wand2, Twitter, Cloud, AtSign, Youtube,
+  Trash2, Copy, Check, Image as ImageIcon, Bot, Hash, Download,
 } from 'lucide-react';
 
 const CRT = '#111111';
@@ -12,7 +14,7 @@ const CRT_DIM = 'rgba(0,0,0,0.58)';
 const CRT_FAINT = 'rgba(0,0,0,0.14)';
 const FONT = "var(--font-sans)";
 
-type Platform = 'linkedin' | 'instagram' | 'facebook' | 'tiktok';
+type Platform = 'linkedin' | 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'bluesky' | 'threads' | 'youtube';
 
 const PLATFORMS: Array<{
   id: Platform;
@@ -24,6 +26,10 @@ const PLATFORMS: Array<{
   { id: 'instagram', label: 'Instagram', icon: Instagram, dims: '1080x1080' },
   { id: 'facebook', label: 'Facebook', icon: Facebook, dims: '1200x628' },
   { id: 'tiktok', label: 'TikTok', icon: Music2, dims: '1080x1920' },
+  { id: 'twitter', label: 'X / Twitter', icon: Twitter, dims: '1600x900' },
+  { id: 'bluesky', label: 'Bluesky', icon: Cloud, dims: '1200x675' },
+  { id: 'threads', label: 'Threads', icon: AtSign, dims: '1080x1080' },
+  { id: 'youtube', label: 'YouTube', icon: Youtube, dims: '1280x720' },
 ];
 
 interface AdBot {
@@ -71,40 +77,52 @@ function platformLabel(p: Platform): string {
 }
 
 export default function Marketing() {
+  const [location] = useLocation();
+  const showAutomationNav = location.split(/[?#]/, 1)[0] === '/bots/ad-studio';
   const [platform, setPlatform] = useState<Platform>('linkedin');
   const [brief, setBrief] = useState('');
   const [bots, setBots] = useState<AdBot[]>([]);
   const [botId, setBotId] = useState<number | null>(null);
+  const [loadingBots, setLoadingBots] = useState(true);
+  const [teamError, setTeamError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ads, setAds] = useState<AdCreative[]>([]);
   const [loadingAds, setLoadingAds] = useState(true);
+  const [adsError, setAdsError] = useState<string | null>(null);
   const [latest, setLatest] = useState<AdCreative | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
 
   const loadBots = useCallback(async () => {
+    setLoadingBots(true);
+    setTeamError(null);
     try {
       const res = await apiFetch('/api/marketing/ad-bots');
-      if (!res.ok) return;
-      const data = await res.json();
-      const list: AdBot[] = data.bots ?? [];
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Could not load the ad capability (${res.status}).`);
+      const list: AdBot[] = Array.isArray(data.bots) ? data.bots : [];
       setBots(list);
-      setBotId((prev) => prev ?? list[0]?.id ?? null);
-    } catch {
-      /* non-fatal */
+      setBotId((prev) => list.some((bot) => bot.id === prev)
+        ? prev
+        : list.find((bot) => (bot.role ?? '').toLowerCase() === 'lead')?.id ?? list[0]?.id ?? null);
+      if (!list.length) setTeamError('PABLO PRIME ad capability is unavailable.');
+    } catch (loadError) {
+      setTeamError(loadError instanceof Error ? loadError.message : 'Could not load the ad capability.');
+    } finally {
+      setLoadingBots(false);
     }
   }, []);
 
   const loadAds = useCallback(async () => {
     setLoadingAds(true);
+    setAdsError(null);
     try {
       const res = await apiFetch('/api/marketing/ads');
-      if (res.ok) {
-        const data = await res.json();
-        setAds(data.ads ?? []);
-      }
-    } catch {
-      /* non-fatal */
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Could not load the ad library (${res.status}).`);
+      setAds(Array.isArray(data.ads) ? data.ads : []);
+    } catch (loadError) {
+      setAdsError(loadError instanceof Error ? loadError.message : 'Could not load the ad library.');
     } finally {
       setLoadingAds(false);
     }
@@ -117,27 +135,32 @@ export default function Marketing() {
 
   const generate = useCallback(async () => {
     if (!brief.trim() || generating) return;
+    if (!botId || loadingBots || teamError) {
+      setError(teamError ?? 'PABLO PRIME is not ready to create ads.');
+      return;
+    }
     setGenerating(true);
     setError(null);
     try {
       const res = await apiFetch('/api/marketing/ads/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform, brief: brief.trim(), botId: botId ?? undefined }),
+        body: JSON.stringify({ platform, brief: brief.trim(), botId }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? 'Failed to generate ad');
         return;
       }
+      if (!data.ad) throw new Error('The ad service returned no creative.');
       setLatest(data.ad);
       setAds((prev) => [data.ad, ...prev]);
-    } catch {
-      setError('Network error — please try again');
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : 'Network error — please try again');
     } finally {
       setGenerating(false);
     }
-  }, [brief, platform, botId, generating]);
+  }, [brief, platform, botId, generating, loadingBots, teamError]);
 
   const remove = useCallback(async (id: number) => {
     try {
@@ -162,35 +185,36 @@ export default function Marketing() {
     setTimeout(() => setCopied((c) => (c === ad.id ? null : c)), 1500);
   }, []);
 
-  const lead = bots.find((b) => (b.role ?? '').toLowerCase() === 'lead');
-
   return (
     <div style={{ minHeight: '100%', background: '#fafaf7', color: '#111111', fontFamily: FONT, padding: '24px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+        {showAutomationNav && <PabloAutomationNav />}
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <Megaphone className="w-5 h-5" style={{ color: CRT }} />
-          <h1 style={{ fontSize: '1.1rem', letterSpacing: '0.18em', color: CRT, margin: 0 }}>AD BOTS</h1>
+          <h1 style={{ fontSize: '1.1rem', letterSpacing: '0.14em', color: CRT, margin: 0 }}>AD BOTS</h1>
         </div>
         <p style={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.62)', letterSpacing: '0.02em', margin: '0 0 20px' }}>
-          Your marketing team generates ready-to-post, platform-correct ad creative. Copy the text and download the
-          visual, then post from your own account.
+          PABLO PRIME creates platform-specific ad copy and visuals. Choose a channel, review the result, and post from your account.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 20, alignItems: 'start' }}>
           {/* LEFT — generator + result + gallery */}
           <div>
             {/* Generator */}
             <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 8, padding: 18, background: '#ffffff' }}>
               {/* Platform tabs */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                 {PLATFORMS.map((p) => {
                   const Icon = p.icon;
                   const active = platform === p.id;
                   return (
                     <button
                       key={p.id}
+                      type="button"
+                      data-testid={`button-ad-platform-${p.id}`}
                       onClick={() => setPlatform(p.id)}
+                      aria-pressed={active}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         flexShrink: 0, whiteSpace: 'nowrap',
@@ -222,26 +246,10 @@ export default function Marketing() {
               />
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginTop: 14, flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 200px', minWidth: 180 }}>
-                  <label style={{ fontSize: '0.66rem', letterSpacing: '0.1em', color: CRT_DIM, display: 'block', marginBottom: 6 }}>
-                    ASSIGNED BOT
-                  </label>
-                  <select
-                    value={botId ?? ''}
-                    onChange={(e) => setBotId(e.target.value ? Number(e.target.value) : null)}
-                    style={{ ...inputStyle, cursor: 'pointer', appearance: 'none' as const }}
-                  >
-                    <option value="">— Unassigned —</option>
-                    {bots.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}{b.role ? ` (${b.role})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <button
                   onClick={generate}
-                  disabled={generating || !brief.trim()}
+                  data-testid="button-generate-ad"
+                  disabled={generating || !brief.trim() || !botId || loadingBots || Boolean(teamError)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8,
                     fontFamily: 'inherit', fontSize: '0.8rem', letterSpacing: '0.06em',
@@ -291,7 +299,12 @@ export default function Marketing() {
                   AD LIBRARY {ads.length > 0 ? `· ${ads.length}` : ''}
                 </span>
               </div>
-              {loadingAds ? (
+              {adsError ? (
+                <div role="alert" style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 8, padding: 16, color: '#8b1b1b', fontSize: '0.72rem' }}>
+                  {adsError}{' '}
+                  <button type="button" onClick={() => void loadAds()} style={{ textDecoration: 'underline' }}>Retry</button>
+                </div>
+              ) : loadingAds ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
                   <Loader2 className="w-6 h-6 animate-spin" style={{ color: CRT_DIM }} />
                 </div>
@@ -309,52 +322,32 @@ export default function Marketing() {
             </div>
           </div>
 
-          {/* RIGHT — marketing team */}
-            <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 8, padding: 16, background: '#ffffff' }}>
+          {/* PABLO PRIME uses one assistant for the ad capability. */}
+          <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 8, padding: 16, background: '#ffffff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Users className="w-4 h-4" style={{ color: CRT }} />
-              <span style={{ fontSize: '0.7rem', letterSpacing: '0.12em', color: CRT }}>MARKETING TEAM</span>
+              <Bot className="w-4 h-4" style={{ color: CRT }} />
+              <span style={{ fontSize: '0.7rem', letterSpacing: '0.12em', color: CRT }}>PABLO PRIME</span>
             </div>
             <p style={{ fontSize: '0.64rem', color: 'rgba(0,0,0,0.58)', margin: '0 0 14px', lineHeight: 1.5 }}>
-              {lead ? `Led by ${lead.name}.` : ''} Grouped by job. Assign one to a brief and it works the ad live.
+              One assistant handles ad creation. Existing provider configuration stays behind the scenes.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {bots.length === 0 ? (
-                <div style={{ fontSize: '0.7rem', color: 'rgba(0,0,0,0.5)' }}>Loading team…</div>
+              {loadingBots ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.7rem', color: 'rgba(0,0,0,0.5)' }}>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Preparing ad creation…
+                </div>
+              ) : teamError ? (
+                <div role="alert" style={{ fontSize: '0.7rem', color: '#8b1b1b' }}>
+                  {teamError}{' '}
+                  <button type="button" onClick={() => void loadBots()} style={{ textDecoration: 'underline' }}>Retry</button>
+                </div>
               ) : (
-                bots.map((b) => {
-                  const active = (b.status ?? '').toLowerCase() === 'active';
-                  return (
-                    <button
-                      key={b.id}
-                      onClick={() => setBotId(b.id)}
-                      style={{
-                        textAlign: 'left', cursor: 'pointer',
-                        border: `1px solid ${botId === b.id ? '#111111' : 'rgba(0,0,0,0.14)'}`,
-                        background: botId === b.id ? '#f3f1eb' : '#ffffff',
-                        borderRadius: 8, padding: '10px 12px', fontFamily: 'inherit', transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Bot className="w-3.5 h-3.5" style={{ color: CRT }} />
-                        <span style={{ fontSize: '0.78rem', color: '#111111' }}>{b.name}</span>
-                        <span
-                          style={{
-                            marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%',
-                            background: active ? '#4ade80' : 'rgba(161,161,170,0.4)',
-                            boxShadow: active ? '0 0 6px #4ade80' : 'none',
-                          }}
-                          title={active ? 'Working' : 'Idle'}
-                        />
-                      </div>
-                      {b.role && (
-                        <div style={{ fontSize: '0.6rem', letterSpacing: '0.1em', color: CRT_DIM, marginTop: 4, textTransform: 'uppercase' }}>
-                          {b.role}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })
+                <div
+                  data-testid="pablo-automation-ad-ready"
+                  style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 8, padding: '10px 12px', fontSize: '0.72rem', color: CRT_DIM }}
+                >
+                  {generating ? 'PABLO PRIME IS CREATING YOUR AD.' : 'READY TO CREATE ADS.'}
+                </div>
               )}
             </div>
           </div>

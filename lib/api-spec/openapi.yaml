@@ -40,6 +40,57 @@ tags:
   - name: education
     description: Teacher-only classroom writing review
 paths:
+  /account/workspace:
+    get:
+      operationId: getAccountWorkspaceLayout
+      tags: [workspace]
+      summary: Get the authenticated user's workspace layout
+      responses:
+        "200":
+          description: Account workspace layout, or null before the first save
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountWorkspaceResponse"
+        "401":
+          description: Login required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Workspace layout could not be loaded
+    put:
+      operationId: updateAccountWorkspaceLayout
+      tags: [workspace]
+      summary: Save the authenticated user's workspace layout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceLayout"
+      responses:
+        "200":
+          description: Saved account workspace layout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountWorkspaceResponse"
+        "400":
+          description: Invalid workspace layout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Login required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Workspace layout could not be saved
   /world/online:
     get:
       operationId: getWorldMonitoringOnline
@@ -1105,6 +1156,152 @@ paths:
           description: Review item not found
         "409":
           description: Review item was already decided
+  /github-repositories/status:
+    get:
+      operationId: getGithubRepositoryConnectionStatus
+      tags: [integrations]
+      summary: Read the signed-in user's GitHub repository connection status
+      responses:
+        "200":
+          description: Connection state without credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryConnectionStatus" }
+        "401": { description: Login required }
+  /github-repositories/connect:
+    get:
+      operationId: connectGithubRepositories
+      tags: [integrations]
+      summary: Start the separate GitHub repository authorization flow
+      responses:
+        "302": { description: Redirect to GitHub authorization }
+        "401": { description: Login required }
+        "503": { description: Repository OAuth application is not configured }
+  /github-repositories/callback:
+    get:
+      operationId: completeGithubRepositoryConnection
+      tags: [integrations]
+      summary: Complete GitHub repository authorization
+      responses:
+        "302": { description: Redirect back to the app with connection result }
+  /github-repositories/repos:
+    get:
+      operationId: listGithubRepositories
+      tags: [integrations]
+      summary: List repositories the user can select for Pablo
+      responses:
+        "200":
+          description: Repository list and current selection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryListResponse" }
+        "401": { description: Login required }
+        "409": { description: GitHub repository connection is not active }
+  /github-repositories/selection:
+    put:
+      operationId: updateGithubRepositorySelection
+      tags: [integrations]
+      summary: Select repositories Pablo may access
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GithubRepositorySelectionInput" }
+      responses:
+        "200":
+          description: Updated repository selection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryListResponse" }
+        "400": { description: Invalid or unavailable repository selection }
+        "401": { description: Login required }
+        "409": { description: GitHub repository connection is not active }
+  /github-repositories/disconnect:
+    post:
+      operationId: disconnectGithubRepositories
+      tags: [integrations]
+      summary: Revoke Pablo's stored GitHub repository access
+      responses:
+        "200":
+          description: Connection revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryDisconnectResponse" }
+        "401": { description: Login required }
+  /github-repositories/changes:
+    get:
+      operationId: listGithubRepositoryChanges
+      tags: [integrations]
+      summary: List the signed-in user's proposed repository changes
+      responses:
+        "200":
+          description: User-owned change proposals
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryChangesResponse" }
+        "401": { description: Login required }
+  /github-repositories/changes/{id}:
+    get:
+      operationId: getGithubRepositoryChange
+      tags: [integrations]
+      summary: Read a proposed diff for review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Change details and exact diff
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryChangeDetailsResponse" }
+        "401": { description: Login required }
+        "404": { description: Change not found for this user }
+  /github-repositories/changes/{id}/approve:
+    post:
+      operationId: approveGithubRepositoryChange
+      tags: [integrations]
+      summary: Approve the exact reviewed diff and open a draft pull request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GithubRepositoryChangeApprovalInput" }
+      responses:
+        "200":
+          description: Draft pull request opened
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryChangeResponse" }
+        "400": { description: Invalid or stale approval }
+        "401": { description: Login required }
+        "404": { description: Change not found for this user }
+        "409": { description: Repository base changed or proposal is no longer pending }
+  /github-repositories/changes/{id}/reject:
+    post:
+      operationId: rejectGithubRepositoryChange
+      tags: [integrations]
+      summary: Reject a pending repository diff
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Proposal rejected
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GithubRepositoryChangeResponse" }
+        "401": { description: Login required }
+        "404": { description: Change not found for this user }
+        "409": { description: Proposal is no longer pending }
   /admin/tower-shop-staff:
     get:
       operationId: listTowerShopStaff
@@ -1258,6 +1455,29 @@ paths:
           description: Insufficient storage stock or shelf capacity
 components:
   schemas:
+    WorkspaceLayout:
+      type: object
+      required: [version, slots]
+      properties:
+        version:
+          type: integer
+          enum: [2]
+        slots:
+          type: array
+          minItems: 1
+          maxItems: 9
+          items:
+            type: ["string", "null"]
+            minLength: 1
+            maxLength: 300
+    AccountWorkspaceResponse:
+      type: object
+      required: [layout]
+      properties:
+        layout:
+          anyOf:
+            - $ref: "#/components/schemas/WorkspaceLayout"
+            - type: "null"
     BrowserOnboardingStatusResponse:
       type: object
       required: [completed]
@@ -1580,6 +1800,93 @@ components:
         payment: { $ref: "#/components/schemas/OrganizationPayment" }
         checkoutUrl: { type: string, format: uri }
         expiresAt: { type: ["string", "null"], format: date-time }
+    GithubSelectedRepository:
+      type: object
+      required: [id, fullName, defaultBranch, private]
+      properties:
+        id: { type: string }
+        fullName: { type: string }
+        defaultBranch: { type: string }
+        private: { type: boolean }
+    GithubRepositoryConnectionStatus:
+      type: object
+      required: [configured, connected, login, selectedRepositories]
+      properties:
+        configured: { type: boolean }
+        connected: { type: boolean }
+        login: { type: ["string", "null"] }
+        selectedRepositories:
+          type: array
+          items: { $ref: "#/components/schemas/GithubSelectedRepository" }
+    GithubRepository:
+      type: object
+      required: [id, fullName, defaultBranch, private, selected]
+      properties:
+        id: { type: string }
+        fullName: { type: string }
+        defaultBranch: { type: string }
+        private: { type: boolean }
+        selected: { type: boolean }
+    GithubRepositoryListResponse:
+      type: object
+      required: [items, selectedRepositories]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/GithubRepository" }
+        selectedRepositories:
+          type: array
+          items: { $ref: "#/components/schemas/GithubSelectedRepository" }
+    GithubRepositorySelectionInput:
+      type: object
+      required: [repositoryIds]
+      properties:
+        repositoryIds:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 40 }
+    GithubRepositoryChange:
+      type: object
+      required: [id, repositoryFullName, title, description, status, diffHash, branchName, pullRequestUrl, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        repositoryFullName: { type: string }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [pending, opened, rejected, failed] }
+        diffHash: { type: string }
+        branchName: { type: ["string", "null"] }
+        pullRequestUrl: { type: ["string", "null"], format: uri }
+        createdAt: { type: string, format: date-time }
+    GithubRepositoryChangesResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/GithubRepositoryChange" }
+    GithubRepositoryChangeDetailsResponse:
+      type: object
+      required: [change, diff]
+      properties:
+        change: { $ref: "#/components/schemas/GithubRepositoryChange" }
+        diff: { type: string }
+    GithubRepositoryChangeApprovalInput:
+      type: object
+      required: [diffHash]
+      properties:
+        diffHash: { type: string, minLength: 64, maxLength: 64, pattern: "^[a-f0-9]{64}$" }
+    GithubRepositoryChangeResponse:
+      type: object
+      required: [change]
+      properties:
+        change: { $ref: "#/components/schemas/GithubRepositoryChange" }
+    GithubRepositoryDisconnectResponse:
+      type: object
+      required: [disconnected]
+      properties:
+        disconnected: { type: boolean }
     OrganizationCustomAppField:
       type: object
       required: [key, label, type, required]

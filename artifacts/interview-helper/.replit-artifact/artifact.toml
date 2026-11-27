@@ -27,5 +27,13 @@ publicDir = "artifacts/interview-helper/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]
+from = "/sms-disclaimer"
+to = "/sms-disclaimer/index.html"
+
+[[services.production.rewrites]]
+from = "/sms-disclaimer/"
+to = "/sms-disclaimer/index.html"
+
+[[services.production.rewrites]]
 from = "/*"
 to = "/index.html"

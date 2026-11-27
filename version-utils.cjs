@@ -29,6 +29,16 @@ function getFormattedVersion() {
   return parsed ? formatVersion(parsed) : `v${raw}`;
 }
 
+function normalizeBuildChannel(value, fallback = "DEV") {
+  const channel = typeof value === "string" && value.trim()
+    ? value.trim().toUpperCase()
+    : fallback;
+  if (!["DEV", "PTU", "PU"].includes(channel)) {
+    throw new Error(`Invalid SALARYMAN_CHANNEL "${channel}". Use DEV, PTU, or PU.`);
+  }
+  return channel;
+}
+
 function readChangelog() {
   try {
     if (!existsSync(CHANGELOG_FILE)) return [];
@@ -45,6 +55,39 @@ function getCurrentCommitHash() {
   } catch {
     return null;
   }
+}
+
+function isWorkingTreeDirty() {
+  try {
+    const { execSync } = require("child_process");
+    return Boolean(execSync("git status --porcelain", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim());
+  } catch {
+    return false;
+  }
+}
+
+function getBuildIdentity(options = {}) {
+  const channel = normalizeBuildChannel(
+    options.channel ?? process.env.SALARYMAN_CHANNEL,
+    options.defaultChannel ?? "DEV",
+  );
+  const commitHash = Object.prototype.hasOwnProperty.call(options, "commitHash")
+    ? options.commitHash
+    : getCurrentCommitHash();
+  const dirty = Object.prototype.hasOwnProperty.call(options, "dirty")
+    ? options.dirty
+    : isWorkingTreeDirty();
+  const version = getFormattedVersion();
+  const revision = `${commitHash ? String(commitHash).slice(0, 8) : "local"}${dirty ? "-dirty" : ""}`;
+  return {
+    version,
+    channel,
+    revision,
+    label: `${version} ${channel} ${revision}`,
+  };
 }
 
 const NOISE_PATTERNS = [
@@ -146,6 +189,7 @@ module.exports = {
   parseVersion,
   formatVersion,
   getFormattedVersion,
+  getBuildIdentity,
   getNextVersion,
   bumpVersion,
   readChangelog,

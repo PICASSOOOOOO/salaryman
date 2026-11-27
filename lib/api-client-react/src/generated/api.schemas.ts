@@ -5,6 +5,28 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type WorkspaceLayoutVersion = typeof WorkspaceLayoutVersion[keyof typeof WorkspaceLayoutVersion];
+
+
+export const WorkspaceLayoutVersion = {
+  NUMBER_2: 2,
+} as const;
+
+export interface WorkspaceLayout {
+  version: WorkspaceLayoutVersion;
+  /**
+     * @minItems 1
+     * @maxItems 9
+     * @items.minLength 1
+     * @items.maxLength 300
+     */
+  slots: (string | null)[];
+}
+
+export interface AccountWorkspaceResponse {
+  layout: WorkspaceLayout | null;
+}
+
 export interface BrowserOnboardingStatusResponse {
   completed: boolean;
 }
@@ -478,6 +500,93 @@ export interface OrganizationPaymentCheckoutResponse {
   checkoutUrl: string;
   /** @nullable */
   expiresAt: string | null;
+}
+
+export interface GithubSelectedRepository {
+  id: string;
+  fullName: string;
+  defaultBranch: string;
+  private: boolean;
+}
+
+export interface GithubRepositoryConnectionStatus {
+  configured: boolean;
+  connected: boolean;
+  /** @nullable */
+  login: string | null;
+  selectedRepositories: GithubSelectedRepository[];
+}
+
+export interface GithubRepository {
+  id: string;
+  fullName: string;
+  defaultBranch: string;
+  private: boolean;
+  selected: boolean;
+}
+
+export interface GithubRepositoryListResponse {
+  items: GithubRepository[];
+  selectedRepositories: GithubSelectedRepository[];
+}
+
+export interface GithubRepositorySelectionInput {
+  /**
+     * @maxItems 50
+     * @items.minLength 1
+     * @items.maxLength 40
+     */
+  repositoryIds: string[];
+}
+
+export type GithubRepositoryChangeStatus = typeof GithubRepositoryChangeStatus[keyof typeof GithubRepositoryChangeStatus];
+
+
+export const GithubRepositoryChangeStatus = {
+  pending: 'pending',
+  opened: 'opened',
+  rejected: 'rejected',
+  failed: 'failed',
+} as const;
+
+export interface GithubRepositoryChange {
+  id: string;
+  repositoryFullName: string;
+  title: string;
+  description: string;
+  status: GithubRepositoryChangeStatus;
+  diffHash: string;
+  /** @nullable */
+  branchName: string | null;
+  /** @nullable */
+  pullRequestUrl: string | null;
+  createdAt: string;
+}
+
+export interface GithubRepositoryChangesResponse {
+  items: GithubRepositoryChange[];
+}
+
+export interface GithubRepositoryChangeDetailsResponse {
+  change: GithubRepositoryChange;
+  diff: string;
+}
+
+export interface GithubRepositoryChangeApprovalInput {
+  /**
+     * @minLength 64
+     * @maxLength 64
+     * @pattern ^[a-f0-9]{64}$
+     */
+  diffHash: string;
+}
+
+export interface GithubRepositoryChangeResponse {
+  change: GithubRepositoryChange;
+}
+
+export interface GithubRepositoryDisconnectResponse {
+  disconnected: boolean;
 }
 
 export type OrganizationCustomAppFieldType = typeof OrganizationCustomAppFieldType[keyof typeof OrganizationCustomAppFieldType];

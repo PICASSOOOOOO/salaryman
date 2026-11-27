@@ -18,6 +18,7 @@ import twilio from "twilio";
 import { db, systemConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getUncachableResendClient } from "../lib/resend";
+import { classifyTollfreeVerificationStatus } from "../lib/phone-health-status";
 
 type CheckResult = {
   name: string;
@@ -315,28 +316,9 @@ async function checkTollfreeMessagingVerification(client: twilio.Twilio, num: st
       OP_TIMEOUT_MS,
       "Toll-free verification lookup",
     );
-    // Twilio's live response has returned both IN_REVIEW and PENDING_REVIEW
-    // across API versions; normalize to a string so the health check remains
-    // compatible with the SDK's narrower status union.
     const status = String(verifications[0]?.status ?? "");
-    if (status === "TWILIO_APPROVED") {
-      results.push({ name: "Toll-free SMS verification", status: "PASS", detail: "Sender approved by Twilio" });
-    } else if (status === "IN_REVIEW" || status === "PENDING_REVIEW" || status === "PENDING" || status === "IN_PROGRESS") {
-      results.push({
-        name: "Toll-free SMS verification",
-        status: "WARN",
-        detail: `Sender verification status is ${status}; SMS delivery may remain limited until Twilio approves the submission`,
-      });
-    } else {
-      const rejectionReason = verifications[0]?.rejectionReason;
-      results.push({
-        name: "Toll-free SMS verification",
-        status: "FAIL",
-        detail: status
-          ? `Sender verification status is ${status}${rejectionReason ? `: ${rejectionReason}` : ""}`
-          : "No toll-free verification record exists",
-      });
-    }
+    const result = classifyTollfreeVerificationStatus(status, verifications[0]?.rejectionReason);
+    results.push({ name: "Toll-free SMS verification", ...result });
   } catch (e: any) {
     results.push({ name: "Toll-free SMS verification", status: "FAIL", detail: `Verification lookup failed: ${e?.message || e}` });
   }

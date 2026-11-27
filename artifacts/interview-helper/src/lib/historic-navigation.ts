@@ -1,7 +1,6 @@
 import {
   Archive,
   BarChart2,
-  Bot,
   Briefcase,
   CalendarDays,
   Code2,
@@ -18,7 +17,6 @@ import {
   PhoneCall,
   Radio,
   Search,
-  Settings,
   Target,
   Terminal,
   TrendingUp,
@@ -110,7 +108,6 @@ export const HISTORIC_MODULES: HistoricModule[] = [
     subs: [
       { id: 'reports', path: '/intel/reports', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
       { id: 'dashboard', path: '/intel/dashboard', boomerLabel: 'DASHBOARD', codename: 'CMD DECK', icon: LayoutDashboard },
-      { id: 'agents', path: '/pablo/deck', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'goals', path: '/intel/goals', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
       { id: 'seo', path: '/marketing/seo', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
     ],
@@ -130,8 +127,6 @@ export const HISTORIC_MODULES: HistoricModule[] = [
       { id: 'voicemail', path: '/phone/voicemail', boomerLabel: 'VOICEMAIL', codename: 'V-MAIL', icon: Voicemail },
       { id: 'conference', path: '/phone/conference', boomerLabel: 'CONFERENCE', codename: 'CONF-ROOM', icon: Users },
       { id: 'sessions', path: '/phone/sessions', boomerLabel: 'DIALING SESSIONS', codename: 'AUTO-DIAL', icon: Radio },
-      { id: 'coach', path: '/phone/coach', boomerLabel: 'AI COACH', codename: 'AI-COACH', icon: Bot },
-      { id: 'secretary', path: '/phone/secretary', boomerLabel: 'AI SECRETARY', codename: 'AI-SEC', icon: Settings },
       { id: 'numbers', path: '/phone/numbers', boomerLabel: 'PHONE NUMBERS', codename: 'NUM-VAULT', icon: Hash },
     ],
   },

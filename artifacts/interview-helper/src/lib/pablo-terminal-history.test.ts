@@ -17,12 +17,14 @@ const swipe = readFileSync(
 );
 
 describe("Pablo terminal physical-world navigation", () => {
-  it("uses the shared START WORK menu for authenticated terminal visitors", () => {
+  it("offers the grouped Start Work menu to authenticated terminal visitors", () => {
     expect(terminal).toContain('import { StartWorkMenu } from "@/components/StartWorkMenu";');
     expect(terminal).toContain("{!isLoading && isAuthenticated && <StartWorkMenu />}");
     expect(startWorkMenu).toContain("<span>START WORK</span>");
-    expect(startWorkMenu).toContain("requestWorkspaceFeatureAssignment(path)");
-    expect(startWorkMenu).toContain('location.split("?")[0] === "/workspace"');
+    expect(startWorkMenu).toContain('data-testid="start-work-menu-trigger"');
+    expect(startWorkMenu).toContain("aria-expanded={open}");
+    expect(startWorkMenu).toContain('href="/workspace"');
+    expect(startWorkMenu).toContain("PABLO AUTOMATION");
     expect(terminal).not.toContain('navigate(hasFinishedOnboarding ? "/office" : "/tower")');
     expect(terminal).not.toContain('{hasFinishedOnboarding ? "OFFICE" : "ENTER TOWER"}');
     expect(terminal).not.toContain('window.history.back()');

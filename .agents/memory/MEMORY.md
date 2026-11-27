@@ -30,7 +30,7 @@
 - [Pablo voice and chat](pablo-voice-output-gating.md) — gate TTS and keep controls/history visible; see [controls](pablo-frontdoor-controls.md) and [mobile](pablo-mobile-chat-continuity.md).
 - [Tester program](tester-program.md) — 20 slots, atomic approvals, 3-day inactivity sweep, and a dismissible Discord banner.
 - [Platform monitoring privacy](platform-monitoring-privacy.md) — Admins have full scope; moderators/testers get metadata and visuals, while owners see only their own active people.
-- [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — browser and game use one canonical assistant backend; keep its in-game character a visual representation, not a duplicate agent.
+- [Pablo Prime and Mr. Shadow](mila-pablo-persona.md) — browser has one assistant with a unified PABLO AUTOMATION surface; game NPCs represent it without duplicate agent brains.
 - [Per-user Google Calendar](google-calendar-user-oauth.md) — each user links their own Google account in-app; never use the owner’s Replit Google connection for customer calendars.
 - [Education Classroom feature](classroom-feature.md) — Resolve teacher roles per user; gate only class-specific rooms on shared `/ws/conf`.
 - [Referral invites](referral-invites.md) — Preserve invite tokens through signup and award rewards atomically to prevent double-pay.
@@ -65,7 +65,7 @@
 - [Market Research Autopilot](market-research-autopilot.md) — owner-only, opt-in, source-backed briefs for review; web research must never mutate external systems.
 - [Pledge cost-plus + AI secrecy](pledge-cost-plus-secrecy.md) — Hide cost and markup from store APIs; secrecy rules apply to Pablo/Mila.
 - [Marketing autopilot handler](autopilot-marketing-handler.md) — Reuse social services; generation needs entitlement and credit, while publish may simulate.
-- [CRM & Calls autopilot](crm-calls-autopilot.md) — SMS-only; honors saved SMS opt-outs and cools down provider failures; no auto-calls; phone_system gate and per-lead follow-up interval.
+- [CRM & Calls autopilot](crm-calls-autopilot.md) — automated customer follow-ups use email and honor email opt-outs; manual SMS remains separate, with no auto-calls.
 - [Business Ops autopilot domain](autopilot-business-ops.md) — Reuse manual services, scope to the org owner, and keep tick decisions pure and tested.
 - [Autopilot domain prefs](autopilot-domain-prefs.md) — Preference changes touch schema, sanitizer, route, handler, and UI; OFF must match manual behavior.
 - [Art Factory pluggable backends](art-factory-pluggable-backends.md) — All backends share SALARYMAN style; an unconfigured backend leaves the row untouched.
@@ -117,7 +117,7 @@
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
 - [Browser API and game scope](browser-game-scope.md) — Keep the public homepage intact, send signed-in users to THE OFFICE, and open game tools through native furniture and terminals.
 - [GitHub workflow and file writes](github-workflow-write-scope.md) — sync completed workspace updates to GitHub; use sequential Contents API PUTs, with separate workflow-file permissions.
-- [Browser navigation](canonical-browser-navigation.md) — boxed header, minimal mobile chrome; see [responsive](responsive-navigation-chrome.md) and [menu deduplication](shared-menu-route-dedupe.md).
+- [Browser navigation](canonical-browser-navigation.md) — no dropdown trees; keep feature settings in-feature, PISE named correctly, and SALARYMAN OS in the old Browse slot.
 - [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is an Office feature/page, not a global dock; derive Pablo's working/offline state from the live socket.
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
@@ -131,6 +131,7 @@
 - [Ecosystem condition + maintenance](asset-decay-scope.md) — differentiated survival and gradual maintenance needs span humans, replicants, pets, vehicles, buildings, and infrastructure.
 - [Native releases](desktop-release-packaging.md) — build targets natively; see [capture](godot-movie-capture-paths.md), [package](desktop-game-capture.md), [heap](release-build-heap-cap.md).
 - [Release and pledge-store roadmap](release-and-pledge-roadmap.md) — beta starts December 25, 2026; require a 30-day major-feature stability window and defer pledge offers until the asset catalog is decided.
+- [PTU/PU release flow](ptu-pu-release-flow.md) — work here, keep PTU newest for testing, and promote only stable releases to PU.
 - [Beta hosting capacity](beta-hosting-capacity.md) — deploy from GitHub to another host, support 1,000 concurrent users, and remind daily until the provider is chosen.
 - [FFmpeg still-tour frame rate](ffmpeg-still-tour-cfr.md) — chained `xfade` can produce an invalid frame rate; use an explicit concat manifest and constant-fps output for still tours.
 - [Replicant power lore](replicant-power-lore.md) — intrinsic power is replicant-only; unique recruit powers can be used by any player.
@@ -147,5 +148,7 @@
 - [Unified standalone 1999 VST3](ableton-plugin-scope.md) — Build one full-workstation plugin here for external hosts; browser access remains free after SALARYMAN sign-in/onboarding.
 - [SampQOL reference boundary](1999-sampqol-reference.md) — adapt documented sampler workflows independently; do not bundle or redistribute the MPC firmware mod.
 - [1999 + creative stations](1999-machine-ecosystem.md) — free browser workstation plus one very expensive, placeable in-game recording terminal.
-- [SALARYMAN community mods](salaryman-mod-platform.md) — “firmware” means installable game-feature add-ons; personal code rewrites belong in local source forks.
+- [SALARYMAN community mods](salaryman-mod-platform.md) — PABLO DECK owns mods, firmware, and hosted apps/games; isolate user projects from shared server state.
 - [Failed patch recovery](agent-patch-recovery.md) — reread target files after a failed multi-hunk patch; earlier hunks may already have applied.
+- [Workspace iframe drag targets](workspace-iframe-drag-targets.md) — disable embedded-frame pointer events during drag so native drops reach slot handlers.
+- [Production game release gate](game-production-release.md) — keep game routes locked in production until the official trailer is ready; the PTU remains playable.

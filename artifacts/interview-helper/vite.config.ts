@@ -6,8 +6,9 @@ import path from "path";
 import { createRequire } from "module";
 
 const _require = createRequire(import.meta.url);
-const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
+const { getBuildIdentity } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 const isBuild = process.argv.includes("build");
+const buildIdentity = getBuildIdentity({ defaultChannel: isBuild ? "PU" : "DEV" });
 const rawPort = process.env.PORT;
 
 if (!rawPort && !isBuild) {
@@ -60,7 +61,10 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   define: {
-    "__BUILD_VERSION__": JSON.stringify(getFormattedVersion()),
+    "__BUILD_VERSION__": JSON.stringify(buildIdentity.version),
+    "__BUILD_CHANNEL__": JSON.stringify(buildIdentity.channel),
+    "__BUILD_REVISION__": JSON.stringify(buildIdentity.revision),
+    "__BUILD_LABEL__": JSON.stringify(buildIdentity.label),
     // A browser dependency in the Meshtastic stack reads Node's process
     // metadata. Keep its expected shape without shipping a Node polyfill.
     process: "globalThis.process",

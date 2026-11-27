@@ -40,9 +40,42 @@ async function createUser() {
   return user;
 }
 
+async function createCheckingAccount(userId: string, balance: number) {
+  return db.insert(bankAccountsTable).values({
+    userId,
+    kind: "checking",
+    label: "Checking",
+    balance,
+  }).returning();
+}
+
+function authenticateAs(user: { id: string; email: string | null }) {
+  authState.user = { id: user.id, email: user.email ?? "" };
+}
+
+async function publishTenantListing(
+  poster: { id: string; email: string | null },
+  title: string,
+  payFiat: number,
+) {
+  authenticateAs(poster);
+  const response = await request(app).post("/api/services").send({
+    category: "Other",
+    title,
+    description: "A tenant-scoped service listing for lifecycle coverage.",
+    payFiat,
+    businessKey: "tower_restaurant",
+  });
+  expect(response.status).toBe(201);
+  expect(response.body.listing.businessKey).toBe("tower_restaurant");
+  createdListingIds.push(response.body.listing.id);
+  return response.body.listing;
+}
+
 beforeAll(() => {
   app = buildApp();
 });
+
 
 afterAll(async () => {
   if (createdListingIds.length) {
@@ -162,5 +195,147 @@ describe("Tower tenant Services Board scopes", () => {
       .from(bankAccountsTable)
       .where(eq(bankAccountsTable.id, account.id));
     expect(after.balance).toBe(10_000);
+  });
+
+  it("claims and completes a tenant listing, releasing escrow while retaining its scope", async () => {
+    const poster = await createUser();
+    const claimer = await createUser();
+    const [posterAccount] = await createCheckingAccount(poster.id, 10_000);
+    const [claimerAccount] = await createCheckingAccount(claimer.id, 500);
+    const listing = await publishTenantListing(poster, "Restaurant setup", 1_200);
+
+    authenticateAs(claimer);
+    const claimResponse = await request(app).post(`/api/services/${listing.id}/claim`);
+    expect(claimResponse.status).toBe(200);
+    expect(claimResponse.body.listing).toMatchObject({
+      status: "claimed",
+      claimerUserId: claimer.id,
+      businessKey: "tower_restaurant",
+      escrowFiat: 1_200,
+    });
+
+    authenticateAs(poster);
+    const completeResponse = await request(app).post(`/api/services/${listing.id}/complete`);
+    expect(completeResponse.status).toBe(200);
+    expect(completeResponse.body.listing).toMatchObject({
+      status: "complete",
+      claimerUserId: claimer.id,
+      businessKey: "tower_restaurant",
+      escrowFiat: 0,
+    });
+
+    const [claimerAfter] = await db.select({ balance: bankAccountsTable.balance })
+      .from(bankAccountsTable)
+      .where(eq(bankAccountsTable.id, claimerAccount.id));
+    expect(claimerAfter.balance).toBe(1_700);
+    const [posterAfter] = await db.select({ balance: bankAccountsTable.balance })
+      .from(bankAccountsTable)
+      .where(eq(bankAccountsTable.id, posterAccount.id));
+    expect(posterAfter.balance).toBe(8_800);
+    const [release] = await db.select({
+      kind: bankTransactionsTable.kind,
+      amount: bankTransactionsTable.amount,
+    }).from(bankTransactionsTable)
+      .where(eq(bankTransactionsTable.userId, claimer.id));
+    expect(release).toEqual({ kind: "escrow_release", amount: 1_200 });
+
+    const [persisted] = await db.select()
+      .from(serviceListingsTable)
+      .where(eq(serviceListingsTable.id, listing.id));
+    expect(persisted).toMatchObject({
+      status: "complete",
+      businessKey: "tower_restaurant",
+      escrowFiat: 0,
+    });
+  });
+
+  it("returns tenant-listing escrow to the poster after a dispute", async () => {
+    const poster = await createUser();
+    const claimer = await createUser();
+    const [posterAccount] = await createCheckingAccount(poster.id, 10_000);
+    const [claimerAccount] = await createCheckingAccount(claimer.id, 500);
+    const listing = await publishTenantListing(poster, "Restaurant inventory review", 1_300);
+
+    authenticateAs(claimer);
+    const claimResponse = await request(app).post(`/api/services/${listing.id}/claim`);
+    expect(claimResponse.status).toBe(200);
+    expect(claimResponse.body.listing.businessKey).toBe("tower_restaurant");
+
+    authenticateAs(poster);
+    const disputeResponse = await request(app).post(`/api/services/${listing.id}/dispute`);
+    expect(disputeResponse.status).toBe(200);
+    expect(disputeResponse.body.listing).toMatchObject({
+      status: "disputed",
+      businessKey: "tower_restaurant",
+      escrowFiat: 0,
+    });
+
+    const [posterAfter] = await db.select({ balance: bankAccountsTable.balance })
+      .from(bankAccountsTable)
+      .where(eq(bankAccountsTable.id, posterAccount.id));
+    expect(posterAfter.balance).toBe(10_000);
+    const [claimerAfter] = await db.select({ balance: bankAccountsTable.balance })
+      .from(bankAccountsTable)
+      .where(eq(bankAccountsTable.id, claimerAccount.id));
+    expect(claimerAfter.balance).toBe(500);
+    const [persisted] = await db.select()
+      .from(serviceListingsTable)
+      .where(eq(serviceListingsTable.id, listing.id));
+    expect(persisted).toMatchObject({
+      status: "disputed",
+      businessKey: "tower_restaurant",
+      escrowFiat: 0,
+    });
+    const returns = await db.select({
+      kind: bankTransactionsTable.kind,
+      amount: bankTransactionsTable.amount,
+    }).from(bankTransactionsTable)
+      .where(eq(bankTransactionsTable.userId, poster.id));
+    expect(returns).toContainEqual({ kind: "escrow_return", amount: 1_300 });
+  });
+
+  it("returns tenant-listing escrow to the poster when a claimed listing is cancelled", async () => {
+    const poster = await createUser();
+    const claimer = await createUser();
+    const [posterAccount] = await createCheckingAccount(poster.id, 10_000);
+    const [claimerAccount] = await createCheckingAccount(claimer.id, 500);
+    const listing = await publishTenantListing(poster, "Restaurant cleanup", 1_400);
+
+    authenticateAs(claimer);
+    const claimResponse = await request(app).post(`/api/services/${listing.id}/claim`);
+    expect(claimResponse.status).toBe(200);
+    expect(claimResponse.body.listing.businessKey).toBe("tower_restaurant");
+
+    authenticateAs(poster);
+    const cancelResponse = await request(app).post(`/api/services/${listing.id}/cancel`);
+    expect(cancelResponse.status).toBe(200);
+    expect(cancelResponse.body.listing).toMatchObject({
+      status: "cancelled",
+      businessKey: "tower_restaurant",
+      escrowFiat: 0,
+    });
+
+    const [posterAfter] = await db.select({ balance: bankAccountsTable.balance })
+      .from(bankAccountsTable)
+      .where(eq(bankAccountsTable.id, posterAccount.id));
+    expect(posterAfter.balance).toBe(10_000);
+    const [claimerAfter] = await db.select({ balance: bankAccountsTable.balance })
+      .from(bankAccountsTable)
+      .where(eq(bankAccountsTable.id, claimerAccount.id));
+    expect(claimerAfter.balance).toBe(500);
+    const [persisted] = await db.select()
+      .from(serviceListingsTable)
+      .where(eq(serviceListingsTable.id, listing.id));
+    expect(persisted).toMatchObject({
+      status: "cancelled",
+      businessKey: "tower_restaurant",
+      escrowFiat: 0,
+    });
+    const returns = await db.select({
+      kind: bankTransactionsTable.kind,
+      amount: bankTransactionsTable.amount,
+    }).from(bankTransactionsTable)
+      .where(eq(bankTransactionsTable.userId, poster.id));
+    expect(returns).toContainEqual({ kind: "escrow_return", amount: 1_400 });
   });
 });

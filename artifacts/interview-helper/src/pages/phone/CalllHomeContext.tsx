@@ -23,7 +23,6 @@ export const PHONE_ROUTE_TO_TAB: Record<string, TabKey> = {
   '/phone/conference': 'conf',
   '/phone/sessions': 'auto',
   '/phone/coach': 'ai',
-  '/phone/secretary': 'ai',
   '/phone/numbers': 'numbers',
   '/phone/call-center': 'cc',
   '/phone/sms': 'sms',

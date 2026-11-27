@@ -38,6 +38,12 @@
       "ogTitle": "SALARYMAN SMS Text Updates",
       "ogDescription": "Review the SALARYMAN text message program and its optional opt-in, frequency, rates, STOP, and HELP information."
     },
+    "/sms-disclaimer": {
+      "title": "SMS Messaging Disclosure — SALARYMAN",
+      "description": "Read SALARYMAN Text Updates program details, opt-in instructions, message frequency, rates, STOP and HELP information, and privacy terms.",
+      "ogTitle": "SALARYMAN SMS Messaging Program Disclosure",
+      "ogDescription": "Program details and consumer disclosures for SALARYMAN recurring informational text messages."
+    },
     "/legal": {
       "title": "Legal — SALARYMAN by Picasso AI",
       "description": "Legal information for SALARYMAN by Picasso AI: Terms of Service, Privacy Policy, Refund Policy, Cancellation Policy, and more.",

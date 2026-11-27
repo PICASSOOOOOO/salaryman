@@ -6,6 +6,7 @@ const LEGAL_LINKS = [
   { path: "/legal", label: "Legal Terminal" },
   { path: "/legal/terms", label: "Terms of Service" },
   { path: "/legal/privacy", label: "Privacy Policy" },
+  { path: "/sms-disclaimer", label: "SMS Messaging Disclosure" },
   { path: "/legal/contact", label: "Contact Us" },
   { path: "/legal/refunds", label: "Refund & Dispute Policy" },
   { path: "/legal/returns", label: "Return Policy" },
@@ -102,17 +103,17 @@ export function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) 
       </div>
 
       <style>{`
-        .prose-legal p { margin-bottom: 1rem; line-height: 1.75; color: #a1a1aa; font-size: 0.875rem; }
-        .prose-legal h2 { font-size: 1rem; font-weight: 700; color: #e4e4e7; margin-top: 2rem; margin-bottom: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid #27272a; padding-bottom: 0.5rem; }
-        .prose-legal h3 { font-size: 0.875rem; font-weight: 600; color: #d4d4d8; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .prose-legal p { margin-bottom: 1rem; line-height: 1.75; color: #3f3f46; font-size: 0.875rem; }
+        .prose-legal h2 { font-size: 1rem; font-weight: 700; color: #18181b; margin-top: 2rem; margin-bottom: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid #d4d4d8; padding-bottom: 0.5rem; }
+        .prose-legal h3 { font-size: 0.875rem; font-weight: 600; color: #27272a; margin-top: 1.5rem; margin-bottom: 0.5rem; }
         .prose-legal ul { list-style: none; padding: 0; margin-bottom: 1rem; }
-        .prose-legal ul li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; color: #a1a1aa; font-size: 0.875rem; line-height: 1.6; }
-        .prose-legal ul li::before { content: "›"; position: absolute; left: 0; color: rgba(56,189,248,0.5); }
-        .prose-legal a { color: rgba(56,189,248,0.8); text-decoration: underline; }
-        .prose-legal a:hover { color: rgba(56,189,248,1); }
-        .prose-legal .highlight-box { background: rgba(56,189,248,0.05); border: 1px solid rgba(56,189,248,0.15); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
+        .prose-legal ul li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; color: #3f3f46; font-size: 0.875rem; line-height: 1.6; }
+        .prose-legal ul li::before { content: "›"; position: absolute; left: 0; color: #0369a1; }
+        .prose-legal a { color: #075985; text-decoration: underline; }
+        .prose-legal a:hover { color: #0c4a6e; }
+        .prose-legal .highlight-box { background: rgba(56,189,248,0.07); border: 1px solid rgba(56,189,248,0.3); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
         .prose-legal .highlight-box p { margin-bottom: 0; }
-        .prose-legal strong { color: #e4e4e7; }
+        .prose-legal strong { color: #18181b; }
       `}</style>
     </div>
   );

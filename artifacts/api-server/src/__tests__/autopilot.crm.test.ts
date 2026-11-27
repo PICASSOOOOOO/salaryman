@@ -1,18 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 
-const { creditOrgAccountMock } = vi.hoisted(() => ({
+const { creditOrgAccountMock, resendSendMock } = vi.hoisted(() => ({
   creditOrgAccountMock: vi.fn(async () => {}),
+  resendSendMock: vi.fn(async () => ({ data: { id: "email_test_1" }, error: null })),
 }));
 
-// Twilio is mocked so no real SMS is ever sent or charged.
+// Both providers are mocked so no real email or SMS is ever sent or charged.
 vi.mock("twilio", async () => (await import("./helpers/twilioMock")).makeTwilioMock());
-// Entitlement gate is the only plan check on this path; flip per-test via mockState.
-vi.mock("../lib/plan", async (importActual) => ({
-  ...(await importActual<typeof import("../lib/plan")>()),
-  hasFeature: vi.fn(async () => entitled),
-}));
-vi.mock("../lib/platform-twilio-access", () => ({
-  canUsePlatformTwilio: vi.fn(async () => true),
+vi.mock("../lib/resend", () => ({
+  getUncachableResendClient: vi.fn(async () => ({
+    client: { emails: { send: resendSendMock } },
+    fromEmail: "SALARYMAN <noreply@example.test>",
+  })),
 }));
 vi.mock("../routes/org-accounts", () => ({
   creditOrgAccount: creditOrgAccountMock,
@@ -35,13 +34,14 @@ import { and, eq } from "drizzle-orm";
 import { crmCallsAutopilotHandler } from "../lib/autopilot/crm-handler";
 import type { AutopilotContext, AutopilotLogInput } from "../lib/autopilot/types";
 
-// Mutable entitlement the mocked hasFeature reads at call-time.
+// The handler intentionally does not require the old phone-system entitlement.
 let entitled = true;
 
 // Unique synthetic identifiers so this file's rows never collide with others.
 const OWNER_ID = `test-crm-ap-${randomUUID()}`;
 // A high random org id avoids clashing with seeded orgs in the shared dev DB.
 const ORG_ID = 900_000_000 + Math.floor(Math.random() * 90_000_000);
+const previousSessionSecret = process.env.SESSION_SECRET;
 
 const twilioSpies = twilio as unknown as { __spies: Record<string, ReturnType<typeof vi.fn>> };
 
@@ -82,6 +82,7 @@ async function seedLead(over: Partial<typeof leadRecordsTable.$inferInsert> = {}
       orgId: ORG_ID,
       name: "Test Lead",
       phone: `+1555${Math.floor(1000000 + Math.random() * 8999999)}`,
+      email: `lead-${randomUUID()}@example.test`,
       status: "new",
       createdByUserId: OWNER_ID,
       assignedUserId: OWNER_ID,
@@ -116,46 +117,57 @@ async function cleanup() {
 }
 
 beforeAll(async () => {
+  process.env.SESSION_SECRET = "test-autopilot-email-opt-out-secret";
   await cleanup();
 });
 beforeEach(async () => {
   entitled = true;
   vi.clearAllMocks();
+  resendSendMock.mockResolvedValue({ data: { id: "email_test_1" }, error: null });
   // Each case starts from a clean slate so rows from a prior case (same ORG_ID)
   // never leak into another's assertions.
   await cleanup();
 });
 afterAll(async () => {
   await cleanup();
+  if (previousSessionSecret === undefined) delete process.env.SESSION_SECRET;
+  else process.env.SESSION_SECRET = previousSessionSecret;
 });
 
 describe("CRM autopilot handler", () => {
-  it("sends a real SMS for a due lead and records it to BOTH the CRM timeline and the autopilot log", async () => {
+  it("sends email for a due lead and records it to the CRM timeline and autopilot log", async () => {
     const lead = await seedLead({ name: "Ada Lovelace", status: "new" });
     const { ctx, logs } = makeCtx(5);
 
     await crmCallsAutopilotHandler(ctx);
 
-    // Outreach went through the shared Twilio SMS service, never an auto-call.
-    expect(twilioSpies.__spies.messagesCreate).toHaveBeenCalledTimes(1);
+    // Automated customer outreach uses email and never calls Twilio.
+    expect(resendSendMock).toHaveBeenCalledTimes(1);
+    expect(resendSendMock).toHaveBeenCalledWith(expect.objectContaining({
+      to: lead.email,
+      subject: "A quick follow-up",
+      text: expect.stringContaining("Thanks for your interest"),
+      html: expect.stringContaining("/api/campaigns/email/unsubscribe?"),
+    }));
+    expect(twilioSpies.__spies.messagesCreate).not.toHaveBeenCalled();
     expect(twilioSpies.__spies.callsCreate).not.toHaveBeenCalled();
 
-    // CRM activity logged via the recorder (shared timeline + dedupe path).
+    // CRM activity is attributed to the email channel.
     const activities = await db
       .select()
       .from(crmActivitiesTable)
       .where(and(eq(crmActivitiesTable.orgId, ORG_ID), eq(crmActivitiesTable.leadId, lead.id)));
     expect(activities.length).toBe(1);
-    expect(activities[0].channel).toBe("sms");
+    expect(activities[0].channel).toBe("email");
     expect(activities[0].direction).toBe("outbound");
 
-    // Lead side-effect (timeline note) fired exactly like a manual send.
+    // The lead timeline also records the outgoing email.
     const notes = await db.select().from(leadNotesTable).where(eq(leadNotesTable.leadId, lead.id));
     expect(notes.length).toBe(1);
-    expect(notes[0].note).toContain("Outbound SMS");
+    expect(notes[0].note).toContain("[Outbound email]");
 
     // Autopilot activity log has a success touch + a tick summary.
-    expect(logs.some((l) => l.action === "sms_followup" && l.outcome === "success")).toBe(true);
+    expect(logs.some((l) => l.action === "email_followup" && l.outcome === "success")).toBe(true);
     expect(logs.some((l) => l.action === "tick")).toBe(true);
     expect(creditOrgAccountMock).not.toHaveBeenCalled();
   });
@@ -176,9 +188,10 @@ describe("CRM autopilot handler", () => {
 
     await crmCallsAutopilotHandler(ctx);
 
-    // No new SMS sent for this just-contacted lead.
+    // No new email sent for this just-contacted lead.
+    expect(resendSendMock).not.toHaveBeenCalled();
     expect(twilioSpies.__spies.messagesCreate).not.toHaveBeenCalled();
-    expect(logs.some((l) => l.action === "sms_followup")).toBe(false);
+    expect(logs.some((l) => l.action === "email_followup")).toBe(false);
     expect(logs.some((l) => l.action === "tick" && l.outcome === "noop")).toBe(true);
   });
 
@@ -189,57 +202,59 @@ describe("CRM autopilot handler", () => {
 
     await crmCallsAutopilotHandler(ctx);
 
-    expect(logs.some((l) => l.action === "sms_followup")).toBe(false);
+    expect(logs.some((l) => l.action === "email_followup")).toBe(false);
     const activities = await db.select().from(crmActivitiesTable).where(eq(crmActivitiesTable.orgId, ORG_ID));
     expect(activities.length).toBe(0);
   });
 
-  it("suppresses CRM follow-ups for leads whose saved contact opted out of SMS", async () => {
+  it("suppresses CRM follow-ups for leads whose saved contact opted out of email", async () => {
     const lead = await seedLead({ name: "Opted Out", status: "new" });
     const [contact] = await db.insert(contactsTable).values({
       userId: OWNER_ID,
       name: lead.name,
       phone: lead.phone,
+      email: lead.email,
     }).returning();
     await db.insert(contactChannelPrefsTable).values({
       userId: OWNER_ID,
       contactId: contact.id,
-      smsOptIn: false,
-      smsOptedOutAt: new Date(),
+      emailOptIn: false,
+      emailOptedOutAt: new Date(),
     });
     const { ctx, logs } = makeCtx(5);
 
     await crmCallsAutopilotHandler(ctx);
 
+    expect(resendSendMock).not.toHaveBeenCalled();
     expect(twilioSpies.__spies.messagesCreate).not.toHaveBeenCalled();
-    expect(logs.some((l) => l.action === "sms_followup")).toBe(false);
+    expect(logs.some((l) => l.action === "email_followup")).toBe(false);
     const tick = logs.find((l) => l.action === "tick");
-    expect(tick?.detail?.smsOptedOut).toBe(1);
+    expect(tick?.detail?.emailOptedOut).toBe(1);
   });
 
-  it("backs off after a failed SMS attempt instead of retrying every tick", async () => {
+  it("backs off after a failed email attempt instead of retrying every tick", async () => {
     const lead = await seedLead({ name: "Temporary Provider Failure", status: "new" });
     const firstRun = makeCtx(5);
-    twilioSpies.__spies.messagesCreate.mockRejectedValueOnce(new Error("Twilio sender is not verified"));
+    resendSendMock.mockResolvedValueOnce({ data: null, error: { message: "Resend unavailable" } } as any);
 
     await crmCallsAutopilotHandler(firstRun.ctx);
 
-    expect(twilioSpies.__spies.messagesCreate).toHaveBeenCalledTimes(1);
-    expect(firstRun.logs.some((l) => l.action === "sms_followup" && l.outcome === "error")).toBe(true);
+    expect(resendSendMock).toHaveBeenCalledTimes(1);
+    expect(firstRun.logs.some((l) => l.action === "email_followup" && l.outcome === "error")).toBe(true);
     await db.insert(autopilotActivityLogTable).values({
       orgId: ORG_ID,
       domain: "crm_calls",
-      action: "sms_followup",
-      summary: "Failed to send an SMS follow-up.",
+      action: "email_followup",
+      summary: "Failed to send an email follow-up.",
       outcome: "error",
-      detail: { leadId: lead.id, channel: "sms" },
+      detail: { leadId: lead.id, channel: "email" },
     });
 
     const secondRun = makeCtx(5);
     await crmCallsAutopilotHandler(secondRun.ctx);
 
-    expect(twilioSpies.__spies.messagesCreate).toHaveBeenCalledTimes(1);
-    expect(secondRun.logs.some((l) => l.action === "sms_followup")).toBe(false);
+    expect(resendSendMock).toHaveBeenCalledTimes(1);
+    expect(secondRun.logs.some((l) => l.action === "email_followup")).toBe(false);
   });
 
   it("respects the per-tick action cap", async () => {
@@ -250,24 +265,18 @@ describe("CRM autopilot handler", () => {
 
     await crmCallsAutopilotHandler(ctx);
 
-    const sent = logs.filter((l) => l.action === "sms_followup" && l.outcome === "success").length;
+    const sent = logs.filter((l) => l.action === "email_followup" && l.outcome === "success").length;
     expect(sent).toBe(2);
   });
 
-  it("records intended actions WITHOUT sending when the org lacks the entitlement", async () => {
+  it("sends email without a phone-system entitlement", async () => {
     entitled = false;
-    const lead = await seedLead({ name: "No Plan", status: "new" });
-    const { ctx, logs } = makeCtx(5);
+    await seedLead({ name: "Email Without Phone Plan", status: "new" });
+    const { ctx } = makeCtx(5);
 
     await crmCallsAutopilotHandler(ctx);
 
-    // Nothing actually sent and nothing written to the CRM timeline.
-    const activities = await db.select().from(crmActivitiesTable).where(eq(crmActivitiesTable.orgId, ORG_ID));
-    expect(activities.length).toBe(0);
-    const notes = await db.select().from(leadNotesTable).where(eq(leadNotesTable.leadId, lead.id));
-    expect(notes.length).toBe(0);
-
-    // But the intended action is recorded to the autopilot log (blocked, not error).
-    expect(logs.some((l) => l.action === "intended_sms" && l.outcome === "blocked")).toBe(true);
+    expect(resendSendMock).toHaveBeenCalledTimes(1);
+    expect(twilioSpies.__spies.messagesCreate).not.toHaveBeenCalled();
   });
 });

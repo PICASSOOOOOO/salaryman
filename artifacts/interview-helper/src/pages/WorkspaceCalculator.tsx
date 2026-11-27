@@ -106,9 +106,7 @@ export default function WorkspaceCalculator() {
     <main className="min-h-[100dvh] bg-[#FAFAF7] px-3 py-5 text-[#11110f] sm:px-6 sm:py-8" data-testid="workspace-calculator">
       <div className="mx-auto max-w-md">
         <header className="mb-6 border-b border-[#d8d1c3] pb-5">
-          <p className="font-mono text-xs font-bold tracking-[.16em] text-[#756d60]">WORKSPACE / TOOLS</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Calculator</h1>
-          <p className="mt-2 text-sm text-[#625c52]">A straightforward desk calculator. Keyboard-ready, no surprises.</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Calculator</h1>
         </header>
 
         <section className="overflow-hidden rounded-lg border border-[#c9c1b3] bg-[#fffdf8] p-3 shadow-sm sm:p-5" aria-label="Calculator">

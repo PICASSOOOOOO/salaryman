@@ -1,11 +1,11 @@
 import { apiFetch, apiUrl } from '@/lib/api-client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ComponentType, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Trash2, Send, Clock, CheckCircle2, Loader2, X,
+  Plus, Trash2, Send, Clock, Loader2, X,
   Edit2, Eye, Zap, RefreshCw, Copy, Calendar, BarChart2,
-  Twitter, Linkedin, Instagram, Facebook, Hash, Sparkles,
-  FileText, Globe, MessageCircle, Film, Video, Download, Mail, UploadCloud,
+  Twitter, Linkedin, Instagram, Facebook, Hash, Sparkles, Cloud, AtSign,
+  FileText, MessageCircle, MessageSquare, Film, Video, Download, Mail, UploadCloud, Music2, Youtube,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { usePlan } from '@/hooks/use-plan';
@@ -16,6 +16,7 @@ interface SocialPost {
   platform: string;
   content: string;
   hashtags: string[];
+  mediaUrls: string[];
   status: string;
   scheduledAt: string | null;
   publishedAt: string | null;
@@ -62,16 +63,36 @@ interface ReelJob {
 
 const REEL_ACTIVE = new Set(['queued', 'capturing', 'finishing', 'delivering']);
 
-const PLATFORMS = [
-  { id: 'twitter', label: 'X / TWITTER', icon: Twitter, color: '#1DA1F2', charLimit: 280 },
-  { id: 'linkedin', label: 'LINKEDIN', icon: Linkedin, color: '#0A66C2', charLimit: 3000 },
-  { id: 'instagram', label: 'INSTAGRAM', icon: Instagram, color: '#E4405F', charLimit: 2200 },
+type SocialPlatformDefinition = {
+  id: string;
+  label: string;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
+  color: string;
+  charLimit: number;
+  mediaRequirement?: 'image-or-video' | 'video';
+  comingSoon?: boolean;
+};
+
+type SocialTab = 'posts' | 'compose' | 'calendar' | 'analytics' | 'reel';
+
+const PLATFORMS: SocialPlatformDefinition[] = [
+  { id: 'twitter', label: 'X / TWITTER', icon: Twitter, color: '#1DA1F2', charLimit: 280, comingSoon: true },
+  { id: 'linkedin', label: 'LINKEDIN', icon: Linkedin, color: '#0A66C2', charLimit: 3000, comingSoon: true },
+  { id: 'instagram', label: 'INSTAGRAM', icon: Instagram, color: '#E4405F', charLimit: 2200, mediaRequirement: 'image-or-video' },
   { id: 'facebook', label: 'FACEBOOK', icon: Facebook, color: '#1877F2', charLimit: 5000 },
   { id: 'threads', label: 'THREADS', icon: MessageCircle, color: '#000000', charLimit: 500 },
-  { id: 'tiktok', label: 'TIKTOK', icon: Globe, color: '#ff0050', charLimit: 300 },
-  { id: 'bluesky', label: 'BLUESKY', icon: Globe, color: '#0085ff', charLimit: 300 },
-  { id: 'youtube', label: 'YOUTUBE', icon: Globe, color: '#FF0000', charLimit: 5000 },
+  { id: 'tiktok', label: 'TIKTOK', icon: Music2, color: '#ff0050', charLimit: 300, mediaRequirement: 'video', comingSoon: true },
+  { id: 'bluesky', label: 'BLUESKY', icon: Cloud, color: '#0085ff', charLimit: 300 },
+  { id: 'youtube', label: 'YOUTUBE', icon: Youtube, color: '#FF0000', charLimit: 5000, mediaRequirement: 'video' },
+  { id: 'discord', label: 'DISCORD', icon: MessageSquare, color: '#5865F2', charLimit: 2000 },
 ];
+
+interface SocialConnection {
+  provider: string;
+  status: string;
+  supportsPublishing: boolean;
+  accountHandle?: string | null;
+}
 
 const TONES = ['professional', 'casual', 'witty', 'bold', 'educational', 'inspirational', 'provocative'];
 
@@ -94,8 +115,8 @@ function fmtDate(iso: string | null) {
 
 export default function SocialMediaManager() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { isOwner } = usePlan();
-  const [tab, setTab] = useState<'posts' | 'compose' | 'calendar' | 'analytics' | 'reel'>('posts');
+  const { isOwner, isPro } = usePlan();
+  const [tab, setTab] = useState<SocialTab>('posts');
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +126,7 @@ export default function SocialMediaManager() {
   const [composePlatform, setComposePlatform] = useState('twitter');
   const [composeContent, setComposeContent] = useState('');
   const [composeHashtags, setComposeHashtags] = useState('');
+  const [composeMediaUrl, setComposeMediaUrl] = useState('');
   const [composeSchedule, setComposeSchedule] = useState('');
   const [composeSaving, setComposeSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -122,6 +144,9 @@ export default function SocialMediaManager() {
   const [previewPost, setPreviewPost] = useState<SocialPost | null>(null);
   const [calendarPosts, setCalendarPosts] = useState<SocialPost[]>([]);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [connections, setConnections] = useState<SocialConnection[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [connectionsError, setConnectionsError] = useState<string | null>(null);
 
   const [reelJob, setReelJob] = useState<ReelJob | null>(null);
   const [reelStarting, setReelStarting] = useState(false);
@@ -147,6 +172,35 @@ export default function SocialMediaManager() {
   }, []);
 
   useEffect(() => { if (isAuthenticated) { fetchPosts(); fetchStats(); } }, [isAuthenticated, fetchPosts, fetchStats]);
+
+  const fetchConnections = useCallback(async () => {
+    if (!isPro) {
+      setConnections([]);
+      setConnectionsLoading(false);
+      return;
+    }
+    setConnectionsLoading(true);
+    setConnectionsError(null);
+    try {
+      const r = await apiFetch('/api/social/connections');
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || `Could not load connections (${r.status}).`);
+      setConnections(Array.isArray(data.connections) ? data.connections : []);
+    } catch (error) {
+      setConnectionsError(error instanceof Error ? error.message : 'Could not load connections.');
+    } finally {
+      setConnectionsLoading(false);
+    }
+  }, [isPro]);
+
+  useEffect(() => {
+    if (isAuthenticated && isPro) {
+      void fetchConnections();
+    } else {
+      setConnections([]);
+      setConnectionsLoading(false);
+    }
+  }, [isAuthenticated, isPro, fetchConnections]);
 
   const fetchReelStatus = useCallback(async () => {
     try {
@@ -174,6 +228,32 @@ export default function SocialMediaManager() {
   const platformInfo = getPlatformInfo(composePlatform);
   const charCount = composeContent.length;
   const charOver = charCount > platformInfo.charLimit;
+  const selectedConnection = connections.find((connection) => connection.provider === composePlatform);
+  const selectedPlatform = PLATFORMS.find((platform) => platform.id === composePlatform);
+  const mediaUrls = composeMediaUrl.trim() ? [composeMediaUrl.trim()] : [];
+
+  function publishBlockReason(platform: string, urls: string[] = []) {
+    if (PLATFORMS.find((item) => item.id === platform)?.comingSoon) {
+      return 'COMING SOON — live publishing is disabled until this provider is verified.';
+    }
+    if (!isPro) return 'PABLO PRIME is required for live publishing.';
+    if (connectionsLoading) return 'Checking account connection…';
+    if (connectionsError) return 'Could not verify the account connection. Retry the check.';
+    const connection = connections.find((item) => item.provider === platform);
+    if (!connection) return 'Connect this account in Marketing Reach before publishing.';
+    if (!connection.supportsPublishing) return 'COMING SOON — live publishing is not available for this channel yet.';
+    if (connection.status !== 'connected') return 'Connect this account in Marketing Reach before publishing.';
+    const required = PLATFORMS.find((item) => item.id === platform)?.mediaRequirement;
+    if (required && !urls.length) return required === 'video'
+      ? 'Add a public HTTPS video URL before publishing.'
+      : 'Add a public HTTPS image or video URL before publishing.';
+    if (urls.length && ['twitter', 'linkedin', 'bluesky', 'discord'].includes(platform)) {
+      return `${getPlatformInfo(platform).label} text publishing does not accept media URLs yet. Remove the media URL.`;
+    }
+    return null;
+  }
+
+  const selectedPublishBlock = publishBlockReason(composePlatform, mediaUrls);
 
   const jsonOpts = (method: string, data: unknown): RequestInit => ({
     method,
@@ -182,26 +262,55 @@ export default function SocialMediaManager() {
   });
 
   async function handleSave(asDraft: boolean) {
+    if (!asDraft && composeSchedule) {
+      setPublishError('Scheduling is COMING SOON. Save this as a draft or publish it now.');
+      return;
+    }
+    if (!asDraft) {
+      const reason = publishBlockReason(composePlatform, mediaUrls);
+      if (reason) {
+        setPublishError(reason);
+        return;
+      }
+    }
     setComposeSaving(true);
+    setPublishError(null);
     try {
       const hashtags = composeHashtags.split(/[,\s]+/).filter(h => h.startsWith('#') || h.length > 0).map(h => h.startsWith('#') ? h : `#${h}`).filter(Boolean);
       const payload = {
         platform: composePlatform,
         content: composeContent,
         hashtags,
-        status: asDraft ? 'draft' : (composeSchedule ? 'scheduled' : 'published'),
-        scheduledAt: composeSchedule || null,
+        mediaUrls,
+        status: 'draft',
+        scheduledAt: null,
       };
-      if (editingId) {
-        await apiFetch(`/api/social/posts/${editingId}`, jsonOpts('PATCH', payload));
-      } else {
-        await apiFetch('/api/social/posts', jsonOpts('POST', payload));
+      const saveResponse = editingId
+        ? await apiFetch(`/api/social/posts/${editingId}`, jsonOpts('PATCH', payload))
+        : await apiFetch('/api/social/posts', jsonOpts('POST', payload));
+      const saved = await saveResponse.json().catch(() => ({}));
+      if (!saveResponse.ok) throw new Error(saved.error || `Could not save draft (${saveResponse.status}).`);
+      const postId = Number(saved.id ?? editingId);
+      if (!asDraft) {
+        if (!Number.isInteger(postId) || postId <= 0) throw new Error('The saved draft did not return a post ID.');
+        const publishResponse = await apiFetch(`/api/social/posts/${postId}/publish-live`, { method: 'POST' });
+        const published = await publishResponse.json().catch(() => ({}));
+        if (!publishResponse.ok || published.simulated) {
+          setEditingId(postId);
+          setPublishError(published.error || 'The live publishing service did not confirm a real post. Your draft is saved.');
+          fetchPosts();
+          fetchStats();
+          return;
+        }
       }
-      setComposeContent(''); setComposeHashtags(''); setComposeSchedule(''); setEditingId(null);
+      setComposeContent(''); setComposeHashtags(''); setComposeMediaUrl(''); setComposeSchedule(''); setEditingId(null);
       setTab('posts');
       fetchPosts(); fetchStats();
-    } catch { }
-    setComposeSaving(false);
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : 'Could not save or publish this post.');
+    } finally {
+      setComposeSaving(false);
+    }
   }
 
   async function handleDelete(id: number) {
@@ -211,18 +320,23 @@ export default function SocialMediaManager() {
     } catch { }
   }
 
-  async function handlePublish(id: number) {
+  async function handlePublish(post: SocialPost) {
     setPublishError(null);
+    const reason = publishBlockReason(post.platform, post.mediaUrls ?? []);
+    if (reason) {
+      setPublishError(reason);
+      return;
+    }
     try {
-      const r = await apiFetch(`/api/social/posts/${id}/publish`, { method: 'POST' });
-      if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        setPublishError(data.error || `Could not publish post (${r.status}).`);
+      const r = await apiFetch(`/api/social/posts/${post.id}/publish-live`, { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data.simulated) {
+        setPublishError(data.error || 'The live publishing service did not confirm a real post.');
         return;
       }
       fetchPosts(); fetchStats();
     } catch {
-      setPublishError('Network error — could not reach the social publishing service.');
+      setPublishError('Network error — could not reach the live social publishing service.');
     }
   }
 
@@ -231,9 +345,15 @@ export default function SocialMediaManager() {
     setComposePlatform(post.platform);
     setComposeContent(post.content);
     setComposeHashtags((post.hashtags || []).join(' '));
-    setComposeSchedule(post.scheduledAt ? new Date(post.scheduledAt).toISOString().slice(0, 16) : '');
+    setComposeMediaUrl((post.mediaUrls || [])[0] ?? '');
+    setComposeSchedule('');
     setTab('compose');
   }
+
+  /*
+   * Publishing is intentionally separate from saving. A draft is never marked
+   * published until the provider returns a real post ID.
+   */
 
   async function handleAiGenerate() {
     if (!aiTopic.trim()) return;
@@ -307,11 +427,11 @@ export default function SocialMediaManager() {
     setReelStarting(false);
   }
 
-  const tabs = [
-    { id: 'posts' as const, label: 'ALL POSTS', icon: FileText },
-    { id: 'compose' as const, label: editingId ? 'EDIT POST' : 'COMPOSE', icon: Plus },
-    { id: 'calendar' as const, label: 'CALENDAR', icon: Calendar },
-    { id: 'analytics' as const, label: 'ANALYTICS', icon: BarChart2 },
+  const tabs: Array<{ id: SocialTab; label: string; icon: ComponentType<{ className?: string; style?: CSSProperties }>; comingSoon?: boolean }> = [
+    { id: 'posts', label: 'ALL POSTS', icon: FileText },
+    { id: 'compose', label: editingId ? 'EDIT POST' : 'COMPOSE', icon: Plus },
+    { id: 'calendar', label: 'CALENDAR', icon: Calendar, comingSoon: true },
+    { id: 'analytics', label: 'ANALYTICS', icon: BarChart2, comingSoon: true },
     ...(isOwner ? [{ id: 'reel' as const, label: 'GAMEPLAY REEL', icon: Film }] : []),
   ];
 
@@ -327,13 +447,19 @@ export default function SocialMediaManager() {
         {tabs.map(t => (
           <button
             key={t.id}
+            type="button"
+            data-testid={`tab-social-${t.id}`}
+            disabled={Boolean(t.comingSoon)}
             onClick={() => { setTab(t.id); if (t.id === 'calendar') loadCalendar(); }}
+            title={t.comingSoon ? 'COMING SOON — this feature is not available yet.' : undefined}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-mono tracking-wider transition-all whitespace-nowrap ${
+              t.comingSoon ? 'cursor-not-allowed opacity-50' :
               tab === t.id ? 'bg-cyan-950/40 text-cyan-400 border-b-2 border-cyan-500' : 'text-cyan-700 hover:text-cyan-500 hover:bg-cyan-950/20'
             }`}
           >
             <t.icon className="w-3.5 h-3.5" />
             {t.label}
+            {t.comingSoon && <span className="text-[8px] tracking-normal text-amber-500">COMING SOON</span>}
           </button>
         ))}
       </div>
@@ -373,7 +499,7 @@ export default function SocialMediaManager() {
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => { setEditingId(null); setComposeContent(''); setComposeHashtags(''); setComposeSchedule(''); setTab('compose'); }}
+              onClick={() => { setEditingId(null); setComposeContent(''); setComposeHashtags(''); setComposeMediaUrl(''); setComposeSchedule(''); setTab('compose'); }}
               className="ml-auto flex items-center gap-1.5 bg-cyan-950/40 border border-cyan-800/50 text-cyan-400 text-xs font-mono px-3 py-1.5 hover:bg-cyan-900/40 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> NEW POST
@@ -418,15 +544,24 @@ export default function SocialMediaManager() {
                         )}
                         {post.scheduledAt && post.status === 'scheduled' && (
                           <div className="flex items-center gap-1 mt-1.5 text-[10px] text-amber-500/60 font-mono">
-                            <Clock className="w-3 h-3" /> Scheduled: {fmtDate(post.scheduledAt)}
+                            <Clock className="w-3 h-3" /> {fmtDate(post.scheduledAt)} · SCHEDULING COMING SOON
                           </div>
                         )}
                       </div>
                       <div className="flex flex-col gap-1">
                         <button onClick={() => setPreviewPost(post)} className="text-cyan-700 hover:text-cyan-400 p-1 transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => startEdit(post)} className="text-cyan-700 hover:text-cyan-400 p-1 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                         {post.status === 'draft' && (
-                          <button onClick={() => handlePublish(post.id)} className="text-green-700 hover:text-green-400 p-1 transition-colors"><Send className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => startEdit(post)} title="Edit draft" className="text-cyan-700 hover:text-cyan-400 p-1 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                        )}
+                        {post.status === 'draft' && (
+                          <button
+                            type="button"
+                            data-testid={`button-social-publish-post-${post.id}`}
+                            onClick={() => void handlePublish(post)}
+                            disabled={Boolean(publishBlockReason(post.platform, post.mediaUrls ?? []))}
+                            title={publishBlockReason(post.platform, post.mediaUrls ?? []) ?? 'Publish live'}
+                            className="text-green-700 hover:text-green-400 disabled:cursor-not-allowed disabled:opacity-30 p-1 transition-colors"
+                          ><Send className="w-3.5 h-3.5" /></button>
                         )}
                         <button onClick={() => handleDelete(post.id)} className="text-red-800 hover:text-red-400 p-1 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
@@ -457,7 +592,14 @@ export default function SocialMediaManager() {
                 {PLATFORMS.map(p => (
                   <button
                     key={p.id}
+                    type="button"
+                            data-testid={`button-social-platform-${p.id}`}
                     onClick={() => setComposePlatform(p.id)}
+                    disabled={Boolean(p.comingSoon) || connections.some((connection) => connection.provider === p.id && !connection.supportsPublishing)}
+                    title={p.comingSoon || connections.some((connection) => connection.provider === p.id && !connection.supportsPublishing)
+                      ? 'COMING SOON — live publishing is not available yet.'
+                      : undefined}
+                    aria-pressed={composePlatform === p.id}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-mono tracking-wider border transition-all ${
                       composePlatform === p.id
                         ? 'border-opacity-60 bg-opacity-10'
@@ -466,10 +608,21 @@ export default function SocialMediaManager() {
                     style={composePlatform === p.id ? { borderColor: p.color + '99', color: p.color, backgroundColor: p.color + '15' } : {}}
                   >
                     <p.icon className="w-3 h-3" />
-                    {p.label}
+                    {p.label}{p.comingSoon || connections.some((connection) => connection.provider === p.id && !connection.supportsPublishing) ? ' · COMING SOON' : ''}
                   </button>
                 ))}
               </div>
+              {selectedPublishBlock && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-amber-500" role="status">
+                  <span data-testid="status-social-publish-block">{selectedPublishBlock}</span>
+                  {!selectedPlatform?.comingSoon && (!selectedConnection?.status || selectedConnection.status !== 'connected') ? (
+                    <a href="/marketing/command" data-testid="link-social-connect-account" className="text-cyan-400 underline">CONNECT ACCOUNT</a>
+                  ) : null}
+                  {connectionsError && (
+                    <button type="button" data-testid="button-social-connections-retry" onClick={() => void fetchConnections()} className="text-cyan-400 underline">RETRY</button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -591,18 +744,38 @@ export default function SocialMediaManager() {
             </div>
 
             <div>
-              <label className="text-[10px] font-mono text-cyan-700 tracking-wider block mb-1.5">SCHEDULE (OPTIONAL)</label>
+              <label className="text-[10px] font-mono text-cyan-700 tracking-wider block mb-1.5">
+                PUBLIC MEDIA URL {selectedPlatform?.mediaRequirement === 'video' ? '(VIDEO REQUIRED)' : '(OPTIONAL)'}
+              </label>
+              <input
+                type="url"
+                data-testid="input-social-media-url"
+                value={composeMediaUrl}
+                onChange={e => setComposeMediaUrl(e.target.value)}
+                placeholder="https://…"
+                className="w-full bg-black/40 border border-cyan-900/30 text-cyan-300 text-xs font-mono px-3 py-2 outline-none placeholder:text-cyan-900"
+              />
+              <p className="mt-1 text-[9px] font-mono text-cyan-900">
+                Use a publicly reachable HTTPS file. Instagram needs media; TikTok and YouTube need a video. Uploads are not stored here.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-mono text-cyan-700 tracking-wider block mb-1.5">SCHEDULE · COMING SOON</label>
               <input
                 type="datetime-local"
+                data-testid="input-social-schedule"
                 value={composeSchedule}
-                onChange={e => setComposeSchedule(e.target.value)}
+                disabled
                 className="bg-black/40 border border-cyan-900/30 text-cyan-300 text-xs font-mono px-3 py-2 outline-none"
               />
+              <p className="mt-1 text-[9px] font-mono text-amber-500/80">Scheduled posts are not sent automatically yet.</p>
             </div>
 
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => handleSave(true)}
+                data-testid="button-social-save-draft"
                 disabled={composeSaving || !composeContent.trim()}
                 className="flex items-center gap-1.5 bg-cyan-950/30 border border-cyan-800/40 text-cyan-500 text-xs font-mono px-4 py-2 hover:bg-cyan-900/30 disabled:opacity-30 transition-colors"
               >
@@ -611,15 +784,17 @@ export default function SocialMediaManager() {
               </button>
               <button
                 onClick={() => handleSave(false)}
-                disabled={composeSaving || !composeContent.trim() || charOver}
-                className="flex items-center gap-1.5 bg-green-950/30 border border-green-800/40 text-green-500 text-xs font-mono px-4 py-2 hover:bg-green-900/30 disabled:opacity-30 transition-colors"
+                data-testid="button-social-publish"
+                disabled={composeSaving || !composeContent.trim() || charOver || Boolean(selectedPublishBlock)}
+                title={selectedPublishBlock ?? 'Publish this post now'}
+                className="flex items-center gap-1.5 bg-green-950/30 border border-green-800/40 text-green-500 text-xs font-mono px-4 py-2 hover:bg-green-900/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 {composeSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                {composeSchedule ? 'SCHEDULE' : 'PUBLISH NOW'}
+                PUBLISH NOW
               </button>
               {editingId && (
                 <button
-                  onClick={() => { setEditingId(null); setComposeContent(''); setComposeHashtags(''); setComposeSchedule(''); }}
+                  onClick={() => { setEditingId(null); setComposeContent(''); setComposeHashtags(''); setComposeMediaUrl(''); setComposeSchedule(''); }}
                   className="flex items-center gap-1.5 text-cyan-800 text-xs font-mono px-3 py-2 hover:text-cyan-500 transition-colors"
                 >
                   <X className="w-3 h-3" /> CANCEL

@@ -44,7 +44,7 @@ export const AUTOPILOT_DOMAIN_META: Record<AutopilotDomain, { label: string; des
   },
   crm_calls: {
     label: "CRM & Calls",
-    description: "Works the lead pipeline and sends consent-aware SMS follow-ups. Automated phone calls are not used.",
+    description: "Works the lead pipeline with consent-aware email follow-ups. Automated phone calls are not used.",
   },
   accounting: {
     label: "Accounting",

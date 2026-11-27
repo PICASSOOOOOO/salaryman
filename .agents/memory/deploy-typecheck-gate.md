@@ -48,6 +48,14 @@ builder at peak memory.
 `services.production.build`. The web artifact should invoke only its filtered
 package build; the API artifact should do the same.
 
+## Root prepublish typecheck concurrency
+
+Keep package-level checks in the root prepublish gate serial on the memory-limited publishing builder.
+
+**Why:** A failed publish log ended while the API and web TypeScript checks were running alongside two smaller package checks. It reported no compiler error, and the builder has substantially less memory than the development workspace, so concurrent compiler peaks are a likely failure mode.
+
+**How to apply:** Preserve `--workspace-concurrency=1` in the root recursive typecheck used by `.replit`'s pre-build hook. A passing typecheck on the larger development machine alone does not establish safe builder memory use.
+
 ## Web-standard binary APIs need owned buffers
 
 Node `Buffer` values can fail the publish TypeScript gate when passed directly

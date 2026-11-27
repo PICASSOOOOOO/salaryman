@@ -49,7 +49,7 @@ describe("frontend startup boundaries", () => {
     expect(landing).not.toContain("<video");
     expect(landing).not.toContain(".mp4");
     expect(landing).toContain("Make work possible.");
-    expect(landing).toContain("PABLO PRIME AUTOMATION");
+    expect(landing).toContain("PABLO PRIME");
     expect(landing).not.toContain("PIXEL AGENTS");
     expect(landing).toContain('href: "/business/autopilot"');
   });
@@ -101,9 +101,9 @@ describe("frontend startup boundaries", () => {
     expect(app).not.toContain('lazy(() => import("@/pages/WorldPlay"))');
     expect(app).not.toContain('lazy(() => import("@/pages/LandRegistry"))');
     expect(app).not.toContain('lazy(() => import("@/pages/Subway"))');
-    expect(app).toContain('<Route path="/world/*">{() => <Redirect to="/desktop" />}</Route>');
-    expect(app).toContain('<Route path="/subway">{() => <Redirect to="/desktop" />}</Route>');
-    expect(app).toContain('<Route path="/tower/*">{() => <Redirect to="/desktop" />}</Route>');
-    expect(app).toContain('<Route path="/desktop" component={DesktopDownload} />');
+    expect(app).toContain('<Route path="/world/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>');
+    expect(app).toContain('<Route path="/subway">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>');
+    expect(app).toContain('<Route path="/tower/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>');
+    expect(app).toContain('<Route path="/desktop">{() => <GameLock><DesktopDownload /></GameLock>}</Route>');
   });
 });

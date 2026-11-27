@@ -5,9 +5,8 @@ import { publishOAuthPost } from "./social-oauth-publishers";
 // platform is a provider with a common interface. Providers fall into two camps:
 //   • credential/webhook providers (Bluesky, Discord) — the user pastes a secret
 //     and we can verify + post for real RIGHT NOW, no platform review needed.
-//   • OAuth providers (X, LinkedIn, Meta FB/IG/Threads, TikTok, YouTube) — need
-//     the OWNER to register a platform app (env secrets) and go through review
-//     before posting is allowed. Until configured they report `needs_app_config`.
+//   • OAuth providers (X, LinkedIn, Meta FB/IG/Threads, TikTok, YouTube) — each
+//     customer connects their own developer app and account before posting.
 // Every outbound fetch is wrapped with an AbortSignal timeout.
 
 export type ProviderAuthType = "app_password" | "webhook" | "oauth";
@@ -45,6 +44,8 @@ export interface SocialProviderDef {
   authType: ProviderAuthType;
   /** True if connectable today without platform review (credential/webhook). */
   available: boolean;
+  /** False while provider credentials or live behavior still require verification. */
+  supportsPublishing?: boolean;
   /** OAuth providers need the owner's platform app credentials in env. */
   requiresAppConfig: boolean;
   appConfigEnv?: string[];
@@ -105,6 +106,9 @@ const bluesky: SocialProviderDef = {
     return { ok: true, accountHandle: session.handle, accountName: session.handle };
   },
   async publish(creds, input) {
+    if (input.mediaUrls?.some((url) => url.trim())) {
+      return { ok: false, error: "Bluesky image uploads are COMING SOON. Remove the media URL and publish this as text." };
+    }
     const session = await blueskySession(creds.identifier, creds.appPassword);
     if (!session) return { ok: false, error: "Bluesky auth failed." };
     const text = composeText(input, this.charLimit);
@@ -118,7 +122,8 @@ const bluesky: SocialProviderDef = {
       }),
     });
     if (!r.ok) return { ok: false, error: `Bluesky post failed (${r.status}).` };
-    const data = (await r.json()) as { uri: string };
+    const data = (await r.json()) as { uri?: string };
+    if (!data.uri) return { ok: false, error: "Bluesky did not return a post URI." };
     const rkey = data.uri?.split("/").pop();
     return {
       ok: true,
@@ -151,6 +156,9 @@ const discord: SocialProviderDef = {
   },
   async publish(creds, input) {
     if (!DISCORD_WEBHOOK_RE.test(creds.webhookUrl || "")) return { ok: false, error: "Invalid Discord webhook URL." };
+    if (input.mediaUrls?.some((url) => url.trim())) {
+      return { ok: false, error: "Discord media attachments are COMING SOON. Remove the media URL and publish this as text." };
+    }
     const content = composeText(input, (this.charLimit ?? 2000) - 100);
     const r = await fetchWithTimeout(`${creds.webhookUrl}?wait=true`, {
       method: "POST",
@@ -159,7 +167,8 @@ const discord: SocialProviderDef = {
     });
     if (!r.ok) return { ok: false, error: `Discord post failed (${r.status}).` };
     const data = (await r.json().catch(() => null)) as { id?: string } | null;
-    return { ok: true, externalId: data?.id };
+    if (!data?.id) return { ok: false, error: "Discord did not return a message ID." };
+    return { ok: true, externalId: data.id };
   },
 };
 
@@ -171,34 +180,35 @@ function oauthProvider(
   charLimit: number,
   connectHint: string,
 ): SocialProviderDef {
-  const customerConfiguredOAuth = ["facebook", "instagram", "threads", "tiktok", "youtube"].includes(id);
+  const customerConfiguredOAuth = ["twitter", "linkedin", "facebook", "instagram", "threads", "tiktok", "youtube"].includes(id);
   return {
     id,
     label,
     authType: "oauth",
     available: customerConfiguredOAuth,
+    supportsPublishing: !["twitter", "linkedin", "tiktok"].includes(id),
     requiresAppConfig: true,
     appConfigEnv: customerConfiguredOAuth ? [] : appConfigEnv,
     charLimit,
     credentialFields: [
-      { key: "clientId", label: id === "tiktok" ? "Client key" : "App / client ID", type: "text" },
+    { key: "clientId", label: id === "tiktok" ? "Client key" : "App / client ID", type: "text" },
       { key: "clientSecret", label: "App / client secret", type: "password" },
     ],
     connectHint: customerConfiguredOAuth
       ? "Use your own platform developer app. Add the callback URL shown below to that app, then enter its client ID and secret."
       : connectHint,
     ...(customerConfiguredOAuth
-      ? { publish: (creds: Record<string, string>, input: ProviderPublishInput) =>
-          publishOAuthPost(id as "facebook" | "instagram" | "threads" | "tiktok" | "youtube", creds, input) }
+       ? { publish: (creds: Record<string, string>, input: ProviderPublishInput) =>
+           publishOAuthPost(id as "twitter" | "linkedin" | "facebook" | "instagram" | "threads" | "tiktok" | "youtube", creds, input) }
       : {}),
   };
 }
 
 const oauthProviders: SocialProviderDef[] = [
   oauthProvider("twitter", "X (Twitter)", ["TWITTER_CLIENT_ID", "TWITTER_CLIENT_SECRET"], 280,
-    "Needs an X developer app (paid Basic tier) with read+write. Owner adds the keys, then connect via OAuth."),
+    "Use your own X developer app with post permissions. Add the callback URL, then enter its client ID and secret."),
   oauthProvider("linkedin", "LinkedIn", ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"], 3000,
-    "Needs a LinkedIn app approved for 'Share on LinkedIn' (w_member_social). Owner adds the keys, then connect."),
+    "Use your own LinkedIn app approved for Share on LinkedIn (w_member_social). Add the callback URL, then enter its client ID and secret."),
   oauthProvider("facebook", "Facebook", ["META_APP_ID", "META_APP_SECRET"], 5000,
     "Needs a Meta app with pages_manage_posts (App Review) and a linked Facebook Page."),
   oauthProvider("instagram", "Instagram", ["META_APP_ID", "META_APP_SECRET"], 2200,
@@ -206,7 +216,7 @@ const oauthProviders: SocialProviderDef[] = [
   oauthProvider("threads", "Threads", ["META_APP_ID", "META_APP_SECRET"], 500,
     "Needs the Meta Threads API enabled on your app, then connect via OAuth."),
   oauthProvider("tiktok", "TikTok", ["TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"], 2200,
-    "Needs a TikTok app approved for the Content Posting API (audited). Owner adds the keys, then connect."),
+    "COMING SOON — TikTok must confirm the final post status before this channel can be enabled."),
   oauthProvider("youtube", "YouTube", ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], 5000,
     "Needs a Google Cloud project with the YouTube Data API and a verified OAuth consent screen."),
 ];

@@ -40,6 +40,11 @@ export const usersTable = pgTable("users", {
   // localStorage blobs: { settings: {...}, lowGfx: boolean }. Null = the player
   // has never synced settings; the client falls back to its local-only blob.
   gameSettings: jsonb("game_settings"),
+  // Account-owned browser workspace slots, separate from game/display settings.
+  workspaceLayout: jsonb("workspace_layout").$type<{
+    version: 2;
+    slots: (string | null)[];
+  }>(),
   currentOrgId: varchar("current_org_id"),
   // FK-by-string to player_profiles.id (we don't declare a hard FK to avoid
   // a circular import with player-profiles.ts; profile delete cascades via

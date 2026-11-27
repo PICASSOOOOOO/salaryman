@@ -16,6 +16,8 @@ describe("Pablo navigation catalog", () => {
     expect(searchCatalog("calculator").some((page) => page.path === "/workspace/calculator")).toBe(true);
     expect(catalog.get("/creative/brand")?.group).toBe("Marketing");
     expect(catalog.get("/creative/media")?.label).toBe("Data vault");
+    expect(searchCatalog("knowledge vault").some((page) => page.path === "/creative/media?tab=knowledge")).toBe(true);
+    expect(catalog.has("/console/vault")).toBe(false);
     expect(catalog.get("/creative/classroom")?.label).toBe("Meeting room");
     expect(searchCatalog("stem player").some((page) => page.path === "/1999/stems")).toBe(true);
   });

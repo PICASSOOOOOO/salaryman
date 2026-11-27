@@ -942,5 +942,26 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {
-  return SALARYMAN_ART_KIT.find(e => e.key === key) ?? null;
+  const registered = SALARYMAN_ART_KIT.find(e => e.key === key);
+  if (registered) return registered;
+
+  // Named runtime identities (Pixel Agents, Tower NPCs and player avatars)
+  // are baked through the same SALARYMAN pipeline as the curated kit. Slugs
+  // are validated before being included in a prompt; arbitrary prompt text is
+  // never accepted from the client.
+  const match = /^(pixel_agent|tower_character|player_avatar)_([a-z0-9]+(?:_[a-z0-9]+){0,8})$/.exec(key);
+  if (!match) return null;
+  const [, kind, slug] = match;
+  const identity = slug.split("_").map(part => part[0].toUpperCase() + part.slice(1)).join(" ");
+  const subject = kind === "pixel_agent"
+    ? `A distinct named Pixel Agent portrait for ${identity}, a bespoke expressive cybernetic office assistant with unique face shape, eye design, head silhouette, and signature details that clearly distinguish this identity from other agents. Chest-up, centered, readable at small size, dark navy background.`
+    : kind === "player_avatar"
+      ? `A named player identity portrait for ${identity}, an individual resident of the Salaryman neon-noir corporate city. Distinct face, hair, expression, and outfit; chest-up portrait, centered, dark navy background.`
+      : `A named Tower character portrait for ${identity}, an individual resident or worker in the Salaryman neon-noir corporate tower. Distinct facial features, hairstyle, expression, and work clothing; chest-up portrait, centered, dark navy background.`;
+  return {
+    key,
+    category: "character",
+    subject,
+    aspectRatio: "3:4",
+  };
 }

@@ -1,9 +1,9 @@
-import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { db, socialConnectionsTable } from "@workspace/db";
 import { decryptSocialCredentials, encryptSocialCredentials } from "./social-credentials-crypto";
 
-type OAuthProvider = "facebook" | "instagram" | "threads" | "tiktok" | "youtube";
+type OAuthProvider = "twitter" | "linkedin" | "facebook" | "instagram" | "threads" | "tiktok" | "youtube";
 type OAuthState = { userId: string; provider: OAuthProvider; nonce: string; issuedAt: number };
 type TokenResponse = {
   access_token?: string;
@@ -17,6 +17,14 @@ type TokenResponse = {
 };
 
 const OAUTH_SPECS: Record<OAuthProvider, { authorizeUrl: string; scopes: string[] }> = {
+  twitter: {
+    authorizeUrl: "https://x.com/i/oauth2/authorize",
+    scopes: ["tweet.read", "tweet.write", "users.read", "offline.access"],
+  },
+  linkedin: {
+    authorizeUrl: "https://www.linkedin.com/oauth/v2/authorization",
+    scopes: ["openid", "profile", "w_member_social"],
+  },
   facebook: {
     authorizeUrl: "https://www.facebook.com/v22.0/dialog/oauth",
     scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts"],
@@ -92,6 +100,7 @@ export async function beginSocialOAuth(
   if (!clientId.trim() || !clientSecret.trim()) throw new Error("App ID and app secret are required.");
   const redirectUri = socialOAuthCallbackUrl();
   const nonce = randomBytes(24).toString("base64url");
+  const codeVerifier = provider === "twitter" ? randomBytes(32).toString("base64url") : null;
   const [existing] = await db.select().from(socialConnectionsTable).where(and(
     eq(socialConnectionsTable.userId, userId),
     eq(socialConnectionsTable.provider, provider),
@@ -99,7 +108,13 @@ export async function beginSocialOAuth(
   const credentials = existing?.provider === provider
     ? decryptSocialCredentials(existing.credentials as Record<string, string>, userId, provider).credentials
     : {};
-  const nextCredentials = { ...credentials, clientId: clientId.trim(), clientSecret: clientSecret.trim(), oauthNonce: nonce };
+  const nextCredentials = {
+    ...credentials,
+    clientId: clientId.trim(),
+    clientSecret: clientSecret.trim(),
+    oauthNonce: nonce,
+    ...(codeVerifier ? { oauthCodeVerifier: codeVerifier } : {}),
+  };
   const now = new Date();
   await db.insert(socialConnectionsTable).values({
     userId,
@@ -127,6 +142,10 @@ export async function beginSocialOAuth(
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", spec.scopes.join(provider === "tiktok" ? "," : " "));
   url.searchParams.set("state", state);
+  if (codeVerifier) {
+    url.searchParams.set("code_challenge", createHash("sha256").update(codeVerifier).digest("base64url"));
+    url.searchParams.set("code_challenge_method", "S256");
+  }
   if (provider === "youtube") {
     url.searchParams.set("access_type", "offline");
     url.searchParams.set("prompt", "consent");
@@ -143,7 +162,44 @@ async function fetchJson(url: string, init?: RequestInit): Promise<Record<string
   return data;
 }
 
-async function exchangeCode(provider: OAuthProvider, code: string, creds: Record<string, string>, redirectUri: string): Promise<TokenResponse> {
+async function exchangeCode(
+  provider: OAuthProvider,
+  code: string,
+  creds: Record<string, string>,
+  redirectUri: string,
+  codeVerifier?: string,
+): Promise<TokenResponse> {
+  if (provider === "twitter") {
+    if (!codeVerifier) throw new Error("X authorization is missing its PKCE verifier. Reconnect the account.");
+    const basic = Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString("base64");
+    return fetchJson("https://api.x.com/2/oauth2/token", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: `Basic ${basic}`,
+      },
+      body: new URLSearchParams({
+        client_id: creds.clientId,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier,
+      }),
+    });
+  }
+  if (provider === "linkedin") {
+    return fetchJson("https://www.linkedin.com/oauth/v2/accessToken", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: creds.clientId,
+        client_secret: creds.clientSecret,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+        code,
+      }),
+    });
+  }
   if (provider === "facebook") {
     return fetchJson(`https://graph.facebook.com/v22.0/oauth/access_token?${new URLSearchParams({
       client_id: creds.clientId, client_secret: creds.clientSecret, redirect_uri: redirectUri, code,
@@ -178,6 +234,31 @@ async function exchangeCode(provider: OAuthProvider, code: string, creds: Record
 async function resolveAccount(provider: OAuthProvider, token: TokenResponse): Promise<{ handle: string; name: string; extra: Record<string, string> }> {
   const accessToken = token.access_token || "";
   if (!accessToken) throw new Error("The platform returned no access token.");
+  if (provider === "twitter") {
+    const profile = await fetchJson("https://api.x.com/2/users/me?user.fields=name,username", {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    const user = profile.data ?? {};
+    if (!user.id) throw new Error("X did not return an account profile.");
+    const username = String(user.username ?? user.id);
+    return {
+      handle: `@${username}`,
+      name: String(user.name ?? username),
+      extra: { accountId: String(user.id), username },
+    };
+  }
+  if (provider === "linkedin") {
+    const profile = await fetchJson("https://api.linkedin.com/v2/userinfo", {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    if (!profile.sub) throw new Error("LinkedIn did not return an account profile.");
+    const accountId = String(profile.sub);
+    return {
+      handle: String(profile.name ?? accountId),
+      name: String(profile.name ?? "LinkedIn member"),
+      extra: { accountId, authorUrn: `urn:li:person:${accountId}` },
+    };
+  }
   if (provider === "facebook" || provider === "instagram") {
     const pages = await fetchJson(`https://graph.facebook.com/v22.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${encodeURIComponent(accessToken)}`);
     const page = Array.isArray(pages.data) ? pages.data[0] : null;
@@ -226,7 +307,9 @@ export async function completeSocialOAuth(stateValue: string, code: string): Pro
   const decoded = decryptSocialCredentials(row.credentials as Record<string, string>, state.userId, state.provider);
   const creds = decoded.credentials;
   if (!creds.oauthNonce || creds.oauthNonce !== state.nonce) throw new Error("OAuth state has already been used.");
+  const codeVerifier = creds.oauthCodeVerifier;
   delete creds.oauthNonce;
+  delete creds.oauthCodeVerifier;
   await db.update(socialConnectionsTable).set({
     status: "connecting",
     credentials: encryptSocialCredentials(creds, state.userId, state.provider),
@@ -235,7 +318,7 @@ export async function completeSocialOAuth(stateValue: string, code: string): Pro
 
   try {
     const redirectUri = socialOAuthCallbackUrl();
-    const token = await exchangeCode(state.provider, code, creds, redirectUri);
+    const token = await exchangeCode(state.provider, code, creds, redirectUri, codeVerifier);
     const account = await resolveAccount(state.provider, token);
     const credentials = {
       ...creds,

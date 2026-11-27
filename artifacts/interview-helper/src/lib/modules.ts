@@ -7,7 +7,7 @@ import {
   Store, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
   Shield, Link2, ClipboardList, Timer,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
-  User, Eye, Map, AlertTriangle, Activity, Brain, Share2,
+  User, Eye, Map, AlertTriangle, Brain, Share2,
   GraduationCap, Landmark, Ruler, Banknote, Coins, ShoppingBag,
 } from 'lucide-react';
 
@@ -38,7 +38,9 @@ export const MODULES: Module[] = [
     codename: 'PABLO',
     icon: Terminal,
     defaultPath: '/pablo',
-    subs: [],
+    subs: [
+      { id: 'pablo-deck', path: '/pablo/deck', label: 'PABLO DECK', boomerLabel: 'PABLO DECK', codename: 'PABLO-DECK', icon: Layers },
+    ],
   },
   {
     id: 'office',
@@ -55,7 +57,6 @@ export const MODULES: Module[] = [
       { id: 'office-bank', path: '/game/bank', label: 'BANCO OMBRA', boomerLabel: 'BANCO OMBRA', codename: 'VAULT-X', icon: Landmark },
       { id: 'office-vending', path: '/vending?from=office', label: 'SUPPLIES', boomerLabel: 'SUPPLIES', codename: 'SUPPLIES', icon: ShoppingBag },
       { id: 'office-property', path: '/store/realty?from=office', label: 'PROPERTY', boomerLabel: 'PROPERTY', codename: 'PROPERTY', icon: Landmark },
-      { id: 'office-agents', path: '/bots', label: 'AGENTS', boomerLabel: 'AGENTS', codename: 'AGENTS', icon: Bot },
       { id: 'office-business', path: '/business', label: 'BUSINESS OPS', boomerLabel: 'BUSINESS OPS', codename: 'BUSINESS OPS', icon: Briefcase },
       { id: 'office-settings', path: '/game/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'OPTIONS', icon: Settings },
     ],
@@ -68,6 +69,7 @@ export const MODULES: Module[] = [
     icon: Phone,
     defaultPath: '/phone',
     subs: [
+      { id: 'voice-coach', path: '/phone/coach', label: 'VOICE COACH', boomerLabel: 'VOICE COACH', codename: 'COACH', icon: Bot },
       { id: 'dialer', path: '/phone/dialer', label: 'DIALER', boomerLabel: 'DIALER', codename: 'DIAL-PAD', icon: PhoneCall },
       { id: 'contacts', path: '/phone/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'COMM-BOOK', icon: Users },
       { id: 'active', path: '/phone/active', label: 'ACTIVE CALLS', boomerLabel: 'ACTIVE CALLS', codename: 'LIVE-OPS', icon: Zap },
@@ -75,8 +77,6 @@ export const MODULES: Module[] = [
       { id: 'voicemail', path: '/phone/voicemail', label: 'VOICEMAIL', boomerLabel: 'VOICEMAIL', codename: 'V-MAIL', icon: Voicemail },
       { id: 'conference', path: '/phone/conference', label: 'CONFERENCE', boomerLabel: 'CONFERENCE', codename: 'CONF-ROOM', icon: Users },
       { id: 'sessions', path: '/phone/sessions', label: 'DIALING SESSIONS', boomerLabel: 'DIALING SESSIONS', codename: 'AUTO-DIAL', icon: Radio },
-      { id: 'coach', path: '/phone/coach', label: 'VOICE COACH', boomerLabel: 'CALL COACH', codename: 'COACH', icon: Bot },
-      { id: 'secretary', path: '/phone/secretary', label: 'SECRETARY', boomerLabel: 'SECRETARY', codename: 'SEC', icon: Settings },
       { id: 'numbers', path: '/phone/numbers', label: 'PHONE NUMBERS', boomerLabel: 'PHONE NUMBERS', codename: 'NUM-VAULT', icon: Hash },
     ],
   },
@@ -87,10 +87,7 @@ export const MODULES: Module[] = [
     codename: 'PABLO PRIME',
     icon: Bot,
     defaultPath: '/business/autopilot',
-    subs: [
-      { id: 'autopilot', path: '/business/autopilot', label: 'AUTOMATION WORKSPACE', boomerLabel: 'AUTOMATION WORKSPACE', codename: 'PABLO-OPS', icon: Activity },
-      { id: 'pablo-deck', path: '/pablo/deck', label: 'AI AGENTS', boomerLabel: 'AI AGENTS', codename: 'AGENT-DECK', icon: Layers },
-    ],
+    subs: [],
   },
   {
     id: 'crm',
@@ -115,7 +112,7 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'terminal', path: '/console', label: 'SOLVER', boomerLabel: 'SOLVER', codename: 'CIPHER-X', icon: Code2 },
       { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
-      { id: 'vault', path: '/console/vault', label: 'VAULT', boomerLabel: 'KNOWLEDGE VAULT', codename: 'NEXUS-V', icon: Brain },
+      { id: 'vault', path: '/creative/media?tab=knowledge', label: 'DATA VAULT', boomerLabel: 'DATA VAULT', codename: 'NEXUS-V', icon: Brain },
       { id: 'scraper', path: '/console/scraper', label: 'SCRAPER', boomerLabel: 'WEB SCRAPER', codename: 'SIGNAL-INT', icon: Globe },
     ],
   },
@@ -131,6 +128,7 @@ export const MODULES: Module[] = [
       { id: 'marketplace', path: '/business/marketplace', label: 'MARKETPLACE', boomerLabel: 'BUSINESS MARKETPLACE', codename: 'BIZ-MART', icon: Store },
       { id: 'team', path: '/business/team', label: 'TEAM', boomerLabel: 'TEAM DIRECTORY', codename: 'ROSTER-X', icon: Users },
       { id: 'hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
+      { id: 'org', path: '/organizations', label: 'ORGANIZATION', boomerLabel: 'ORGANIZATION', codename: 'ORG-CORE', icon: Network },
       { id: 'resume', path: '/business/resume', label: 'RESUME', boomerLabel: 'RESUME BUILDER', codename: 'CV-FORGE', icon: FileText },
       { id: 'job-command', path: '/business/job-command', label: 'JOB CENTER', boomerLabel: 'JOB COMMAND CENTER', codename: 'JCC', icon: Crosshair },
       { id: 'tasks', path: '/business/tasks', label: 'TASKS', boomerLabel: 'TASK BOARD', codename: 'TASK-OPS', icon: ClipboardList },
@@ -184,7 +182,6 @@ export const MODULES: Module[] = [
     defaultPath: '/marketing/campaigns',
     subs: [
       { id: 'campaigns', path: '/marketing/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
-      { id: 'ads', path: '/marketing/ads', label: 'AD BOTS', boomerLabel: 'AD BOTS', codename: 'SIGNAL-AD', icon: Bot },
       { id: 'social', path: '/marketing/social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', codename: 'SIGNAL-7', icon: Share2 },
       { id: 'seo', path: '/marketing/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
       { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
@@ -202,27 +199,6 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'armory-store', path: '/armory', label: 'STORE', boomerLabel: 'GEAR STORE', codename: 'QM-STORE', icon: Store },
       { id: 'armory-inventory', path: '/armory/inventory', label: 'INVENTORY', boomerLabel: 'MY INVENTORY', codename: 'QM-VAULT', icon: Archive },
-    ],
-  },
-  // ORG — a dedicated management hub for running your organization. Its nav
-  // label is rendered as the live org name (see NavBar / MobileModuleNav); this
-  // module's static label is the fallback. Distinct from OFFICE (the office
-  // floor). The hub at /org surfaces the EXISTING org-management surfaces
-  // (team roster, hiring/firing, roles & permissions, finances) — the subs
-  // below point at those existing routes rather than reimplementing them.
-  {
-    id: 'org',
-    path: '/org',
-    label: 'ORG',
-    codename: 'ORG-CORE',
-    icon: Network,
-    defaultPath: '/org',
-    subs: [
-      { id: 'org-overview', path: '/org', label: 'OVERVIEW', boomerLabel: 'OVERVIEW', codename: 'ORG-CORE', icon: Building2 },
-      { id: 'org-team', path: '/business/team', label: 'EMPLOYEES', boomerLabel: 'EMPLOYEES', codename: 'ROSTER-X', icon: Users },
-      { id: 'org-hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
-      { id: 'org-permissions', path: '/business', label: 'ROLES', boomerLabel: 'ROLES & PERMISSIONS', codename: 'ACCESS', icon: UserCog },
-      { id: 'org-finances', path: '/business/accounting', label: 'FINANCES', boomerLabel: 'ACCOUNTING & LEDGERS', codename: 'GL-CORE', icon: BookOpen },
     ],
   },
   {
@@ -269,9 +245,11 @@ export function getModuleForPath(pathname: string): Module | null {
   const module = (id: string) => MODULES.find((candidate) => candidate.id === id) ?? null;
 
   if (pathname === '/hummingbird' || pathname.startsWith('/workspace')) return null;
-  if (pathname === '/pablo/deck') return module('bots');
+  if (pathname === '/pablo/deck') return module('pablo');
   if (pathname === '/pablo') return module('pablo');
   if (pathname === '/1999' || pathname.startsWith('/1999/')) return module('creative');
+  if (pathname === '/phone/secretary' ||
+      pathname === '/bots/ad-studio' || pathname === '/marketing/ads') return module('bots');
 
   // Office floor and in-game management routes share the Office section.
   if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return module('office');
@@ -296,7 +274,8 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/creative')) return module('creative');
   if (pathname.startsWith('/marketing')) return module('marketing');
   if (pathname.startsWith('/armory')) return module('armory');
-  if (pathname === '/org' || pathname.startsWith('/org/')) return module('org');
+  if (pathname === '/org' || pathname.startsWith('/org/') ||
+      pathname === '/organizations' || pathname.startsWith('/organizations/')) return module('business');
   if (pathname === '/marketplace') return module('marketplace');
   return null;
 }

@@ -73,6 +73,10 @@ export function PhoneDialer({
 
   const [secretarySaving, setSecretarySaving] = useState(false);
   const [secretaryForm, setSecretaryForm] = useState<Partial<SecretaryConfig>>({});
+  const [secretarySaveStatus, setSecretarySaveStatus] = useState<{
+    kind: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   const [newNumberForm, setNewNumberForm] = useState({ number: '', label: '', greeting: '', routingMode: 'voicemail' });
   const [addingNumber, setAddingNumber] = useState(false);
@@ -462,14 +466,32 @@ export function PhoneDialer({
 
   const saveSecretaryConfig = async () => {
     setSecretarySaving(true);
+    setSecretarySaveStatus(null);
     try {
       const r = await apiFetch(apiUrl('twilio/secretary/config'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(secretaryForm) });
-      const d = await r.json();
-      if (r.ok) { setSecretaryConfig(d.config); setSecretaryForm(d.config); }
-    } catch (e) { console.error("[CalllHome] save secretary config error:", e); }
-    setSecretarySaving(false);
+      const d = await r.json().catch(() => null);
+      if (!r.ok) {
+        throw new Error(d?.error || d?.message || `Could not save configuration (HTTP ${r.status}).`);
+      }
+      if (!d?.config) throw new Error('The server did not return the saved configuration.');
+      setSecretaryConfig(d.config);
+      setSecretaryForm(d.config);
+      setSecretarySaveStatus({ kind: 'success', message: 'Configuration saved.' });
+    } catch (e) {
+      setSecretarySaveStatus({
+        kind: 'error',
+        message: e instanceof Error ? e.message : 'Could not save secretary configuration.',
+      });
+    } finally {
+      setSecretarySaving(false);
+    }
+  };
+
+  const updateSecretaryForm = (update: (current: Partial<SecretaryConfig>) => Partial<SecretaryConfig>) => {
+    setSecretaryForm(update);
+    setSecretarySaveStatus(null);
   };
 
   const addPhoneNumber = async () => {
@@ -617,7 +639,7 @@ export function PhoneDialer({
 
       <div style={{ padding: '6px 14px', borderBottom: `1px solid ${slate(0.15)}`, background: slate(0.8), display: 'flex', alignItems: 'center', gap: 10 }}>
         <span className="calll-home-mark-box">
-          <img src="/brand/callhome/calll-home-logo-2.png" alt="CALLL HOME" style={{ filter: "invert(1)" }} />
+          <img src="/brand/callhome/calll-home-logo-2.png" alt="CALLL HOME" />
         </span>
         <span style={{ fontSize: '0.4rem', color: slate(0.55), marginLeft: 'auto', letterSpacing: '0.08em' }}>ALPHA {__BUILD_VERSION__}</span>
       </div>
@@ -1064,7 +1086,7 @@ export function PhoneDialer({
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: '0.5rem', color: slate(0.6), flex: 1 }}>SECRETARY AI ENABLED</span>
                 <button
-                  onClick={() => setSecretaryForm(f => ({ ...f, isEnabled: !f.isEnabled }))}
+                  onClick={() => updateSecretaryForm(f => ({ ...f, isEnabled: !f.isEnabled }))}
                   style={{ padding: '4px 12px', background: secretaryForm.isEnabled ? slate(0.15) : destructive(0.08), border: `1px solid ${secretaryForm.isEnabled ? slate(0.4) : destructive(0.3)}`, color: secretaryForm.isEnabled ? slate(0.9) : destructive(0.7), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}>
                   {secretaryForm.isEnabled ? 'ON' : 'OFF'}
                 </button>
@@ -1072,7 +1094,7 @@ export function PhoneDialer({
 
               <div>
                 <div style={{ fontSize: '0.42rem', color: slate(0.55), marginBottom: 3 }}>PERSONALITY</div>
-                <select value={secretaryForm.personality ?? 'professional'} onChange={e => setSecretaryForm(f => ({ ...f, personality: e.target.value }))}
+                <select value={secretaryForm.personality ?? 'professional'} onChange={e => updateSecretaryForm(f => ({ ...f, personality: e.target.value }))}
                   style={{ ...inputStyle, width: '100%' }}>
                   <option value="professional" style={{ background: '#030803' }}>Professional</option>
                   <option value="friendly" style={{ background: '#030803' }}>Friendly</option>
@@ -1083,14 +1105,14 @@ export function PhoneDialer({
 
               <div>
                 <div style={{ fontSize: '0.42rem', color: slate(0.55), marginBottom: 3 }}>GREETING SCRIPT</div>
-                <textarea value={secretaryForm.greetingScript ?? ''} onChange={e => setSecretaryForm(f => ({ ...f, greetingScript: e.target.value }))}
+                <textarea value={secretaryForm.greetingScript ?? ''} onChange={e => updateSecretaryForm(f => ({ ...f, greetingScript: e.target.value }))}
                   placeholder="Thank you for calling. How can I help you?"
                   style={{ ...inputStyle, width: '100%', height: 55, resize: 'none', display: 'block' }} />
               </div>
 
               <div>
                 <div style={{ fontSize: '0.42rem', color: slate(0.55), marginBottom: 3 }}>SCREENING RULES</div>
-                <textarea value={secretaryForm.screeningRules ?? ''} onChange={e => setSecretaryForm(f => ({ ...f, screeningRules: e.target.value }))}
+                <textarea value={secretaryForm.screeningRules ?? ''} onChange={e => updateSecretaryForm(f => ({ ...f, screeningRules: e.target.value }))}
                   placeholder="Ask for caller's name and reason for call..."
                   style={{ ...inputStyle, width: '100%', height: 45, resize: 'none', display: 'block' }} />
               </div>
@@ -1098,26 +1120,26 @@ export function PhoneDialer({
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 4 }}>
                 <div>
                   <div style={{ fontSize: '0.42rem', color: slate(0.55), marginBottom: 3 }}>OPEN</div>
-                  <input type="time" value={secretaryForm.businessHoursStart ?? '09:00'} onChange={e => setSecretaryForm(f => ({ ...f, businessHoursStart: e.target.value }))}
+                  <input type="time" value={secretaryForm.businessHoursStart ?? '09:00'} onChange={e => updateSecretaryForm(f => ({ ...f, businessHoursStart: e.target.value }))}
                     style={{ ...inputStyle, width: '100%', colorScheme: 'dark' }} />
                 </div>
                 <div>
                   <div style={{ fontSize: '0.42rem', color: slate(0.55), marginBottom: 3 }}>CLOSE</div>
-                  <input type="time" value={secretaryForm.businessHoursEnd ?? '17:00'} onChange={e => setSecretaryForm(f => ({ ...f, businessHoursEnd: e.target.value }))}
+                  <input type="time" value={secretaryForm.businessHoursEnd ?? '17:00'} onChange={e => updateSecretaryForm(f => ({ ...f, businessHoursEnd: e.target.value }))}
                     style={{ ...inputStyle, width: '100%', colorScheme: 'dark' }} />
                 </div>
               </div>
 
               <div>
                 <div style={{ fontSize: '0.42rem', color: slate(0.55), marginBottom: 3 }}>FORWARD TO NUMBER (for transfers)</div>
-                <input value={secretaryForm.forwardToNumber ?? ''} onChange={e => setSecretaryForm(f => ({ ...f, forwardToNumber: e.target.value }))}
+                <input value={secretaryForm.forwardToNumber ?? ''} onChange={e => updateSecretaryForm(f => ({ ...f, forwardToNumber: e.target.value }))}
                   placeholder="+1 (555) 000-0000"
                   style={{ ...inputStyle, width: '100%' }} />
               </div>
 
               <div>
                 <div style={{ fontSize: '0.42rem', color: slate(0.55), marginBottom: 3 }}>AFTER-HOURS ACTION</div>
-                <select value={secretaryForm.afterHoursAction ?? 'voicemail'} onChange={e => setSecretaryForm(f => ({ ...f, afterHoursAction: e.target.value }))}
+                <select value={secretaryForm.afterHoursAction ?? 'voicemail'} onChange={e => updateSecretaryForm(f => ({ ...f, afterHoursAction: e.target.value }))}
                   style={{ ...inputStyle, width: '100%' }}>
                   <option value="voicemail" style={{ background: '#030803' }}>Voicemail</option>
                   <option value="forward" style={{ background: '#030803' }}>Forward</option>
@@ -1125,9 +1147,23 @@ export function PhoneDialer({
                 </select>
               </div>
 
-              <button onClick={saveSecretaryConfig} disabled={secretarySaving} style={{ padding: '8px', background: slate(0.1), border: `1px solid ${slate(0.35)}`, color: slate(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <button type="button" data-testid="phone-secretary-save" onClick={saveSecretaryConfig} disabled={secretarySaving} style={{ padding: '8px', background: slate(0.1), border: `1px solid ${slate(0.35)}`, color: slate(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                 {secretarySaving ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}SAVE CONFIGURATION
               </button>
+              {secretarySaveStatus && (
+                <p
+                  role={secretarySaveStatus.kind === 'error' ? 'alert' : 'status'}
+                  data-testid={`phone-secretary-save-${secretarySaveStatus.kind}`}
+                  style={{
+                    margin: 0,
+                    fontSize: '0.45rem',
+                    color: secretarySaveStatus.kind === 'error' ? destructive(0.9) : slate(0.85),
+                    textAlign: 'center',
+                  }}
+                >
+                  {secretarySaveStatus.message}
+                </p>
+              )}
 
               {secretaryConfig && (
                 <div style={{ fontSize: '0.4rem', color: slate(0.55), textAlign: 'center' }}>

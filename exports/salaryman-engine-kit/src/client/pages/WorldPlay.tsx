@@ -94,6 +94,7 @@ import {
   stableSnapshot, statsChanged, type MovementSnapshot, type StatsSnapshot,
 } from '@/lib/world-runtime';
 import { computeBoWarning } from '@/lib/bo-collector-warning';
+import { drawCharacterArtwork } from '@/lib/character-art';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -14428,6 +14429,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = 'rgba(240,192,64,.15)';
             ctx.beginPath(); ctx.arc(nx, ny - 2 + nBob2, 12, 0, Math.PI * 2); ctx.fill();
           }
+          // The generated or authored named identity is the final-facing
+          // character layer. The marked panel is intentionally visible while
+          // the named asset is pending or failed; it replaces the old generic
+          // role-based paper doll rather than quietly shipping it.
+          drawCharacterArtwork(
+            ctx,
+            "tower_character",
+            name,
+            nx - 10,
+            ny - 25 + nBob2,
+            20,
+            31,
+            { label: name },
+          );
+          ctx.textAlign = 'center';
+          ctx.fillStyle = isPrime ? 'rgba(255,214,80,.97)' : isHovered ? 'rgba(236,246,255,.98)' : 'rgba(150,170,190,.72)';
+          ctx.font = '5px "Fira Code"';
+          ctx.fillText(isPrime ? name : (serial ?? role), nx, ny + 10 + nBob2);
         };
 
         if (iDef.workers) {
@@ -14490,6 +14509,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(opx, opy - 7, 4, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#222244'; ctx.fillRect(opx - 4, opy - 13, 8, 5);
           }
+          drawCharacterArtwork(
+            ctx,
+            "player_avatar",
+            peer.name || "operator",
+            opx - 9,
+            opy - 17,
+            18,
+            26,
+            { label: peer.name || "PLAYER" },
+          );
           ctx.shadowColor = opCls2 === 'corporate' ? '#38bdf8' : opCls2 === 'outlaw' ? '#7dd3fc' : opCls2 === 'replicant' ? '#67e8f9' : '#44aaff';
           ctx.shadowBlur = 3;
           ctx.fillStyle = 'rgba(0,200,255,.7)'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
@@ -14533,6 +14562,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.save();
           ctx.shadowColor = '#2acccc'; ctx.shadowBlur = 6;
           drawPlayerSprite(ctx, milaAppearance(clothOutfitColor(g.mila.outfitId)), { px: mdx, py: mdy });
+          drawCharacterArtwork(ctx, "tower_character", "Mila", mdx - 10, mdy - 22, 20, 29, { label: "MILA" });
           ctx.shadowBlur = 0; ctx.restore();
           ctx.fillStyle = '#67e8f9'; ctx.font = '6px "Fira Code"'; ctx.textAlign = 'center';
           ctx.fillText(milaLabelRef.current, mdx, mdy - 20);
@@ -16459,6 +16489,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           py: g.py + oy,
           pCls: char.class.toLowerCase(),
         });
+        drawCharacterArtwork(
+          ctx,
+          "player_avatar",
+          char.name || "operator",
+          g.px + ox - 10,
+          g.py + oy - 20,
+          20,
+          28,
+          { imageUrl: g.appearance?.portraitUrl, label: char.name || "OPERATOR" },
+        );
         if (g.near === '__underground_exit' || g.near?.startsWith('__underground_poi:')) {
           ctx.fillStyle = g.blink ? '#e9d5ff' : 'rgba(233,213,255,.5)';
           ctx.font = '9px "Share Tech Mono"';
@@ -19698,7 +19738,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // NPCs — enhanced pixel sprite bodies with walk animation & accessories
+      // NPC simulation still controls position and behavior; named identity
+      // art replaces the generic sprite body in the final-facing layer below.
       // worldTime is now a continuous real-dt float mirrored from the calendar,
       // so it's already smooth — no sub-tick interpolation needed.
       const worldTimeFine = ((g.worldTime ?? 0) % 24 + 24) % 24;
@@ -19899,6 +19940,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0;
         // Name label — names are PRIVATE. Default shows the role; the real name
         // reveals when you stand near (talk range) or hover. Primes show gold names.
+        // Cover the generic role sprite with the named identity art (or the
+        // explicit pending/failed marker) before drawing labels and prompts.
+        drawCharacterArtwork(
+          ctx,
+          "tower_character",
+          n.name,
+          nx2 - 12,
+          ny2 - 28 + nBob,
+          24,
+          38,
+          { label: n.name },
+        );
         if (nDist < 90) {
           const npcPrime = isPrimeName(n.name);
           const npcHover = !!(hoverMouseRef.current && Math.hypot(sPos.x - hoverMouseRef.current.x, sPos.y - hoverMouseRef.current.y) < 16);
@@ -19956,6 +20009,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(ex - 5, ey - 14, 10, 14);
         ctx.fillStyle = '#00ccff';
         ctx.fillRect(ex - 3, ey - 18, 6, 4);
+        drawCharacterArtwork(
+          ctx,
+          "tower_character",
+          emp.name || `employee ${ei + 1}`,
+          ex - 9,
+          ey - 22,
+          18,
+          27,
+          { label: emp.name || "EMPLOYEE" },
+        );
         ctx.restore();
         ctx.font = '8px "Fira Code"'; ctx.textAlign = 'center';
         const empLabel = `${emp.name} [${emp.role}]`;
@@ -19973,7 +20036,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Online players — faction-specific sprites (skip peers in interiors)
+      // Online player positions and effects remain live; named portraits replace
+      // the old faction-specific paper-doll bodies (skip interior peers here).
       for (const [, op] of g.peers) {
         if (op.interiorBid) continue;
         const px2 = op.x + ox, py2 = op.y + oy;
@@ -20006,6 +20070,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = spk ? '#00ffcc' : '#44aaff';
           ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
         }
+        drawCharacterArtwork(
+          ctx,
+          "player_avatar",
+          op.name || "operator",
+          px2 - 10,
+          py2 - 19,
+          20,
+          27,
+          { label: op.name || "PLAYER" },
+        );
         if (spk) {
           const t = g.frame * 0.1;
           for (let ri = 0; ri < 3; ri++) {
@@ -20124,6 +20198,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Pocket square (white)
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(bcsx - 3, bcsy - 5, 1.5, 1);
+        drawCharacterArtwork(
+          ctx,
+          "tower_character",
+          `Banco Ombra Collector ${bci + 1}`,
+          bcsx - 10,
+          bcsy - 24,
+          20,
+          32,
+          { label: `COLLECTOR ${bci + 1}` },
+        );
         ctx.shadowBlur = 0;
         // Ambient red threat glow when close
         const boDist2 = Math.hypot(g.px - bc.x, g.py - bc.y);
@@ -20162,6 +20246,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const lb2 = pFlash ? '#ff2222' : '#4488ff';
         ctx.fillStyle = lb1; ctx.fillRect(px2 - 5, py2 - 13, 4, 3);
         ctx.fillStyle = lb2; ctx.fillRect(px2 + 1, py2 - 13, 4, 3);
+        drawCharacterArtwork(
+          ctx,
+          "tower_character",
+          `City Police ${pi + 1}`,
+          px2 - 9,
+          py2 - 21,
+          18,
+          28,
+          { label: `POLICE ${pi + 1}` },
+        );
         ctx.shadowBlur = 0;
         // Label
         const pDist = Math.hypot(g.px - p.x, g.py - p.y);
@@ -20873,6 +20967,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // Named player identity art replaces the procedural body on every render.
+      // The existing movement, collision, equipment state, and weapon effects
+      // remain authoritative; only the character's visual identity changes.
+      drawCharacterArtwork(
+        ctx,
+        "player_avatar",
+        char.name || "operator",
+        px - 10 + isoLeanX,
+        py2 - 25 + idleBob,
+        20,
+        34,
+        { imageUrl: g.appearance?.portraitUrl, label: char.name || "OPERATOR" },
+      );
+
       // ── Visible weapon on player sprite ──
       if (!g.vehicle && activeWeaponRef.current !== 'fists') {
         const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current);
@@ -21402,6 +21510,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.globalAlpha = 0.3 + appear * 0.7;
           ctx.shadowColor = '#2acccc'; ctx.shadowBlur = 7 + Math.sin(g.frame * 0.1) * 2;
           drawPlayerSprite(ctx, milaAppearance(clothOutfitColor(g.mila.outfitId)), { px: mx2, py: my2 });
+          drawCharacterArtwork(ctx, "tower_character", "Mila", mx2 - 10, my2 - 22, 20, 29, { label: "MILA" });
           ctx.shadowBlur = 0;
           ctx.globalAlpha = appear;
           ctx.fillStyle = '#67e8f9'; ctx.font = '7px "Fira Code"'; ctx.textAlign = 'center';
@@ -21429,6 +21538,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Corp logo (small P on chest)
         ctx.fillStyle = '#88aaff'; ctx.font = '5px "Fira Code"'; ctx.textAlign = 'center';
         ctx.fillText('P', gx2, gy2-2);
+        drawCharacterArtwork(
+          ctx,
+          "tower_character",
+          `Pablo Corp Guard ${g.guards.indexOf(guard) + 1}`,
+          gx2 - 9,
+          gy2 - 22,
+          18,
+          29,
+          { label: "PABLO CORP GUARD" },
+        );
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         if (gdist2 < 90) {
           ctx.font = '13px "Fira Code"'; ctx.textAlign = 'center';

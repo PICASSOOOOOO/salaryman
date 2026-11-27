@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
 Allow: /legal
+Allow: /sms-disclaimer
+Allow: /sms-opt-in
 Allow: /legal/terms
 Allow: /legal/privacy
 Allow: /legal/contact

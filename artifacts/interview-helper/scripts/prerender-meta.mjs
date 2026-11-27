@@ -157,6 +157,7 @@ const STATIC_BODY = {
     <ul style="color:#a1a1aa;line-height:2.4;padding-left:0;list-style:none">
       <li>${A("/legal/terms","Terms of Service")} — the agreement governing use of the platform</li>
       <li>${A("/legal/privacy","Privacy Policy")} — how we collect, use, and protect your data</li>
+      <li>${A("/sms-disclaimer","SMS Messaging Disclosure")} — program details, opt-in, and message help</li>
       <li>${A("/legal/contact","Contact")} — support, partnerships, and press inquiries</li>
       <li>${A("/legal/refunds","Refund Policy")} — refund eligibility and how to request one</li>
       <li>${A("/legal/returns","Returns Policy")} — returns for platform purchases</li>
@@ -170,10 +171,22 @@ const STATIC_BODY = {
   "/sms-opt-in": () => `
     ${H1("Enable SALARYMAN text messages")}
     ${P("SALARYMAN Text Updates sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. Message frequency varies based on account activity and settings.")}
-    <p style="color:#a1a1aa;margin:0 0 16px"><input type="checkbox" aria-label="Optional consent to receive SALARYMAN text messages" /> I agree to receive recurring automated text messages from SALARYMAN at the mobile number I use to send the confirmation. Consent is optional and is not a condition of purchase.</p>
-    ${P("To enroll, select the optional checkbox, continue to the SMS confirmation, and send the prefilled START message from your mobile number to +18882307698.")}
+    ${P("To opt in, text START from your mobile phone to +1 888-230-7698. Sending START is your consent to recurring automated informational messages. Consent is optional and is not a condition of purchase.")}
     <p style="color:#a1a1aa;margin:0 0 16px">Message and data rates may apply. Reply STOP to opt out or HELP for help. For support, use our <a href="/legal/contact" style="color:#38bdf8">Contact Us form</a>.</p>
-    <p>${A("/legal/privacy","Privacy Policy")} &nbsp;·&nbsp; ${A("/legal/terms","Terms of Service")}</p>
+    <p>${A("/sms-disclaimer","SMS Messaging Disclosure")} &nbsp;·&nbsp; ${A("/legal/privacy","Privacy Policy")} &nbsp;·&nbsp; ${A("/legal/terms","Terms of Service")}</p>
+  `,
+
+  "/sms-disclaimer": () => `
+    ${H1("SMS Messaging Program Disclosure")}
+    ${P("SALARYMAN Text Updates is an optional recurring automated informational messaging program operated by Picasso AI, LLC.")}
+    ${H2("PROGRAM MESSAGES")}
+    ${P("Messages may provide updates about SALARYMAN account activity, CALLL HOME, and service updates. Message frequency varies based on account activity and settings. Message and data rates may apply.")}
+    ${H2("HOW TO OPT IN")}
+    ${P(`Review the ${A("/sms-opt-in","SMS opt-in page")}, then text START from your mobile phone to +1 888-230-7698. Sending START is your consent to receive recurring automated informational text messages from SALARYMAN. Consent is optional and is not a condition of purchase.`)}
+    ${H2("STOP MESSAGES OR GET HELP")}
+    ${P(`Reply STOP to cancel messages or HELP for help. For customer support, visit our ${A("/legal/contact","Contact Us")} page. Wireless carriers are not liable for delayed or undelivered messages.`)}
+    ${H2("PRIVACY")}
+    ${P(`Text-messaging opt-in data and consent are not shared with third parties. See our ${A("/legal/privacy","Privacy Policy")} and ${A("/legal/terms","Terms of Service")} for more information.`)}
   `,
 
   "/legal/terms": () => `
@@ -193,7 +206,7 @@ const STATIC_BODY = {
     ${H2("SMS MESSAGING PROGRAM")}
     ${P("SALARYMAN Text Updates sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. To opt in, select the optional checkbox on the SMS opt-in page and send START from your mobile number. Consent is not a condition of purchase.")}
     ${P("Message frequency varies. Message and data rates may apply. Reply STOP to cancel or HELP for help. Customer care is available through the Contact Us page. Wireless carriers are not liable for delayed or undelivered messages.")}
-    <p>${A("/sms-opt-in","SMS opt-in page")} &nbsp;·&nbsp; ${A("/legal/contact","Contact Us")}</p>
+    <p>${A("/sms-opt-in","SMS opt-in page")} &nbsp;·&nbsp; ${A("/sms-disclaimer","SMS Messaging Disclosure")} &nbsp;·&nbsp; ${A("/legal/contact","Contact Us")}</p>
     ${H2("INTELLECTUAL PROPERTY")}
     ${P("SALARYMAN, Picasso AI, Pablo, Jean Claw, and Pixel Agents are trademarks of Picasso AI. Content you create using the platform remains your property.")}
     <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/privacy","Privacy Policy")}</p>

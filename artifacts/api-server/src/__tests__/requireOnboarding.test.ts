@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { isCompletedOnboardingRow } from "../middlewares/requireOnboarding";
+import {
+  isCompletedOnboardingRow,
+  isOnboardingMutationExempt,
+} from "../middlewares/requireOnboarding";
 
 describe("browser onboarding completion signal", () => {
   it("accepts a completed browser intake with valid contact details", () => {
@@ -21,5 +24,12 @@ describe("browser onboarding completion signal", () => {
       contactEmail: "user@example.com",
       meta: { source: "browser_onboarding", contactPhone: "no number" },
     })).toBe(false);
+  });
+
+  it("allows authenticated workspace preference saves before onboarding", () => {
+    expect(isOnboardingMutationExempt("PUT", "/account/workspace")).toBe(true);
+    expect(isOnboardingMutationExempt("GET", "/account/workspace")).toBe(false);
+    expect(isOnboardingMutationExempt("PUT", "/account/settings")).toBe(false);
+    expect(isOnboardingMutationExempt("POST", "/orgs")).toBe(true);
   });
 });

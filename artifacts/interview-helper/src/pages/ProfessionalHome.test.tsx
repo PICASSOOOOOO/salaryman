@@ -8,7 +8,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const authState = vi.hoisted(() => ({
   isAuthenticated: false,
   isLoading: false,
+  navigate: vi.fn(),
 }));
+
+vi.mock("wouter", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("wouter")>();
+  return {
+    ...actual,
+    useLocation: () => ["/", authState.navigate],
+  };
+});
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => authState,
@@ -16,6 +25,16 @@ vi.mock("@/hooks/use-auth", () => ({
 
 vi.mock("@/hooks/use-plan", () => ({
   usePlan: () => ({ isOwner: false }),
+}));
+
+vi.mock("@/hooks/use-notifications", () => ({
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    markRead: vi.fn(),
+    dismiss: vi.fn(),
+    clearAll: vi.fn(),
+  }),
 }));
 
 import ProfessionalHome from "./ProfessionalHome";
@@ -26,6 +45,7 @@ let root: Root;
 beforeEach(() => {
   authState.isAuthenticated = false;
   authState.isLoading = false;
+  authState.navigate.mockClear();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -50,24 +70,27 @@ describe("ProfessionalHome header", () => {
     expect(document.body.querySelector("#workspace-navigation-menu")).toBeNull();
   });
 
-  it("opens the shared navigation menu from START WORK after authentication", () => {
+  it("opens the grouped Start Work menu and opens The Office", () => {
     authState.isAuthenticated = true;
     act(() => root.render(<ProfessionalHome />));
 
-    const startWorkButton = container.querySelector(".start-work-button") as HTMLButtonElement;
+    const startWorkButton = container.querySelector(
+      '[data-testid="start-work-menu-trigger"]',
+    ) as HTMLButtonElement;
     expect(startWorkButton).not.toBeNull();
     expect(startWorkButton.textContent).toContain("START WORK");
     expect(container.querySelector(".home-login-link")).toBeNull();
 
     act(() => startWorkButton.click());
     expect(startWorkButton.getAttribute("aria-expanded")).toBe("true");
-    expect(startWorkButton.getAttribute("aria-controls")).toBe("workspace-navigation-menu");
-    expect(document.body.querySelector("#workspace-navigation-menu")).not.toBeNull();
-    expect(document.body.textContent).toContain("PABLO AI");
-    expect(document.body.textContent).toContain("COMMS");
-    expect(document.body.textContent).toContain("PABLO PRIME AUTOMATION");
-    expect(document.body.textContent).toContain("CALLL HOME");
-    expect(document.body.textContent).toContain("SALARYMAN OS");
+    expect(document.body.querySelector('[data-testid="workspace-navigation-menu"]')).not.toBeNull();
+
+    const officeLink = document.body.querySelector(
+      '[data-testid="workspace-menu-office"]',
+    ) as HTMLAnchorElement;
+    act(() => officeLink.click());
+    expect(authState.navigate).toHaveBeenCalledWith("/workspace");
+    expect(startWorkButton.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("labels the customer card CALLL HOME and keeps its existing action tabs", () => {
@@ -77,7 +100,7 @@ describe("ProfessionalHome header", () => {
     expect(cards).toHaveLength(2);
     expect(cards[0].querySelector("h2")?.textContent).toBe("PABLO AI");
     expect(cards[0].textContent).toContain("Chat with Pablo for SALARYMAN help");
-    expect(cards[0].textContent).toContain("PABLO PRIME runs opt-in business automations separately");
+    expect(cards[0].textContent).toContain("PABLO PRIME runs opt-in workflows");
     expect(Array.from(cards[0].querySelectorAll("a")).map(link => link.getAttribute("href"))).toEqual([
       "/pablo",
       "/business/autopilot",

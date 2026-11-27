@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
-import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, Settings2, MessageSquare, Hash, PhoneIncoming } from 'lucide-react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useBoomerMode, useIsMobile } from '@/hooks/use-mobile';
+import { ArrowLeft, Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, MessageSquare, Hash, PhoneIncoming } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { SignInPage } from '@/components/SignInPrompt';
 import { slate, warning } from '@/lib/phone-utils';
@@ -10,6 +10,8 @@ import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 import { usePledgePopup } from '@/components/PledgeStorePopup';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 import { useLocation } from 'wouter';
+import { canGoBackInApp, consumeAppReturnPath, getAppBackPath } from '@/lib/app-navigation';
+import { useNavBarVisibility } from '@/hooks/use-navbar-visibility';
 import {
   classifyPhoneSystemResponse,
   formatPhoneSystemDiagnostic,
@@ -27,12 +29,9 @@ const PhoneVoicemailPage = lazy(() => import('./PhoneVoicemailPage'));
 const PhoneConferencePage = lazy(() => import('./PhoneConferencePage'));
 const PhoneSessionsPage = lazy(() => import('./PhoneSessionsPage'));
 const PhoneCoachPage = lazy(() => import('./PhoneCoachPage'));
-const PhoneSecretaryPage = lazy(() => import('./PhoneSecretaryPage'));
 const PhoneCallCenterPage = lazy(() => import('./PhoneCallCenterPage'));
 const PhoneSmsPage = lazy(() => import('./PhoneSmsPage'));
 const PhoneNumbersPage = lazy(() => import('./PhoneNumbersPage'));
-
-type AiSubMode = 'coach' | 'secretary';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: boolean }[] = [
   { key: 'cmd', label: 'PHONE', icon: <Phone size={12} />, emphasized: true },
@@ -46,40 +45,15 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: bo
   { key: 'rec', label: 'RECORDINGS', icon: <Mic size={12} /> },
   { key: 'vm', label: 'VM', icon: <Voicemail size={12} /> },
   { key: 'conf', label: 'CONF', icon: <Users size={12} /> },
-  { key: 'ai', label: 'ASSIST', icon: <Bot size={12} /> },
+  { key: 'ai', label: 'VOICE COACH', icon: <Headphones size={12} /> },
 ];
-
-function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode: (m: AiSubMode) => void }) {
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderBottom: `1px solid ${slate(0.06)}` }}>
-        {([['coach', 'COACH'], ['secretary', 'SECRETARY']] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setSubMode(key)}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: '6px 16px', fontSize: '0.42rem', letterSpacing: '0.15em',
-              color: subMode === key ? warning(0.9) : slate(0.3),
-              borderBottom: subMode === key ? `2px solid ${warning(0.6)}` : '2px solid transparent' }}
-          >{label}</button>
-        ))}
-      </div>
-      {subMode === 'coach' ? <PhoneCoachPage /> : <PhoneSecretaryPage />}
-    </div>
-  );
-}
 
 function TabContent({
   tab,
-  aiSubMode,
-  setAiSubMode,
   systemStatus,
   statusDiagnostic,
 }: {
   tab: TabKey;
-  aiSubMode: AiSubMode;
-  setAiSubMode: (m: AiSubMode) => void;
   systemStatus: PhoneSystemStatus;
   statusDiagnostic: string | null;
 }) {
@@ -93,7 +67,7 @@ function TabContent({
     case 'vm': return <PhoneVoicemailPage />;
     case 'conf': return <PhoneConferencePage />;
     case 'auto': return <PhoneSessionsPage />;
-    case 'ai': return <AiTabContent subMode={aiSubMode} setSubMode={setAiSubMode} />;
+    case 'ai': return <PhoneCoachPage />;
     case 'cc': return <PhoneCallCenterPage />;
     case 'sms': return <PhoneSmsPage />;
     case 'numbers': return <PhoneNumbersPage />;
@@ -102,8 +76,6 @@ function TabContent({
 }
 
 const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','rec','vm','conf','auto','ai','cc','sms','numbers']);
-
-const PRIMARY_TABS = new Set<TabKey>(['cmd', 'dial', 'contacts', 'sms']);
 
 function getInitialTab(): TabKey {
   const p = new URLSearchParams(window.location.search).get('tab');
@@ -114,15 +86,8 @@ function getInitialTab(): TabKey {
 export default function CalllHomePage() {
 
   const [boomerMode] = useBoomerMode();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
-  const [aiSubMode, setAiSubMode] = useState<AiSubMode>('coach');
-  const [showTabSettings, setShowTabSettings] = useState(false);
-  const tabSettingsRef = useRef<HTMLDivElement | null>(null);
-
-  const visibleTabs = useMemo(
-    () => TABS.filter(t => PRIMARY_TABS.has(t.key)),
-    []
-  );
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -131,31 +96,29 @@ export default function CalllHomePage() {
     window.history.replaceState(window.history.state, '', `${url.pathname}?${url.searchParams.toString()}`);
   }, [activeTab]);
 
-  // Close the tab-settings popover on outside click / Escape.
-  useEffect(() => {
-    if (!showTabSettings) return;
-    const onDown = (e: MouseEvent) => {
-      if (!tabSettingsRef.current) return;
-      if (!tabSettingsRef.current.contains(e.target as Node)) setShowTabSettings(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowTabSettings(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [showTabSettings]);
-
   const [systemStatus, setSystemStatus] = useState<PhoneSystemStatus>('checking');
   const [statusDiagnostic, setStatusDiagnostic] = useState<string | null>(null);
   const [statusRetryKey, setStatusRetryKey] = useState(0);
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { setHideNavBar } = useNavBarVisibility();
   const { features, trials, isOwner, loading: planLoading } = usePlan();
   const { openPledgePopup } = usePledgePopup();
   const { deviceState, deviceError, ensureDeviceReady, reconnect, incomingCall, acceptIncomingCall, rejectIncomingCall } = useTwilioDeviceContext();
   const [, navigate] = useLocation();
+
+  useEffect(() => {
+    setHideNavBar(isMobile && isAuthenticated && !authLoading);
+    return () => setHideNavBar(false);
+  }, [authLoading, isAuthenticated, isMobile, setHideNavBar]);
+
+  const handleMobileBack = () => {
+    if (canGoBackInApp()) {
+      window.history.back();
+      return;
+    }
+    navigate(consumeAppReturnPath() ?? getAppBackPath(isAuthenticated), { replace: true });
+  };
 
   const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
   const telephonyLocked = !hasPhoneAccess;
@@ -272,14 +235,30 @@ export default function CalllHomePage() {
       background: '#fffaf0',
       ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
       color: '#111111',
-      position: 'relative' }}>
+      position: 'relative',
+      paddingTop: isMobile && isAuthenticated ? 'env(safe-area-inset-top, 0px)' : undefined }}>
 
       <div className="calll-home-shell" style={{ position: 'relative', zIndex: 1, maxWidth: 1400, margin: '0 auto' }}>
         <div className="calll-home-status" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '8px 0', borderBottom: `1px solid ${slate(0.08)}` }}>
           <div className="calll-home-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Phone size={18} style={{ color: slate(0.7) }} />
+            {isMobile ? (
+              <button
+                type="button"
+                onClick={handleMobileBack}
+                aria-label="Back to workspace"
+                title="Back to workspace"
+                style={{
+                  width: 34, height: 34, flex: '0 0 auto', display: 'grid', placeItems: 'center',
+                  border: '1px solid #111', borderRadius: 5, background: '#fff', color: '#111', cursor: 'pointer',
+                }}
+              >
+                <ArrowLeft size={16} />
+              </button>
+            ) : (
+              <Phone size={18} style={{ color: slate(0.7) }} />
+            )}
             <span className="calll-home-mark-box">
               <img src={`${BASE}brand/callhome/calll-home-logo-2.png`} alt="CALLL HOME" />
             </span>
@@ -429,7 +408,7 @@ export default function CalllHomePage() {
            borderRadius: 8,
            background: slate(0.035),
            position: 'relative' }}>
-          {visibleTabs.map(t => {
+          {TABS.map(t => {
             const isActive = activeTab === t.key;
             const emphasized = t.emphasized;
             return (
@@ -460,85 +439,6 @@ export default function CalllHomePage() {
               </button>
             );
           })}
-
-           {/* Keep visibility controls in the same readable menu, away from
-               the feature buttons. */}
-          <div ref={tabSettingsRef} style={{ marginLeft: 'auto', position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            <button
-              onClick={() => setShowTabSettings(s => !s)}
-              data-testid="button-tab-settings"
-              title="Show / hide tabs"
-              style={{
-                 minHeight: 42, padding: '9px 12px',
-                display: 'flex', alignItems: 'center', gap: 4,
-                background: showTabSettings ? slate(0.05) : 'transparent',
-                border: 'none',
-                 color: showTabSettings ? slate(0.95) : slate(0.7),
-                 fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.12em',
-                cursor: 'pointer',
-                ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                transition: 'color 0.15s, background 0.15s',
-                whiteSpace: 'nowrap' }}
-            >
-              <Settings2 size={12} /> MORE
-            </button>
-
-            {showTabSettings && (
-              <div
-                role="menu"
-                data-testid="tab-settings-menu"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)', right: 0, zIndex: 50,
-                  minWidth: 220,
-                  background: slate(0.96),
-                  border: `1px solid ${slate(0.18)}`,
-                  borderRadius: 6,
-
-                  padding: '8px 0',
-                  ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }),
-                  backdropFilter: 'blur(8px)' }}
-              >
-                <div style={{
-                  padding: '4px 12px 8px',
-                  fontSize: '0.4rem', letterSpacing: '0.18em',
-                  color: slate(0.5),
-                  borderBottom: `1px solid ${slate(0.08)}`,
-                  marginBottom: 6 }}>
-                  MORE PHONE TOOLS
-                </div>
-                {TABS.filter(t => !PRIMARY_TABS.has(t.key)).map(t => {
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => {
-                        setActiveTab(t.key);
-                        setShowTabSettings(false);
-                      }}
-                      data-testid={`menu-tab-${t.key}`}
-                      style={{
-                        width: '100%',
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '6px 12px',
-                        background: 'transparent', border: 'none',
-                        color: activeTab === t.key ? '#dff8ff' : slate(0.85),
-                        fontSize: '0.5rem', letterSpacing: '0.1em',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'background 0.1s, color 0.1s',
-                        ...(boomerMode ? {} : { fontFamily: "var(--font-sans)" }) }}
-                      onMouseEnter={e => { e.currentTarget.style.background = slate(0.04); }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1 }}>
-                        {t.icon} {t.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
 
         <div style={{ paddingBottom: 'calc(48px + var(--app-safe-bottom))' }}>
@@ -562,7 +462,7 @@ export default function CalllHomePage() {
                     </button>
                   </div>
                 ) : (
-                  <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} systemStatus={systemStatus} statusDiagnostic={statusDiagnostic} />
+                  <TabContent tab={activeTab} systemStatus={systemStatus} statusDiagnostic={statusDiagnostic} />
                 )}
               </Suspense>
             </CalllHomeProvider>
@@ -618,14 +518,6 @@ export default function CalllHomePage() {
             overflow: hidden;
             text-overflow: ellipsis;
             min-height: 44px !important;
-          }
-          .calll-home-tabs > div:last-child {
-             grid-column: 1 / -1;
-             margin-left: 0 !important;
-          }
-          .calll-home-tabs > div:last-child > button {
-            width: 100%;
-            justify-content: flex-start;
           }
         }
         @media (max-width: 360px) {

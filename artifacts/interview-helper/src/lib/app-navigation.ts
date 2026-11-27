@@ -13,7 +13,6 @@ import {
   Terminal,
   User,
   Calculator,
-  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,62 +25,84 @@ export type AppNavItem = {
   authOnly?: boolean;
   staffOnly?: boolean;
   accent?: "emerald" | "green";
+  priority?: number;
 };
 
-export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
-  { id: "pablo", path: "/pablo", label: "PABLO AI", boomerLabel: "PABLO AI", icon: Terminal },
-  { id: "phone", path: "/phone", label: "CALLL HOME", boomerLabel: "CALLL HOME", icon: Phone },
-  { id: "comms", path: "/comms", label: "COMMS", boomerLabel: "MESSAGES", icon: MessageSquare, authOnly: true },
-  { id: "office", path: "/desktop", label: "SALARYMAN OS", boomerLabel: "SALARYMAN OS", icon: Building2, accent: "green" },
-];
+export const PRIMARY_NAV_ITEMS: AppNavItem[] = ([
+  { id: "pablo", path: "/pablo", label: "PABLO AI", boomerLabel: "PABLO AI", icon: Terminal, priority: 120 },
+  { id: "phone", path: "/phone", label: "CALLL HOME", boomerLabel: "CALLL HOME", icon: Phone, priority: 100 },
+  { id: "bots", path: "/business/autopilot", label: "PABLO PRIME", boomerLabel: "PABLO PRIME", icon: Bot, authOnly: true, priority: 90 },
+  { id: "office", path: "/desktop", label: "SALARYMAN OS", boomerLabel: "SALARYMAN OS", icon: Building2, accent: "green", priority: 50 },
+] as AppNavItem[]).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
 export const MORE_NAV_ITEMS: AppNavItem[] = [
   { id: "workspace", path: "/workspace", label: "THE OFFICE", boomerLabel: "THE OFFICE", icon: LayoutDashboard, authOnly: true },
-  { id: "notepad", path: "/workspace/notepad", label: "NOTES", boomerLabel: "NOTES", icon: FileText, authOnly: true },
   { id: "calculator", path: "/workspace/calculator", label: "CALCULATOR", boomerLabel: "CALCULATOR", icon: Calculator, authOnly: true },
-  { id: "bots", path: "/business/autopilot", label: "PABLO PRIME", boomerLabel: "PABLO PRIME", icon: Bot, authOnly: true },
   { id: "crm", path: "/business/crm", label: "CRM", boomerLabel: "CRM", icon: Briefcase, authOnly: true },
-  { id: "org", path: "/organizations", label: "ORG", boomerLabel: "ORGANIZATION", icon: Network, authOnly: true },
   { id: "business", path: "/business", label: "BUSINESS", boomerLabel: "BUSINESS", icon: Briefcase, authOnly: true },
+  { id: "org", path: "/organizations", label: "ORG", boomerLabel: "ORGANIZATION", icon: Network, authOnly: true },
   { id: "creative", path: "/creative", label: "CREATIVE", boomerLabel: "CREATIVE", icon: Layers },
   { id: "marketing", path: "/marketing", label: "MARKETING", boomerLabel: "MARKETING", icon: Megaphone },
   { id: "settings", path: "/settings", label: "SETTINGS", boomerLabel: "SETTINGS", icon: Settings, authOnly: true },
   { id: "platform", path: "/platform", label: "PLATFORM API", boomerLabel: "PLATFORM API", icon: Network, authOnly: true },
   { id: "profile", path: "/profile", label: "PROFILE", boomerLabel: "PROFILE", icon: User, authOnly: true },
   { id: "admin", path: "/profile/admin", label: "ADMIN", boomerLabel: "ADMIN", icon: ShieldCheck, authOnly: true, staffOnly: true },
+  { id: "comms", path: "/comms", label: "COMMS", boomerLabel: "MESSAGES", icon: MessageSquare, authOnly: true },
 ];
 
 export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean {
+  const path = pathname.split("?")[0] || "/";
   switch (item.id) {
     case "workspace":
-      return pathname === "/workspace" || pathname.startsWith("/workspace/");
+      return path === "/workspace" || path.startsWith("/workspace/");
     case "pablo":
-      return pathname === "/pablo" || pathname.startsWith("/pablo/") || pathname === "/terminal";
+      return path === "/pablo" || path.startsWith("/pablo/") || path === "/terminal";
     case "office":
-      return pathname === "/desktop" || pathname === "/office" || pathname === "/my-office" || pathname.startsWith("/office/") || pathname.startsWith("/tower") || pathname.startsWith("/game");
+      return path === "/desktop" || path === "/office" || path === "/my-office" || path.startsWith("/office/") || path.startsWith("/tower") || path.startsWith("/game");
     case "bots":
-      return pathname === "/business/autopilot" || pathname === "/pablo/deck";
+      return path === "/business/autopilot" || path === "/phone/secretary" ||
+        path === "/bots/ad-studio" || path === "/marketing/ads" ||
+        path === "/bots" || path.startsWith("/bots/");
     case "crm":
-      return pathname === "/business/crm" || pathname.startsWith("/business/crm/") ||
-        pathname === "/marketing/leads" || pathname.startsWith("/marketing/leads/") ||
-        pathname === "/business/contacts" || pathname === "/business/deals";
+      return path === "/business/crm" || path.startsWith("/business/crm/") ||
+        path === "/marketing/leads" || path.startsWith("/marketing/leads/") ||
+        path === "/business/contacts" || path === "/business/deals";
+    case "business":
+      return (path === "/business" || path.startsWith("/business/")) &&
+        path !== "/business/autopilot" &&
+        path !== "/business/contacts" &&
+        path !== "/business/deals" &&
+        path !== "/business/leads" &&
+        path !== "/business/crm" &&
+        !path.startsWith("/business/crm/");
     case "creative":
-      return pathname === "/creative" || pathname.startsWith("/creative/") ||
-        pathname === "/1999" || pathname.startsWith("/1999/");
+      return (path === "/creative" || path.startsWith("/creative/")) &&
+        path !== "/creative/brand" ||
+        path === "/1999" || path.startsWith("/1999/");
     case "phone":
-      return pathname === "/phone" || pathname.startsWith("/phone/");
+      return path === "/phone" ||
+        (path.startsWith("/phone/") && path !== "/phone/secretary");
     case "comms":
-      return pathname === "/comms" || pathname.startsWith("/comms/");
+      return path === "/comms" || path.startsWith("/comms/");
     case "org":
-      return pathname === "/organizations" || pathname.startsWith("/organizations/") || pathname === "/org" || pathname.startsWith("/org/");
+      return path === "/organizations" || path.startsWith("/organizations/") || path === "/org" || path.startsWith("/org/");
     case "settings":
-      return pathname.startsWith("/settings");
+      return path.startsWith("/settings");
     case "admin":
-      return pathname.startsWith("/profile/admin") || pathname.startsWith("/profile/moderator");
+      return path.startsWith("/profile/admin") || path.startsWith("/profile/moderator");
     case "profile":
-      return (pathname === "/profile" || pathname.startsWith("/profile/")) && !pathname.startsWith("/profile/admin") && !pathname.startsWith("/profile/moderator");
+      return (path === "/profile" || path.startsWith("/profile/")) && !path.startsWith("/profile/admin") && !path.startsWith("/profile/moderator");
+    case "marketing":
+      return ((path === "/marketing" || path.startsWith("/marketing/")) &&
+        path !== "/marketing/ads" &&
+        path !== "/marketing/leads" &&
+        !path.startsWith("/marketing/leads/")) ||
+        path === "/creative/brand" ||
+        path === "/intel/reports" ||
+        path === "/intel/goals" ||
+        path.startsWith("/intel/seo");
     default:
-      return pathname === `/${item.id}` || pathname.startsWith(`/${item.id}/`);
+      return path === `/${item.id}` || path.startsWith(`/${item.id}/`);
   }
 }
 
@@ -192,8 +213,6 @@ export function shouldShowModuleSubnav(moduleId: string | undefined, itemCount: 
     pathname.startsWith("/leads/") ||
     pathname === "/marketing/leads" ||
     pathname.startsWith("/marketing/leads/") ||
-    pathname === "/organizations" ||
-    pathname.startsWith("/organizations/") ||
     pathname === "/comms" ||
     pathname.startsWith("/comms/");
   return Boolean(moduleId && moduleId !== "phone" && !isStandaloneMajorFeature && itemCount > 0);

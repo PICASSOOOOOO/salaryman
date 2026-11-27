@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api-client';
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Suspense, lazy, useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import {
   BookOpen, Plus, Trash2,
@@ -20,10 +20,15 @@ import {
 import { useTrackPicker } from '@/components/TrackPicker';
 import { HummingbirdIcon } from '@/components/HummingbirdIcon';
 import type { Track as HumTrack } from '@/contexts/MusicPlayerContext';
+const WorkspaceNotepad = lazy(() => import('./WorkspaceNotepad'));
+const Documents = lazy(() => import('./Documents'));
 import EssayWorkspaceTools from '@/components/EssayWorkspaceTools';
+import HemingwayDictationButton from '@/components/HemingwayDictationButton';
+import HemingwayWritingReview from '@/components/HemingwayWritingReview';
 import {
   EMPTY_ESSAY_PLAN,
   applyEssaySuggestion,
+  applyAllWritingSuggestions,
   formatEssayCitation,
   formatEssayDocument,
   parseEssaySuggestions,
@@ -32,6 +37,7 @@ import {
   type EssaySource,
   type EssaySuggestion,
 } from '@/lib/essay-tools';
+import { recommendWriterTemplates, type WriterGenre, type WriterTemplate } from '@/lib/writer-templates';
 
 // Beat-dock repeat modes:
 //   off  — play once and stop
@@ -45,7 +51,7 @@ function apiUrl(path: string) {
   return `/${BASE ? BASE + '/' : ''}api/${path}`.replace(/\/+/g, '/');
 }
 
-type Genre = 'fiction' | 'nonfiction' | 'screenplay' | 'poetry' | 'essay' | 'memoir' | 'journalism' | 'technical' | 'rap' | 'song';
+type Genre = WriterGenre;
 type Tone = 'literary' | 'conversational' | 'formal' | 'lyrical' | 'gritty' | 'humorous' | 'dramatic' | 'minimalist';
 
 interface Chapter {
@@ -72,6 +78,8 @@ interface Project {
   essayPlan?: EssayPlan;
   essaySources?: EssaySource[];
   citationStyle?: EssayCitationStyle;
+  writingPrompt?: string;
+  musicNotes?: string;
 }
 
 const GENRES: { id: Genre; label: string; desc: string }[] = [
@@ -85,6 +93,9 @@ const GENRES: { id: Genre; label: string; desc: string }[] = [
   { id: 'technical', label: 'TECHNICAL', desc: 'Manuals, documentation, white papers' },
   { id: 'rap',     label: 'RAP',     desc: 'Bars, flow, rhyme schemes — beat-aware editor' },
   { id: 'song',    label: 'SONG',    desc: 'Verses, hooks, bridges — beat-aware editor' },
+  { id: 'proposal', label: 'PROPOSAL', desc: 'Client proposals with scope, timeline, and investment' },
+  { id: 'business_plan', label: 'BUSINESS PLAN', desc: 'Business ideas, assumptions, operations, and finance' },
+  { id: 'presentation', label: 'SLIDESHOW', desc: 'Slide-by-slide story with speaker notes' },
 ];
 
 const TONES: { id: Tone; label: string }[] = [
@@ -97,6 +108,29 @@ const TONES: { id: Tone; label: string }[] = [
   { id: 'dramatic', label: 'DRAMATIC' },
   { id: 'minimalist', label: 'MINIMALIST' },
 ];
+
+type HemingwayView = 'writing' | 'templates' | 'notes' | 'documents' | 'settings';
+
+const WRITER_DEFAULTS_KEY = 'sm_writer_defaults';
+function loadWriterDefaults(): { genre: Genre; tone: Tone } {
+  try {
+    const saved = JSON.parse(localStorage.getItem(WRITER_DEFAULTS_KEY) ?? '{}');
+    return {
+      genre: GENRES.some((genre) => genre.id === saved.genre) ? saved.genre : 'fiction',
+      tone: TONES.some((tone) => tone.id === saved.tone) ? saved.tone : 'literary',
+    };
+  } catch {
+    return { genre: 'fiction', tone: 'literary' };
+  }
+}
+
+function getInitialHemingwayView(): HemingwayView {
+  if (typeof window === 'undefined') return 'writing';
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get('view');
+  if (view === 'templates' || view === 'notes' || view === 'documents' || view === 'settings') return view;
+  return params.get('settings') === '1' ? 'settings' : 'writing';
+}
 
 const STORAGE_KEY = 'sm_writer_projects';
 
@@ -131,13 +165,14 @@ function newChapter(title = 'UNTITLED CHAPTER'): Chapter {
 }
 
 function newProject(genre: Genre = 'fiction'): Project {
+  const firstTitle = genre === 'essay' ? 'ESSAY DRAFT' : genre === 'presentation' ? 'SLIDE 1' : 'CHAPTER 1';
   return {
     id: uid(),
     title: genre === 'essay' ? 'UNTITLED ESSAY' : 'UNTITLED PROJECT',
     genre,
     tone: 'literary',
     synopsis: '',
-    chapters: [newChapter(genre === 'essay' ? 'ESSAY DRAFT' : 'CHAPTER 1')],
+    chapters: [newChapter(firstTitle)],
     createdAt: Date.now(),
     updatedAt: Date.now(),
     bpm: 90,
@@ -150,11 +185,15 @@ export default function WriterStudio() {
   const [projects, setProjects] = useState<Project[]>(loadProjects);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(projects[0]?.id ?? null);
   const [activeChapterIdx, setActiveChapterIdx] = useState(0);
+  const [activeView, setActiveView] = useState<HemingwayView>(getInitialHemingwayView);
+  const [writerDefaults, setWriterDefaults] = useState(loadWriterDefaults);
   const [generating, setGenerating] = useState(false);
   const [streamText, setStreamText] = useState('');
   const [outputAction, setOutputAction] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
+  const [showPromptPanel, setShowPromptPanel] = useState(false);
+  const [showWritingReview, setShowWritingReview] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiAction, setAiAction] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -177,6 +216,39 @@ export default function WriterStudio() {
     () => Object.fromEntries(essaySources.map(source => [source.id, formatEssayCitation(source, citationStyle)])),
     [essaySources, citationStyle],
   );
+  const recommendedTemplates = useMemo(
+    () => recommendWriterTemplates(project?.genre ?? writerDefaults.genre),
+    [project?.genre, writerDefaults.genre],
+  );
+  const recommendationGenre = project?.genre ?? writerDefaults.genre;
+  const recommendedTemplateId = recommendedTemplates.find(template =>
+    template.recommendedFor.includes(recommendationGenre),
+  )?.id;
+
+  const changeHemingwayView = useCallback((view: HemingwayView) => {
+    setActiveView(view);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('settings');
+    url.searchParams.delete('view');
+    if (view === 'settings') url.searchParams.set('settings', '1');
+    else if (view !== 'writing') url.searchParams.set('view', view);
+    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  useEffect(() => {
+    const syncViewFromLocation = () => setActiveView(getInitialHemingwayView());
+    window.addEventListener('popstate', syncViewFromLocation);
+    return () => window.removeEventListener('popstate', syncViewFromLocation);
+  }, []);
+
+  const updateWriterDefaults = useCallback((next: { genre: Genre; tone: Tone }) => {
+    setWriterDefaults(next);
+    try {
+      localStorage.setItem(WRITER_DEFAULTS_KEY, JSON.stringify(next));
+    } catch {
+      // Keep the current session usable when local storage is unavailable.
+    }
+  }, []);
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -187,6 +259,7 @@ export default function WriterStudio() {
     setShowEssayTools(project?.genre === 'essay');
     setEssaySuggestions([]);
     setEssayNotice('');
+    setShowWritingReview(false);
   }, [project?.id, project?.genre, activeChapterIdx]);
 
   // Debounced localStorage flush. JSON.stringify on a large novel can be
@@ -367,6 +440,20 @@ export default function WriterStudio() {
     updateChapter(c => ({ ...c, content: result.content, wordCount: wordCount(result.content) }));
     setEssaySuggestions(items => items.filter(item => item.id !== id));
     setEssayNotice('Suggestion applied.');
+  };
+
+  const acceptAllWritingSuggestions = () => {
+    if (!chapter || !essaySuggestions.length) return;
+    const result = applyAllWritingSuggestions(chapter.content, essaySuggestions);
+    if (result.applied) {
+      updateChapter(c => ({ ...c, content: result.content, wordCount: wordCount(result.content) }));
+    }
+    setEssaySuggestions([]);
+    setEssayNotice(
+      result.skipped
+        ? `${result.applied} safe edits applied; ${result.skipped} skipped because the draft changed or excerpts overlapped.`
+        : `${result.applied} safe edits applied.`,
+    );
   };
 
   const rejectEssaySuggestion = (id: string) => {
@@ -646,12 +733,28 @@ export default function WriterStudio() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCreateProject = (genre: Genre = 'fiction') => {
-    const p = newProject(genre);
+  const handleCreateProject = (genre?: Genre) => {
+    const p = newProject(genre ?? writerDefaults.genre);
+    p.tone = writerDefaults.tone;
     const updated = [...projects, p];
     persist(updated);
     setActiveProjectId(p.id);
     setActiveChapterIdx(0);
+  };
+
+  const handleCreateTemplateProject = (template: WriterTemplate) => {
+    const p = newProject(template.genre);
+    p.title = template.projectTitle;
+    p.synopsis = template.synopsis;
+    p.writingPrompt = template.prompt;
+    p.chapters = template.sections.map((title) => newChapter(title));
+    p.tone = writerDefaults.tone;
+    if (template.genre === 'song' || template.genre === 'rap') p.bpm = 96;
+    persist([...projects, p]);
+    setActiveProjectId(p.id);
+    setActiveChapterIdx(0);
+    setShowPromptPanel(Boolean(template.prompt));
+    changeHemingwayView('writing');
   };
 
   const handleDeleteProject = (id: string) => {
@@ -666,9 +769,10 @@ export default function WriterStudio() {
   const handleAddChapter = () => {
     if (!project) return;
     const idx = project.chapters.length;
+    const label = project.genre === 'essay' ? 'SECTION' : project.genre === 'presentation' ? 'SLIDE' : 'CHAPTER';
     updateProject(p => ({
       ...p,
-      chapters: [...p.chapters, newChapter(`${p.genre === 'essay' ? 'SECTION' : 'CHAPTER'} ${idx + 1}`)],
+      chapters: [...p.chapters, newChapter(`${label} ${idx + 1}`)],
     }));
     setActiveChapterIdx(idx);
   };
@@ -709,7 +813,11 @@ export default function WriterStudio() {
           chapterTitle: chapter?.title ?? '',
           chapterContent: chapter?.content ?? '',
           chapterNotes: chapter?.notes ?? '',
-          context,
+          context: [
+            project?.writingPrompt && `Saved project prompt: ${project.writingPrompt}`,
+            project?.musicNotes && `Saved music notes: ${project.musicNotes}`,
+            context,
+          ].filter(Boolean).join('\n\n'),
           essayPlan: project?.essayPlan ?? EMPTY_ESSAY_PLAN,
           // Songwriting context — only meaningful for rap/song but cheap to
           // always send. Server uses these to tailor flow/meter advice.
@@ -745,6 +853,19 @@ export default function WriterStudio() {
       let buffer = '';
       let full = '';
       let streamError = '';
+      const processSseLine = (line: string) => {
+        if (!line.startsWith('data: ')) return;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.content) {
+            full += data.content;
+            if (action !== 'proofread') setStreamText(full);
+          }
+          if (data.error) streamError = String(data.error);
+        } catch {
+          // Ignore SSE comments, event names, and malformed partial metadata.
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -752,18 +873,9 @@ export default function WriterStudio() {
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.content) {
-              full += data.content;
-              if (action !== 'proofread') setStreamText(full);
-            }
-            if (data.error) streamError = String(data.error);
-          } catch {}
-        }
+        lines.forEach(processSseLine);
       }
+      if (buffer.trim()) processSseLine(buffer);
 
       if (streamError) throw new Error(streamError);
       if (action === 'proofread') {
@@ -771,7 +883,8 @@ export default function WriterStudio() {
           const parsed = parseEssaySuggestions(full);
           setEssaySuggestions(parsed.map(suggestion => ({ ...suggestion, id: uid() })));
           setEssayNotice(parsed.length ? `${parsed.length} suggestions are ready to review.` : 'No suggestions found for this draft.');
-          setShowEssayTools(true);
+          if (isEssay) setShowEssayTools(true);
+          else setShowWritingReview(true);
           setStreamText('');
         } catch {
           setEssaySuggestions([]);
@@ -792,8 +905,6 @@ export default function WriterStudio() {
         setShowEssayTools(true);
       } else if (action === 'outline') {
         setShowOutline(true);
-      } else if (action === 'rewrite') {
-        updateChapter(c => ({ ...c, content: full, wordCount: wordCount(full) }));
       }
     } catch (err: unknown) {
       if ((err as Error).name !== 'AbortError') {
@@ -888,7 +999,7 @@ export default function WriterStudio() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(s => !s)}
-            className="sm:hidden text-zinc-500 hover:text-amber-400 transition-colors p-1 -ml-1"
+            className={`${activeView === 'writing' ? 'sm:hidden' : 'hidden'} text-zinc-500 hover:text-amber-400 transition-colors p-1 -ml-1`}
             aria-label="Toggle project list"
           >
             {sidebarOpen ? <XIcon className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -896,7 +1007,7 @@ export default function WriterStudio() {
           <PenTool className="w-4 h-4 text-amber-400/60" />
           <span className="text-amber-400/80 text-xs tracking-[0.2em] uppercase">HEMINGWAY</span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-zinc-600 tracking-wider">
+        <div className={`${activeView === 'writing' ? 'flex' : 'hidden'} items-center gap-2 text-[10px] text-zinc-600 tracking-wider`}>
           {/* Music tool toggles — work in any genre. A novelist can flip on
               the beat dock to write to a loop; a rapper can pull up the
               rhyme book. Both default ON for rap/song projects. */}
@@ -973,6 +1084,35 @@ export default function WriterStudio() {
         </div>
       </div>
 
+      <nav
+        aria-label="Hemingway workspace"
+        className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-4 py-2"
+      >
+        {([
+          ['writing', 'WRITING'],
+          ['templates', 'TEMPLATES'],
+          ['notes', 'NOTES'],
+          ['documents', 'DOCUMENTS'],
+          ['settings', 'SETTINGS'],
+        ] as const).map(([view, label]) => (
+          <button
+            key={view}
+            type="button"
+            data-testid={`hemingway-view-${view}`}
+            aria-current={activeView === view ? 'page' : undefined}
+            onClick={() => changeHemingwayView(view)}
+            className={`min-h-10 rounded border px-3 py-2 text-[10px] font-semibold tracking-[0.12em] transition-colors ${
+              activeView === view
+                ? 'border-amber-500/35 bg-amber-500/10 text-amber-300'
+                : 'border-white/[0.06] text-zinc-500 hover:border-amber-500/25 hover:text-amber-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {activeView === 'writing' ? (
       <div className="flex-1 flex overflow-hidden relative">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
@@ -1080,7 +1220,7 @@ export default function WriterStudio() {
                 data-testid="hemingway-add-chapter"
                 className="w-full flex items-center justify-center gap-1.5 mt-1 px-3 py-2 text-[9px] tracking-widest uppercase text-zinc-500 hover:text-amber-400 border-t border-white/[0.06] hover:bg-amber-500/5 transition-colors"
               >
-                <Plus className="w-3 h-3" /> ADD {project.genre === 'essay' ? 'SECTION' : 'CHAPTER'}
+                <Plus className="w-3 h-3" /> ADD {project.genre === 'essay' ? 'SECTION' : project.genre === 'presentation' ? 'SLIDE' : 'CHAPTER'}
               </button>
             </div>
           )}
@@ -1098,16 +1238,17 @@ export default function WriterStudio() {
                 placeholder="PROJECT TITLE"
               />
               <button
-                onClick={() => setShowSettings(!showSettings)}
+                onClick={() => setShowProjectSettings(!showProjectSettings)}
+                data-testid="hemingway-project-settings-toggle"
                 className={`text-[10px] tracking-widest px-2 py-1 rounded border transition-colors ${
-                  showSettings ? 'text-amber-400 border-amber-500/30 bg-amber-500/8' : 'text-zinc-600 border-zinc-800 hover:text-zinc-400'
+                  showProjectSettings ? 'text-amber-400 border-amber-500/30 bg-amber-500/8' : 'text-zinc-600 border-zinc-800 hover:text-zinc-400'
                 }`}
               >
-                {showSettings ? 'HIDE SETTINGS' : 'SETTINGS'}
+                {showProjectSettings ? 'HIDE PROJECT SETTINGS' : 'PROJECT SETTINGS'}
               </button>
             </div>
 
-            {showSettings && (
+            {showProjectSettings && (
               <div className="px-6 py-4 border-b border-white/[0.06] bg-white/[0.01] space-y-4">
                 <div>
                   <label className="text-[9px] text-zinc-600 tracking-widest uppercase mb-1.5 block">SYNOPSIS</label>
@@ -1119,6 +1260,21 @@ export default function WriterStudio() {
                     className="w-full bg-black/30 border border-white/[0.06] rounded px-3 py-2 text-xs text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-amber-500/30 resize-none"
                   />
                 </div>
+                {isMusic && (
+                  <div>
+                    <label className="text-[9px] text-zinc-600 tracking-widest uppercase mb-1.5 block">
+                      MUSIC NOTES · CHORDS · MELODY
+                    </label>
+                    <textarea
+                      value={project.musicNotes ?? ''}
+                      onChange={e => updateProject(p => ({ ...p, musicNotes: e.target.value }))}
+                      placeholder="Save key, chord changes, melody notes, rhythm, and arrangement ideas here..."
+                      rows={4}
+                      data-testid="hemingway-music-notes"
+                      className="w-full resize-y rounded border border-white/[0.06] bg-black/30 px-3 py-2 text-xs text-zinc-300 outline-none placeholder:text-zinc-700 focus:border-amber-500/30"
+                    />
+                  </div>
+                )}
                 <div className="flex gap-4">
                   <div className="flex-1">
                     <label className="text-[9px] text-zinc-600 tracking-widest uppercase mb-1.5 block">GENRE</label>
@@ -1127,6 +1283,7 @@ export default function WriterStudio() {
                         <button
                           key={g.id}
                           onClick={() => updateProject(p => ({ ...p, genre: g.id }))}
+                          data-testid={`hemingway-genre-${g.id}`}
                           className={`px-2 py-1.5 text-[9px] tracking-wider rounded border transition-colors text-left ${
                             project.genre === g.id
                               ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
@@ -1194,12 +1351,41 @@ export default function WriterStudio() {
                   <FileText className="w-3 h-3" /> ESSAY TOOLS
                 </button>
               )}
+              {!isEssay && (
+                <button
+                  type="button"
+                  onClick={() => setShowWritingReview(value => !value)}
+                  aria-expanded={showWritingReview}
+                  data-testid="button-toggle-hemingway-review"
+                  className={`flex items-center gap-1 px-2.5 py-1 text-[9px] tracking-wider border rounded transition-colors shrink-0 ${
+                    showWritingReview
+                      ? 'text-amber-300 border-amber-500/30 bg-amber-500/10'
+                      : 'text-zinc-500 border-white/[0.06] hover:text-amber-400 hover:border-amber-500/25'
+                  }`}
+                >
+                  <FileText className="w-3 h-3" /> GRAMMAR & STYLE
+                </button>
+              )}
               <button
                 onClick={() => streamFromAI('write_section', '')}
                 disabled={generating}
+                data-testid="button-hemingway-write"
                 className="flex items-center gap-1 px-2.5 py-1 text-[9px] tracking-wider text-zinc-500 hover:text-amber-400 border border-white/[0.06] rounded hover:border-amber-500/25 hover:bg-amber-500/5 transition-colors disabled:opacity-30 shrink-0"
               >
                 <Wand2 className="w-3 h-3" /> WRITE
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPromptPanel(value => !value)}
+                aria-expanded={showPromptPanel}
+                data-testid="button-toggle-hemingway-prompt"
+                className={`flex items-center gap-1 px-2.5 py-1 text-[9px] tracking-wider border rounded transition-colors shrink-0 ${
+                  showPromptPanel
+                    ? 'text-amber-300 border-amber-500/30 bg-amber-500/10'
+                    : 'text-zinc-500 border-white/[0.06] hover:text-amber-400 hover:border-amber-500/25'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" /> PROMPT
               </button>
               <button
                 onClick={() => streamFromAI('continue', '')}
@@ -1214,6 +1400,15 @@ export default function WriterStudio() {
                 className="flex items-center gap-1 px-2.5 py-1 text-[9px] tracking-wider text-zinc-500 hover:text-amber-400 border border-white/[0.06] rounded hover:border-amber-500/25 hover:bg-amber-500/5 transition-colors disabled:opacity-30 shrink-0"
               >
                 <RotateCcw className="w-3 h-3" /> REWRITE
+              </button>
+              <button
+                onClick={() => streamFromAI('humanize', '')}
+                disabled={generating || !chapter.content.trim()}
+                data-testid="button-hemingway-humanize"
+                title="Make the wording more natural while preserving your meaning and voice"
+                className="flex items-center gap-1 px-2.5 py-1 text-[9px] tracking-wider text-zinc-500 hover:text-amber-400 border border-white/[0.06] rounded hover:border-amber-500/25 hover:bg-amber-500/5 transition-colors disabled:opacity-30 shrink-0"
+              >
+                <Wand2 className="w-3 h-3" /> HUMANIZE
               </button>
               <button
                 onClick={() => streamFromAI('expand', '')}
@@ -1253,6 +1448,19 @@ export default function WriterStudio() {
               >
                 <Mic className="w-3 h-3" /> {acapHandle ? 'STOP' : 'A CAPPELLA'}
               </button>
+              <HemingwayDictationButton onTranscript={(text) => insertAtCursor(`${text} `)} />
+              {isMusic && (
+                <button
+                  type="button"
+                  onClick={() => streamFromAI('compose_music', '')}
+                  disabled={generating || !chapter.content.trim()}
+                  data-testid="button-hemingway-compose-music"
+                  className="flex shrink-0 items-center gap-1 rounded border border-pink-500/20 px-2.5 py-1 text-[9px] tracking-wider text-pink-300/80 transition-colors hover:bg-pink-500/10 disabled:cursor-not-allowed disabled:opacity-30"
+                  title="Ask Pablo for an original key, chords, melody notes, and arrangement sketch"
+                >
+                  <Music2 className="h-3 w-3" /> COMPOSE MUSIC
+                </button>
+              )}
               {/* MIX — render lyrics + uploaded beat into a downloadable WAV.
                   Disabled until both lyrics and a beat are loaded. */}
               <button
@@ -1291,6 +1499,42 @@ export default function WriterStudio() {
                 {chapter.wordCount.toLocaleString()} WORDS
               </div>
             </div>
+
+            {showPromptPanel && (
+              <section
+                aria-label="Prompt-led writing"
+                className="space-y-2 border-b border-amber-500/10 bg-amber-500/[0.025] px-4 py-3 sm:px-6"
+                data-testid="hemingway-prompt-panel"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-[10px] font-semibold tracking-[0.14em] text-amber-200">
+                      PROMPT-LED WRITING
+                    </h2>
+                    <p className="mt-1 text-[10px] text-zinc-600">
+                      This saved direction is included with Pablo’s writing requests.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => streamFromAI('write_section', '')}
+                    disabled={generating || !project.writingPrompt?.trim()}
+                    data-testid="button-hemingway-generate-from-prompt"
+                    className="min-h-9 rounded border border-amber-500/25 px-3 text-[10px] font-semibold tracking-wider text-amber-200 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {generating && aiAction === 'write_section' ? 'WRITING…' : 'WRITE FROM PROMPT'}
+                  </button>
+                </div>
+                <textarea
+                  value={project.writingPrompt ?? ''}
+                  onChange={event => updateProject(p => ({ ...p, writingPrompt: event.target.value }))}
+                  placeholder="Describe the scene, argument, client need, slide, or song idea you want to develop..."
+                  rows={3}
+                  data-testid="hemingway-writing-prompt"
+                  className="w-full resize-y rounded border border-white/[0.08] bg-black/30 px-3 py-2 text-xs leading-5 text-zinc-300 outline-none placeholder:text-zinc-700 focus:border-amber-500/30"
+                />
+              </section>
+            )}
 
             {/* FORMATTING TOOLBAR — markdown formatting for freewriting (prose)
                 genres. Hidden for rap/song where the bar grid, not headings, is
@@ -1338,6 +1582,21 @@ export default function WriterStudio() {
                 />
               </div>
             )}
+            {!isEssay && showWritingReview && (
+              <div className="max-h-[40dvh] shrink-0 overflow-y-auto">
+                <HemingwayWritingReview
+                  suggestions={essaySuggestions}
+                  notice={essayNotice}
+                  isReviewing={generating && aiAction === 'proofread'}
+                  isBusy={generating}
+                  canReview={Boolean(chapter.content.trim())}
+                  onReview={() => streamFromAI('proofread', '')}
+                  onAccept={acceptEssaySuggestion}
+                  onReject={rejectEssaySuggestion}
+                  onAcceptAll={acceptAllWritingSuggestions}
+                />
+              </div>
+            )}
 
             {/* Editor + AI output */}
             <div className="flex-1 flex overflow-hidden">
@@ -1374,12 +1633,13 @@ export default function WriterStudio() {
                   value={chapter.content}
                   onChange={e => {
                     const val = e.target.value;
-                    if (isEssay && essaySuggestions.length) {
+                    if (essaySuggestions.length) {
                       setEssaySuggestions([]);
                       setEssayNotice('Suggestions cleared because the draft changed.');
                     }
                     updateChapter(c => ({ ...c, content: val, wordCount: wordCount(val) }));
                   }}
+                  data-testid="hemingway-editor"
                   placeholder={isEssay
                     ? "Draft your essay here. Add source details and review suggestions in Essay Tools..."
                     : "Start writing, or use the toolbar above to let Pablo write for you..."}
@@ -1523,7 +1783,15 @@ export default function WriterStudio() {
                 <div className="w-80 shrink-0 border-l border-white/[0.06] bg-white/[0.01] flex flex-col overflow-hidden">
                   <div className="px-3 py-2 border-b border-white/[0.04] flex items-center justify-between">
                     <span className="text-[9px] text-amber-400/60 tracking-widest uppercase">
-                      {outputAction === 'essay_outline' || outputAction === 'outline' ? 'OUTLINE' : outputAction === 'critique' ? 'CRITIQUE' : 'PABLO OUTPUT'}
+                      {outputAction === 'essay_outline' || outputAction === 'outline'
+                        ? 'OUTLINE'
+                        : outputAction === 'critique'
+                          ? 'CRITIQUE'
+                          : outputAction === 'humanize'
+                            ? 'HUMANIZED DRAFT PROPOSAL'
+                            : outputAction === 'compose_music'
+                              ? 'MUSIC COMPOSITION'
+                              : 'PABLO OUTPUT'}
                     </span>
                     <button
                       onClick={() => { setStreamText(''); setOutputAction(null); setShowOutline(false); }}
@@ -1535,16 +1803,25 @@ export default function WriterStudio() {
                   <div className="flex-1 overflow-y-auto px-4 py-3 text-xs text-zinc-400 leading-6 whitespace-pre-wrap">
                     {streamText}
                   </div>
-                  {streamText && !generating && Boolean(outputAction) && (isEssay
-                    ? outputAction === 'essay_outline' || outputAction === 'write_section'
-                    : outputAction !== 'continue' && outputAction !== 'rewrite') && (
+                  {streamText && !generating && outputAction !== null &&
+                    outputAction !== 'continue' &&
+                    outputAction !== 'proofread' &&
+                    (!isEssay || ['essay_outline', 'write_section', 'rewrite', 'humanize', 'compose_music'].includes(outputAction)) && (
                     <div className="px-3 py-2 border-t border-white/[0.04] flex gap-2">
                       <button
+                        data-testid="button-apply-hemingway-output"
                         onClick={() => {
                           if (outputAction === 'essay_outline') {
                             updateEssayPlan({ outline: streamText });
                             setShowEssayTools(true);
                             setEssayNotice('Outline added to your plan.');
+                          } else if (outputAction === 'rewrite' || outputAction === 'humanize') {
+                            updateChapter(c => ({ ...c, content: streamText, wordCount: wordCount(streamText) }));
+                          } else if (outputAction === 'compose_music') {
+                            updateProject(p => ({
+                              ...p,
+                              musicNotes: [p.musicNotes?.trim(), streamText].filter(Boolean).join('\n\n'),
+                            }));
                           } else {
                             updateChapter(c => {
                               const sep = c.content.trim() ? '\n\n' : '';
@@ -1553,10 +1830,17 @@ export default function WriterStudio() {
                             });
                           }
                           setStreamText('');
+                          setOutputAction(null);
                         }}
                         className="flex-1 text-[9px] tracking-wider text-amber-400 border border-amber-500/25 rounded py-1 hover:bg-amber-500/10 transition-colors"
                       >
-                        {outputAction === 'essay_outline' ? 'USE AS OUTLINE' : 'INSERT INTO CHAPTER'}
+                        {outputAction === 'essay_outline'
+                          ? 'USE AS OUTLINE'
+                          : outputAction === 'rewrite' || outputAction === 'humanize'
+                            ? 'REPLACE DRAFT'
+                            : outputAction === 'compose_music'
+                              ? 'SAVE TO MUSIC NOTES'
+                              : 'INSERT INTO CHAPTER'}
                       </button>
                     </div>
                   )}
@@ -1760,6 +2044,113 @@ export default function WriterStudio() {
           </div>
         )}
       </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {activeView === 'templates' ? (
+            <section
+              aria-labelledby="hemingway-templates-title"
+              data-testid="hemingway-template-library"
+              className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-8"
+            >
+              <header className="border-b border-white/[0.06] pb-4">
+                <p className="text-[10px] tracking-[0.16em] text-amber-400/70">
+                  RECOMMENDED FOR {String(project?.genre ?? writerDefaults.genre).replaceAll('_', ' ').toUpperCase()}
+                </p>
+                <h1 id="hemingway-templates-title" className="mt-2 text-lg font-semibold tracking-[0.12em] text-amber-200">
+                  WRITING TEMPLATES
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  Start a novel, proposal, business plan, slideshow, or song session. Your work stays editable and saved with your projects.
+                </p>
+              </header>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {recommendedTemplates.map((template) => (
+                  <article
+                    key={template.id}
+                    data-testid={`card-hemingway-template-${template.id}`}
+                    className="flex min-h-48 flex-col rounded border border-white/[0.08] bg-white/[0.02] p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-sm font-semibold text-zinc-200">{template.title}</h2>
+                      {template.id === recommendedTemplateId && (
+                        <span className="shrink-0 rounded border border-amber-500/20 px-2 py-1 text-[8px] tracking-wider text-amber-200">
+                          RECOMMENDED
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 flex-1 text-xs leading-5 text-zinc-500">{template.summary}</p>
+                    <p className="mt-3 text-[9px] tracking-wider text-zinc-700">
+                      {template.sections.length} STARTING SECTIONS · {template.genre.replaceAll('_', ' ').toUpperCase()}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleCreateTemplateProject(template)}
+                      data-testid={`button-use-hemingway-template-${template.id}`}
+                      className="mt-3 min-h-10 rounded border border-amber-500/25 px-3 text-[10px] font-semibold tracking-wider text-amber-200 transition-colors hover:bg-amber-500/10"
+                    >
+                      START PROJECT
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : activeView === 'settings' ? (
+            <section
+              className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-8"
+              aria-labelledby="hemingway-settings-title"
+              data-testid="hemingway-feature-settings"
+            >
+              <header className="border-b border-white/[0.06] pb-5">
+                <h1 id="hemingway-settings-title" className="text-lg font-semibold tracking-[0.12em] text-amber-200">
+                  HEMINGWAY SETTINGS
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  Set defaults for new writing projects. Existing projects keep their saved settings.
+                </p>
+              </header>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-xs tracking-wider text-zinc-400">
+                  DEFAULT GENRE
+                  <select
+                    value={writerDefaults.genre}
+                    onChange={(event) => updateWriterDefaults({ ...writerDefaults, genre: event.target.value as Genre })}
+                    className="min-h-11 rounded border border-white/[0.1] bg-[#111114] px-3 text-sm text-zinc-200"
+                    data-testid="hemingway-default-genre"
+                  >
+                    {GENRES.map((genre) => <option key={genre.id} value={genre.id}>{genre.label}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-2 text-xs tracking-wider text-zinc-400">
+                  DEFAULT TONE
+                  <select
+                    value={writerDefaults.tone}
+                    onChange={(event) => updateWriterDefaults({ ...writerDefaults, tone: event.target.value as Tone })}
+                    className="min-h-11 rounded border border-white/[0.1] bg-[#111114] px-3 text-sm text-zinc-200"
+                    data-testid="hemingway-default-tone"
+                  >
+                    {TONES.map((tone) => <option key={tone.id} value={tone.id}>{tone.label}</option>)}
+                  </select>
+                </label>
+                <div className="sm:col-span-2">
+                  <p className="mb-2 text-xs tracking-wider text-zinc-400">READ-ALOUD VOICE</p>
+                  <VoicePickerInline value={voiceKey} onChange={setVoice} label={voiceLabel} />
+                </div>
+              </div>
+              <p className="text-xs leading-5 text-zinc-600">
+                Project-specific genre, tone, and synopsis remain available under PROJECT SETTINGS while writing.
+              </p>
+            </section>
+          ) : (
+            <Suspense fallback={
+              <div className="p-8 text-center text-xs tracking-widest text-zinc-500" role="status">
+                OPENING {activeView === 'notes' ? 'NOTES' : 'DOCUMENTS'}…
+              </div>
+            }>
+              {activeView === 'notes' ? <WorkspaceNotepad embedded /> : <Documents embedded />}
+            </Suspense>
+          )}
+        </div>
+      )}
 
     </div>
   );

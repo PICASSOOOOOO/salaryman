@@ -6,4 +6,9 @@ describe("CALLL HOME legacy routes", () => {
     expect(PHONE_ROUTE_TO_TAB["/phone/dialer"]).toBe("dial");
     expect(PHONE_ROUTE_TO_TAB["/phone/sessions"]).toBe("auto");
   });
+
+  it("keeps Voice Coach in CALLL HOME and call handling in PABLO PRIME", () => {
+    expect(PHONE_ROUTE_TO_TAB["/phone/coach"]).toBe("ai");
+    expect(PHONE_ROUTE_TO_TAB["/phone/secretary"]).toBeUndefined();
+  });
 });

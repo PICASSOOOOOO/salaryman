@@ -451,7 +451,7 @@ export default function PhoneCommandCenter({
           font-weight: 200;
         }
         .number-input::placeholder {
-          color: ${slate(0.12)};
+          color: #000;
           font-weight: 200;
         }
         .contacts-rail {

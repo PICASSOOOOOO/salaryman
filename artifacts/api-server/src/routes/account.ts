@@ -3,6 +3,11 @@ import { db, contactsTable, userMemoryTable, usersTable, chatChannelsTable, chat
 import { eq, and, count } from "drizzle-orm";
 import { getAllUsage } from "../lib/usage-meter";
 import { getOrInitUsername, changeUsername } from "../lib/username";
+import {
+  GetAccountWorkspaceLayoutResponse,
+  UpdateAccountWorkspaceLayoutBody,
+  UpdateAccountWorkspaceLayoutResponse,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -157,6 +162,64 @@ router.put("/account/settings", async (req, res) => {
   } catch (err) {
     console.error("[account/settings] set error", err);
     res.status(500).json({ error: "Failed to save settings" });
+  }
+});
+
+// GET /account/workspace — account-owned layout for the browser workspace.
+router.get("/account/workspace", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const [row] = await db
+      .select({ workspaceLayout: usersTable.workspaceLayout })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id));
+    if (!row) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
+    const layout = row.workspaceLayout === null
+      ? null
+      : UpdateAccountWorkspaceLayoutBody.safeParse(row.workspaceLayout);
+    if (layout !== null && !layout.success) {
+      req.log.error({ errors: layout.error.message }, "Stored workspace layout is invalid");
+      res.status(500).json({ error: "Stored workspace layout is invalid" });
+      return;
+    }
+    res.json(GetAccountWorkspaceLayoutResponse.parse({ layout: layout?.data ?? null }));
+  } catch (err) {
+    req.log.error({ err }, "Failed to load account workspace layout");
+    res.status(500).json({ error: "Failed to load workspace layout" });
+  }
+});
+
+// PUT /account/workspace — save one validated account-owned layout.
+router.put("/account/workspace", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const parsed = UpdateAccountWorkspaceLayoutBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    const [row] = await db
+      .update(usersTable)
+      .set({ workspaceLayout: parsed.data })
+      .where(eq(usersTable.id, req.user.id))
+      .returning({ workspaceLayout: usersTable.workspaceLayout });
+    if (!row) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
+    res.json(UpdateAccountWorkspaceLayoutResponse.parse({ layout: row.workspaceLayout }));
+  } catch (err) {
+    req.log.error({ err }, "Failed to save account workspace layout");
+    res.status(500).json({ error: "Failed to save workspace layout" });
   }
 });
 

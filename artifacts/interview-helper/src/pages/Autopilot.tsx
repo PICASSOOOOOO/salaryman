@@ -1056,7 +1056,7 @@ export default function Autopilot() {
           setError('Pablo AI access is required to use automation.');
           setErrorAction({ href: '/pricing?view=prime', label: 'VIEW PABLO AI' });
         } else {
-          setError('You need owner or manager access to manage Pablo Automation.');
+          setError('You need owner or manager access to manage PABLO PRIME.');
         }
         setData(null);
         return;
@@ -1067,7 +1067,7 @@ export default function Autopilot() {
         return;
       }
       if (!res.ok) {
-        setError('Failed to load Pablo Automation.');
+        setError('Failed to load PABLO PRIME.');
         setData(null);
         return;
       }
@@ -1234,7 +1234,7 @@ export default function Autopilot() {
     };
   }, []);
 
-  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage Pablo Automation." />;
+  if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage PABLO PRIME." />;
 
   if (loading) {
     return (
@@ -1249,10 +1249,10 @@ export default function Autopilot() {
       <div className="flex items-center justify-between mb-5 gap-3">
         <div>
           <h1 className="font-mono text-base tracking-widest flex items-center gap-2">
-            <Sparkles className="w-5 h-5" /> PABLO PRIME / AUTOMATION WORKSPACE
+            <Sparkles className="w-5 h-5" /> PABLO PRIME
           </h1>
           <p className="font-sans text-xs text-cyan-500/40 mt-1 max-w-2xl">
-            Paid Prime starts only the four established workflows. Creative Work and Market Research stay off until the organization owner enables them.
+            One assistant runs the workflows you choose. Creative Work and Market Research stay off until the organization owner enables them.
           </p>
         </div>
         <button
@@ -1286,7 +1286,7 @@ export default function Autopilot() {
           <div className="flex items-start gap-2 px-3 py-2 mb-4 bg-cyan-500/[0.04] border border-cyan-500/15 rounded text-cyan-500/50 text-xs font-sans leading-relaxed">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400/60" />
             Scheduled domains require active Pablo Prime. Your organization permissions, saved preferences, action caps,
-            available assistant power for paid AI, and channel consent remain in force. CRM sends SMS only.
+            available assistant power for paid AI, and channel consent remain in force. CRM follow-ups use email.
           </div>
 
           <AutopilotBriefReview />
@@ -1609,7 +1609,7 @@ export default function Autopilot() {
               {activity.length === 0 && (
                 <div className="px-4 py-6 text-center font-mono text-[10px] text-cyan-500/30">
                   {activityFilter === 'all'
-                    ? 'No Pablo Automation activity yet.'
+                    ? 'No PABLO PRIME activity yet.'
                     : `No ${(data.meta[activityFilter]?.label ?? activityFilter)} activity yet.`}
                 </div>
               )}

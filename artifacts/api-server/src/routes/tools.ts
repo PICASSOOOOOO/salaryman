@@ -4,7 +4,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getOpenAiTextModel } from "../lib/openai-models";
 import { getUncachableResendClient } from "../lib/resend";
 import { db, contactsTable, contactInteractionsTable, userMemoryTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray, desc } from "drizzle-orm";
 import { parseContactImportFile } from "../lib/contact-import";
 import { fireWebhook } from "../lib/webhook";
 import { fireDiscordWebhook } from "../lib/discord-webhook";
@@ -260,7 +260,39 @@ router.get("/tools/contacts", async (req, res) => {
     .from(contactsTable)
     .where(eq(contactsTable.userId, req.user.id))
     .orderBy(sql`${contactsTable.createdAt} DESC`);
-  res.json({ contacts: rows });
+  const outcomes = rows.length > 0
+    ? await db.select({
+        contactId: contactInteractionsTable.contactId,
+        type: contactInteractionsTable.type,
+        note: contactInteractionsTable.note,
+        createdAt: contactInteractionsTable.createdAt,
+      }).from(contactInteractionsTable)
+        .where(and(
+          eq(contactInteractionsTable.userId, req.user.id),
+          inArray(contactInteractionsTable.contactId, rows.map((contact) => contact.id)),
+          inArray(contactInteractionsTable.type, ["phone_health_review", "phone_health_ok"]),
+        ))
+        .orderBy(desc(contactInteractionsTable.createdAt), desc(contactInteractionsTable.id))
+    : [];
+  const latestPhoneHealth = new Map<number, (typeof outcomes)[number]>();
+  for (const outcome of outcomes) {
+    if (!latestPhoneHealth.has(outcome.contactId)) latestPhoneHealth.set(outcome.contactId, outcome);
+  }
+  res.json({
+    contacts: rows.map((contact) => {
+      const health = latestPhoneHealth.get(contact.id);
+      return {
+        ...contact,
+        phoneHealth: health
+          ? {
+              status: health.type === "phone_health_ok" ? "ok" : "review",
+              note: health.note.replace(/\s+\[dialer-call:[^\]]+\]$/, ""),
+              createdAt: health.createdAt,
+            }
+          : null,
+      };
+    }),
+  });
 });
 
 router.post("/tools/contacts", async (req, res) => {
@@ -502,9 +534,17 @@ router.get("/tools/contacts/:id/interactions", async (req, res) => {
     .where(and(eq(contactsTable.id, contactId), eq(contactsTable.userId, req.user.id)));
   if (!contact) { res.status(404).json({ error: "Not found" }); return; }
   const rows = await db.select().from(contactInteractionsTable)
-    .where(eq(contactInteractionsTable.contactId, contactId))
-    .orderBy(sql`${contactInteractionsTable.createdAt} DESC`);
-  res.json({ interactions: rows });
+    .where(and(
+      eq(contactInteractionsTable.contactId, contactId),
+      eq(contactInteractionsTable.userId, req.user.id),
+    ))
+    .orderBy(desc(contactInteractionsTable.createdAt), desc(contactInteractionsTable.id));
+  res.json({
+    interactions: rows.map((row) => ({
+      ...row,
+      note: row.note.replace(/\s+\[dialer-call:[^\]]+\]$/, ""),
+    })),
+  });
 });
 
 router.post("/tools/contacts/:id/interactions", async (req, res) => {

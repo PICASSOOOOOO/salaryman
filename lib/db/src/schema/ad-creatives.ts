@@ -2,7 +2,16 @@ import { pgTable, serial, varchar, text, jsonb, timestamp, integer } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const AD_PLATFORMS = ["linkedin", "instagram", "facebook", "tiktok"] as const;
+export const AD_PLATFORMS = [
+  "linkedin",
+  "instagram",
+  "facebook",
+  "tiktok",
+  "twitter",
+  "bluesky",
+  "threads",
+  "youtube",
+] as const;
 export type AdPlatform = (typeof AD_PLATFORMS)[number];
 
 export const AD_STATUSES = ["draft", "ready", "posted", "archived"] as const;

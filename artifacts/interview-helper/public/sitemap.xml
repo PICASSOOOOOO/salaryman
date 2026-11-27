@@ -46,6 +46,11 @@
     <priority>0.4</priority>
   </url>
   <url>
+    <loc>https://salaryman.io/sms-disclaimer</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://salaryman.io/legal/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

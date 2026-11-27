@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Settings, Plug, Activity, Clock, MessageSquare,
+  Plug, Activity, Clock, MessageSquare,
   ChevronDown, ChevronRight, Zap, Brain, RefreshCw,
   Send, MemoryStick, Play, Pause, Trash2, Eye, Terminal,
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import type { BotData, BotConnection } from './BotFactory';
 import { PixelAgentFace, divisionFor } from '@/components/PixelAgentFace';
+import { BotSettingsButton } from '@/components/BotSettingsButton';
 
 interface BotTask {
   id: number;
@@ -242,13 +243,11 @@ export default function BotCommandCenter({
                   >
                     <Plug className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onSelectBot(bot); }}
-                    className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground/40 hover:text-foreground transition-colors"
-                    title="Full settings"
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                  </button>
+                  <BotSettingsButton
+                    botName={bot.name}
+                    onOpenSettings={() => onSelectBot(bot)}
+                    testId={`bot-command-settings-${bot.id}`}
+                  />
                   {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/30" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/30" />}
                 </div>
               </div>

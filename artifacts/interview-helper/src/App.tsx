@@ -30,6 +30,21 @@ import { DeferredChatPanel } from "@/components/DeferredChatPanel";
 import { SignInPage } from "@/components/SignInPrompt";
 import { PHONE_ROUTE_TO_TAB } from "@/pages/phone/CalllHomeContext";
 
+import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { publishableKeyFromHost } from "@clerk/react/internal";
+import { dark } from "@clerk/themes";
+import { NavBar } from "@/components/NavBar";
+import AlphaWipeBanner from "@/components/AlphaWipeBanner";
+import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
+import { isGameReleaseLocked } from "@/lib/game-release";
+import {
+  readLocalStoryActive,
+  readStoryBeginIntent,
+  clearStoryBeginIntent,
+  fetchServerStoryActive,
+} from "@/lib/story-gate";
+import { MessageCircle } from "lucide-react";
+
 const Home = lazy(() => import("@/pages/Home"));
 const ProfessionalHome = lazy(() => import("@/pages/ProfessionalHome"));
 const Console = lazy(() => import("@/pages/Console"));
@@ -41,7 +56,7 @@ const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const DesktopDownload = lazy(() => import("@/pages/DesktopDownload"));
 const Profile = lazy(() => import("@/pages/Profile"));
-const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
+const SettingsWorkspace = lazy(() => import("@/pages/SettingsWorkspace"));
 const SalarymanOSSettings = lazy(() => import("@/pages/SalarymanOSSettings"));
 const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.AdminHub })));
 const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
@@ -84,12 +99,13 @@ const TerrenceStudio = lazy(() => import("@/pages/TerrenceStudio"));
 const MusicJukebox = lazy(() => import("@/pages/MusicJukebox"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Marketing = lazy(() => import("@/pages/Marketing"));
-const Autopilot = lazy(() => import("@/pages/Autopilot"));
+const PabloAutomationWorkspace = lazy(() => import("@/pages/PabloAutomationWorkspace"));
+const PhoneSecretaryPage = lazy(() => import("@/pages/phone/PhoneSecretaryPage"));
 const Armory = lazy(() => import("@/pages/Armory"));
 const OrgHub = lazy(() => import("@/pages/OrgHub"));
 const OrganizationDocuments = lazy(() => import("@/pages/OrganizationDocuments"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
-const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
+const DataVault = lazy(() => import("@/pages/DataVault"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
 const Comms = lazy(() => import("@/pages/Comms"));
 const CyberDeck = lazy(() => import("@/pages/CyberDeck"));
@@ -116,6 +132,7 @@ const LegalCancellation = lazy(() => import("@/pages/legal/CancellationPolicy"))
 const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
 const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
 const SmsOptIn = lazy(() => import("@/pages/SmsOptIn"));
+const SmsDisclaimer = lazy(() => import("@/pages/SmsDisclaimer"));
 
 const BusinessHub = lazy(() => import("@/pages/BusinessHub"));
 const Payroll = lazy(() => import("@/pages/Payroll"));
@@ -136,6 +153,7 @@ const ProfitLoss = lazy(() => import("@/pages/ProfitLoss"));
 const Partnerships = lazy(() => import("@/pages/Partnerships"));
 const OrgAccounts = lazy(() => import("@/pages/OrgAccounts"));
 const MyApps = lazy(() => import("@/pages/MyApps"));
+const PabloOffice = lazy(() => import("@/pages/PabloOffice"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 const MeshtasticCommsPage = lazy(() => import("@/pages/MeshtasticCommsPage"));
@@ -175,7 +193,6 @@ const AlphaApply = lazy(() => import("@/pages/AlphaApply"));
 const AlphaAdmin = lazy(() => import("@/pages/AlphaAdmin"));
 
 const MediaCenter = lazy(() => import("@/pages/MediaCenter"));
-const KnowledgeVault = lazy(() => import("@/pages/KnowledgeVault"));
 const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
@@ -281,6 +298,34 @@ function FeatureRouteAccessFallback({
 }
 
 const MemoHome = memo(Home as React.ComponentType);
+function GameLock({ children }: { children: React.ReactNode }) {
+  const env = (import.meta as any).env ?? {};
+  if (isGameReleaseLocked({
+    production: Boolean(env.PROD),
+    releaseChannel: env.VITE_GAME_RELEASE_CHANNEL,
+    trailerReady: env.VITE_GAME_TRAILER_READY,
+  })) {
+    return <GameComingSoon />;
+  }
+  return <>{children}</>;
+}
+
+function GameComingSoon() {
+  return (
+    <main
+      className="flex min-h-[100dvh] items-center justify-center bg-[#070910] px-5 text-center text-zinc-100"
+      data-testid="game-coming-soon"
+    >
+      <section className="w-full max-w-lg rounded-2xl border border-fuchsia-400/25 bg-[#0d101a] p-7 shadow-[0_0_60px_rgba(217,70,239,.12)] sm:p-10">
+        <div className="mb-3 font-mono text-[10px] tracking-[.3em] text-fuchsia-300/80">SALARYMAN · GAME RELEASE</div>
+        <h1 className="font-mono text-2xl font-bold tracking-[.16em] text-white sm:text-3xl">COMING SOON</h1>
+        <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-zinc-400">
+          The game will open after its official trailer is ready. It remains available in the PTU.
+        </p>
+      </section>
+    </main>
+  );
+}
 
 function HomeOrCover() {
   const [location] = useLocation();
@@ -527,11 +572,12 @@ function AppShell() {
             <Route path="/sign-up/*?" component={ReplitAuthPage} />
             {/* Standalone routes */}
             <Route path="/landing">{() => <Redirect to="/" />}</Route>
-            <Route path="/pablo/promo">{() => <Redirect to="/pablo" />}</Route>
+            <Route path="/pablo/promo">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/create" component={PabloCreate} />
-            <Route path="/pablo/deck" component={PabloDeck} />
+            <Route path="/pablo/deck">{() => <GameLock><PabloDeck /></GameLock>}</Route>
             <Route path="/pablo">{() => <PabloTerminal />}</Route>
             <Route path="/sms-opt-in" component={SmsOptIn} />
+            <Route path="/sms-disclaimer" component={SmsDisclaimer} />
             <Route path="/onboarding" component={Onboarding} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
             <Route path="/profile/admin/tickets" component={AdminTickets} />
@@ -553,17 +599,17 @@ function AppShell() {
               </FeatureAuthGate>
             )}</Route>
             <Route path="/alpha" component={AlphaApply} />
-            <Route path="/desktop" component={DesktopDownload} />
+            <Route path="/desktop">{() => <GameLock><DesktopDownload /></GameLock>}</Route>
             <Route path="/download">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/subway">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/travel">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/subway">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
+            <Route path="/travel">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/profile/admin" component={AdminHub} />
             <Route path="/profile/moderator" component={ModeratorPanel} />
-            <Route path="/profile/world-map">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/profile/world-map">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             {/* Platform API owns its feature route; keep its old account links working. */}
             <Route path="/profile/platform">{() => <Redirect to={`/platform${window.location.search}`} />}</Route>
             <Route path="/profile/apis">{() => <Redirect to="/platform" />}</Route>
-            <Route path="/settings" component={SettingsPage} />
+            <Route path="/settings" component={SettingsWorkspace} />
             <Route path="/settings/os" component={SalarymanOSSettings} />
             <Route path="/profile" component={Profile} />
             <Route path="/profiles" component={ProfilePicker} />
@@ -575,27 +621,26 @@ function AppShell() {
                 <Wallet />
               </FeatureAuthGate>
             )}</Route>
-            {/* Playable React gameplay retired. Keep old bookmarks useful by
-                sending them to the native desktop client landing page. */}
-            <Route path="/world">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/world/*">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/game">{() => <Redirect to="/desktop" />}</Route>
+            {/* Keep game entry points out of PU until the official trailer is ready.
+                The PTU channel still routes to the desktop game client. */}
+            <Route path="/world">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
+            <Route path="/world/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
+            <Route path="/game">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             {/* Keep game configuration and finance reachable through SALARYMAN OS. */}
             <Route path="/game/settings">{() => <Redirect to="/settings/os?topic=controls" />}</Route>
-            <Route path="/game/economy" component={GameEconomy} />
-            <Route path="/game/bank" component={GameBank} />
-            <Route path="/game/*">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/office">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/office/*">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/recreation">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/tower">{() => <Redirect to="/desktop" />}</Route>
-            <Route path="/tower/*">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
+            <Route path="/game/bank">{() => <GameLock><GameBank /></GameLock>}</Route>
+            {/* Keep the specific legacy office alias ahead of the game catch-all. */}
+            <Route path="/game/office">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
+            <Route path="/game/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
+            <Route path="/office" component={PabloOffice} />
+            <Route path="/office/*">{() => <Redirect to="/office" />}</Route>
+            <Route path="/recreation">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
+            <Route path="/tower">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
+            <Route path="/tower/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/my-office" component={MyOffice} />
             <Route path="/my-office/monitor" component={OfficeMonitor} />
-            <Route path="/skills">{() => <Redirect to="/desktop" />}</Route>
-            {/* The legacy bathroom->office cutscene now folds into the single
-                walkable office (no separate tutorial-office surface). */}
-            <Route path="/game/office">{() => <Redirect to="/desktop" />}</Route>
+            <Route path="/skills">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
             <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
@@ -634,7 +679,7 @@ function AppShell() {
             <Route path="/business/interview" component={Console} />
              <Route path="/calendar">{() => <Redirect to="/business/calendar" />}</Route>
             <Route path="/business/calendar" component={Calendar} />
-            <Route path="/business/documents" component={Documents} />
+            <Route path="/business/documents">{() => <Documents />}</Route>
             <Route path="/business/resume" component={ResumeBuilder} />
             <Route path="/business/invoices" component={Invoices} />
             <Route path="/business/deals" component={Deals} />
@@ -646,7 +691,7 @@ function AppShell() {
             <Route path="/business/time-tracking" component={TimeTracking} />
             <Route path="/business/tasks" component={TaskBoard} />
             <Route path="/business/team" component={TeamDirectory} />
-            <Route path="/business/autopilot" component={Autopilot} />
+            <Route path="/business/autopilot" component={PabloAutomationWorkspace} />
             <Route path="/claude-templates" component={ClaudeTemplates} />
             <Route path="/business/partnerships" component={Partnerships} />
             <Route path="/business/announcements" component={Announcements} />
@@ -678,7 +723,7 @@ function AppShell() {
             <Route path="/terrence-studio" component={TerrenceStudio} />
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
-            <Route path="/creative/media" component={MediaLibrary} />
+            <Route path="/creative/media" component={DataVault} />
             <Route path="/comms" component={Comms} />
             <Route path="/cyber-deck" component={CyberDeck} />
             <Route path="/social/colleagues">{() => <Redirect to="/comms" />}</Route>
@@ -689,11 +734,7 @@ function AppShell() {
             <Route path="/creative">{() => <Redirect to="/creative/design" />}</Route>
 
             {/* MARKETING module */}
-            <Route path="/marketing/ads">{() => (
-              <FeatureAuthGate context="Sign in to create and access your saved ad creatives.">
-                <Marketing />
-              </FeatureAuthGate>
-            )}</Route>
+            <Route path="/marketing/ads">{() => <Redirect to="/bots/ad-studio" />}</Route>
             <Route path="/marketing/campaigns" component={Campaigns} />
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />
@@ -720,16 +761,13 @@ function AppShell() {
             <Route path="/business/shared-documents" component={OrganizationDocuments} />
 
             {/* Legacy agent status page now belongs to the Agent Command Center. */}
+            <Route path="/console" component={Console} />
             <Route path="/console/agents">{() => <Redirect to="/pricing" />}</Route>
             <Route path="/console/video" component={VideoAnalyzer} />
-             <Route path="/knowledge">{() => <Redirect to="/console/vault" />}</Route>
-             <Route path="/knowledge-hub">{() => <Redirect to="/console/vault" />}</Route>
-             <Route path="/vault">{() => <Redirect to="/console/vault" />}</Route>
-            <Route path="/console/vault">{() => (
-              <FeatureAuthGate context="Sign in to access your saved knowledge vault.">
-                <KnowledgeVault />
-              </FeatureAuthGate>
-            )}</Route>
+            <Route path="/knowledge">{() => <Redirect to="/creative/media?tab=knowledge" />}</Route>
+            <Route path="/knowledge-hub">{() => <Redirect to="/creative/media?tab=knowledge" />}</Route>
+            <Route path="/vault">{() => <Redirect to="/creative/media?tab=knowledge" />}</Route>
+            <Route path="/console/vault">{() => <Redirect to="/creative/media?tab=knowledge" />}</Route>
             <Route path="/console/scraper">{() => (
               <FeatureAuthGate context="Sign in to extract content and save it to your vault.">
                 <WebScraper />
@@ -767,6 +805,7 @@ function AppShell() {
                 render their Stripe-backed access options in-shell. */}
             <Route path="/phone">{() => <PhoneGate />}</Route>
             <Route path="/phone/mesh" component={MeshtasticCommsPage} />
+            <Route path="/phone/secretary">{() => <PhoneSecretaryPage />}</Route>
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
               // Wouter's wildcard parameter shape differs across versions.
               // The browser pathname is authoritative for these legacy links.
@@ -787,6 +826,11 @@ function AppShell() {
             <Route path="/platform">{() => <PlatformAPI />}</Route>
 
             {/* BOTS module */}
+            <Route path="/bots/ad-studio">{() => (
+              <FeatureAuthGate context="Sign in to use the PABLO PRIME ad creative team.">
+                <Marketing />
+              </FeatureAuthGate>
+            )}</Route>
             {/* Job Command Center moved into BUSINESS — redirect old bookmarks. */}
             <Route path="/bots/jobs">{() => <Redirect to="/business/job-command" />}</Route>
             <Route path="/bots/templates">{() => <Redirect to="/pablo" />}</Route>
@@ -806,7 +850,7 @@ function AppShell() {
                 VendingMachine "homebase" tab was a non-persisting V1 stub. */}
             <Route path="/store/realty" component={RealtyStore} />
             <Route path="/cutscene" component={CutscenePage} />
-            <Route path="/bots/factory" component={BotFactory} />
+            <Route path="/bots/factory">{() => <BotFactory />}</Route>
             <Route path="/bots">{() => <Redirect to="/business/autopilot" />}</Route>
             <Route path="/bots/:rest*">{() => <Redirect to="/business/autopilot" />}</Route>
 
@@ -908,7 +952,7 @@ function ReplitAuthPage() {
         />
         <span className="font-mono text-sm tracking-[0.2em] text-black">SALARYMAN</span>
         <span className="border border-black px-1.5 py-0.5 font-mono text-[8px] tracking-[0.12em] text-black">
-          ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'DEV'}
+          ALPHA {typeof __BUILD_LABEL__ !== 'undefined' ? __BUILD_LABEL__ : 'DEV'}
         </span>
       </div>
     </header>

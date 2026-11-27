@@ -48,6 +48,7 @@ import {
   TEST_USER,
 } from "./helpers/twilioTestApp";
 import campaignsRouter from "../routes/campaigns";
+import { signEmailOptOut } from "../lib/email-opt-out";
 
 vi.mock("../lib/platform-twilio-access", () => ({
   canUsePlatformTwilio: vi.fn(async () => true),
@@ -150,6 +151,18 @@ afterAll(async () => {
 describe("Pablo campaign consent and voice gates", () => {
   it("records contact permission timestamps and only updates the owner's saved contact", async () => {
     const contact = await createContact(false);
+    const emailOptOut = await request(preferencesApp).put(`/api/campaigns/contact-prefs/${contact.id}`)
+      .send({ emailOptIn: false });
+    expect(emailOptOut.status).toBe(200);
+    expect(emailOptOut.body.pref.emailOptIn).toBe(false);
+    expect(emailOptOut.body.pref.emailOptedOutAt).toBeTruthy();
+
+    const emailOptIn = await request(preferencesApp).put(`/api/campaigns/contact-prefs/${contact.id}`)
+      .send({ emailOptIn: true });
+    expect(emailOptIn.status).toBe(200);
+    expect(emailOptIn.body.pref.emailOptIn).toBe(true);
+    expect(emailOptIn.body.pref.emailOptedOutAt).toBeNull();
+
     const optIn = await request(preferencesApp).put(`/api/campaigns/contact-prefs/${contact.id}`)
       .send({ phoneCallOptIn: true });
     expect(optIn.status).toBe(200);
@@ -190,6 +203,35 @@ describe("Pablo campaign consent and voice gates", () => {
       expect(forbidden.status).toBe(404);
     } finally {
       await db.delete(contactsTable).where(eq(contactsTable.id, foreign[0].id));
+    }
+  });
+
+  it("saves a signed CRM email unsubscribe to the contact's shared channel preference", async () => {
+    const contact = await createContact();
+    const email = `jordan-${nextTestContactNumber}@example.test`;
+    await db.update(contactsTable).set({ email }).where(eq(contactsTable.id, contact.id));
+    const previousSecret = process.env.SESSION_SECRET;
+    process.env.SESSION_SECRET = "test-email-opt-out-signing-secret";
+    try {
+      const signature = signEmailOptOut(TEST_USER.id, email);
+      const invalid = await request(preferencesApp)
+        .get("/api/campaigns/email/unsubscribe")
+        .query({ userId: TEST_USER.id, email, signature: "invalid-signature" });
+      expect(invalid.status).toBe(400);
+
+      const response = await request(preferencesApp)
+        .get("/api/campaigns/email/unsubscribe")
+        .query({ userId: TEST_USER.id, email, signature });
+      expect(response.status).toBe(200);
+      expect(response.text).toContain("Unsubscribed");
+
+      const [updated] = await db.select().from(contactChannelPrefsTable)
+        .where(eq(contactChannelPrefsTable.contactId, contact.id));
+      expect(updated.emailOptIn).toBe(false);
+      expect(updated.emailOptedOutAt).toBeTruthy();
+    } finally {
+      if (previousSecret === undefined) delete process.env.SESSION_SECRET;
+      else process.env.SESSION_SECRET = previousSecret;
     }
   });
 

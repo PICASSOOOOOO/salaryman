@@ -145,6 +145,28 @@ describe("publishSocialPost", () => {
     expect(row.status).toBe("draft");
   });
 
+  it("keeps unverified X/LinkedIn publishing unreachable even with saved credentials", async () => {
+    const publish = vi.fn(async () => ({ ok: true, externalId: "would-have-posted" }));
+    getProviderMock.mockReturnValue({
+      label: "X (Twitter)",
+      supportsPublishing: false,
+      publish,
+    });
+    await createConnection({ platform: "twitter", credentials: { accessToken: "saved" } });
+    const postId = await createPost({ platform: "twitter" });
+
+    const res = await publishSocialPost({ userId: USER_ID, postId, liveOnly: true });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.status).toBe(409);
+      expect(res.error).toMatch(/COMING SOON/i);
+    }
+    expect(publish).not.toHaveBeenCalled();
+    const [row] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, postId));
+    expect(row.status).toBe("draft");
+  });
+
   it("publishes for real when PRIME + connected + provider can publish", async () => {
     hasFeatureMock.mockResolvedValue(true);
     const publish = vi.fn(async () => ({ ok: true, externalId: "ext-123", url: "http://live/post" }));
@@ -164,6 +186,25 @@ describe("publishSocialPost", () => {
     expect(row.status).toBe("published");
     expect(row.externalPostId).toBe("ext-123");
     expect(row.publishedAt).toBeTruthy();
+  });
+
+  it("keeps a draft unchanged when a provider accepts a request but returns no post ID", async () => {
+    const publish = vi.fn(async () => ({ ok: true }));
+    getProviderMock.mockReturnValue({ label: "Bluesky", publish });
+    await createConnection({ platform: "bluesky", status: "connected", credentials: { token: "x" } });
+    const postId = await createPost({ platform: "bluesky" });
+
+    const res = await publishSocialPost({ userId: USER_ID, email: "u@test", postId });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.status).toBe(502);
+      expect(res.error).toMatch(/did not return a post ID/i);
+    }
+    const [row] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, postId));
+    expect(row.status).toBe("draft");
+    const [conn] = await db.select().from(socialConnectionsTable).where(eq(socialConnectionsTable.userId, USER_ID));
+    expect(conn.lastError).toMatch(/did not return a post ID/i);
   });
 
   it("publishes for real from a Bluesky Platform Connections credential", async () => {
@@ -186,6 +227,26 @@ describe("publishSocialPost", () => {
       { identifier: "saved.bsky.social", appPassword: "saved-app-password" },
       expect.objectContaining({ content: "Saved connection post" }),
     );
+  });
+
+  it("keeps a Platform Connections draft when a publisher returns no post ID", async () => {
+    const publish = vi.fn(async () => ({ ok: true }));
+    getProviderMock.mockReturnValue({ label: "Bluesky", authType: "app_password", publish });
+    await createPlatformConnection({
+      appSlug: "bluesky",
+      credentials: { login: "saved.bsky.social", password: "saved-app-password" },
+    });
+    const postId = await createPost({ platform: "bluesky" });
+
+    const res = await publishSocialPost({ userId: USER_ID, email: "u@test", postId });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.status).toBe(502);
+      expect(res.error).toMatch(/did not return a post ID/i);
+    }
+    const [row] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, postId));
+    expect(row.status).toBe("draft");
   });
 
   it("does not simulate an OAuth-only platform when Platform Connections has raw credentials", async () => {

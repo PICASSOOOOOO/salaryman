@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEssayWriterPrompt,
+  buildGeneralWriterProofreadPrompt,
   ESSAY_WRITER_SYSTEM_PROMPT,
   isMissingEssayProofreadDraft,
 } from "./writer-prompts";
@@ -43,9 +44,24 @@ describe("Hemingway essay writing prompts", () => {
     expect(buildEssayWriterPrompt({ ...context, action: "mix" })).toBeNull();
   });
 
-  it("requires non-empty draft text only for essay proofreading", () => {
+  it("requires non-empty draft text for proofreading in every genre", () => {
     expect(isMissingEssayProofreadDraft("essay", "proofread", "  ")).toBe(true);
     expect(isMissingEssayProofreadDraft("essay", "proofread", "A draft.")).toBe(false);
-    expect(isMissingEssayProofreadDraft("fiction", "proofread", "")).toBe(false);
+    expect(isMissingEssayProofreadDraft("fiction", "proofread", "")).toBe(true);
+    expect(isMissingEssayProofreadDraft("song", "proofread", "")).toBe(true);
+    expect(isMissingEssayProofreadDraft("fiction", "write_section", "")).toBe(false);
+  });
+
+  it("reviews every writing genre with optional grammar, style, and voice edits", () => {
+    const prompt = buildGeneralWriterProofreadPrompt({
+      genre: "fiction",
+      title: "The Harbor",
+      sectionTitle: "Chapter 1",
+      draft: "The fog are lifting.",
+    });
+    expect(prompt).toContain('"category":"grammar|clarity|structure|style|tone"');
+    expect(prompt).toContain("Preserve the author's meaning, facts, voice, and intent");
+    expect(prompt).toContain(JSON.stringify("The fog are lifting."));
+    expect(prompt).toContain("do not claim to detect who wrote the text");
   });
 });

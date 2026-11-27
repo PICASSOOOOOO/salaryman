@@ -21,7 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const _require = createRequire(import.meta.url);
-const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
+const { getBuildIdentity } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times without risking some
@@ -92,8 +92,8 @@ async function buildAll() {
   const distDir = path.resolve(__dirname, "dist");
   rmSync(distDir, { recursive: true, force: true });
 
-  const versionStamp = getFormattedVersion();
-  console.log(`building server... version: ${versionStamp}`);
+  const buildIdentity = getBuildIdentity({ defaultChannel: "PU" });
+  console.log(`building server... version: ${buildIdentity.label}`);
   const pkgPath = path.resolve(__dirname, "package.json");
   const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
   const allDeps = [
@@ -114,7 +114,10 @@ async function buildAll() {
     outfile: path.resolve(distDir, "index.cjs"),
     define: {
       "process.env.NODE_ENV": '"production"',
-      "__BUILD_VERSION__": JSON.stringify(versionStamp),
+      "__BUILD_VERSION__": JSON.stringify(buildIdentity.version),
+      "__BUILD_CHANNEL__": JSON.stringify(buildIdentity.channel),
+      "__BUILD_REVISION__": JSON.stringify(buildIdentity.revision),
+      "__BUILD_LABEL__": JSON.stringify(buildIdentity.label),
     },
     minify: true,
     external: externals,

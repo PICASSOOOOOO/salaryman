@@ -61,14 +61,20 @@ extension rather than letting legacy bot IDs influence current runs.
 **How to apply:** current automation is grouped under Pablo. Any later per-domain
 agent ownership is a separate product change with explicit routing and guardrails.
 
-Pablo Prime is the only user-facing automation contact. Do not expose legacy
-assistant launchers such as Hemingway's "Ask Terrence" as automation entry points.
+PABLO AI is the conversational cornerstone and should administer automation and
+app-development work through typed or spoken chat, including SALARYMAN My Apps
+and user-connected external repositories. PABLO PRIME remains the existing
+automation runner; do not expose legacy assistant launchers such as Hemingway's
+"Ask Terrence" as automation entry points.
 
-**Why:** the user clarified that Pablo Prime is the only one who deals with
-automation now.
+**Why:** the user said PABLO AI should administer all automation and app
+development from chat, then specified My Apps and external repositories.
 
-**How to apply:** route automation access through Pablo Prime and remove
-superseded assistant launchers from the surfaces the user identifies.
+**How to apply:** route typed and spoken requests through PABLO AI while preserving
+the existing PRIME entitlement, organization-permission, opt-in, and domain
+guardrails. Scope app pages to the active organization. Connect repositories
+through explicit user authorization rather than the sign-in-only GitHub link or
+workspace credentials, and require review before repository changes.
 
 ## Activation and paid access
 A successful paid Prime activation automatically enables the four currently

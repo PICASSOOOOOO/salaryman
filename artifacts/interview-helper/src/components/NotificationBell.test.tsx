@@ -165,6 +165,8 @@ describe("unread badge", () => {
     h.notifState = { ...h.notifState, unreadCount: 5 };
     await render();
     expect((bellButton().textContent ?? "").trim()).toBe("5");
+    expect(bellButton().querySelector("span")?.className).not.toContain("absolute");
+    expect(bellButton().getAttribute("aria-label")).toBe("Notifications, 5 unread");
   });
 
   it("caps the badge at 99+", async () => {

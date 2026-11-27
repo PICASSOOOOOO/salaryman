@@ -442,19 +442,35 @@ function ConnectModal({ app, onClose, onSaved }: { app: ConnectedApp; onClose: (
     baseUrl: summary?.baseUrl ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const set = (k: keyof CredForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.value }));
+    {
+      setForm(f => ({ ...f, [k]: e.target.value }));
+      setSaveError("");
+    };
 
   const save = async () => {
     setSaving(true);
-    await apiFetch(api("/platform/apps/connect"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ appSlug: app.slug, appName: app.name, credentials: form }),
-    });
-    setSaving(false);
-    onSaved();
+    setSaveError("");
+    let saved = false;
+    try {
+      const response = await apiFetch(api("/platform/apps/connect"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ appSlug: app.slug, appName: app.name, credentials: form }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error || result?.message || `Could not save connection (HTTP ${response.status}).`);
+      }
+      saved = true;
+    } catch (reason) {
+      setSaveError(reason instanceof Error ? reason.message : "Could not save this connection.");
+    } finally {
+      setSaving(false);
+    }
+    if (saved) onSaved();
   };
 
   const field = "w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:border-cyan-500/50 focus:outline-none";
@@ -517,6 +533,11 @@ function ConnectModal({ app, onClose, onSaved }: { app: ConnectedApp; onClose: (
         </div>
 
         <div className="flex items-center justify-end gap-2 p-5 border-t border-zinc-800">
+          {saveError && (
+            <p role="alert" data-testid="platform-app-save-error" className="mr-auto text-xs text-red-400">
+              {saveError}
+            </p>
+          )}
           <button onClick={onClose} className="px-4 py-2 rounded-md text-xs font-bold tracking-wider text-zinc-400 hover:text-zinc-200">CANCEL</button>
           <button
             onClick={save}

@@ -1,9 +1,10 @@
 import { useLocation } from "wouter";
-import { Scale, FileText, Shield, Package, XCircle, Gift, Globe, Mail, Lock, TrendingUp } from "lucide-react";
+import { Scale, FileText, Shield, Package, XCircle, Gift, Globe, Mail, Lock, MessageSquare, TrendingUp } from "lucide-react";
 
 const PAGES = [
   { path: "/legal/terms", label: "Terms of Service", icon: FileText, desc: "Rules governing use of the SALARYMAN platform." },
   { path: "/legal/privacy", label: "Privacy Policy", icon: Lock, desc: "How we collect, use, and protect your data." },
+  { path: "/sms-disclaimer", label: "SMS Messaging Disclosure", icon: MessageSquare, desc: "Program details, opt-in instructions, rates, and STOP/HELP information." },
   { path: "/legal/contact", label: "Contact Us", icon: Mail, desc: "Reach our support team through the contact form." },
   { path: "/legal/refunds", label: "Refund & Dispute Policy", icon: Shield, desc: "Digital goods, FIAT (ƒ) virtual currency, donations, and dispute process." },
   { path: "/legal/returns", label: "Return Policy", icon: Package, desc: "Physical merch returns via PABLO CORP Merch Dept." },

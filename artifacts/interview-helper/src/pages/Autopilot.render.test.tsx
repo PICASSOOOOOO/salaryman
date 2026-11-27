@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// Renders the Pablo Automation dashboard against a mocked
+// Renders the PABLO PRIME dashboard against a mocked
 // GET /api/autopilot response and pins that the control surface correctly
 // reflects what the server saved. The backend save/read paths already have
 // integration tests; this is the missing FRONT-END guard that the dashboard
@@ -72,7 +72,7 @@ function freshPayload() {
     meta: {
       business_ops: { label: "Business Ops", description: "Runs day-to-day operations." },
       marketing: { label: "Marketing", description: "Plans and publishes campaigns." },
-      crm_calls: { label: "CRM & Calls", description: "Sends consent-aware SMS follow-ups; no automated phone calls." },
+      crm_calls: { label: "CRM & Calls", description: "Sends consent-aware email follow-ups; no automated phone calls." },
       accounting: { label: "Accounting", description: "Keeps the books." },
     },
     defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
@@ -192,9 +192,9 @@ afterEach(() => {
 });
 
 describe("Autopilot dashboard renders saved config", () => {
-  it("identifies the dashboard as Pablo Prime's automation workspace", async () => {
+  it("identifies the dashboard as the PABLO PRIME workspace", async () => {
     await mount();
-    expect(container.textContent).toContain("PABLO PRIME / AUTOMATION WORKSPACE");
+    expect(container.textContent).toContain("PABLO PRIME");
   });
 
   it("routes a missing Pablo AI entitlement to pricing instead of mislabeling it as a role error", async () => {

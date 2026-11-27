@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountWorkspaceResponse,
   AssignPhoneInternalLine200,
   AutopilotApprovalDecisionInput,
   AutopilotApprovalDecisionResponse,
@@ -52,6 +53,14 @@ import type {
   GetSecureCallRecordingParams,
   GetWorldMonitoringOnline200,
   GetWorldMonitoringSecuritySummary200,
+  GithubRepositoryChangeApprovalInput,
+  GithubRepositoryChangeDetailsResponse,
+  GithubRepositoryChangeResponse,
+  GithubRepositoryChangesResponse,
+  GithubRepositoryConnectionStatus,
+  GithubRepositoryDisconnectResponse,
+  GithubRepositoryListResponse,
+  GithubRepositorySelectionInput,
   HealthStatus,
   InterviewQuestionInput,
   LeadNoteReviewInput,
@@ -96,6 +105,7 @@ import type {
   TowerShopStaffAssignmentResponse,
   TowerShopStaffRevokeResponse,
   TowerShopStaffRoster,
+  WorkspaceLayout,
   WorkspaceProjectGenerationInput,
   WorkspaceProjectGenerationResponse
 } from './api.schemas';
@@ -126,6 +136,163 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAccountWorkspaceLayoutUrl = () => {
+
+
+
+
+  return `/api/account/workspace`
+}
+
+/**
+ * @summary Get the authenticated user's workspace layout
+ */
+export const getAccountWorkspaceLayout = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountWorkspaceResponse> => {
+
+  return customFetch<AccountWorkspaceResponse>(getGetAccountWorkspaceLayoutUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountWorkspaceLayoutQueryKey = () => {
+    return [
+    `/api/account/workspace`
+    ] as const;
+    }
+
+
+export const getGetAccountWorkspaceLayoutQueryOptions = <TData = Awaited<ReturnType<typeof getAccountWorkspaceLayout>>, TError = ErrorType<ErrorEnvelope | void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountWorkspaceLayout>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountWorkspaceLayoutQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountWorkspaceLayout>>> = ({ signal }) => getAccountWorkspaceLayout({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountWorkspaceLayout>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountWorkspaceLayoutQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountWorkspaceLayout>>>
+export type GetAccountWorkspaceLayoutQueryError = ErrorType<ErrorEnvelope | void>
+
+
+/**
+ * @summary Get the authenticated user's workspace layout
+ */
+
+export function useGetAccountWorkspaceLayout<TData = Awaited<ReturnType<typeof getAccountWorkspaceLayout>>, TError = ErrorType<ErrorEnvelope | void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountWorkspaceLayout>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountWorkspaceLayoutQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAccountWorkspaceLayoutUrl = () => {
+
+
+
+
+  return `/api/account/workspace`
+}
+
+/**
+ * @summary Save the authenticated user's workspace layout
+ */
+export const updateAccountWorkspaceLayout = async (workspaceLayout: WorkspaceLayout, options?: Parameters<typeof customFetch>[1]): Promise<AccountWorkspaceResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AccountWorkspaceResponse>(getUpdateAccountWorkspaceLayoutUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(workspaceLayout)
+  }
+);}
+
+
+
+
+
+export const getUpdateAccountWorkspaceLayoutMutationKey = () => ['updateAccountWorkspaceLayout'] as const;
+
+export const getUpdateAccountWorkspaceLayoutMutationOptions = <TError = ErrorType<ErrorEnvelope | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAccountWorkspaceLayout>>, TError,UpdateAccountWorkspaceLayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAccountWorkspaceLayout>>, TError,UpdateAccountWorkspaceLayoutMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAccountWorkspaceLayoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAccountWorkspaceLayout>>, UpdateAccountWorkspaceLayoutMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAccountWorkspaceLayout(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAccountWorkspaceLayoutMutationResult = NonNullable<Awaited<ReturnType<typeof updateAccountWorkspaceLayout>>>
+    export type UpdateAccountWorkspaceLayoutMutationBody = BodyType<WorkspaceLayout>
+    export type UpdateAccountWorkspaceLayoutMutationError = ErrorType<ErrorEnvelope | void>
+    export type UpdateAccountWorkspaceLayoutMutationVariables = {data: BodyType<WorkspaceLayout>}
+
+    /**
+ * @summary Save the authenticated user's workspace layout
+ */
+export const useUpdateAccountWorkspaceLayout = <TError = ErrorType<ErrorEnvelope | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAccountWorkspaceLayout>>, TError,UpdateAccountWorkspaceLayoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAccountWorkspaceLayout>>,
+        TError,
+        UpdateAccountWorkspaceLayoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAccountWorkspaceLayoutMutationOptions(options));
+    }
 
 export const getGetWorldMonitoringOnlineUrl = () => {
 
@@ -4614,6 +4781,777 @@ export const useDecideAutopilotApproval = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDecideAutopilotApprovalMutationOptions(options));
+    }
+
+export const getGetGithubRepositoryConnectionStatusUrl = () => {
+
+
+
+
+  return `/api/github-repositories/status`
+}
+
+/**
+ * @summary Read the signed-in user's GitHub repository connection status
+ */
+export const getGithubRepositoryConnectionStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryConnectionStatus> => {
+
+  return customFetch<GithubRepositoryConnectionStatus>(getGetGithubRepositoryConnectionStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGithubRepositoryConnectionStatusQueryKey = () => {
+    return [
+    `/api/github-repositories/status`
+    ] as const;
+    }
+
+
+export const getGetGithubRepositoryConnectionStatusQueryOptions = <TData = Awaited<ReturnType<typeof getGithubRepositoryConnectionStatus>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGithubRepositoryConnectionStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGithubRepositoryConnectionStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGithubRepositoryConnectionStatus>>> = ({ signal }) => getGithubRepositoryConnectionStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGithubRepositoryConnectionStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGithubRepositoryConnectionStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getGithubRepositoryConnectionStatus>>>
+export type GetGithubRepositoryConnectionStatusQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the signed-in user's GitHub repository connection status
+ */
+
+export function useGetGithubRepositoryConnectionStatus<TData = Awaited<ReturnType<typeof getGithubRepositoryConnectionStatus>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGithubRepositoryConnectionStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGithubRepositoryConnectionStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getConnectGithubRepositoriesUrl = () => {
+
+
+
+
+  return `/api/github-repositories/connect`
+}
+
+/**
+ * @summary Start the separate GitHub repository authorization flow
+ */
+export const connectGithubRepositories = async ( options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getConnectGithubRepositoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getConnectGithubRepositoriesQueryKey = () => {
+    return [
+    `/api/github-repositories/connect`
+    ] as const;
+    }
+
+
+export const getConnectGithubRepositoriesQueryOptions = <TData = Awaited<ReturnType<typeof connectGithubRepositories>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof connectGithubRepositories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getConnectGithubRepositoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof connectGithubRepositories>>> = ({ signal }) => connectGithubRepositories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof connectGithubRepositories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ConnectGithubRepositoriesQueryResult = NonNullable<Awaited<ReturnType<typeof connectGithubRepositories>>>
+export type ConnectGithubRepositoriesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Start the separate GitHub repository authorization flow
+ */
+
+export function useConnectGithubRepositories<TData = Awaited<ReturnType<typeof connectGithubRepositories>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof connectGithubRepositories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getConnectGithubRepositoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCompleteGithubRepositoryConnectionUrl = () => {
+
+
+
+
+  return `/api/github-repositories/callback`
+}
+
+/**
+ * @summary Complete GitHub repository authorization
+ */
+export const completeGithubRepositoryConnection = async ( options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getCompleteGithubRepositoryConnectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCompleteGithubRepositoryConnectionQueryKey = () => {
+    return [
+    `/api/github-repositories/callback`
+    ] as const;
+    }
+
+
+export const getCompleteGithubRepositoryConnectionQueryOptions = <TData = Awaited<ReturnType<typeof completeGithubRepositoryConnection>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof completeGithubRepositoryConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCompleteGithubRepositoryConnectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof completeGithubRepositoryConnection>>> = ({ signal }) => completeGithubRepositoryConnection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof completeGithubRepositoryConnection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CompleteGithubRepositoryConnectionQueryResult = NonNullable<Awaited<ReturnType<typeof completeGithubRepositoryConnection>>>
+export type CompleteGithubRepositoryConnectionQueryError = ErrorType<void>
+
+
+/**
+ * @summary Complete GitHub repository authorization
+ */
+
+export function useCompleteGithubRepositoryConnection<TData = Awaited<ReturnType<typeof completeGithubRepositoryConnection>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof completeGithubRepositoryConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCompleteGithubRepositoryConnectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListGithubRepositoriesUrl = () => {
+
+
+
+
+  return `/api/github-repositories/repos`
+}
+
+/**
+ * @summary List repositories the user can select for Pablo
+ */
+export const listGithubRepositories = async ( options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryListResponse> => {
+
+  return customFetch<GithubRepositoryListResponse>(getListGithubRepositoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListGithubRepositoriesQueryKey = () => {
+    return [
+    `/api/github-repositories/repos`
+    ] as const;
+    }
+
+
+export const getListGithubRepositoriesQueryOptions = <TData = Awaited<ReturnType<typeof listGithubRepositories>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGithubRepositories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListGithubRepositoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGithubRepositories>>> = ({ signal }) => listGithubRepositories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGithubRepositories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListGithubRepositoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listGithubRepositories>>>
+export type ListGithubRepositoriesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List repositories the user can select for Pablo
+ */
+
+export function useListGithubRepositories<TData = Awaited<ReturnType<typeof listGithubRepositories>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGithubRepositories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListGithubRepositoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateGithubRepositorySelectionUrl = () => {
+
+
+
+
+  return `/api/github-repositories/selection`
+}
+
+/**
+ * @summary Select repositories Pablo may access
+ */
+export const updateGithubRepositorySelection = async (githubRepositorySelectionInput: GithubRepositorySelectionInput, options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryListResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<GithubRepositoryListResponse>(getUpdateGithubRepositorySelectionUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(githubRepositorySelectionInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateGithubRepositorySelectionMutationKey = () => ['updateGithubRepositorySelection'] as const;
+
+export const getUpdateGithubRepositorySelectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGithubRepositorySelection>>, TError,UpdateGithubRepositorySelectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateGithubRepositorySelection>>, TError,UpdateGithubRepositorySelectionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateGithubRepositorySelectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateGithubRepositorySelection>>, UpdateGithubRepositorySelectionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateGithubRepositorySelection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateGithubRepositorySelectionMutationResult = NonNullable<Awaited<ReturnType<typeof updateGithubRepositorySelection>>>
+    export type UpdateGithubRepositorySelectionMutationBody = BodyType<GithubRepositorySelectionInput>
+    export type UpdateGithubRepositorySelectionMutationError = ErrorType<void>
+    export type UpdateGithubRepositorySelectionMutationVariables = {data: BodyType<GithubRepositorySelectionInput>}
+
+    /**
+ * @summary Select repositories Pablo may access
+ */
+export const useUpdateGithubRepositorySelection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGithubRepositorySelection>>, TError,UpdateGithubRepositorySelectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateGithubRepositorySelection>>,
+        TError,
+        UpdateGithubRepositorySelectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateGithubRepositorySelectionMutationOptions(options));
+    }
+
+export const getDisconnectGithubRepositoriesUrl = () => {
+
+
+
+
+  return `/api/github-repositories/disconnect`
+}
+
+/**
+ * @summary Revoke Pablo's stored GitHub repository access
+ */
+export const disconnectGithubRepositories = async ( options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryDisconnectResponse> => {
+
+  return customFetch<GithubRepositoryDisconnectResponse>(getDisconnectGithubRepositoriesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectGithubRepositoriesMutationKey = () => ['disconnectGithubRepositories'] as const;
+
+export const getDisconnectGithubRepositoriesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectGithubRepositories>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectGithubRepositories>>, TError,void, TContext> => {
+
+const mutationKey = getDisconnectGithubRepositoriesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectGithubRepositories>>, void> = () => {
+
+
+          return  disconnectGithubRepositories(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectGithubRepositoriesMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectGithubRepositories>>>
+
+    export type DisconnectGithubRepositoriesMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Revoke Pablo's stored GitHub repository access
+ */
+export const useDisconnectGithubRepositories = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectGithubRepositories>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectGithubRepositories>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectGithubRepositoriesMutationOptions(options));
+    }
+
+export const getListGithubRepositoryChangesUrl = () => {
+
+
+
+
+  return `/api/github-repositories/changes`
+}
+
+/**
+ * @summary List the signed-in user's proposed repository changes
+ */
+export const listGithubRepositoryChanges = async ( options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryChangesResponse> => {
+
+  return customFetch<GithubRepositoryChangesResponse>(getListGithubRepositoryChangesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListGithubRepositoryChangesQueryKey = () => {
+    return [
+    `/api/github-repositories/changes`
+    ] as const;
+    }
+
+
+export const getListGithubRepositoryChangesQueryOptions = <TData = Awaited<ReturnType<typeof listGithubRepositoryChanges>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGithubRepositoryChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListGithubRepositoryChangesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGithubRepositoryChanges>>> = ({ signal }) => listGithubRepositoryChanges({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGithubRepositoryChanges>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListGithubRepositoryChangesQueryResult = NonNullable<Awaited<ReturnType<typeof listGithubRepositoryChanges>>>
+export type ListGithubRepositoryChangesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List the signed-in user's proposed repository changes
+ */
+
+export function useListGithubRepositoryChanges<TData = Awaited<ReturnType<typeof listGithubRepositoryChanges>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGithubRepositoryChanges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListGithubRepositoryChangesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetGithubRepositoryChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/github-repositories/changes/${id}`
+}
+
+/**
+ * @summary Read a proposed diff for review
+ */
+export const getGithubRepositoryChange = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryChangeDetailsResponse> => {
+
+  return customFetch<GithubRepositoryChangeDetailsResponse>(getGetGithubRepositoryChangeUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGithubRepositoryChangeQueryKey = (id: string,) => {
+    return [
+    `/api/github-repositories/changes/${id}`
+    ] as const;
+    }
+
+
+export const getGetGithubRepositoryChangeQueryOptions = <TData = Awaited<ReturnType<typeof getGithubRepositoryChange>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGithubRepositoryChange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGithubRepositoryChangeQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGithubRepositoryChange>>> = ({ signal }) => getGithubRepositoryChange(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGithubRepositoryChange>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGithubRepositoryChangeQueryResult = NonNullable<Awaited<ReturnType<typeof getGithubRepositoryChange>>>
+export type GetGithubRepositoryChangeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read a proposed diff for review
+ */
+
+export function useGetGithubRepositoryChange<TData = Awaited<ReturnType<typeof getGithubRepositoryChange>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGithubRepositoryChange>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGithubRepositoryChangeQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveGithubRepositoryChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/github-repositories/changes/${id}/approve`
+}
+
+/**
+ * @summary Approve the exact reviewed diff and open a draft pull request
+ */
+export const approveGithubRepositoryChange = async (id: string,
+    githubRepositoryChangeApprovalInput: GithubRepositoryChangeApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryChangeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<GithubRepositoryChangeResponse>(getApproveGithubRepositoryChangeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(githubRepositoryChangeApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getApproveGithubRepositoryChangeMutationKey = () => ['approveGithubRepositoryChange'] as const;
+
+export const getApproveGithubRepositoryChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveGithubRepositoryChange>>, TError,ApproveGithubRepositoryChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveGithubRepositoryChange>>, TError,ApproveGithubRepositoryChangeMutationVariables, TContext> => {
+
+const mutationKey = getApproveGithubRepositoryChangeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveGithubRepositoryChange>>, ApproveGithubRepositoryChangeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  approveGithubRepositoryChange(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveGithubRepositoryChangeMutationResult = NonNullable<Awaited<ReturnType<typeof approveGithubRepositoryChange>>>
+    export type ApproveGithubRepositoryChangeMutationBody = BodyType<GithubRepositoryChangeApprovalInput>
+    export type ApproveGithubRepositoryChangeMutationError = ErrorType<void>
+    export type ApproveGithubRepositoryChangeMutationVariables = {id: string;data: BodyType<GithubRepositoryChangeApprovalInput>}
+
+    /**
+ * @summary Approve the exact reviewed diff and open a draft pull request
+ */
+export const useApproveGithubRepositoryChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveGithubRepositoryChange>>, TError,ApproveGithubRepositoryChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveGithubRepositoryChange>>,
+        TError,
+        ApproveGithubRepositoryChangeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveGithubRepositoryChangeMutationOptions(options));
+    }
+
+export const getRejectGithubRepositoryChangeUrl = (id: string,) => {
+
+
+
+
+  return `/api/github-repositories/changes/${id}/reject`
+}
+
+/**
+ * @summary Reject a pending repository diff
+ */
+export const rejectGithubRepositoryChange = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<GithubRepositoryChangeResponse> => {
+
+  return customFetch<GithubRepositoryChangeResponse>(getRejectGithubRepositoryChangeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRejectGithubRepositoryChangeMutationKey = () => ['rejectGithubRepositoryChange'] as const;
+
+export const getRejectGithubRepositoryChangeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectGithubRepositoryChange>>, TError,RejectGithubRepositoryChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectGithubRepositoryChange>>, TError,RejectGithubRepositoryChangeMutationVariables, TContext> => {
+
+const mutationKey = getRejectGithubRepositoryChangeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectGithubRepositoryChange>>, RejectGithubRepositoryChangeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectGithubRepositoryChange(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectGithubRepositoryChangeMutationResult = NonNullable<Awaited<ReturnType<typeof rejectGithubRepositoryChange>>>
+
+    export type RejectGithubRepositoryChangeMutationError = ErrorType<void>
+    export type RejectGithubRepositoryChangeMutationVariables = {id: string}
+
+    /**
+ * @summary Reject a pending repository diff
+ */
+export const useRejectGithubRepositoryChange = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectGithubRepositoryChange>>, TError,RejectGithubRepositoryChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectGithubRepositoryChange>>,
+        TError,
+        RejectGithubRepositoryChangeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectGithubRepositoryChangeMutationOptions(options));
     }
 
 export const getListTowerShopStaffUrl = () => {

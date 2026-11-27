@@ -1,16 +1,12 @@
 // ── CRM & Calls autopilot handler ────────────────────────────────────────────
 // Works an org's lead pipeline automatically when the CRM & Calls domain is ON.
-// Each due tick it selects leads needing follow-up and sends real SMS follow-ups
-// through the SHARED telephony service (the same `sendSmsMessage` the manual
-// screen calls), so every automated touch flows through recordTelephonyActivity
-// and lands in the org CRM timeline with the identical dedupe + lead side-effects
-// as a human-sent message. Turning the domain OFF returns CRM to manual-only with
-// zero data divergence.
+// Each due tick it selects leads needing follow-up and sends email through the
+// existing Resend integration. Turning the domain OFF returns CRM to manual-only.
 //
 // Calls: the existing manual person-to-person call flow (`/twilio/call`) dials a
 // Twilio CONFERENCE that a human agent joins from the browser — there is no
 // unattended equivalent, so the bot does NOT auto-place those calls. Automated
-// outreach is SMS, which is fully self-driving. Inbound/IVR is out of scope.
+// outreach uses email and does not depend on Twilio SMS verification.
 import {
   db,
   autopilotActivityLogTable,
@@ -21,29 +17,33 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray, desc, sql } from "drizzle-orm";
 import type { AutopilotContext, AutopilotHandler } from "./types";
-import { checkEntitlement } from "./guardrails";
 import { readCrmPrefs, resolveCrmLeadStatuses } from "./crm-prefs";
-import { sendSmsMessage } from "../telephony-service";
-import { toE164 } from "../phone";
+import { getUncachableResendClient } from "../resend";
+import { recordEmailActivity } from "../crm-recorder";
+import { buildEmailOptOutUrl } from "../email-opt-out";
 
-// Telephony's manual paths gate on the `phone_system` plan feature (bundled by
-// PABLO / claw_bot). Autopilot mirrors that exact gate.
-const TELEPHONY_FEATURE = "phone_system" as const;
-
-/** Compose a short, friendly follow-up appropriate to where the lead sits in the pipeline. */
-function buildFollowUpMessage(lead: typeof leadRecordsTable.$inferSelect): string {
+/** Compose a short, friendly email appropriate to the lead's pipeline stage. */
+function buildFollowUpEmail(lead: typeof leadRecordsTable.$inferSelect): { subject: string; text: string } {
   const name = lead.name && lead.name.trim() && lead.name !== lead.phone ? lead.name.trim().split(/\s+/)[0] : "there";
+  let message: string;
   switch (lead.status) {
     case "new":
-      return `Hi ${name}, thanks for your interest! Is now a good time to chat about how we can help? Reply anytime.`;
+      message = "Thanks for your interest. Is now a good time to chat about how we can help?";
+      break;
     case "qualified":
-      return `Hi ${name}, following up on our conversation — happy to answer any questions and find a time that works for you.`;
+      message = "I’m following up on our conversation. I’m happy to answer questions and find a time that works for you.";
+      break;
     case "proposal":
-      return `Hi ${name}, just checking in on the proposal we sent over. Any questions I can help with?`;
+      message = "I’m checking in on the proposal we sent. Do you have any questions I can help with?";
+      break;
     case "contacted":
     default:
-      return `Hi ${name}, circling back to see if you'd like to take the next step. Let me know how I can help!`;
+      message = "I’m following up to see whether you’d like to take the next step. Let me know how I can help.";
   }
+  return {
+    subject: lead.status === "proposal" ? "Following up on your proposal" : "A quick follow-up",
+    text: `Hi ${name},\n\n${message}\n\nBest,\nYour team`,
+  };
 }
 
 /** Most recent outbound CRM touch (ms epoch) for a lead, or 0 if never contacted. */
@@ -70,7 +70,7 @@ async function lastFailedFollowUpMs(orgId: number, leadId: number): Promise<numb
     .where(and(
       eq(autopilotActivityLogTable.orgId, orgId),
       eq(autopilotActivityLogTable.domain, "crm_calls"),
-      eq(autopilotActivityLogTable.action, "sms_followup"),
+      eq(autopilotActivityLogTable.action, "email_followup"),
       eq(autopilotActivityLogTable.outcome, "error"),
       sql`${autopilotActivityLogTable.detail}->>'leadId' = ${String(leadId)}`,
     ))
@@ -79,16 +79,31 @@ async function lastFailedFollowUpMs(orgId: number, leadId: number): Promise<numb
   return row?.createdAt ? new Date(row.createdAt).getTime() : 0;
 }
 
-function normalizedPhoneKey(phone: string): string {
-  return toE164(phone) ?? phone.trim();
+function normalizedEmailKey(email: string): string {
+  return email.trim().toLowerCase();
 }
 
-async function getSmsOptedOutPhoneKeys(userId: string): Promise<Set<string>> {
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+function htmlEscape(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
+}
+
+async function getEmailOptedOutAddresses(userId: string): Promise<Set<string>> {
   const rows = await db
     .select({
       contactId: contactsTable.id,
-      phone: contactsTable.phone,
-      smsOptIn: contactChannelPrefsTable.smsOptIn,
+      email: contactsTable.email,
+      emailOptIn: contactChannelPrefsTable.emailOptIn,
+      emailOptedOutAt: contactChannelPrefsTable.emailOptedOutAt,
     })
     .from(contactsTable)
     .innerJoin(contactChannelPrefsTable, and(
@@ -96,26 +111,45 @@ async function getSmsOptedOutPhoneKeys(userId: string): Promise<Set<string>> {
       eq(contactChannelPrefsTable.userId, userId),
     ))
     .where(eq(contactsTable.userId, userId))
-    .orderBy(desc(contactChannelPrefsTable.updatedAt));
-  const latestByContact = new Map<number, { phone: string; smsOptIn: boolean }>();
+    .orderBy(desc(contactChannelPrefsTable.updatedAt), desc(contactChannelPrefsTable.id));
+  const latestByContact = new Map<number, { email: string; emailOptIn: boolean; emailOptedOutAt: Date | null }>();
   for (const row of rows) {
     if (!latestByContact.has(row.contactId)) {
-      latestByContact.set(row.contactId, { phone: row.phone, smsOptIn: row.smsOptIn });
+      latestByContact.set(row.contactId, {
+        email: row.email,
+        emailOptIn: row.emailOptIn,
+        emailOptedOutAt: row.emailOptedOutAt,
+      });
     }
   }
   return new Set(
     [...latestByContact.values()]
-      .filter((row) => !row.smsOptIn && row.phone.trim())
-      .map((row) => normalizedPhoneKey(row.phone)),
+      .filter((row) => (!row.emailOptIn || row.emailOptedOutAt) && row.email.trim())
+      .map((row) => normalizedEmailKey(row.email)),
   );
 }
 
-export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotContext) => {
-  // Mirror the manual telephony gate. We DON'T hard-fail when missing — per the
-  // spec the bot still records the INTENDED follow-up so the org sees what it
-  // would have done, it just doesn't actually send.
-  const entitled = await checkEntitlement(ctx.ownerId, ctx.ownerEmail, TELEPHONY_FEATURE);
+async function isEmailOptedOut(userId: string, email: string): Promise<boolean> {
+  const [preference] = await db
+    .select({
+      emailOptIn: contactChannelPrefsTable.emailOptIn,
+      emailOptedOutAt: contactChannelPrefsTable.emailOptedOutAt,
+    })
+    .from(contactsTable)
+    .innerJoin(contactChannelPrefsTable, and(
+      eq(contactChannelPrefsTable.contactId, contactsTable.id),
+      eq(contactChannelPrefsTable.userId, userId),
+    ))
+    .where(and(
+      eq(contactsTable.userId, userId),
+      sql`lower(trim(${contactsTable.email})) = ${normalizedEmailKey(email)}`,
+    ))
+    .orderBy(desc(contactChannelPrefsTable.updatedAt), desc(contactChannelPrefsTable.id))
+    .limit(1);
+  return Boolean(preference && (!preference.emailOptIn || preference.emailOptedOutAt));
+}
 
+export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotContext) => {
   // Owner-tunable preferences (which stages to work, cooldown, per-tick cap). An
   // org that never set any gets all in-play stages on a 24h cooldown, as before.
   const prefs = readCrmPrefs(ctx.config.prefs);
@@ -123,7 +157,7 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
   const followUpIntervalMs = prefs.followUpIntervalHours * 60 * 60 * 1000;
   const perTickCap = prefs.maxFollowUpsPerTick > 0 ? prefs.maxFollowUpsPerTick : Infinity;
 
-  // Candidate leads: in-play status, with a phone, due for follow-up. Read-only.
+  // Candidate leads: in-play status, with an email address, due for follow-up.
   const candidates = await db
     .select()
     .from(leadRecordsTable)
@@ -135,12 +169,12 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
     );
 
   const now = Date.now();
-  const optedOutPhoneKeys = await getSmsOptedOutPhoneKeys(ctx.ownerId);
+  const optedOutEmailAddresses = await getEmailOptedOutAddresses(ctx.ownerId);
   let optedOut = 0;
   const due: { lead: typeof leadRecordsTable.$inferSelect; lastTouchMs: number }[] = [];
   for (const lead of candidates) {
-    if (!lead.phone || !lead.phone.trim()) continue;
-    if (optedOutPhoneKeys.has(normalizedPhoneKey(lead.phone))) {
+    if (!isValidEmail(lead.email)) continue;
+    if (optedOutEmailAddresses.has(normalizedEmailKey(lead.email))) {
       optedOut++;
       continue;
     }
@@ -157,81 +191,87 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
     await ctx.log({
       action: "tick",
       summary: optedOut
-        ? `CRM autopilot ran — no leads due for follow-up; ${optedOut} opted-out lead(s) suppressed.`
+        ? `CRM autopilot ran — no leads due for follow-up; ${optedOut} email-opted-out lead(s) suppressed.`
         : "CRM autopilot ran — no leads due for follow-up.",
       outcome: "noop",
-      detail: { candidates: candidates.length, due: 0, smsOptedOut: optedOut },
+      detail: { candidates: candidates.length, due: 0, emailOptedOut: optedOut },
     });
     return;
   }
 
   let sent = 0;
-  let intended = 0;
   let failed = 0;
+  let senderPromise: ReturnType<typeof getUncachableResendClient> | undefined;
 
   for (const { lead } of due) {
     // Owner-set per-tick lead cap (0 = unlimited). Stops once it's reached so a
     // big due list never floods leads in a single tick beyond what the owner set.
-    if (sent + intended >= perTickCap) break;
+    if (sent + failed >= perTickCap) break;
     // Per-tick action cap. One claim == one lead worked this tick (per-lead cap
     // within a tick is implicitly 1). Stops cleanly when the budget is spent.
     if (!ctx.claimAction()) break;
 
-    const body = buildFollowUpMessage(lead);
-    const who = lead.name && lead.name !== lead.phone ? lead.name : lead.phone;
-
-    if (!entitled) {
-      // Mirror manual gating: record the intended action WITHOUT sending.
-      intended++;
-      await ctx.log({
-        action: "intended_sms",
-        summary: `Would send an SMS follow-up to ${who}, but the org lacks the phone-system entitlement — not sent.`,
-        outcome: "blocked",
-        detail: { leadId: lead.id, phone: lead.phone, channel: "sms", entitlement: TELEPHONY_FEATURE, body },
-      });
-      continue;
-    }
+    const email = lead.email.trim();
+    const who = lead.name?.trim() || email;
+    const { subject, text } = buildFollowUpEmail(lead);
 
     try {
-      const result = await sendSmsMessage({
+      if (await isEmailOptedOut(ctx.ownerId, email)) {
+        optedOut++;
+        continue;
+      }
+      senderPromise ??= getUncachableResendClient();
+      const { client, fromEmail } = await senderPromise;
+      const unsubscribeUrl = buildEmailOptOutUrl(ctx.ownerId, email);
+      const fullText = `${text}\n\nTo stop these follow-up emails, unsubscribe here: ${unsubscribeUrl}`;
+      const result = await client.emails.send({
+        from: fromEmail,
+        to: email,
+        subject,
+        text: fullText,
+        html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#191919"><p>${htmlEscape(text).replace(/\n/g, "<br>")}</p><p style="font-size:12px;color:#666"><a href="${htmlEscape(unsubscribeUrl)}">Unsubscribe from follow-up emails</a></p></div>`,
+      });
+      const activitySummary = `Email follow-up sent to ${email}`;
+      if ((result as { error?: { message?: string } } | null)?.error) {
+        throw new Error((result as { error: { message?: string } }).error.message || "Email provider rejected the message");
+      }
+      await recordEmailActivity({
         userId: ctx.ownerId,
-        userEmail: ctx.ownerEmail,
         orgId: ctx.orgId,
-        phone: lead.phone,
-        body,
+        leadId: lead.id,
+        email,
         contactName: lead.name,
+        body: fullText,
+        summary: activitySummary,
+        status: "sent",
       });
       sent++;
       await ctx.log({
-        action: "sms_followup",
-        summary: `Sent an SMS follow-up to ${who}.`,
+        action: "email_followup",
+        summary: `Sent an email follow-up to ${who}.`,
         outcome: "success",
         detail: {
           leadId: lead.id,
-          phone: result.toPhone,
-          channel: "sms",
+          channel: "email",
           status: lead.status,
-          twilioSid: result.message.twilioMessageSid,
         },
       });
     } catch (err) {
       failed++;
       await ctx.log({
-        action: "sms_followup",
-        summary: `Failed to send an SMS follow-up to ${who}: ${err instanceof Error ? err.message : "unknown error"}.`,
+        action: "email_followup",
+        summary: `Failed to send an email follow-up to ${who}: ${err instanceof Error ? err.message : "unknown error"}.`,
         outcome: "error",
-        detail: { leadId: lead.id, phone: lead.phone, channel: "sms" },
+        detail: { leadId: lead.id, channel: "email" },
       });
     }
   }
 
   await ctx.log({
     action: "tick",
-    summary: entitled
-      ? `CRM autopilot worked the lead list — ${sent} SMS follow-up(s) sent${failed ? `, ${failed} failed` : ""} (${due.length} due${optedOut ? `, ${optedOut} opted out` : ""}).`
-      : `CRM autopilot found ${due.length} lead(s) due but the org lacks the phone-system entitlement — recorded ${intended} intended follow-up(s) without sending.`,
-    outcome: sent > 0 || intended > 0 ? "success" : failed > 0 ? "error" : "noop",
-    detail: { candidates: candidates.length, due: due.length, sent, intended, failed, entitled, smsOptedOut: optedOut },
+    summary: `CRM autopilot worked the lead list — ${sent} email follow-up(s) sent${failed ? `, ${failed} failed` : ""} (${due.length} due${optedOut ? `, ${optedOut} email-opted-out` : ""}).`,
+    outcome: sent > 0 ? "success" : failed > 0 ? "error" : "noop",
+    detail: { candidates: candidates.length, due: due.length, sent, failed, emailOptedOut: optedOut },
   });
 
 };

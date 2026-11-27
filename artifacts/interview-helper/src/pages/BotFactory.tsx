@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, Plus, Trash2, Power, PowerOff, MessageSquare, Brain, Building2,
-  Send, Settings, Clock, Shield, ChevronRight, Store, Zap,
+  Send, Clock, Shield, ChevronRight, Store, Zap,
   Terminal, Target, PenTool, Calendar, Briefcase, X, Check,
   Eye, MemoryStick, Plug, AlertCircle, TrendingUp, TrendingDown,
   DollarSign, BarChart2, Activity, AlertTriangle, ToggleLeft, ToggleRight,
@@ -13,11 +13,12 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/use-auth';
 import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
+import { PabloAutomationNav } from '@/components/PabloAutomationNav';
+import { BotSettingsButton } from '@/components/BotSettingsButton';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import BotCommandCenter from './BotCommandCenter';
 import FinancialOverview from '@/components/FinancialOverview';
-import AgentTeam from './AgentTeam';
 
 function BotNameDisplay({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const upper = name.toUpperCase();
@@ -33,6 +34,7 @@ function BotNameDisplay({ name, className, style }: { name: string; className?: 
 }
 
 type BotStatus = 'active' | 'paused' | 'error';
+type BotDetailTab = 'test' | 'logs' | 'memory' | 'tasks' | 'settings' | 'trading' | 'prospecting' | 'team';
 
 const platformIcons: Record<string, string> = {
   whatsapp: '💬',
@@ -2810,10 +2812,20 @@ function TestChatPanel({ bot, boomer }: { bot: BotData; boomer: boolean }) {
   );
 }
 
-function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; onClose: () => void; onRefresh: () => void; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string }) {
+export function BotDetailModal({ bot, onClose, onRefresh, onSaved, boomer, t, initialTab = 'test' }: { bot: BotData; onClose: () => void; onRefresh: () => void; onSaved?: (bot: BotData) => void; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string; initialTab?: BotDetailTab }) {
   const hasTrading = bot.permissions.some(p => ['trading_read', 'trading_paper', 'trading_execute'].includes(p));
   const hasProspecting = bot.permissions.includes('crm_write') && bot.permissions.includes('contacts_write') && !!bot.marketplaceItemId;
-  const [tab, setTab] = useState<'test' | 'logs' | 'memory' | 'tasks' | 'settings' | 'trading' | 'prospecting' | 'team'>('test');
+  const [tab, setTab] = useState<BotDetailTab>(initialTab);
+  const [settingsDraft, setSettingsDraft] = useState(() => ({
+    name: bot.name,
+    personality: bot.personality,
+    systemPrompt: bot.systemPrompt,
+    maxTokensPerResponse: String(bot.maxTokensPerResponse),
+    rateLimitPerMinute: String(bot.rateLimitPerMinute),
+  }));
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSaved, setSettingsSaved] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [spawning, setSpawning] = useState(false);
   const [spawnName, setSpawnName] = useState('');
@@ -2919,6 +2931,56 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
     await apiFetch(`/api/bots/${bot.id}`, { method: 'DELETE' });
     onRefresh();
     onClose();
+  };
+
+  const saveBotSettings = async () => {
+    const maxTokensPerResponse = Number(settingsDraft.maxTokensPerResponse);
+    const rateLimitPerMinute = Number(settingsDraft.rateLimitPerMinute);
+    if (!settingsDraft.name.trim() || settingsDraft.name.trim().length > 120) {
+      setSettingsError('Enter a bot name of 1–120 characters.');
+      return;
+    }
+    if (!Number.isInteger(maxTokensPerResponse) || maxTokensPerResponse < 1 || maxTokensPerResponse > 32768) {
+      setSettingsError('Max tokens must be a whole number from 1 to 32,768.');
+      return;
+    }
+    if (!Number.isInteger(rateLimitPerMinute) || rateLimitPerMinute < 1 || rateLimitPerMinute > 600) {
+      setSettingsError('Rate limit must be a whole number from 1 to 600.');
+      return;
+    }
+
+    setSavingSettings(true);
+    setSettingsError('');
+    setSettingsSaved(false);
+    try {
+      const response = await apiFetch(`/api/bots/${bot.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: settingsDraft.name.trim(),
+          personality: settingsDraft.personality,
+          systemPrompt: settingsDraft.systemPrompt,
+          maxTokensPerResponse,
+          rateLimitPerMinute,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not save bot settings.');
+      const updatedBot = { ...bot, ...(data.bot ?? {}) } as BotData;
+      setSettingsDraft({
+        name: updatedBot.name,
+        personality: updatedBot.personality,
+        systemPrompt: updatedBot.systemPrompt,
+        maxTokensPerResponse: String(updatedBot.maxTokensPerResponse),
+        rateLimitPerMinute: String(updatedBot.rateLimitPerMinute),
+      });
+      setSettingsSaved(true);
+      onSaved?.(updatedBot);
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : 'Could not save bot settings.');
+    } finally {
+      setSavingSettings(false);
+    }
   };
 
   return (
@@ -3327,17 +3389,94 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "var(--font-sans)" }}>
-                  {boomer ? t('botFactory.settingsPersonality') : t('botFactory.settingsPersonalityCodename')}
+            <div className="space-y-4" data-testid="bot-detail-settings">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs text-muted-foreground">
+                  BOT NAME
+                  <input
+                    data-testid="bot-settings-name"
+                    value={settingsDraft.name}
+                    maxLength={120}
+                    disabled={savingSettings}
+                    onChange={(event) => {
+                      setSettingsDraft((current) => ({ ...current, name: event.target.value }));
+                      setSettingsSaved(false);
+                      setSettingsError('');
+                    }}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
                 </label>
-                <p className="text-sm text-foreground/70 bg-muted/20 rounded-lg p-3 border border-border">{bot.personality}</p>
+                <label className="block text-xs text-muted-foreground">
+                  {boomer ? t('botFactory.settingsMaxTokens') : t('botFactory.settingsMaxTokensCodename')}
+                  <input
+                    type="number"
+                    min={1}
+                    max={32768}
+                    step={1}
+                    data-testid="bot-settings-max-tokens"
+                    value={settingsDraft.maxTokensPerResponse}
+                    disabled={savingSettings}
+                    onChange={(event) => {
+                      setSettingsDraft((current) => ({ ...current, maxTokensPerResponse: event.target.value }));
+                      setSettingsSaved(false);
+                      setSettingsError('');
+                    }}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                </label>
               </div>
+              <label className="block text-xs text-muted-foreground">
+                {boomer ? t('botFactory.settingsPersonality') : t('botFactory.settingsPersonalityCodename')}
+                <textarea
+                  data-testid="bot-settings-personality"
+                  value={settingsDraft.personality}
+                  rows={3}
+                  disabled={savingSettings}
+                  onChange={(event) => {
+                    setSettingsDraft((current) => ({ ...current, personality: event.target.value }));
+                    setSettingsSaved(false);
+                    setSettingsError('');
+                  }}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </label>
+              <label className="block text-xs text-muted-foreground">
+                SYSTEM INSTRUCTIONS
+                <textarea
+                  data-testid="bot-settings-system-prompt"
+                  value={settingsDraft.systemPrompt}
+                  rows={5}
+                  disabled={savingSettings}
+                  onChange={(event) => {
+                    setSettingsDraft((current) => ({ ...current, systemPrompt: event.target.value }));
+                    setSettingsSaved(false);
+                    setSettingsError('');
+                  }}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </label>
+              <label className="block max-w-xs text-xs text-muted-foreground">
+                {boomer ? t('botFactory.settingsRateLimit') : t('botFactory.settingsRateLimitCodename')}
+                <input
+                  type="number"
+                  min={1}
+                  max={600}
+                  step={1}
+                  data-testid="bot-settings-rate-limit"
+                  value={settingsDraft.rateLimitPerMinute}
+                  disabled={savingSettings}
+                  onChange={(event) => {
+                    setSettingsDraft((current) => ({ ...current, rateLimitPerMinute: event.target.value }));
+                    setSettingsSaved(false);
+                    setSettingsError('');
+                  }}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </label>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "var(--font-sans)" }}>
+                <div className="mb-1 text-xs text-muted-foreground">
                   {boomer ? t('botFactory.settingsConnections') : t('botFactory.settingsConnectionsCodename')}
-                </label>
+                </div>
                 {bot.connections.length === 0 ? (
                   <p className="text-sm text-muted-foreground/50">{boomer ? t('botFactory.noLinksEstablished') : t('botFactory.noLinksEstablishedCodename')}</p>
                 ) : (
@@ -3353,9 +3492,9 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                 )}
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "var(--font-sans)" }}>
+                <div className="mb-1 text-xs text-muted-foreground">
                   {boomer ? t('botFactory.settingsPermissions') : t('botFactory.settingsPermissionsCodename')}
-                </label>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {bot.permissions.map((p: string) => (
                     <span key={p} className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20"
@@ -3363,19 +3502,21 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                  <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "var(--font-sans)" }}>
-                    {boomer ? t('botFactory.settingsMaxTokens') : t('botFactory.settingsMaxTokensCodename')}
-                  </span>
-                  <span className="text-sm font-bold text-foreground">{bot.maxTokensPerResponse.toLocaleString()}</span>
-                </div>
-                <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                  <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "var(--font-sans)" }}>
-                    {boomer ? t('botFactory.settingsRateLimit') : t('botFactory.settingsRateLimitCodename')}
-                  </span>
-                  <span className="text-sm font-bold text-foreground">{bot.rateLimitPerMinute}/min</span>
-                </div>
+              {settingsError && <p role="alert" className="text-sm text-red-400">{settingsError}</p>}
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                <p aria-live="polite" className="text-sm text-emerald-400">
+                  {settingsSaved ? 'Settings saved.' : ''}
+                </p>
+                <button
+                  type="button"
+                  data-testid="bot-settings-save"
+                  onClick={() => void saveBotSettings()}
+                  disabled={savingSettings}
+                  className="flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-sky-600 disabled:opacity-50"
+                >
+                  {savingSettings ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {savingSettings ? 'SAVING' : 'SAVE SETTINGS'}
+                </button>
               </div>
             </div>
           )}
@@ -3385,7 +3526,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
   );
 }
 
-export default function BotFactory() {
+export default function BotFactory({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const [boomerMode] = useBoomerMode();
   const [bots, setBots] = useState<BotData[]>([]);
@@ -3394,6 +3535,7 @@ export default function BotFactory() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
+  const [selectedBotTab, setSelectedBotTab] = useState<BotDetailTab>('test');
   const [connectBot, setConnectBot] = useState<BotData | null>(null);
   const [activating, setActivating] = useState<number | null>(null);
   const [activationError, setActivationError] = useState('');
@@ -3408,6 +3550,10 @@ export default function BotFactory() {
   const plan = usePlan();
   const [, navigate] = useLocation();
   const hasAccess = plan.isOwner;
+  const openBotDetails = (bot: BotData, tab: BotDetailTab = 'test') => {
+    setSelectedBotTab(tab);
+    setSelectedBot(bot);
+  };
 
   const loadBots = useCallback(async () => {
     try {
@@ -3488,13 +3634,13 @@ export default function BotFactory() {
         await Promise.all([loadBots(), loadMarketplace(), loadWorkstationCapacity()]);
       } else {
         const data = await res.json().catch(() => ({}));
-        const message = typeof data.error === 'string' ? data.error : 'Unable to activate this Pixel Agent. Please try again.';
+        const message = typeof data.error === 'string' ? data.error : 'Unable to enable this automation tool. Please try again.';
         setActivationError(message);
         if (res.status === 403 && data.upgrade) navigate(data.upgrade);
       }
     } catch (err) {
       console.error('Failed to activate bot:', err);
-      setActivationError('Network error while activating this Pixel Agent. Please try again.');
+      setActivationError('Network error while enabling this automation tool. Please try again.');
     } finally {
       setActivating(null);
     }
@@ -3519,6 +3665,7 @@ export default function BotFactory() {
 
       <main className="flex-1 p-4 md:p-6 relative z-10">
         <div className="max-w-4xl mx-auto">
+          {!embedded && <PabloAutomationNav />}
 
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
@@ -3527,7 +3674,7 @@ export default function BotFactory() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
-                   {boomerMode ? 'Agent Command Center' : 'AGENT COMMAND CENTER'}
+                   {boomerMode ? 'PABLO PRIME' : 'AGENT TOOLS'}
                 </h1>
                 <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                   {boomerMode ? t('botFactory.subtitle') : t('botFactory.subtitleCodename')}
@@ -3555,16 +3702,16 @@ export default function BotFactory() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <h2 className="font-bold text-foreground text-lg" style={boomerMode ? {} : { fontFamily: "var(--font-sans)", letterSpacing: '0.06em', fontSize: '1.4rem' }}>
-                        PIXEL AGENTS
+                        PABLO PRIME TOOLS
                       </h2>
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         {hasAccess ? 'ACTIVE' : 'RESTRICTED'}
                       </span>
-                       <span className="text-[10px] text-muted-foreground/40 font-mono">{marketplace.length} CURATED BOTS</span>
+                       <span className="text-[10px] text-muted-foreground/40 font-mono">{marketplace.length} AVAILABLE TOOLS</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground/60">
-                       {boomerMode ? 'Curated agents for configured channels. A paid USD entitlement is required.' : 'CURATED AGENTS // CONFIGURED CHANNELS ONLY // PAID USD ENTITLEMENT REQUIRED'}
+                       {boomerMode ? 'Pablo routes work through configured automation tools. A paid USD entitlement is required.' : 'PABLO PRIME TOOLS // CONFIGURED CAPABILITIES // PAID USD ENTITLEMENT REQUIRED'}
                     </p>
                   </div>
                    <div className="shrink-0 flex items-center gap-2">
@@ -3590,25 +3737,23 @@ export default function BotFactory() {
                       <Building2 className="h-4 w-4 text-sky-400" /> AUTOMATION WORKSTATION CAPACITY
                     </div>
                     <p className="mt-1 text-[10px] text-muted-foreground/70">
-                      Every active human and Pixel Agent needs one physical desk. Subscription access does not create office capacity.
+                      Each active automation worker needs a physical desk. Subscription access does not create office capacity.
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded border border-border px-3 py-2"><b className="block text-sm text-foreground">{workstationCapacity?.totalDesks ?? 0}</b><span className="text-[8px] text-muted-foreground">TOTAL</span></div>
                     <div className="rounded border border-border px-3 py-2"><b className="block text-sm text-foreground">{(workstationCapacity?.requiredHumanDesks ?? 0) + (workstationCapacity?.activeBotDesks ?? 0)}</b><span className="text-[8px] text-muted-foreground">IN USE</span></div>
-                    <div className="rounded border border-border px-3 py-2"><b className={`block text-sm ${workstationCapacity?.availableBotDesks ? 'text-emerald-400' : 'text-amber-400'}`}>{workstationCapacity?.availableBotDesks ?? 0}</b><span className="text-[8px] text-muted-foreground">BOT SLOTS</span></div>
+                    <div className="rounded border border-border px-3 py-2"><b className={`block text-sm ${workstationCapacity?.availableBotDesks ? 'text-emerald-400' : 'text-amber-400'}`}>{workstationCapacity?.availableBotDesks ?? 0}</b><span className="text-[8px] text-muted-foreground">AUTOMATION SLOTS</span></div>
                   </div>
                 </div>
-                {!workstationCapacity?.hasProperty && <button onClick={() => navigate('/store/realty')} className="mt-3 flex items-center gap-2 rounded border border-amber-500/35 px-3 py-2 text-[10px] font-bold text-amber-300 hover:bg-amber-500/10"><Building2 className="h-3.5 w-3.5" /> FIND AN OFFICE BEFORE ACTIVATING A BOT</button>}
+                {!workstationCapacity?.hasProperty && <button onClick={() => navigate('/store/realty')} className="mt-3 flex items-center gap-2 rounded border border-amber-500/35 px-3 py-2 text-[10px] font-bold text-amber-300 hover:bg-amber-500/10"><Building2 className="h-3.5 w-3.5" /> FIND AN OFFICE BEFORE ENABLING AUTOMATIONS</button>}
               </div>
-
-              <AgentTeam embedded />
 
               {bots.length > 0 && (
                 <BotCommandCenter
                   bots={bots}
                   onRefresh={loadBots}
-                  onSelectBot={setSelectedBot}
+                  onSelectBot={(bot) => openBotDetails(bot, 'settings')}
                   onConnectBot={setConnectBot}
                 />
               )}
@@ -3618,11 +3763,11 @@ export default function BotFactory() {
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-4 h-4 text-violet-400" />
                   <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
-                    BOT FINDER — DESCRIBE WHAT YOU NEED
+                    PABLO PRIME — DESCRIBE WHAT YOU NEED
                   </span>
                 </div>
                 <p className="text-[10px] text-muted-foreground/50 mb-3" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
-                  TELL PABLO WHAT YOU WANT TO AUTOMATE AND HE'LL RECOMMEND THE RIGHT BOTS FROM THE PIXEL AGENTS ARSENAL.
+                  TELL PABLO WHAT YOU WANT TO AUTOMATE. HE'LL RECOMMEND THE RIGHT CONFIGURED TOOLS OR A CUSTOM TEMPLATE.
                 </p>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
@@ -3692,7 +3837,7 @@ export default function BotFactory() {
                               </span>
                               <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${rec.type === 'marketplace' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'}`}
                                 style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
-                                {rec.type === 'marketplace' ? 'PIXEL AGENT' : 'CUSTOM TEMPLATE'}
+                                 {rec.type === 'marketplace' ? 'PABLO TOOL' : 'CUSTOM TEMPLATE'}
                               </span>
                               <span className="text-[8px] text-muted-foreground/40" style={boomerMode ? {} : { fontFamily: "var(--font-sans)" }}>
                                 {rec.category.toUpperCase()}
@@ -3822,10 +3967,11 @@ export default function BotFactory() {
                                       className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground/40 hover:text-sky-400 transition-colors" title="Connect platform">
                                       <Plug className="w-3.5 h-3.5" />
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); setSelectedBot(activatedBot); }}
-                                      className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground/40 hover:text-foreground transition-colors" title="Settings">
-                                      <Settings className="w-3.5 h-3.5" />
-                                    </button>
+                                    <BotSettingsButton
+                                      botName={activatedBot.name}
+                                      onOpenSettings={() => openBotDetails(activatedBot, 'settings')}
+                                      testId={`marketplace-bot-settings-${activatedBot.id}`}
+                                    />
                                   </>
                                 )}
                                 {isActive ? (
@@ -3862,7 +4008,7 @@ export default function BotFactory() {
                     {bots.filter(b => !b.marketplaceItemId).map(bot => (
                       <div key={bot.id}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber-500/15 bg-amber-500/[0.02] cursor-pointer hover:border-amber-500/30 transition-colors"
-                        onClick={() => setSelectedBot(bot)}>
+                        onClick={() => openBotDetails(bot)}>
                         <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
                           <Bot className="w-4 h-4 text-amber-400" />
                         </div>
@@ -3880,7 +4026,11 @@ export default function BotFactory() {
                             ))}
                           </div>
                         </div>
-                        <Settings className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
+                        <BotSettingsButton
+                          botName={bot.name}
+                          onOpenSettings={() => openBotDetails(bot, 'settings')}
+                          testId={`custom-bot-settings-${bot.id}`}
+                        />
                       </div>
                     ))}
                   </div>
@@ -3893,7 +4043,10 @@ export default function BotFactory() {
 
       <AnimatePresence>
         {showCreate && <CreateBotModal onClose={() => setShowCreate(false)} onCreated={loadBots} boomer={boomerMode} t={t} />}
-        {selectedBot && <BotDetailModal bot={selectedBot} onClose={() => setSelectedBot(null)} onRefresh={() => { loadBots(); setSelectedBot(null); }} boomer={boomerMode} t={t} />}
+        {selectedBot && <BotDetailModal key={selectedBot.id} bot={selectedBot} initialTab={selectedBotTab} onClose={() => setSelectedBot(null)} onRefresh={() => { loadBots(); setSelectedBot(null); }} onSaved={(updatedBot) => {
+          setBots((current) => current.map((bot) => bot.id === updatedBot.id ? updatedBot : bot));
+          setSelectedBot(updatedBot);
+        }} boomer={boomerMode} t={t} />}
         {connectBot && <ConnectPlatformModal bot={connectBot} onClose={() => setConnectBot(null)} onConnected={loadBots} boomer={boomerMode} t={t} />}
       </AnimatePresence>
     </div>

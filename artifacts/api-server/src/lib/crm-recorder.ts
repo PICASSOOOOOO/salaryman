@@ -245,7 +245,7 @@ export interface RecordTelephonyOpts {
   userId: string;
   /** Pass when already known (e.g. from call_history.orgId) to skip a lookup. */
   orgId?: number | null;
-  channel: Exclude<CrmActivityChannel, "comms">;
+  channel: Exclude<CrmActivityChannel, "comms" | "email">;
   direction?: "inbound" | "outbound";
   /** The OTHER party's number (the contact), not the org's Twilio line. */
   phone: string;
@@ -330,7 +330,7 @@ export async function recordTelephonyActivity(opts: RecordTelephonyOpts): Promis
     }
 
     const direction = opts.direction ?? "outbound";
-    const sourceMap: Record<Exclude<CrmActivityChannel, "comms">, string> = {
+    const sourceMap: Record<Exclude<CrmActivityChannel, "comms" | "email">, string> = {
       call: direction === "inbound" ? "inbound_call" : "outbound_call",
       voicemail: "voicemail",
       sms: direction === "inbound" ? "inbound_sms" : "outbound_sms",
@@ -509,6 +509,44 @@ export async function recordCommsActivity(opts: {
     return created?.id ?? null;
   } catch (e: unknown) {
     console.error("[CRM] recordCommsActivity error:", e instanceof Error ? e.message : "Unknown");
+    return null;
+  }
+}
+
+/** Record an outbound CRM email in the shared lead timeline. */
+export async function recordEmailActivity(opts: {
+  userId: string;
+  orgId: number;
+  leadId: number;
+  email: string;
+  contactName?: string | null;
+  body: string;
+  summary?: string;
+  status?: string;
+}): Promise<number | null> {
+  try {
+    const [created] = await db
+      .insert(crmActivitiesTable)
+      .values({
+        orgId: opts.orgId,
+        userId: opts.userId,
+        leadId: opts.leadId,
+        channel: "email",
+        direction: "outbound",
+        contactName: opts.contactName || null,
+        body: opts.body,
+        summary: opts.summary || `Email sent to ${opts.email}`,
+        status: opts.status || "sent",
+      })
+      .returning({ id: crmActivitiesTable.id });
+    await db.insert(leadNotesTable).values({
+      leadId: opts.leadId,
+      userId: opts.userId,
+      note: `[Outbound email] ${(opts.summary || opts.body).slice(0, 1000)}`,
+    });
+    return created?.id ?? null;
+  } catch (e: unknown) {
+    console.error("[CRM] recordEmailActivity error:", e instanceof Error ? e.message : "Unknown");
     return null;
   }
 }

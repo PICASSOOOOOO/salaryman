@@ -47,6 +47,7 @@ export default function TermsOfService() {
       <h2>7. SMS Messaging Program</h2>
       <p><strong>SALARYMAN Text Updates</strong> sends recurring automated informational text messages about account activity, CALLL HOME, and service updates. To opt in, text <strong>START</strong> from your mobile phone to <strong>+1 888-230-7698</strong> after reviewing our <a href="/sms-opt-in">SMS opt-in page</a>. Sending START is your consent to receive these messages. Consent is not a condition of purchase. Message frequency varies, and message and data rates may apply.</p>
       <p>Reply <strong>STOP</strong> to cancel or <strong>HELP</strong> for help. For customer care, use our <a href="/legal/contact">Contact Us</a> page. Wireless carriers are not liable for delayed or undelivered messages.</p>
+      <p>See our <a href="/sms-disclaimer">SMS Messaging Program Disclosure</a> for complete program details.</p>
 
       <h2>8. Physical Merchandise</h2>
       <p>Physical merchandise is fulfilled by the <strong>PABLO CORP Merch Dept</strong>, a division of the Company. All physical merchandise purchases are subject to the Return Policy and applicable shipping terms.</p>

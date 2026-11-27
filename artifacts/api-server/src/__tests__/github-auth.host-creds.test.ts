@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   isDevelopmentHost,
   resolveGithubCreds,
+  resolveGithubRepositoryCreds,
   githubConfigured,
 } from "../lib/github-auth";
 
@@ -14,6 +15,10 @@ const ENV_KEYS = [
   "GITHUB_OAUTH_CLIENT_SECRET",
   "GITHUB_OAUTH_CLIENT_ID_PROD",
   "GITHUB_OAUTH_CLIENT_SECRET_PROD",
+  "GITHUB_REPOSITORY_OAUTH_CLIENT_ID",
+  "GITHUB_REPOSITORY_OAUTH_CLIENT_SECRET",
+  "GITHUB_REPOSITORY_OAUTH_CLIENT_ID_PROD",
+  "GITHUB_REPOSITORY_OAUTH_CLIENT_SECRET_PROD",
 ] as const;
 
 describe("isDevelopmentHost", () => {
@@ -106,5 +111,50 @@ describe("resolveGithubCreds", () => {
     expect(githubConfigured("abc.worf.replit.dev")).toBe(true);
     // prod falls back to the default pair, so it's also "configured".
     expect(githubConfigured("picassoo.app")).toBe(true);
+  });
+});
+
+describe("resolveGithubRepositoryCreds", () => {
+  let saved: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    saved = {};
+    for (const key of ENV_KEYS) {
+      saved[key] = process.env[key];
+      delete process.env[key];
+    }
+  });
+
+  afterEach(() => {
+    for (const key of ENV_KEYS) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
+  });
+
+  it("uses repository-only credentials for development", () => {
+    process.env.GITHUB_OAUTH_CLIENT_ID = "signin-id";
+    process.env.GITHUB_OAUTH_CLIENT_SECRET = "signin-secret";
+    process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_ID = "repo-dev-id";
+    process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_SECRET = "repo-dev-secret";
+
+    expect(resolveGithubRepositoryCreds("demo.worf.replit.dev")).toEqual({
+      clientId: "repo-dev-id",
+      clientSecret: "repo-dev-secret",
+    });
+  });
+
+  it("requires a separate production callback app instead of reusing dev credentials", () => {
+    process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_ID = "repo-dev-id";
+    process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_SECRET = "repo-dev-secret";
+
+    expect(resolveGithubRepositoryCreds("salaryman.replit.app")).toBeNull();
+
+    process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_ID_PROD = "repo-prod-id";
+    process.env.GITHUB_REPOSITORY_OAUTH_CLIENT_SECRET_PROD = "repo-prod-secret";
+    expect(resolveGithubRepositoryCreds("salaryman.replit.app")).toEqual({
+      clientId: "repo-prod-id",
+      clientSecret: "repo-prod-secret",
+    });
   });
 });

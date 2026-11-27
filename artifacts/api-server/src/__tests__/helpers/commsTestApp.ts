@@ -15,6 +15,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import accountRouter from "../../routes/account";
 import colleaguesRouter from "../../routes/colleagues";
 import chatRouter from "../../routes/chat";
+import { requireOnboardingForMutation } from "../../middlewares/requireOnboarding";
 
 // Mutable auth state read by the injected middleware on every request. Tests
 // flip `authed` to false to exercise the 401 path, and swap `user` to act as a
@@ -41,7 +42,7 @@ const createdOrgIds: number[] = [];
 // under "/api" (their own paths are "/account/...", "/colleagues/...",
 // "/chat/..."). A middleware injects the passport-style `req.isAuthenticated()`
 // and `req.user` the route guards depend on.
-export function buildApp(): Express {
+export function buildApp(options: { onboardingMutationGate?: boolean } = {}): Express {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -49,6 +50,9 @@ export function buildApp(): Express {
     (req as unknown as { user: { id: string; email: string } }).user = authState.user;
     next();
   });
+  if (options.onboardingMutationGate) {
+    app.use("/api", requireOnboardingForMutation);
+  }
   app.use("/api", accountRouter);
   app.use("/api", colleaguesRouter);
   app.use("/api", chatRouter);

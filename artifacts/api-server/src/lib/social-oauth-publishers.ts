@@ -31,12 +31,19 @@ async function providerRequest(url: string, init: RequestInit): Promise<Record<s
   if (!response.ok || data.error) {
     throw new Error(`Platform rejected the post (${response.status}).`);
   }
-  return data;
+  const restliId = response.headers.get("x-restli-id");
+  return restliId ? { ...data, restliId } : data;
 }
 
 function oauthToken(creds: Record<string, string>): string {
   if (!creds.accessToken) throw new Error("Reconnect this social account before publishing.");
   return creds.accessToken;
+}
+
+function linkedinApiVersion(): string {
+  const version = process.env.LINKEDIN_API_VERSION ?? new Date().toISOString().slice(0, 7).replace("-", "");
+  if (!/^\d{6}$/.test(version)) throw new Error("LinkedIn API version must use YYYYMM format.");
+  return version;
 }
 
 async function postFacebook(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
@@ -61,7 +68,62 @@ async function postFacebook(creds: Record<string, string>, input: ProviderPublis
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body,
   });
-  return { ok: true, externalId: String(result.id ?? result.post_id ?? "") };
+  const id = result.id ?? result.post_id;
+  if (!id) throw new Error("Facebook did not return a post ID.");
+  return { ok: true, externalId: String(id) };
+}
+
+async function postTwitter(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
+  if (firstMedia(input)) {
+    throw new Error("X media uploads are not supported yet. Remove the attachment or use a text-only post.");
+  }
+  const result = await providerRequest("https://api.x.com/2/tweets", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${oauthToken(creds)}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ text: caption(input, 280) }),
+  });
+  const id = result.data?.id;
+  if (!id) throw new Error("X did not return a post ID.");
+  return {
+    ok: true,
+    externalId: String(id),
+    url: creds.username ? `https://x.com/${encodeURIComponent(creds.username)}/status/${encodeURIComponent(String(id))}` : undefined,
+  };
+}
+
+async function postLinkedIn(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
+  if (firstMedia(input)) {
+    throw new Error("LinkedIn media uploads are not supported yet. Remove the attachment or use a text-only post.");
+  }
+  const author = creds.authorUrn ?? (creds.accountId ? `urn:li:person:${creds.accountId}` : "");
+  if (!author) throw new Error("The connected LinkedIn account could not be identified.");
+  const result = await providerRequest("https://api.linkedin.com/rest/posts", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${oauthToken(creds)}`,
+      "content-type": "application/json",
+      "X-Restli-Protocol-Version": "2.0.0",
+      "Linkedin-Version": linkedinApiVersion(),
+    },
+    body: JSON.stringify({
+      author,
+      commentary: caption(input, 3000),
+      visibility: "PUBLIC",
+      distribution: {
+        feedDistribution: "MAIN_FEED",
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
+      },
+      lifecycleState: "PUBLISHED",
+      isReshareDisabledByAuthor: false,
+    }),
+  });
+  const id = result.id ?? result.restliId;
+  if (!id) throw new Error("LinkedIn did not return a post ID.");
+  return { ok: true, externalId: String(id) };
 }
 
 async function postThreads(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
@@ -90,7 +152,8 @@ async function postThreads(creds: Record<string, string>, input: ProviderPublish
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ access_token: token, creation_id: String(container.id) }),
   });
-  return { ok: true, externalId: String(published.id ?? container.id) };
+  if (!published.id) throw new Error("Threads did not confirm a published post ID.");
+  return { ok: true, externalId: String(published.id) };
 }
 
 async function postInstagram(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
@@ -127,33 +190,17 @@ async function postInstagram(creds: Record<string, string>, input: ProviderPubli
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ access_token: token, creation_id: String(container.id) }),
   });
-  return { ok: true, externalId: String(published.id ?? container.id) };
+  if (!published.id) throw new Error("Instagram did not confirm a published media ID.");
+  return { ok: true, externalId: String(published.id) };
 }
 
 async function postTikTok(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
-  const token = oauthToken(creds);
-  const media = firstMedia(input);
-  if (!media || !isVideo(media)) {
-    throw new Error("TikTok publishing requires an attached public video.");
-  }
-  const result = await providerRequest("https://open.tiktokapis.com/v2/post/publish/video/init/", {
-    method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      post_info: {
-        title: caption(input, 2200),
-        privacy_level: "PUBLIC_TO_EVERYONE",
-        disable_comment: false,
-      },
-      source_info: { source: "PULL_FROM_URL", video_url: media },
-    }),
-  });
-  const data = result.data ?? {};
-  if (result.error?.code && result.error.code !== "ok") {
-    throw new Error("TikTok did not accept the video for publishing.");
-  }
-  if (!data.publish_id) throw new Error("TikTok did not return a publish ID.");
-  return { ok: true, externalId: String(data.publish_id) };
+  void creds;
+  void input;
+  return {
+    ok: false,
+    error: "TikTok publishing is COMING SOON until the asynchronous post status is confirmed.",
+  };
 }
 
 async function postYouTube(creds: Record<string, string>, input: ProviderPublishInput): Promise<ProviderPublishResult> {
@@ -187,12 +234,14 @@ async function postYouTube(creds: Record<string, string>, input: ProviderPublish
 }
 
 export async function publishOAuthPost(
-  provider: "facebook" | "instagram" | "threads" | "tiktok" | "youtube",
+  provider: "twitter" | "linkedin" | "facebook" | "instagram" | "threads" | "tiktok" | "youtube",
   credentials: Record<string, string>,
   input: ProviderPublishInput,
 ): Promise<ProviderPublishResult> {
   try {
     switch (provider) {
+      case "twitter": return await postTwitter(credentials, input);
+      case "linkedin": return await postLinkedIn(credentials, input);
       case "facebook": return await postFacebook(credentials, input);
       case "instagram": return await postInstagram(credentials, input);
       case "threads": return await postThreads(credentials, input);

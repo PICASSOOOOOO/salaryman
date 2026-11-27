@@ -5,12 +5,11 @@
   "packageManager": "pnpm@10.26.1",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "prebuild": "pnpm --filter @workspace/scripts run bump-version",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "build:prepublish": "pnpm --filter @workspace/scripts run bump-version && pnpm run typecheck",
+    "build:prepublish": "pnpm run typecheck",
     "build:deploy": "pnpm run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --workspace-concurrency=1 --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:safe-regression": "bash ./scripts/test-safe-regression.sh"
   },
   "private": true,

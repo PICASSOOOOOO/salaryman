@@ -5,6 +5,7 @@ import {
   REALISTIC_CHARACTER_STYLE,
   composeRealisticCharacterPrompt,
   composeSalarymanPrompt,
+  getArtKitEntry,
 } from "../lib/salaryman-art";
 
 const ARCHETYPES = ["man", "woman", "replicant"] as const;
@@ -66,6 +67,32 @@ describe("character template kit entries", () => {
       // ...and must NOT be the default pixel composition.
       expect(entry.fullPrompt).not.toBe(composeSalarymanPrompt(t.subject));
     }
+  });
+});
+
+describe("named runtime character art", () => {
+  it.each([
+    "pixel_agent_claw_bot",
+    "tower_character_mila",
+    "player_avatar_operator_7",
+  ])("creates a safe named character entry for %s", (key) => {
+    const entry = getArtKitEntry(key);
+    expect(entry).toMatchObject({
+      key,
+      category: "character",
+      aspectRatio: "3:4",
+    });
+    expect(entry?.subject).toMatch(/named|distinct/i);
+    expect(entry?.subject).not.toContain("undefined");
+  });
+
+  it.each([
+    "tower_character_",
+    "tower_character_name_with_too_many_words_1_2_3_4_5",
+    "player_avatar_bad/prompt",
+    "pixel_agent_../../secret",
+  ])("rejects malformed runtime identity key %s", (key) => {
+    expect(getArtKitEntry(key)).toBeNull();
   });
 });
 

@@ -341,7 +341,7 @@ describe("Autopilot activity feed", () => {
 
     // No rows render, just the generic empty notice.
     expect(renderedRowOutcomes()).toHaveLength(0);
-    expect(emptyStateText()).toBe("No Pablo Automation activity yet.");
+    expect(emptyStateText()).toBe("No PABLO PRIME activity yet.");
 
     // Scoping to a domain switches the notice to that domain's label.
     await click(findButton("MARKETING"));

@@ -33,7 +33,7 @@ export type EssaySuggestion = {
   id: string;
   original: string;
   replacement: string;
-  category: "grammar" | "clarity" | "structure";
+  category: "grammar" | "clarity" | "structure" | "style" | "tone";
   explanation: string;
 };
 
@@ -305,7 +305,11 @@ export function parseEssaySuggestions(raw: string): Omit<EssaySuggestion, "id">[
       typeof item.replacement !== "string" ||
       typeof item.explanation !== "string" ||
       !item.explanation.trim() ||
-      (category !== "grammar" && category !== "clarity" && category !== "structure")
+      (category !== "grammar" &&
+        category !== "clarity" &&
+        category !== "structure" &&
+        category !== "style" &&
+        category !== "tone")
     ) continue;
     valid.push({
       original: item.original,
@@ -335,4 +339,45 @@ export function applyEssaySuggestion(
     ok: true,
     content: content.slice(0, firstIndex) + suggestion.replacement + content.slice(firstIndex + suggestion.original.length),
   };
+}
+
+export function applyAllWritingSuggestions(
+  content: string,
+  suggestions: Array<Pick<EssaySuggestion, "original" | "replacement">>,
+): { content: string; applied: number; skipped: number } {
+  const candidates: Array<{ start: number; end: number; replacement: string }> = [];
+  let skipped = 0;
+  for (const suggestion of suggestions) {
+    if (!suggestion.original) {
+      skipped += 1;
+      continue;
+    }
+    const start = content.indexOf(suggestion.original);
+    if (start < 0 || content.indexOf(suggestion.original, start + suggestion.original.length) >= 0) {
+      skipped += 1;
+      continue;
+    }
+    candidates.push({
+      start,
+      end: start + suggestion.original.length,
+      replacement: suggestion.replacement,
+    });
+  }
+
+  candidates.sort((a, b) => a.start - b.start);
+  const nonOverlapping: typeof candidates = [];
+  for (const candidate of candidates) {
+    const previous = nonOverlapping.at(-1);
+    if (previous && previous.end > candidate.start) {
+      skipped += 1;
+      continue;
+    }
+    nonOverlapping.push(candidate);
+  }
+
+  let next = content;
+  for (const candidate of nonOverlapping.reverse()) {
+    next = next.slice(0, candidate.start) + candidate.replacement + next.slice(candidate.end);
+  }
+  return { content: next, applied: nonOverlapping.length, skipped };
 }

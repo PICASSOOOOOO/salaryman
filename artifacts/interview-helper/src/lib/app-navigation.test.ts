@@ -30,16 +30,48 @@ describe("getPabloHref", () => {
 
 describe("shared app navigation", () => {
   it("uses one canonical set of primary and overflow destinations", () => {
-    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "comms", "office"]);
+    expect(PRIMARY_NAV_ITEMS.map(item => item.id)).toEqual(["pablo", "phone", "bots", "office"]);
+    expect(PRIMARY_NAV_ITEMS.slice(1, 3).every(item => (item.priority ?? 0) >= 90)).toBe(true);
     expect(MORE_NAV_ITEMS.map(item => item.id)).toEqual([
-      "workspace", "notepad", "calculator", "bots", "crm", "org", "business",
-      "creative", "marketing", "settings", "platform", "profile", "admin",
+      "workspace", "calculator", "crm", "business", "org",
+      "creative", "marketing", "settings", "platform", "profile", "admin", "comms",
     ]);
   });
 
   it("shares active matching across desktop and mobile renderers", () => {
     const office = PRIMARY_NAV_ITEMS.find(item => item.id === "office")!;
     expect(isAppNavItemActive(office, "/phone")).toBe(false);
+    const pabloPrime = PRIMARY_NAV_ITEMS.find(item => item.id === "bots")!;
+    expect(isAppNavItemActive(pabloPrime, "/bots/factory")).toBe(true);
+  });
+
+  it("selects only the owning feature for nested business and marketing routes", () => {
+    const items = [...PRIMARY_NAV_ITEMS, ...MORE_NAV_ITEMS];
+    const paths = [
+      "/business",
+      "/business/payroll",
+      "/business/crm",
+      "/business/crm?tab=people",
+      "/business/contacts",
+      "/business/deals",
+      "/business/autopilot?cap=agents",
+      "/marketing",
+      "/marketing/social",
+      "/marketing/ads",
+      "/marketing/leads",
+      "/creative/brand",
+      "/intel/reports",
+      "/intel/goals",
+      "/intel/seo",
+    ];
+
+    for (const path of paths) {
+      const active = items.filter(item => isAppNavItemActive(item, path));
+      expect(active.map(item => item.id), path).toHaveLength(1);
+    }
+    expect(items.find(item => item.id === "business") && isAppNavItemActive(items.find(item => item.id === "business")!, "/business/crm")).toBe(false);
+    expect(items.find(item => item.id === "marketing") && isAppNavItemActive(items.find(item => item.id === "marketing")!, "/marketing/ads")).toBe(false);
+    expect(items.find(item => item.id === "marketing") && isAppNavItemActive(items.find(item => item.id === "marketing")!, "/creative/brand")).toBe(true);
   });
 
   it("avoids duplicating Pablo's signed-out Start Work action", () => {
@@ -51,6 +83,8 @@ describe("shared app navigation", () => {
   it("suppresses redundant global phone sub-navigation", () => {
     expect(shouldShowModuleSubnav("phone", 10, "/phone")).toBe(false);
     expect(shouldShowModuleSubnav("business", 10, "/business")).toBe(true);
+    expect(shouldShowModuleSubnav("business", 10, "/organizations")).toBe(true);
+    expect(shouldShowModuleSubnav("business", 10, "/org")).toBe(true);
     expect(shouldShowModuleSubnav("business", 10, "/business/crm")).toBe(false);
     expect(shouldShowModuleSubnav("business", 0, "/business")).toBe(false);
   });

@@ -62,15 +62,19 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
 }
 
 const ONBOARDING_MUTATION_EXEMPTIONS = new Set([
-  "/orgs",
-  "/world/register",
-  "/world/employment/unemployment",
-  "/chat/pablo/message",
-  "/chat/pablo/command",
+  "POST /orgs",
+  "POST /world/register",
+  "POST /world/employment/unemployment",
+  "POST /chat/pablo/message",
+  "POST /chat/pablo/command",
+  // Workspace layout is an account-level UI preference, not business data.
+  // Authenticated users need to save it before onboarding so The Office can
+  // load and edit their widgets.
+  "PUT /account/workspace",
 ]);
 
 export function isOnboardingMutationExempt(method: string, path: string): boolean {
-  return method === "POST" && ONBOARDING_MUTATION_EXEMPTIONS.has(path);
+  return ONBOARDING_MUTATION_EXEMPTIONS.has(`${method.toUpperCase()} ${path}`);
 }
 
 /**

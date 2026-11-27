@@ -20,6 +20,7 @@ import type { OrganizationCustomAppField, OrganizationCustomAppRecord } from "@w
 import { useAuth } from "@/hooks/use-auth";
 import { useOrg } from "@/hooks/use-org";
 import PlatformAPI from "@/pages/PlatformAPI";
+import GithubRepositoryAccess from "@/components/GithubRepositoryAccess";
 import {
   ArrowLeft, ArrowUpRight, Check, ChevronDown, CircleAlert, FilePlus2, Layers3, LoaderCircle,
   MoreHorizontal, Pencil, Plus, Settings2, Trash2, X,
@@ -223,7 +224,7 @@ export default function MyApps() {
     catch (e) { setError(errorText(e)); } finally { setBusy(false); }
   }
 
-  if (isConsole) return <main className="min-h-[100dvh] bg-[#f6f4ee] px-4 py-5 text-[#24241f] sm:px-8"><div className="mx-auto max-w-6xl">{authLoading ? <p className="py-12 text-center text-sm text-[#77746b]">Checking your session…</p> : !isAuthenticated ? <SignInPrompt onSignIn={signIn}/> : <><button onClick={() => navigate("/my-apps")} className={`${button} mb-4 border border-[#dedacf] bg-white`}><ArrowLeft size={16}/>My Apps</button><PlatformAPI embedded/></>}</div></main>;
+  if (isConsole) return <main className="min-h-[100dvh] bg-[#f6f4ee] px-4 py-5 text-[#24241f] sm:px-8"><div className="mx-auto max-w-6xl">{authLoading ? <p className="py-12 text-center text-sm text-[#77746b]">Checking your session…</p> : !isAuthenticated ? <SignInPrompt onSignIn={signIn}/> : <><button onClick={() => navigate("/my-apps")} className={`${button} mb-4 border border-[#dedacf] bg-white`}><ArrowLeft size={16}/>My Apps</button><GithubRepositoryAccess/><PlatformAPI embedded/></>}</div></main>;
   return <main className="min-h-[100dvh] bg-[#f6f4ee] px-4 pb-16 pt-5 text-[#24241f] sm:px-8 sm:pt-8">
     <div className="mx-auto max-w-6xl">
       <header className="mb-8 flex items-center justify-between gap-3 border-b border-[#dfdbd1] pb-4">

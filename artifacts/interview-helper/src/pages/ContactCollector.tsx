@@ -5,7 +5,7 @@ import {
   Users, Download, Trash2, Plus, X, Mail, Loader2, Check, Upload, Settings2,
   Search, ChevronDown, ChevronUp, Edit2,
   Phone, TrendingUp, Building2, Clock, ArrowRight,
-  StickyNote, PhoneCall, Send, CalendarPlus, Calendar,
+  StickyNote, PhoneCall, Send, CalendarPlus, Calendar, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -33,6 +33,7 @@ interface Contact {
   dealValue: number | null;
   company: string;
   createdAt: string;
+  phoneHealth?: { status: 'review' | 'ok'; note: string; createdAt: string } | null;
 }
 
 interface Interaction {
@@ -80,6 +81,8 @@ const INTERACTION_TYPES = [
 const INTERACTION_ICONS: Record<string, React.ElementType> = {
   note: StickyNote,
   call: PhoneCall,
+  phone_health_review: AlertTriangle,
+  phone_health_ok: CheckCircle2,
   email: Send,
   meeting: Users,
 };
@@ -254,7 +257,7 @@ export default function ContactCollector() {
       if (!res.ok || !data.contact) {
         throw new Error(data?.error || `Could not save contact (${res.status})`);
       }
-      if (editingId) setContacts(prev => prev.map(c => c.id === editingId ? data.contact : c));
+      if (editingId) setContacts(prev => prev.map(c => c.id === editingId ? { ...data.contact, phoneHealth: c.phoneHealth } : c));
       else setContacts(prev => [data.contact, ...prev]);
       setForm({ ...EMPTY_FORM });
       setShowForm(false);
@@ -933,6 +936,20 @@ export default function ContactCollector() {
                           <div className="min-w-0">
                             <p className="font-semibold text-sm text-foreground truncate">{contact.name}</p>
                             <p className="text-[10px] text-muted-foreground truncate">{contact.email || contact.phone || '—'}</p>
+                            {contact.phoneHealth && (
+                              <span
+                                title={contact.phoneHealth.note}
+                                className={`mt-1 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                                  contact.phoneHealth.status === 'review'
+                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                }`}
+                              >
+                                {contact.phoneHealth.status === 'review'
+                                  ? <><AlertTriangle className="h-2.5 w-2.5" /> PHONE REVIEW</>
+                                  : <><CheckCircle2 className="h-2.5 w-2.5" /> REACHABLE</>}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="min-w-0">
@@ -992,6 +1009,17 @@ export default function ContactCollector() {
                               {expandedId === contact.id ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
                             </div>
                             <p className="text-[10px] text-muted-foreground truncate">{contact.email || contact.phone || '—'}</p>
+                            {contact.phoneHealth && (
+                              <span className={`mt-1 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                                contact.phoneHealth.status === 'review'
+                                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                              }`}>
+                                {contact.phoneHealth.status === 'review'
+                                  ? <><AlertTriangle className="h-2.5 w-2.5" /> PHONE REVIEW</>
+                                  : <><CheckCircle2 className="h-2.5 w-2.5" /> REACHABLE</>}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -1048,6 +1076,17 @@ export default function ContactCollector() {
                                     </div>
                                   ))}
                                 </div>
+                                {contact.phoneHealth && (
+                                  <div className={`mt-3 rounded-lg border px-3 py-2 ${
+                                    contact.phoneHealth.status === 'review'
+                                      ? 'border-amber-500/20 bg-amber-500/5'
+                                      : 'border-emerald-500/20 bg-emerald-500/5'
+                                  }`}>
+                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Latest phone result</span>
+                                    <p className="text-xs text-foreground mt-0.5">{contact.phoneHealth.note}</p>
+                                    <p className="text-[10px] text-muted-foreground/50 mt-1">{new Date(contact.phoneHealth.createdAt).toLocaleString()}</p>
+                                  </div>
+                                )}
                                 {contact.bio && (
                                   <div className="mt-3">
                                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Bio</span>

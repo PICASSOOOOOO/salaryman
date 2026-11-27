@@ -54,6 +54,7 @@ router.get("/social/connections", async (req: Request, res: Response): Promise<v
         label: p.label,
         authType: p.authType,
         available: p.available && configured,
+        supportsPublishing: p.supportsPublishing ?? Boolean(p.publish),
         requiresAppConfig: p.requiresAppConfig,
         configured,
         credentialFields: p.credentialFields,
@@ -80,6 +81,10 @@ router.post("/social/connections/:provider", async (req: Request, res: Response)
   const provider = getProvider(String(req.params.provider));
   if (!provider) {
     res.status(404).json({ error: "Unknown platform" });
+    return;
+  }
+  if (provider.supportsPublishing === false) {
+    res.status(409).json({ error: `${provider.label} is COMING SOON until live account publishing is verified.` });
     return;
   }
 

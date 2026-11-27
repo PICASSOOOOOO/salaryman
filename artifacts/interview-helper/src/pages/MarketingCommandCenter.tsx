@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Megaphone, Loader2, Link2, Unlink, Check, X, Lock, Zap, ArrowRight,
+  Megaphone, Loader2, Link2, Unlink, Check, X, Lock, ArrowRight,
   Cloud, MessageSquare, Twitter, Linkedin, Instagram, Facebook, AtSign,
   Music2, Youtube, ExternalLink, AlertTriangle, ShieldCheck,
 } from "lucide-react";
@@ -26,6 +26,7 @@ interface Connection {
   label: string;
   authType: AuthType;
   available: boolean;
+  supportsPublishing: boolean;
   requiresAppConfig: boolean;
   configured: boolean;
   credentialFields: CredentialField[];
@@ -51,8 +52,7 @@ const PROVIDER_ICON: Record<string, React.ComponentType<{ className?: string; st
 };
 
 const TOOLS: Array<{ label: string; desc: string; path: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }> = [
-  { label: "SOCIAL COMPOSER", desc: "Draft, schedule & publish posts", path: "/marketing/social", icon: Megaphone },
-  { label: "AD GENERATOR", desc: "AI ad creative for every channel", path: "/marketing/ads", icon: Zap },
+  { label: "SOCIAL COMPOSER", desc: "Draft and publish to connected accounts", path: "/marketing/social", icon: Megaphone },
   { label: "CAMPAIGNS", desc: "Email & SMS blasts to your leads", path: "/marketing/campaigns", icon: MessageSquare },
   { label: "LEADS / CRM", desc: "Your contact pipeline", path: "/marketing/leads", icon: Link2 },
   { label: "SEO INTEL", desc: "Rank & keyword tooling", path: "/marketing/seo", icon: ArrowRight },
@@ -157,8 +157,8 @@ export default function MarketingCommandCenter() {
             <Lock className="w-7 h-7" style={{ color: "#111111" }} />
           </div>
            <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111111", marginBottom: 8, letterSpacing: 1 }}>MARKETING</h1>
-          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.65)", marginBottom: 20, lineHeight: 1.6 }}>
-             Connect social accounts and publish across 9 platforms. This is included with Pablo AI.
+            <p style={{ fontSize: 13, color: "rgba(0,0,0,0.65)", marginBottom: 20, lineHeight: 1.6 }}>
+              Connect a supported social account to publish real posts. Incomplete channels stay visible as COMING SOON.
           </p>
           <button
             onClick={() => navigate("/pricing")}
@@ -182,7 +182,7 @@ export default function MarketingCommandCenter() {
             <Megaphone className="w-6 h-6" style={{ color: CRT }} />
           </div>
           <div>
-           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, color: CRT }}>MARKETING</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1.5, color: CRT }}>MARKETING REACH</h1>
             <p style={{ fontSize: 12, color: "rgba(0,0,0,0.58)" }}>
               {connected} of {connections.length} channels connected
             </p>
@@ -200,12 +200,14 @@ export default function MarketingCommandCenter() {
             {connections.map((c) => {
               const Icon = PROVIDER_ICON[c.provider] ?? Megaphone;
               const isConnected = c.status === "connected";
+              const isLive = isConnected && c.supportsPublishing;
               const needsAppConfig = c.status === "needs_app_config";
+              const comingSoon = !c.supportsPublishing;
               return (
                 <div key={c.provider} style={{ ...panel, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 6, background: "#f3f1eb", border: "1px solid rgba(0,0,0,0.12)", display: "grid", placeItems: "center" }}>
-                      <Icon className="w-5 h-5" style={{ color: isConnected ? "#34d399" : CRT }} />
+                      <Icon className="w-5 h-5" style={{ color: isLive ? "#34d399" : CRT }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{c.label}</div>
@@ -213,12 +215,14 @@ export default function MarketingCommandCenter() {
                         {isConnected ? c.accountHandle || "Connected" : c.authType === "oauth" ? "OAuth" : c.authType === "webhook" ? "Webhook" : "App password"}
                       </div>
                     </div>
-                    {isConnected ? (
+                    {isLive ? (
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#34d399", border: "1px solid rgba(52,211,153,0.3)", padding: "2px 6px", borderRadius: 6 }}>
                         <Check className="w-3 h-3" /> LIVE
                       </span>
+                    ) : comingSoon ? (
+                      <span data-testid={`status-social-coming-soon-${c.provider}`} style={{ fontSize: 10, color: "#777066", border: "1px solid rgba(0,0,0,0.25)", padding: "2px 6px", borderRadius: 4 }}>COMING SOON</span>
                     ) : needsAppConfig ? (
-                        <span style={{ fontSize: 10, color: "#111111", border: "1px solid rgba(0,0,0,0.25)", padding: "2px 6px", borderRadius: 4 }}>SETUP</span>
+                      <span style={{ fontSize: 10, color: "#111111", border: "1px solid rgba(0,0,0,0.25)", padding: "2px 6px", borderRadius: 4 }}>SETUP REQUIRED</span>
                     ) : null}
                   </div>
 
@@ -228,23 +232,49 @@ export default function MarketingCommandCenter() {
                     </div>
                   )}
 
-                  {isConnected ? (
-                    <button
-                      onClick={() => disconnect(c.provider)}
-                      disabled={busy}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 6, border: "1px solid rgba(0,0,0,0.2)", background: "#ffffff", color: "#111111", cursor: "pointer", fontFamily: FONT, fontSize: 12 }}
-                    >
-                      <Unlink className="w-3.5 h-3.5" /> Disconnect
-                    </button>
-                  ) : needsAppConfig ? (
-                    <div style={{ fontSize: 11, color: "rgba(228,228,231,0.5)", lineHeight: 1.5 }}>{c.connectHint}</div>
+                  {isConnected && !comingSoon ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {c.lastError && c.supportsPublishing && (
+                        <button
+                          onClick={() => openConnect(c)}
+                          data-testid={`button-social-reconnect-${c.provider}`}
+                          disabled={busy}
+                          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 6, border: "1px solid #111111", background: "#ffffff", color: "#111111", cursor: busy ? "wait" : "pointer", fontFamily: FONT, fontSize: 12 }}
+                        >
+                          <Link2 className="w-3.5 h-3.5" /> Reconnect
+                        </button>
+                      )}
+                      <button
+                        onClick={() => disconnect(c.provider)}
+                        disabled={busy}
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 6, border: "1px solid rgba(0,0,0,0.2)", background: "#ffffff", color: "#111111", cursor: "pointer", fontFamily: FONT, fontSize: 12 }}
+                      >
+                        <Unlink className="w-3.5 h-3.5" /> Disconnect
+                      </button>
+                    </div>
+                  ) : comingSoon ? (
+                    <div style={{ fontSize: 11, color: "rgba(0,0,0,0.58)", lineHeight: 1.5 }}>
+                      Live publishing is not available for this channel yet. It is visible here but disabled until the publisher is verified.
+                      {isConnected && (
+                        <button type="button" data-testid={`button-social-remove-old-${c.provider}`} onClick={() => disconnect(c.provider)} disabled={busy} style={{ marginLeft: 8, textDecoration: "underline" }}>
+                          Remove old connection
+                        </button>
+                      )}
+                    </div>
                   ) : (
-                    <button
-                      onClick={() => openConnect(c)}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 6, border: "1px solid #111111", background: "#ffffff", color: "#111111", cursor: "pointer", fontFamily: FONT, fontSize: 12 }}
-                    >
-                      <Link2 className="w-3.5 h-3.5" /> Connect
-                    </button>
+                    <>
+                      {needsAppConfig && (
+                        <div style={{ fontSize: 11, color: "rgba(0,0,0,0.58)", lineHeight: 1.5 }}>{c.connectHint}</div>
+                      )}
+                      <button
+                        onClick={() => openConnect(c)}
+                        data-testid={`button-social-connect-${c.provider}`}
+                        disabled={busy}
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 6, border: "1px solid #111111", background: "#ffffff", color: "#111111", cursor: busy ? "wait" : "pointer", fontFamily: FONT, fontSize: 12 }}
+                      >
+                        <Link2 className="w-3.5 h-3.5" /> {needsAppConfig ? "Set up & connect" : "Connect"}
+                      </button>
+                    </>
                   )}
                 </div>
               );

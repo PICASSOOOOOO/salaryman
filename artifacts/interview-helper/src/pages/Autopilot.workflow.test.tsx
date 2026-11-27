@@ -13,7 +13,7 @@ const payload: any = {
   meta: {
     business_ops: { label: "Business Ops", description: "Day-to-day operations." },
     marketing: { label: "Marketing", description: "Draft and publish social posts." },
-    crm_calls: { label: "CRM & Calls", description: "Consent-aware SMS follow-ups." },
+    crm_calls: { label: "CRM & Calls", description: "Consent-aware email follow-ups." },
     accounting: { label: "Accounting", description: "Collections, bills, and payroll." },
   },
   defaults: { cadenceMinutes: 60, maxActionsPerTick: 5 },
@@ -113,14 +113,14 @@ describe("fixed visual workflow editor", () => {
     const expected: Record<string, string[]> = {
       business_ops: ["Advance tasks + staffing", "Close prior-day time entries", "Rate-limited ops update", "TASKS ADVANCED / TICK"],
       marketing: ["Draft with saved tone + topics", "Publish through social service", "TONE", "TOPICS / THEMES"],
-      crm_calls: ["Select eligible due leads", "Suppress opted-out contacts", "Send consent-aware SMS only", "PIPELINE STAGES"],
+      crm_calls: ["Select eligible due leads", "Suppress email opt-outs", "Send follow-up emails", "PIPELINE STAGES"],
       accounting: ["Review collections", "Pay due bills when cash permits", "Run payroll by saved period", "PAYROLL PERIOD (DAYS)"],
     };
     for (const [domain, labels] of Object.entries(expected)) {
       const text = card(domain).textContent ?? "";
       for (const label of labels) expect(text).toContain(label);
     }
-    expect(card("crm_calls").textContent).toContain("SMS only");
+    expect(card("crm_calls").textContent).toContain("Send follow-up emails");
     expect(card("crm_calls").textContent).not.toContain("automated calls");
   });
 

@@ -23,6 +23,7 @@ import { toE164 } from "../lib/phone";
 import { resolveUserCountry } from "../lib/phone-context";
 import { canUsePlatformTwilio } from "../lib/platform-twilio-access";
 import { hasRecordedSmsMarketingPermission } from "../lib/campaign-consent";
+import { verifyEmailOptOut } from "../lib/email-opt-out";
 
 const router = Router();
 
@@ -78,6 +79,8 @@ router.get("/campaigns/email", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch campaigns" });
   }
 });
+
+router.get("/campaigns/email/unsubscribe", handleEmailUnsubscribe);
 
 router.get("/campaigns/email/:id", async (req: Request, res: Response) => {
   const userId = await requireAuth(req, res);
@@ -230,7 +233,13 @@ router.post("/campaigns/email/:id/send", async (req: Request, res: Response) => 
     const unsubscribedPrefs = await db
       .select()
       .from(contactChannelPrefsTable)
-      .where(and(eq(contactChannelPrefsTable.userId, userId), eq(contactChannelPrefsTable.emailOptIn, false)));
+      .where(and(
+        eq(contactChannelPrefsTable.userId, userId),
+        or(
+          eq(contactChannelPrefsTable.emailOptIn, false),
+          sql`${contactChannelPrefsTable.emailOptedOutAt} IS NOT NULL`,
+        ),
+      ));
     const unsubscribedContactIds = new Set(unsubscribedPrefs.map((p) => p.contactId));
     eligible = eligible.filter((c) => !unsubscribedContactIds.has(c.id));
 
@@ -299,25 +308,88 @@ router.post("/campaigns/email/:id/send", async (req: Request, res: Response) => 
   }
 });
 
-router.get("/campaigns/email/unsubscribe", async (req: Request, res: Response) => {
-  const { email, campaignId } = req.query as { email?: string; campaignId?: string };
-  if (!email) { res.status(400).send("Invalid unsubscribe link"); return; }
+async function handleEmailUnsubscribe(req: Request, res: Response): Promise<void> {
+  const { email, campaignId, userId, signature } = req.query as {
+    email?: string;
+    campaignId?: string;
+    userId?: string;
+    signature?: string;
+  };
+  if (!email?.trim()) { res.status(400).send("Invalid unsubscribe link"); return; }
   try {
-    await db
-      .update(emailCampaignRecipientsTable)
-      .set({ unsubscribedAt: new Date(), status: "unsubscribed" })
-      .where(
-        and(
-          eq(emailCampaignRecipientsTable.email, email),
-          campaignId ? eq(emailCampaignRecipientsTable.campaignId, Number(campaignId)) : sql`1=1`
-        )
-      );
+    let ownerId: string | null = null;
+    if (userId && signature && verifyEmailOptOut(userId, email, signature)) {
+      ownerId = userId;
+    } else if (campaignId && /^\d+$/.test(campaignId)) {
+      const [campaign] = await db
+        .select({ userId: emailCampaignsTable.userId })
+        .from(emailCampaignsTable)
+        .where(eq(emailCampaignsTable.id, Number(campaignId)))
+        .limit(1);
+      ownerId = campaign?.userId ?? null;
+    }
+    if (!ownerId) {
+      res.status(400).send("Invalid unsubscribe link");
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const campaignIds = await db
+      .select({ id: emailCampaignsTable.id })
+      .from(emailCampaignsTable)
+      .where(eq(emailCampaignsTable.userId, ownerId));
+    if (campaignIds.length) {
+      await db
+        .update(emailCampaignRecipientsTable)
+        .set({ unsubscribedAt: new Date(), status: "unsubscribed" })
+        .where(and(
+          sql`lower(trim(${emailCampaignRecipientsTable.email})) = ${normalizedEmail}`,
+          inArray(emailCampaignRecipientsTable.campaignId, campaignIds.map((campaign) => campaign.id)),
+        ));
+    }
+
+    const contacts = await db
+      .select({ id: contactsTable.id })
+      .from(contactsTable)
+      .where(and(
+        eq(contactsTable.userId, ownerId),
+        sql`lower(trim(${contactsTable.email})) = ${normalizedEmail}`,
+      ));
+    const contactIds = contacts.map((contact) => contact.id);
+    if (contactIds.length) {
+      const now = new Date();
+      const existingPrefs = await db
+        .select({ contactId: contactChannelPrefsTable.contactId })
+        .from(contactChannelPrefsTable)
+        .where(and(
+          eq(contactChannelPrefsTable.userId, ownerId),
+          inArray(contactChannelPrefsTable.contactId, contactIds),
+        ));
+      const existingIds = new Set(existingPrefs.map((pref) => pref.contactId));
+      await db
+        .update(contactChannelPrefsTable)
+        .set({ emailOptIn: false, emailOptedOutAt: now, updatedAt: now })
+        .where(and(
+          eq(contactChannelPrefsTable.userId, ownerId),
+          inArray(contactChannelPrefsTable.contactId, contactIds),
+        ));
+      const missingContactIds = contactIds.filter((contactId) => !existingIds.has(contactId));
+      if (missingContactIds.length) {
+        await db.insert(contactChannelPrefsTable).values(missingContactIds.map((contactId) => ({
+          userId: ownerId!,
+          contactId,
+          emailOptIn: false,
+          emailOptedOutAt: now,
+        })));
+      }
+    }
+
     res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px;background:#09090b;color:#e4e4e7"><h2>Unsubscribed</h2><p style="color:#a1a1aa">You've been removed from this mailing list.</p></body></html>`);
   } catch (err: any) {
     console.error("[campaigns] unsubscribe error:", err.message);
     res.status(500).send("Error processing unsubscribe");
   }
-});
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMS CAMPAIGNS
@@ -904,6 +976,10 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
     res.status(400).json({ error: "Phone-call permission must be true or false" });
     return;
   }
+  if (emailOptIn !== undefined && typeof emailOptIn !== "boolean") {
+    res.status(400).json({ error: "Email permission must be true or false" });
+    return;
+  }
   if (smsOptIn !== undefined && typeof smsOptIn !== "boolean") {
     res.status(400).json({ error: "SMS marketing permission must be true or false" });
     return;
@@ -929,7 +1005,11 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
       const updates: Partial<typeof contactChannelPrefsTable.$inferInsert> = { updatedAt: now };
       if (emailOptIn !== undefined) {
         updates.emailOptIn = emailOptIn;
-        if (!emailOptIn && existing.emailOptIn) updates.emailOptedOutAt = now;
+        if (emailOptIn) {
+          updates.emailOptedOutAt = null;
+        } else if (existing.emailOptIn || !existing.emailOptedOutAt) {
+          updates.emailOptedOutAt = now;
+        }
       }
       if (smsOptIn !== undefined) {
         updates.smsOptIn = smsOptIn;
@@ -966,6 +1046,7 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
           contactId,
           userId,
           emailOptIn: emailOptIn ?? true,
+          emailOptedOutAt: emailOptIn === false ? now : null,
           smsOptIn: smsOptIn ?? false,
           smsOptedOutAt: null,
           smsConsentedAt: smsOptIn === true ? now : null,

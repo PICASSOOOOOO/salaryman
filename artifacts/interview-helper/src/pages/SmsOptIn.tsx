@@ -71,6 +71,14 @@ export default function SmsOptIn() {
               and{" "}
               <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/legal/terms">
                 Terms of Service
+              </a>
+              {" "}and our{" "}
+              <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/sms-disclaimer">
+                SMS Messaging Disclosure
+              </a>.
+              {" "}Read the full{" "}
+              <a className="text-sky-400 underline underline-offset-2 hover:text-sky-300" href="/sms-disclosure.html">
+                SMS messaging disclosure
               </a>.
             </p>
           </div>

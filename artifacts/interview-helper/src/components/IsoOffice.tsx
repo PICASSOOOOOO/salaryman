@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
+import { type Appearance } from '@/lib/character-identity';
 import type { OfficeStation, OfficeRoom, PixelOfficeBot } from '@/components/office/office-types';
 import { approachMovementVelocity, isometricKeyboardMovementVector } from '@/lib/movement';
 import {
@@ -16,6 +16,7 @@ import {
   saveOfficeRoomSnapshots, snapshotOfficeRoom, type OfficeRoomVisibility,
   type OfficeRoomSnapshot,
 } from '@/lib/office-room-privacy';
+import { drawCharacterArtwork } from '@/lib/character-art';
 
 /**
  * IsoOffice — an ISOMETRIC ("almost 3D") render of THE OFFICE, matching the
@@ -33,10 +34,8 @@ import {
  *
  * Everything is drawn procedurally on a single <canvas> as shaded isometric
  * boxes (no isometric sprite set is needed), so the palette/lighting is fully
- * controllable and consistent. Characters are billboarded: the player uses the
- * SAME procedural paper-doll renderer (drawPlayerSprite) as the WorldPlay city
- * so the character looks identical everywhere; bots are simple hue-tinted
- * figures seated at their desks.
+ * controllable and consistent. Characters are billboarded from named identity
+ * assets; a visible pending/failed marker replaces any generic character art.
  */
 
 const TILE = 16; // logical px per tile (top-down world units), same as PixelOffice
@@ -178,11 +177,9 @@ export interface IsoOfficeProps {
 
 interface Vec2 { x: number; y: number }
 
-// hsl helper for bot tints
-function botColor(id: number, l = 55): string {
-  const hue = (id * 47) % 360;
-  return `hsl(${hue} 62% ${l}%)`;
-}
+interface Vec2 { x: number; y: number }
+
+interface Vec2 { x: number; y: number }
 
 export function IsoOffice({
   layout,
@@ -1250,13 +1247,10 @@ function drawBot(
   const p = P(tx, ty);
   const u = Math.max(0.7, (s.T / TILE) * 0.5);
   const bob = Math.sin(s.now / 600 + bot.id) * 1.2;
-  const col = bot.teamColor ?? botColor(bot.id);
   const active = s.playable && s.activeBotId === bot.id;
-  const bodyW = 9 * u;
-  const bodyH = 10 * u;
 
-  // A compact paper-doll silhouette gives every bot a readable head, uniform,
-  // legs and team-coloured jacket while keeping the existing desk footprint.
+  // Each bot resolves through its stable named identity key. Missing art is
+  // rendered as an explicit QA marker instead of a generic paper-doll person.
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.beginPath(); ctx.ellipse(p.x, p.y, 7 * u, 3.2 * u, 0, 0, Math.PI * 2); ctx.fill();
@@ -1272,86 +1266,41 @@ function drawBot(
   }
 
   const baseY = p.y + bob;
+  const frameW = 24 * u;
+  const frameH = 32 * u;
+  let artTopY = baseY - frameH;
   const namedArt = bot.artSrc
     ? getMachineArt(`${import.meta.env.BASE_URL}${bot.artSrc.replace(/^\/+/, '')}`)
     : null;
   if (namedArt?.complete && namedArt.naturalWidth > 0) {
-    // All named Tower residents occupy the same character frame as the
-    // procedural residents: fixed 24×32 logical px, feet on the same baseline.
-    // This keeps a single hand-painted asset from reading as a giant or tiny
-    // exception when it shares a floor with the NPC paper dolls.
-    const frameW = 24 * u;
-    const frameH = 32 * u;
+    // Fit authored Tower art to one consistent character frame.
     const fit = Math.min(frameW / namedArt.naturalWidth, frameH / namedArt.naturalHeight);
     const artW = namedArt.naturalWidth * fit;
     const artH = namedArt.naturalHeight * fit;
+    artTopY = baseY - artH;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(namedArt, p.x - artW / 2, baseY - artH, artW, artH);
+    ctx.drawImage(namedArt, p.x - artW / 2, artTopY, artW, artH);
     ctx.restore();
-    drawAmbientWorkBadge(ctx, s, p.x, baseY - artH, u, bot.workLabel);
-    drawSpeechBubble(ctx, p.x, baseY - artH - 8 * u, u, bot.dialogueText);
-    ctx.fillStyle = active ? '#b9f5ff' : bot.teamColor ?? 'rgba(180,255,220,0.85)';
-    ctx.font = `700 ${Math.max(7, 4 * u)}px "Fira Code", monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(bot.name.slice(0, 14).toUpperCase(), p.x, baseY + 7 * u);
-    ctx.textAlign = 'left';
-    return;
+  } else {
+    drawCharacterArtwork(
+      ctx,
+      "tower_character",
+      bot.name,
+      p.x - frameW / 2,
+      artTopY,
+      frameW,
+      frameH,
+      { label: bot.name },
+    );
   }
-  const legY = baseY - 2 * u;
-  const hipY = baseY - bodyH - 4 * u;
-  const headR = 3.4 * u;
-  const headY = hipY - 4.7 * u;
-  ctx.save();
-  ctx.translate(p.x, 0);
-  ctx.lineCap = 'round';
-
-  // Shoes and legs.
-  ctx.strokeStyle = '#07111b';
-  ctx.lineWidth = Math.max(1.5, 2.2 * u);
-  ctx.beginPath(); ctx.moveTo(-2.1 * u, legY); ctx.lineTo(-2.1 * u, hipY + 3.8 * u); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(2.1 * u, legY); ctx.lineTo(2.1 * u, hipY + 3.8 * u); ctx.stroke();
-  ctx.strokeStyle = 'rgba(180,220,230,.7)';
-  ctx.lineWidth = Math.max(1, 0.8 * u);
-  ctx.beginPath(); ctx.moveTo(-3.2 * u, legY + .2 * u); ctx.lineTo(-1.2 * u, legY + .2 * u); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(1.2 * u, legY + .2 * u); ctx.lineTo(3.2 * u, legY + .2 * u); ctx.stroke();
-
-  // Jacket/torso with a contrasting shoulder seam.
-  ctx.fillStyle = col;
-  rrect(ctx, -bodyW / 2, hipY, bodyW, bodyH, 2 * u);
-  ctx.fillStyle = 'rgba(4,12,22,.44)';
-  ctx.fillRect(-bodyW * .38, hipY + bodyH * .48, bodyW * .76, Math.max(1, .8 * u));
-  ctx.fillStyle = active ? '#b9f5ff' : 'rgba(180,230,240,.7)';
-  ctx.fillRect(-.55 * u, hipY + 2.2 * u, 1.1 * u, 2.1 * u);
-
-  // Arms rest toward the desk, with a small angular elbow.
-  ctx.strokeStyle = shade(col, -20);
-  ctx.lineWidth = Math.max(1.5, 1.8 * u);
-  ctx.beginPath(); ctx.moveTo(-bodyW * .44, hipY + 3 * u); ctx.lineTo(-bodyW * .66, hipY + 7 * u); ctx.lineTo(-bodyW * .44, hipY + 8.2 * u); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(bodyW * .44, hipY + 3 * u); ctx.lineTo(bodyW * .66, hipY + 7 * u); ctx.lineTo(bodyW * .44, hipY + 8.2 * u); ctx.stroke();
-
-  // Neck, face and hair cap.
-  ctx.fillStyle = '#d89d7e';
-  ctx.fillRect(-1.2 * u, hipY - 1.2 * u, 2.4 * u, 2 * u);
-  ctx.fillStyle = '#f1c9a5';
-  ctx.beginPath(); ctx.arc(0, headY, headR, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = shade(col, -35);
-  ctx.beginPath(); ctx.arc(0, headY - headR * .5, headR * .9, Math.PI, Math.PI * 2); ctx.fill();
-  const eyeDx = headR * .42;
-  const eyeR = Math.max(.7, headR * .18);
-  ctx.fillStyle = '#1c1024';
-  ctx.beginPath(); ctx.arc(-eyeDx, headY - headR * .02, eyeR, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(eyeDx, headY - headR * .02, eyeR, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-
-  // name plate
   ctx.fillStyle = active ? '#b9f5ff' : bot.teamColor ?? 'rgba(180,255,220,0.85)';
   ctx.font = `700 ${Math.max(7, 4 * u)}px "Fira Code", monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText(bot.name.slice(0, 8).toUpperCase(), p.x, baseY + 7 * u);
+  ctx.fillText(bot.name.slice(0, 14).toUpperCase(), p.x, baseY + 7 * u);
   ctx.textAlign = 'left';
-  drawAmbientWorkBadge(ctx, s, p.x, headY, u, bot.workLabel);
-  drawSpeechBubble(ctx, p.x, headY - 8 * u, u, bot.dialogueText);
+  drawAmbientWorkBadge(ctx, s, p.x, artTopY, u, bot.workLabel);
+  drawSpeechBubble(ctx, p.x, artTopY - 8 * u, u, bot.dialogueText);
 }
 
 function drawSpeechBubble(
@@ -1428,57 +1377,23 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: 
   const { P } = s;
   const p = P(tx, ty);
   const u = (s.T / TILE);
-  // Scaled to read as a person standing next to the room's furniture (roughly a
-  // touch shorter than the elevator door), matching the concept art / intro
-  // video proportions rather than the old oversized doll.
-  const spriteScale = u * 0.5;
   // Running exaggerates the bob and adds a forward lean in the facing direction.
   const bob = s.walk ? (s.run ? -2.6 : -1.2) : 0;
-  const lean = s.run && s.walk ? (s.facing === 'left' ? 0.16 : -0.16) : 0;
   // shadow — slightly stretched while sprinting
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath(); ctx.ellipse(p.x, p.y, (s.run ? 9.5 : 8) * u * 0.5, 3.4 * u * 0.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  if (s.appearance) {
-    ctx.save();
-    ctx.translate(p.x, p.y + bob);
-    if (lean) ctx.rotate(lean);
-    ctx.scale(s.facing === 'left' ? -spriteScale : spriteScale, spriteScale);
-    // drawPlayerSprite draws around (0,0) with feet ~+11; lift so feet land on p.y
-    ctx.translate(0, -11);
-    drawPlayerSprite(ctx, s.appearance, { costumeColor: s.costume });
-    ctx.restore();
-  } else {
-    // Deterministic fallback for a save without appearance data. Keep it
-    // deliberately close to the paper-doll proportions above instead of
-    // dropping to a featureless rectangle.
-    const baseY = p.y + bob;
-    const bodyW = 8 * u;
-    const bodyH = 10 * u;
-    const headR = 3.2 * u;
-    const headY = baseY - bodyH - 5.2 * u;
-    ctx.save();
-    ctx.translate(p.x, 0);
-    ctx.strokeStyle = '#101827';
-    ctx.lineWidth = Math.max(1.5, 2 * u);
-    ctx.beginPath(); ctx.moveTo(-1.8 * u, baseY); ctx.lineTo(-1.8 * u, baseY - 4 * u); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(1.8 * u, baseY); ctx.lineTo(1.8 * u, baseY - 4 * u); ctx.stroke();
-    ctx.fillStyle = '#ffd24a';
-    rrect(ctx, -bodyW / 2, baseY - bodyH - 3 * u, bodyW, bodyH, 2 * u);
-    ctx.fillStyle = 'rgba(8,16,28,.5)';
-    ctx.fillRect(-bodyW * .36, baseY - bodyH + 2 * u, bodyW * .72, Math.max(1, .8 * u));
-    ctx.fillStyle = '#d89d7e';
-    ctx.fillRect(-1.1 * u, headY + headR - .2 * u, 2.2 * u, 2 * u);
-    ctx.fillStyle = '#f1c9a5';
-    ctx.beginPath(); ctx.arc(0, headY, headR, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#7c5b3e';
-    ctx.beginPath(); ctx.arc(0, headY - headR * .52, headR * .92, Math.PI, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#1c1024';
-    ctx.fillRect(-headR * .52, headY - .2 * u, Math.max(1, .8 * u), Math.max(1, .7 * u));
-    ctx.fillRect(headR * .18, headY - .2 * u, Math.max(1, .8 * u), Math.max(1, .7 * u));
-    ctx.restore();
-  }
+  drawCharacterArtwork(
+    ctx,
+    "player_avatar",
+    s.playerName || "operator",
+    p.x - 9 * u,
+    p.y - 35 * u + bob,
+    18 * u,
+    32 * u,
+    { imageUrl: s.appearance?.portraitUrl, label: s.playerName || "OPERATOR" },
+  );
   // golden ground glow
   ctx.save();
   ctx.strokeStyle = 'rgba(255,215,90,0.6)'; ctx.lineWidth = 1.5;

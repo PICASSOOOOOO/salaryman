@@ -16,6 +16,25 @@ function getAuthUserId(req: Request): string | null {
   return req.isAuthenticated?.() && req.user ? req.user.id : null;
 }
 
+function readMediaUrls(value: unknown): { urls?: string[]; error?: string } {
+  if (value === undefined || value === null) return { urls: [] };
+  if (!Array.isArray(value) || value.length > 4) return { error: "Provide up to four public HTTPS media URLs." };
+  const urls: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string" || item.length > 2048) return { error: "Each media URL must be a valid public HTTPS URL." };
+    try {
+      const url = new URL(item.trim());
+      if (url.protocol !== "https:" || url.username || url.password) {
+        return { error: "Each media URL must use HTTPS and cannot contain embedded credentials." };
+      }
+      urls.push(url.toString());
+    } catch {
+      return { error: "Each media URL must be a valid public HTTPS URL." };
+    }
+  }
+  return { urls };
+}
+
 router.get("/social/posts", async (req: Request, res: Response): Promise<void> => {
   const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -48,14 +67,17 @@ router.post("/social/posts", async (req: Request, res: Response): Promise<void> 
   const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
-    const { platform, content, hashtags, status, scheduledAt } = req.body;
+    const { platform, content, hashtags } = req.body;
     if (!platform || !isSocialPlatform(platform)) { res.status(400).json({ error: "Invalid platform" }); return; }
+    const media = readMediaUrls(req.body.mediaUrls);
+    if (media.error) { res.status(400).json({ error: media.error }); return; }
     const post = await createSocialPost(userId, {
       platform,
       content,
       hashtags,
-      status,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      mediaUrls: media.urls,
+      status: "draft",
+      scheduledAt: null,
     });
     res.json(post);
   } catch (err: any) {
@@ -71,15 +93,36 @@ router.patch("/social/posts/:id", async (req: Request, res: Response): Promise<v
     const id = Number(req.params.id);
     const [existing] = await db.select().from(socialPostsTable).where(and(eq(socialPostsTable.id, id), eq(socialPostsTable.userId, userId)));
     if (!existing) { res.status(404).json({ error: "Post not found" }); return; }
+    if (existing.status === "published") {
+      res.status(409).json({ error: "Published posts cannot be edited here. Create a new draft instead." });
+      return;
+    }
+    if (existing.status === "scheduled") {
+      res.status(409).json({ error: "Editing scheduled posts is COMING SOON. The saved schedule was left unchanged." });
+      return;
+    }
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (req.body.content !== undefined) updates.content = req.body.content;
     if (req.body.hashtags !== undefined) updates.hashtags = req.body.hashtags;
+    if (req.body.mediaUrls !== undefined) {
+      const media = readMediaUrls(req.body.mediaUrls);
+      if (media.error) { res.status(400).json({ error: media.error }); return; }
+      updates.mediaUrls = media.urls;
+    }
     if (req.body.platform !== undefined) {
       if (!isSocialPlatform(req.body.platform)) { res.status(400).json({ error: "Invalid platform" }); return; }
       updates.platform = req.body.platform;
     }
-    if (req.body.status !== undefined) updates.status = req.body.status;
-    if (req.body.scheduledAt !== undefined) updates.scheduledAt = req.body.scheduledAt ? new Date(req.body.scheduledAt) : null;
+    if (req.body.status !== undefined && req.body.status !== "draft") {
+      res.status(409).json({ error: "Only drafts can be saved. Live publishing uses the publish action." });
+      return;
+    }
+    if (req.body.status !== undefined) updates.status = "draft";
+    if (req.body.scheduledAt) {
+      res.status(409).json({ error: "Scheduling is COMING SOON and is not available yet." });
+      return;
+    }
+    if (req.body.scheduledAt !== undefined) updates.scheduledAt = null;
     const [updated] = await db.update(socialPostsTable).set(updates).where(and(eq(socialPostsTable.id, id), eq(socialPostsTable.userId, userId))).returning();
     res.json(updated);
   } catch (err: any) {
@@ -101,7 +144,7 @@ router.delete("/social/posts/:id", async (req: Request, res: Response): Promise<
   }
 });
 
-router.post("/social/posts/:id/publish", async (req: Request, res: Response): Promise<void> => {
+async function handlePublish(req: Request, res: Response, liveOnly: boolean): Promise<void> {
   const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
@@ -111,6 +154,7 @@ router.post("/social/posts/:id/publish", async (req: Request, res: Response): Pr
       email: req.user?.email,
       postId: id,
       orgId: (req as any).orgId ?? null,
+      liveOnly,
     });
     if (!result.ok) {
       res.status(result.status).json({
@@ -130,6 +174,16 @@ router.post("/social/posts/:id/publish", async (req: Request, res: Response): Pr
     console.error("[Social] publish error:", err?.message);
     res.status(500).json({ error: "Failed to publish post" });
   }
+}
+
+// Both publish URLs are live-only. The service's legacy simulation mode is not
+// exposed as an HTTP endpoint, so a browser can never claim a fake post.
+router.post("/social/posts/:id/publish", requireClaw, async (req: Request, res: Response) => {
+  await handlePublish(req, res, true);
+});
+
+router.post("/social/posts/:id/publish-live", requireClaw, async (req: Request, res: Response) => {
+  await handlePublish(req, res, true);
 });
 
 router.post("/social/generate", requireClaw, async (req: Request, res: Response): Promise<void> => {
@@ -152,7 +206,7 @@ router.post("/social/generate-variants", requireClaw, async (req: Request, res: 
   try {
     const { content, platforms } = req.body;
     if (!content || !platforms?.length) { res.status(400).json({ error: "Content and platforms required" }); return; }
-    const charLimits: Record<string, number> = { twitter: 280, threads: 500, linkedin: 3000, instagram: 2200, facebook: 5000, tiktok: 300, youtube: 5000, bluesky: 300 };
+    const charLimits: Record<string, number> = { twitter: 280, threads: 500, linkedin: 3000, instagram: 2200, facebook: 5000, tiktok: 300, youtube: 5000, bluesky: 300, discord: 2000 };
     const platformList = platforms.map((p: string) => `${p} (max ${charLimits[p] || 1000} chars)`).join(", ");
     const response = await openai.chat.completions.create({
       model: getOpenAiTextModel(),

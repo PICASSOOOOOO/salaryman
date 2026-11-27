@@ -27,7 +27,7 @@ async function readResponse<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
-export default function WorkspaceNotepad() {
+export default function WorkspaceNotepad({ embedded = false }: { embedded?: boolean } = {}) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -127,13 +127,11 @@ export default function WorkspaceNotepad() {
   const formVisible = creating || editingId !== null;
 
   return (
-    <main className="min-h-[100dvh] bg-[#FAFAF7] px-3 py-5 text-[#11110f] sm:px-6 sm:py-8" data-testid="workspace-notepad">
+    <main className={`${embedded ? 'min-h-full' : 'min-h-[100dvh]'} bg-[#FAFAF7] px-3 py-5 text-[#11110f] sm:px-6 sm:py-8`} data-testid="workspace-notepad">
       <div className="mx-auto max-w-4xl">
         <header className="mb-6 flex flex-col gap-4 border-b border-[#d8d1c3] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs font-bold tracking-[.16em] text-[#756d60]">WORKSPACE / NOTES</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Notepad</h1>
-            <p className="mt-2 max-w-xl text-sm text-[#625c52]">Quick notes for the details you need to keep close.</p>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Notes</h1>
           </div>
           {!formVisible && <button type="button" onClick={startNew} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#11110f] px-4 text-sm font-semibold text-[#fafaf7] hover:bg-[#34332f]" data-testid="create-note">
             <Plus className="h-4 w-4" aria-hidden="true" /> New note
@@ -181,8 +179,7 @@ export default function WorkspaceNotepad() {
         ) : notes.length === 0 && !loadError ? (
           <section className="rounded-md border border-dashed border-[#c9c1b3] bg-[#fffdf8] px-5 py-12 text-center" data-testid="notes-empty">
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-[#d8d1c3]"><FileText className="h-5 w-5 text-[#756d60]" /></div>
-            <h2 className="mt-4 text-lg font-semibold">A clear page.</h2>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-[#625c52]">Create a note and it will be ready here next time you need it.</p>
+            <h2 className="mt-4 text-lg font-semibold">No notes yet.</h2>
             {!formVisible && <button type="button" onClick={startNew} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-md border border-[#11110f] px-4 text-sm font-semibold" data-testid="create-first-note"><Plus className="h-4 w-4" /> Create your first note</button>}
           </section>
         ) : (
