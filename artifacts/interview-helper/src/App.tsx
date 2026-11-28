@@ -610,7 +610,7 @@ function AppShell() {
             <Route path="/profile/platform">{() => <Redirect to={`/platform${window.location.search}`} />}</Route>
             <Route path="/profile/apis">{() => <Redirect to="/platform" />}</Route>
             <Route path="/settings" component={SettingsWorkspace} />
-            <Route path="/settings/os" component={SalarymanOSSettings} />
+            <Route path="/settings/os">{() => <GameLock><SalarymanOSSettings /></GameLock>}</Route>
             <Route path="/profile" component={Profile} />
             <Route path="/profiles" component={ProfilePicker} />
             <Route path="/profile/:userId" component={MemberProfile} />
@@ -627,19 +627,19 @@ function AppShell() {
             <Route path="/world/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/game">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             {/* Keep game configuration and finance reachable through SALARYMAN OS. */}
-            <Route path="/game/settings">{() => <Redirect to="/settings/os?topic=controls" />}</Route>
+            <Route path="/game/settings">{() => <GameLock><Redirect to="/settings/os?topic=controls" /></GameLock>}</Route>
             <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
             <Route path="/game/bank">{() => <GameLock><GameBank /></GameLock>}</Route>
             {/* Keep the specific legacy office alias ahead of the game catch-all. */}
             <Route path="/game/office">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/game/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
-            <Route path="/office" component={PabloOffice} />
-            <Route path="/office/*">{() => <Redirect to="/office" />}</Route>
+            <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
+            <Route path="/office/*">{() => <GameLock><Redirect to="/office" /></GameLock>}</Route>
             <Route path="/recreation">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/tower">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/tower/*">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
-            <Route path="/my-office" component={MyOffice} />
-            <Route path="/my-office/monitor" component={OfficeMonitor} />
+            <Route path="/my-office">{() => <GameLock><MyOffice /></GameLock>}</Route>
+            <Route path="/my-office/monitor">{() => <GameLock><OfficeMonitor /></GameLock>}</Route>
             <Route path="/skills">{() => <GameLock><Redirect to="/desktop" /></GameLock>}</Route>
             <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
@@ -663,8 +663,8 @@ function AppShell() {
 
             {/* BUSINESS module */}
             <Route path="/business/marketplace" component={BusinessMarketplace} />
-            <Route path="/business/floor-plans" component={BusinessFloorPlanner} />
-            <Route path="/marketplace" component={Marketplace} />
+            <Route path="/business/floor-plans">{() => <GameLock><BusinessFloorPlanner /></GameLock>}</Route>
+            <Route path="/marketplace">{() => <GameLock><Marketplace /></GameLock>}</Route>
             <Route path="/business/services" component={BusinessServices} />
             <Route path="/business/contacts" component={ContactCollector} />
             <Route path="/contacts">{() => <Redirect to="/business/crm" />}</Route>
@@ -752,8 +752,8 @@ function AppShell() {
             )}</Route>
 
             {/* ARMORY module */}
-            <Route path="/armory/inventory" component={Armory} />
-            <Route path="/armory" component={Armory} />
+            <Route path="/armory/inventory">{() => <GameLock><Armory /></GameLock>}</Route>
+            <Route path="/armory">{() => <GameLock><Armory /></GameLock>}</Route>
 
             {/* ORG module — dedicated org-management hub (separate from OFFICE) */}
             <Route path="/org" component={OrgHub} />
@@ -842,14 +842,14 @@ function AppShell() {
             {/* Per-bot "cinematic office" shells are retired; the office is one
                 place. Per-bot management still lives at /bots/:id/command etc. */}
             <Route path="/bots/:id/office">{() => <Redirect to="/office" />}</Route>
-            <Route path="/cutscene/:id" component={CutscenePage} />
-            <Route path="/vending">{() => <VendingMachine />}</Route>
+            <Route path="/cutscene/:id">{() => <GameLock><CutscenePage /></GameLock>}</Route>
+            <Route path="/vending">{() => <GameLock><VendingMachine /></GameLock>}</Route>
             <Route path="/store/bots/vending">{() => <Redirect to="/pricing" />}</Route>
             {/* The realty showroom is the functional acquire flow (RealtyStore):
                 rent/buy persists server-side via /api/real-estate/acquire. The
                 VendingMachine "homebase" tab was a non-persisting V1 stub. */}
-            <Route path="/store/realty" component={RealtyStore} />
-            <Route path="/cutscene" component={CutscenePage} />
+            <Route path="/store/realty">{() => <GameLock><RealtyStore /></GameLock>}</Route>
+            <Route path="/cutscene">{() => <GameLock><CutscenePage /></GameLock>}</Route>
             <Route path="/bots/factory">{() => <BotFactory />}</Route>
             <Route path="/bots">{() => <Redirect to="/business/autopilot" />}</Route>
             <Route path="/bots/:rest*">{() => <Redirect to="/business/autopilot" />}</Route>
