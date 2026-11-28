@@ -1,4 +1,5 @@
 import { MODULES, PROFILE_MODULES, SETTINGS_MODULES, type Module } from "./modules";
+import { isGameOnlyBrowserPath } from "./game-release";
 
 // SINGLE SOURCE OF TRUTH for site-wide navigation search.
 //
@@ -166,7 +167,7 @@ const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
 function isExcluded(path: string): boolean {
   const lower = path.toLowerCase();
   if (lower === "/api" || lower.startsWith("/api/")) return true;
-  return false;
+  return isGameOnlyBrowserPath(path);
 }
 
 function tokensFromLabel(label: string): string[] {
