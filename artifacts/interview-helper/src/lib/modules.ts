@@ -7,9 +7,10 @@ import {
   Store, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
   Shield, Link2, ClipboardList, Timer,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
-  User, Eye, Map, AlertTriangle, Brain, Share2,
-  GraduationCap, Landmark, Ruler, Banknote, Coins, ShoppingBag,
+  User, Eye, AlertTriangle, Brain, Share2,
+  GraduationCap, Landmark, Ruler, Banknote,
 } from 'lucide-react';
+import { isGameOnlyBrowserPath } from './game-release';
 
 export type Module = {
   id: string;
@@ -49,17 +50,7 @@ export const MODULES: Module[] = [
     codename: 'HQ-CORE',
     icon: Building2,
     defaultPath: '/office',
-    subs: [
-      { id: 'office-floor', path: '/office', label: 'THE OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
-      { id: 'office-my', path: '/my-office', label: 'MY OFFICE', boomerLabel: 'MY OFFICE', codename: 'MY-HQ', icon: Building2 },
-      { id: 'office-map', path: '/tower', label: 'TOWER', boomerLabel: 'TOWER', codename: 'FLOOR-DIR', icon: Map },
-      { id: 'office-economy', path: '/game/economy', label: 'ECONOMY', boomerLabel: 'ECONOMY', codename: 'MARKETS', icon: Coins },
-      { id: 'office-bank', path: '/game/bank', label: 'BANCO OMBRA', boomerLabel: 'BANCO OMBRA', codename: 'VAULT-X', icon: Landmark },
-      { id: 'office-vending', path: '/vending?from=office', label: 'SUPPLIES', boomerLabel: 'SUPPLIES', codename: 'SUPPLIES', icon: ShoppingBag },
-      { id: 'office-property', path: '/store/realty?from=office', label: 'PROPERTY', boomerLabel: 'PROPERTY', codename: 'PROPERTY', icon: Landmark },
-      { id: 'office-business', path: '/business', label: 'BUSINESS OPS', boomerLabel: 'BUSINESS OPS', codename: 'BUSINESS OPS', icon: Briefcase },
-      { id: 'office-settings', path: '/game/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'OPTIONS', icon: Settings },
-    ],
+    subs: [],
   },
   {
     id: 'phone',
@@ -242,6 +233,8 @@ export const SETTINGS_MODULES: SubItem[] = [
 ];
 
 export function getModuleForPath(pathname: string): Module | null {
+  if (isGameOnlyBrowserPath(pathname)) return null;
+
   const module = (id: string) => MODULES.find((candidate) => candidate.id === id) ?? null;
 
   if (pathname === '/hummingbird' || pathname.startsWith('/workspace')) return null;
@@ -251,10 +244,6 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/phone/secretary' ||
       pathname === '/bots/ad-studio' || pathname === '/marketing/ads') return module('bots');
 
-  // Office floor and in-game management routes share the Office section.
-  if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return module('office');
-  if (pathname === '/game/economy' || pathname === '/game/bank' ||
-      pathname === '/game/character' || pathname === '/game/settings') return module('office');
   if (pathname.startsWith('/phone')) return module('phone');
 
   if (pathname === '/business/autopilot' || pathname.startsWith('/bots') ||
@@ -273,7 +262,6 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/creative/brand')) return module('marketing');
   if (pathname.startsWith('/creative')) return module('creative');
   if (pathname.startsWith('/marketing')) return module('marketing');
-  if (pathname.startsWith('/armory')) return module('armory');
   if (pathname === '/org' || pathname.startsWith('/org/') ||
       pathname === '/organizations' || pathname.startsWith('/organizations/')) return module('business');
   if (pathname === '/marketplace') return module('marketplace');
