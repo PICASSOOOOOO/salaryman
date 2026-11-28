@@ -58,7 +58,7 @@ export function isAppNavItemActive(item: AppNavItem, pathname: string): boolean 
     case "pablo":
       return path === "/pablo" || path.startsWith("/pablo/") || path === "/terminal";
     case "office":
-      return path === "/desktop" || path === "/office" || path === "/my-office" || path.startsWith("/office/") || path.startsWith("/tower") || path.startsWith("/game");
+      return path === "/desktop" || path === "/settings/os";
     case "bots":
       return path === "/business/autopilot" || path === "/phone/secretary" ||
         path === "/bots/ad-studio" || path === "/marketing/ads" ||
