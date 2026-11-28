@@ -21,4 +21,12 @@ describe("Pablo navigation catalog", () => {
     expect(catalog.get("/creative/classroom")?.label).toBe("Meeting room");
     expect(searchCatalog("stem player").some((page) => page.path === "/1999/stems")).toBe(true);
   });
+
+  it("keeps in-game pages out of browser navigation search", () => {
+    const paths = buildPageCatalog().map((page) => page.path);
+    for (const hiddenPath of ["/armory", "/business/floor-plans", "/cutscene", "/desktop", "/game/settings", "/marketplace", "/office", "/settings/os", "/tower", "/vending"]) {
+      expect(paths, hiddenPath).not.toContain(hiddenPath);
+    }
+    expect(paths).toContain("/business/marketplace");
+  });
 });
