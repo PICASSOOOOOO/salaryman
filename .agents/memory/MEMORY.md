@@ -117,7 +117,7 @@
 - [Homepage authentic Pygame media](homepage-authentic-pygame-media.md) — public homepage visuals must come from the current downloadable Pygame runtime; never reuse old trailer/browser-game footage.
 - [Browser API and game scope](browser-game-scope.md) — Keep the public homepage intact, send signed-in users to THE OFFICE, and open game tools through native furniture and terminals.
 - [GitHub workflow and file writes](github-workflow-write-scope.md) — sync completed workspace updates to GitHub; use sequential Contents API PUTs, with separate workflow-file permissions.
-- [Browser navigation](canonical-browser-navigation.md) — no dropdown trees; keep feature settings in-feature, PISE named correctly, and SALARYMAN OS in the old Browse slot.
+- [Browser navigation](canonical-browser-navigation.md) — show every workspace feature group in one vertical dropdown; keep game-only browser routes behind the SALARYMAN OS gate.
 - [Terminal COMMS widget](terminal-comms-widget.md) — COMMS is an Office feature/page, not a global dock; derive Pablo's working/offline state from the live socket.
 - [Feedback automation boundaries](feedback-automation.md) — Replit Inbox accepts native widget submissions but has no supported app webhook; internal reports sync idempotently to GitHub instead.
 - [Development reset boundaries](development-reset.md) — PostgreSQL app rows and managed Clerk development identities are separate reset surfaces; preserve boot catalogs, then reseed and verify.
