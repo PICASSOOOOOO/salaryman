@@ -7,6 +7,7 @@ import {
   PROFILE_MODULES,
   SETTINGS_MODULES,
 } from "./modules";
+import { isGameOnlyBrowserPath } from "./game-release";
 import { WORKSPACE_STARTER_PATHS, WORKSPACE_WIDGET_GROUPS } from "./workspace-widget-catalog";
 
 const features = WORKSPACE_WIDGET_GROUPS.flatMap((group) =>
@@ -42,7 +43,7 @@ describe("workspace widget feature coverage", () => {
       ...PROFILE_MODULES.map((item) => item.path),
       ...SETTINGS_MODULES.map((item) => item.path),
       ...ADMIN_SUBS.map((item) => item.path),
-    ];
+    ].filter((path) => !isGameOnlyBrowserPath(path));
 
     for (const path of requiredPaths) {
       const catalogPath = path === "/creative" ? "/creative/design" : path;
@@ -62,9 +63,16 @@ describe("workspace widget feature coverage", () => {
     expect(groupForPath("/business/documents")).toBe("hemingway");
     expect(groupForPath("/creative/classroom")).toBe("comms");
     expect(groupForPath("/creative/media")).toBe("settings");
-    expect(groupForPath("/desktop")).toBe("settings");
+    expect(groupForPath("/desktop")).toBeUndefined();
     expect(WORKSPACE_WIDGET_GROUPS.at(-1)).toMatchObject({ id: "settings", label: "THE OFFICE" });
     expect(WORKSPACE_STARTER_PATHS).toEqual(["/pablo", "/phone", "/business", "/business/autopilot"]);
+  });
+
+  it("keeps game-only menus out of the browser workspace", () => {
+    expect(features.every((feature) => !isGameOnlyBrowserPath(feature.path))).toBe(true);
+    for (const path of ["/armory", "/desktop", "/game/settings", "/marketplace", "/tower", "/vending"]) {
+      expect(features.some((feature) => feature.path === path), path).toBe(false);
+    }
   });
 
   it("offers only paths registered in the app router", () => {
