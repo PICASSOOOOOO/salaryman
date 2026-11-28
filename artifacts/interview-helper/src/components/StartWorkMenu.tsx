@@ -15,6 +15,7 @@ import {
   queueWorkspaceFeatureOpen,
   requestWorkspaceFeatureOpen,
 } from "@/lib/workspace-events";
+import { isGameReleaseLocked } from "@/lib/game-release";
 import {
   WORKSPACE_MENU_OFFICE,
   WORKSPACE_MENU_OS,
@@ -53,6 +54,12 @@ function WorkspaceMenuEntryLink({
 export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }) {
   const [location, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
+  const env = (import.meta as any).env ?? {};
+  const osIsLocked = isGameReleaseLocked({
+    production: Boolean(env.PROD),
+    releaseChannel: env.VITE_GAME_RELEASE_CHANNEL,
+    trailerReady: env.VITE_GAME_TRAILER_READY,
+  });
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -206,18 +213,20 @@ export function StartWorkMenu({ previewMode = false }: { previewMode?: boolean }
                   ))}
                 </nav>
 
-                <footer className="workspace-menu-footer">
-                  <a
-                    href={WORKSPACE_MENU_OS.path}
-                    className="workspace-menu-os-link"
-                    onClick={selectDestination(WORKSPACE_MENU_OS.path)}
-                    data-testid="workspace-menu-salaryman-os"
-                  >
-                    <Monitor aria-hidden="true" />
-                    <span>{WORKSPACE_MENU_OS.label}</span>
-                    <ArrowUpRight aria-hidden="true" />
-                  </a>
-                </footer>
+                {!osIsLocked && (
+                  <footer className="workspace-menu-footer">
+                    <a
+                      href={WORKSPACE_MENU_OS.path}
+                      className="workspace-menu-os-link"
+                      onClick={selectDestination(WORKSPACE_MENU_OS.path)}
+                      data-testid="workspace-menu-salaryman-os"
+                    >
+                      <Monitor aria-hidden="true" />
+                      <span>{WORKSPACE_MENU_OS.label}</span>
+                      <ArrowUpRight aria-hidden="true" />
+                    </a>
+                  </footer>
+                )}
               </section>
             </div>,
             document.body,
