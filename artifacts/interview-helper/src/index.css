@@ -116,26 +116,6 @@ body.game-route textarea {
   font-family: inherit;
 }
 
-/* ─── Office Sim Font Floor ───
-   Bump all micro-text to readable sizes.
-   Game routes (.game-route) can override these. */
-body:not(.game-route) .text-\[8px\] {
-  font-size: 0.6875rem !important;
-  line-height: 1.3 !important;
-}
-body:not(.game-route) .text-\[9px\] {
-  font-size: 0.75rem !important;
-  line-height: 1.3 !important;
-}
-body:not(.game-route) .text-\[10px\] {
-  font-size: 0.8125rem !important;
-  line-height: 1.35 !important;
-}
-body:not(.game-route) .text-\[11px\] {
-  font-size: 0.8125rem !important;
-  line-height: 1.4 !important;
-}
-
 /* ─── Subtle Worn Border Treatment ─── */
 body:not(.game-route) .rounded-xl,
 body:not(.game-route) .rounded-lg {
