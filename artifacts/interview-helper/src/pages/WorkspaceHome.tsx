@@ -192,11 +192,12 @@ export default function WorkspaceHome() {
   const [mobileSlot, setMobileSlot] = useState(0);
   const [featurePickerOpen, setFeaturePickerOpen] = useState(false);
   const [featurePickerTarget, setFeaturePickerTarget] = useState<number | null>(null);
-  const [selectedFeatureGroup, setSelectedFeatureGroup] = useState("pablo");
   const [featureSearch, setFeatureSearch] = useState("");
   const [dragging, setDragging] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767px)").matches);
+  const featurePickerRef = useRef<HTMLElement | null>(null);
+  const featurePickerButtonRef = useRef<HTMLButtonElement | null>(null);
   const slotsRef = useRef(slots);
   const localDirtyRef = useRef(false);
   const canEditLayout = !isLoading && (!accountAuthenticated || serverReadyKey === key);
@@ -402,12 +403,33 @@ export default function WorkspaceHome() {
     return () => query.removeEventListener("change", update);
   }, []);
 
+  useEffect(() => {
+    if (!featurePickerOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setFeaturePickerOpen(false);
+      setFeaturePickerTarget(null);
+      featurePickerButtonRef.current?.focus();
+    };
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (featurePickerRef.current?.contains(target) || featurePickerButtonRef.current?.contains(target)) return;
+      setFeaturePickerOpen(false);
+      setFeaturePickerTarget(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+    };
+  }, [featurePickerOpen]);
+
   const featureByPath = useMemo(() => new Map(features.map((feature) => [feature.path, feature])), [features]);
   const normalizedFeatureSearch = featureSearch.trim().toLowerCase();
   const visibleFeatureGroups = useMemo(() => {
-    if (!normalizedFeatureSearch) {
-      return featureGroups.filter((group) => group.id === selectedFeatureGroup);
-    }
+    if (!normalizedFeatureSearch) return featureGroups;
     return featureGroups
       .map((group) => ({
         ...group,
@@ -416,7 +438,7 @@ export default function WorkspaceHome() {
         ),
       }))
       .filter((group) => group.features.length > 0);
-  }, [featureGroups, normalizedFeatureSearch, selectedFeatureGroup]);
+  }, [featureGroups, normalizedFeatureSearch]);
   const activePath = transientFeaturePath ?? (activeSlot === null ? null : slots[activeSlot]);
   const activeFeature = activePath ? featureByPath.get(activePath) : undefined;
   const boundedMobileSlot = Math.min(mobileSlot, slots.length - 1);
@@ -587,11 +609,13 @@ export default function WorkspaceHome() {
           </span>
         )}
         <button
+          ref={featurePickerButtonRef}
           type="button"
           className="workspace-toolbar-button workspace-toolbar-button--labeled"
           onClick={openFeaturePicker}
           aria-label={featurePickerOpen ? "Close feature choices" : "Add a feature"}
           aria-expanded={featurePickerOpen}
+          aria-controls="workspace-feature-picker"
           disabled={!canEditLayout || (!slots.some((slot) => slot === null) && slots.length >= SLOT_LIMIT && !featurePickerOpen)}
           data-testid="add-workspace-feature"
         >
@@ -602,7 +626,10 @@ export default function WorkspaceHome() {
 
       {featurePickerOpen && (
         <section
+          ref={featurePickerRef}
+          id="workspace-feature-picker"
           className="workspace-feature-picker"
+          role="region"
           aria-label="Choose a feature for the workspace"
           data-testid="workspace-feature-picker"
         >
@@ -631,30 +658,16 @@ export default function WorkspaceHome() {
               data-testid="workspace-feature-search"
             />
           </label>
-          {!normalizedFeatureSearch && (
-            <nav className="workspace-feature-groups" aria-label="Feature groups">
-              {featureGroups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  aria-pressed={selectedFeatureGroup === group.id}
-                  onClick={() => {
-                    setSelectedFeatureGroup(group.id);
-                    setFeatureSearch("");
-                  }}
-                  data-testid={`workspace-feature-group-${group.id}`}
-                >
-                  {group.icon && <group.icon aria-hidden="true" />}
-                  {group.label}
-                </button>
-              ))}
-            </nav>
-          )}
           {visibleFeatureGroups.length === 0 ? (
             <p className="workspace-feature-empty">No matching features.</p>
           ) : visibleFeatureGroups.map((group) => (
-            <section key={group.id} className="workspace-feature-group" aria-label={group.label}>
-              {normalizedFeatureSearch && <h3>{group.label}</h3>}
+            <section
+              key={group.id}
+              className="workspace-feature-group"
+              aria-label={group.label}
+              data-testid={`workspace-feature-group-${group.id}`}
+            >
+              <h3>{group.label}</h3>
               <div className="workspace-feature-picker-grid">
                 {group.features.map((feature) => {
                   const Icon = feature.icon;
