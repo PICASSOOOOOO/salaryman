@@ -23,8 +23,10 @@ describe("Pablo terminal physical-world navigation", () => {
     expect(startWorkMenu).toContain("<span>START WORK</span>");
     expect(startWorkMenu).toContain('data-testid="start-work-menu-trigger"');
     expect(startWorkMenu).toContain("aria-expanded={open}");
-    expect(startWorkMenu).toContain('href="/workspace"');
-    expect(startWorkMenu).toContain("PABLO AUTOMATION");
+    expect(startWorkMenu).toContain("href={WORKSPACE_MENU_OFFICE.path}");
+    expect(startWorkMenu).toContain("WORKSPACE_MENU_SECTIONS.map");
+    expect(startWorkMenu).toContain("isGameReleaseLocked");
+    expect(startWorkMenu).toContain("{!osIsLocked && (");
     expect(terminal).not.toContain('navigate(hasFinishedOnboarding ? "/office" : "/tower")');
     expect(terminal).not.toContain('{hasFinishedOnboarding ? "OFFICE" : "ENTER TOWER"}');
     expect(terminal).not.toContain('window.history.back()');
