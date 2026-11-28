@@ -191,6 +191,28 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
     expect(qs("canonical-pablo-nebula")).not.toBeNull();
   });
 
+  it("keeps the full-height conversation scroll position when the user reads older messages", async () => {
+    window.sessionStorage.setItem("pablo-conversation:guest", JSON.stringify([
+      { role: "assistant", content: "An older saved reply." },
+      { role: "user", content: "A saved question." },
+    ]));
+    await mount();
+
+    const conversation = qs("pablo-conversation") as HTMLDivElement | null;
+    expect(conversation).not.toBeNull();
+    expect(conversation?.className).not.toContain("max-h-[42dvh]");
+    Object.defineProperty(conversation, "scrollHeight", { configurable: true, value: 1200 });
+    Object.defineProperty(conversation, "clientHeight", { configurable: true, value: 700 });
+    conversation!.scrollTop = 180;
+    await act(async () => {
+      conversation!.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+
+    await typeAndSend("Can you help me?");
+
+    expect(conversation!.scrollTop).toBe(180);
+  });
+
   it("keeps the mode toggle without restoring a separate COMMS shortcut", async () => {
     await mount();
 
