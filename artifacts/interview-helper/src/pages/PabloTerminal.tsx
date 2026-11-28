@@ -842,6 +842,7 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   const pabloHistoryKey = `pablo-conversation:${user?.id ?? "guest"}`;
   const hydratedHistoryKey = useRef<string | null>(null);
   const conversationScrollRef = useRef<HTMLDivElement>(null);
+  const conversationPinnedToBottomRef = useRef(true);
   useEffect(() => {
     if (hydratedHistoryKey.current !== pabloHistoryKey) return;
     try { sessionStorage.setItem(pabloHistoryKey, JSON.stringify(history.slice(-40))); } catch {}
@@ -857,8 +858,16 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
   }, [pabloHistoryKey]);
   useEffect(() => {
     const region = conversationScrollRef.current;
-    if (region) region.scrollTop = region.scrollHeight;
+    if (region && conversationPinnedToBottomRef.current) {
+      region.scrollTop = region.scrollHeight;
+    }
   }, [history, transcript, reply, status]);
+  const handleConversationScroll = () => {
+    const region = conversationScrollRef.current;
+    if (!region) return;
+    conversationPinnedToBottomRef.current =
+      region.scrollHeight - region.scrollTop - region.clientHeight <= 48;
+  };
   // Default to TEXT on EVERY device. The nebula opens quiet — Pablo waits
   // for the user to type. Voice-first auto-listen on open used to arm the
   // mic the instant the screen loaded, which on a browser without a real
@@ -2147,8 +2156,9 @@ function PabloTerminalAuthed({ home = false }: { home?: boolean }) {
       {(history.length > 0 || transcript || reply || status === "thinking") && (
         <div
           ref={conversationScrollRef}
-          className="pablo-conversation mobile-scroll-region absolute inset-x-0 max-h-[42dvh] overflow-y-auto overscroll-contain touch-pan-y px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-auto z-10"
-          style={{ bottom: `calc(${mode === "text" ? 104 : 124}px)` }}
+          className="pablo-conversation mobile-scroll-region absolute inset-x-0 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-auto z-10"
+          onScroll={handleConversationScroll}
+          data-testid="pablo-conversation"
           aria-label="Pablo conversation"
         >
           {history.slice(-40).map((message, index, items) => {
