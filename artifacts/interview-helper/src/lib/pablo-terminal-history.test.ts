@@ -7,6 +7,7 @@ const terminal = readFileSync(
   "utf8",
 );
 const app = readFileSync(resolve(process.cwd(), "src/App.tsx"), "utf8");
+const styles = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 const startWorkMenu = readFileSync(
   resolve(process.cwd(), "src/components/StartWorkMenu.tsx"),
   "utf8",
@@ -35,6 +36,17 @@ describe("Pablo terminal physical-world navigation", () => {
   it("does not offer a map control from the Pablo nebula", () => {
     expect(terminal).not.toContain('pablo-nav-map');
     expect(terminal).not.toContain('href="/game/map"');
+  });
+
+  it("lets conversation history use the available screen height and scroll to older messages", () => {
+    expect(terminal).toContain('data-testid="pablo-conversation"');
+    expect(terminal).toContain("onScroll={handleConversationScroll}");
+    expect(terminal).toContain("conversationPinnedToBottomRef.current");
+    expect(styles).toContain("top: calc(6.5rem + env(safe-area-inset-top, 0px))");
+    expect(styles).toContain("max-height: none");
+    expect(styles).not.toContain("max-height: 38dvh");
+    expect(styles).not.toContain("max-height: 32dvh");
+    expect(styles).not.toContain("max-height: 44dvh");
   });
 
   it("keeps edge-swipe back history-based", () => {
