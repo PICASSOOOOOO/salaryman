@@ -3,53 +3,44 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { MODULES, getModuleForPath } from "./modules";
 import { PRIMARY_NAV_ITEMS } from "./app-navigation";
+import { isGameOnlyBrowserPath } from "./game-release";
 import { PABLO_AUTOMATION_CAPABILITIES } from "@/components/PabloAutomationNav";
 
-// ─── 1. getModuleForPath returns the OFFICE module (MODULES[1]) ───────────────
+// ─── 1. Browser navigation does not expose game-only surfaces ─────────────────
 
 const OFFICE_MODULE = MODULES[1];
 
-describe("getModuleForPath — office module (MODULES[1])", () => {
+describe("game-only route navigation boundary", () => {
   it("MODULES[1] is the office module", () => {
     expect(OFFICE_MODULE.id).toBe("office");
   });
 
-  const officePaths = [
+  const gameOnlyPaths = [
     "/office",
     "/my-office",
-    "/office/some-sub",
+    "/tower",
+    "/business/floor-plans",
+    "/cutscene/intro",
     "/game/economy",
     "/game/bank",
     "/game/settings",
+    "/armory",
+    "/marketplace",
+    "/vending",
+    "/store/realty",
+    "/desktop",
+    "/settings/os",
   ];
 
-  for (const p of officePaths) {
-    it(`"${p}" resolves to the office module`, () => {
-      const mod = getModuleForPath(p);
-      expect(
-        mod,
-        `Expected "${p}" to map to the office module but got ${mod?.id ?? "null"}`,
-      ).not.toBeNull();
-      expect(mod!.id).toBe("office");
+  for (const p of gameOnlyPaths) {
+    it(`"${p}" is hidden from browser subnavigation`, () => {
+      expect(isGameOnlyBrowserPath(p)).toBe(true);
+      expect(getModuleForPath(p)).toBeNull();
     });
   }
 
-  it("bare /game does NOT resolve to the office module", () => {
-    // /game owns the GameHub route; getModuleForPath must not claim it as an
-    // office sub-page.
-    const mod = getModuleForPath("/game");
-    expect(mod?.id ?? null).not.toBe("office");
-  });
-
-  it("all remaining game sub-nav pages are present as sub entries in the office module", () => {
-    const subPaths = OFFICE_MODULE.subs.map((s) => s.path);
-    expect(subPaths).toContain("/game/economy");
-    expect(subPaths).toContain("/game/bank");
-    expect(subPaths).toContain("/game/settings");
-    expect(subPaths).toContain("/vending?from=office");
-    expect(subPaths).toContain("/store/realty?from=office");
-    expect(subPaths).not.toContain("/bots");
-    expect(subPaths).toContain("/business");
+  it("does not retain in-game destinations in the browser office module", () => {
+    expect(OFFICE_MODULE.subs).toEqual([]);
   });
 
   it("keeps automation capabilities under PABLO PRIME and other tools separate", () => {
@@ -102,6 +93,21 @@ describe("retired gameplay routes in App.tsx", () => {
 
   it("release-gates the desktop download route", () => {
     expect(APP_SRC).toContain('<Route path="/desktop">{() => <GameLock><DesktopDownload /></GameLock>}</Route>');
+  });
+
+  it("release-gates game-only browser routes and settings", () => {
+    for (const route of [
+      '<Route path="/settings/os">{() => <GameLock><SalarymanOSSettings /></GameLock>}</Route>',
+      '<Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>',
+      '<Route path="/my-office">{() => <GameLock><MyOffice /></GameLock>}</Route>',
+      '<Route path="/business/floor-plans">{() => <GameLock><BusinessFloorPlanner /></GameLock>}</Route>',
+      '<Route path="/marketplace">{() => <GameLock><Marketplace /></GameLock>}</Route>',
+      '<Route path="/armory">{() => <GameLock><Armory /></GameLock>}</Route>',
+      '<Route path="/vending">{() => <GameLock><VendingMachine /></GameLock>}</Route>',
+      '<Route path="/store/realty">{() => <GameLock><RealtyStore /></GameLock>}</Route>',
+    ]) {
+      expect(APP_SRC).toContain(route);
+    }
   });
 
   it("the /game route appears before office handling", () => {
