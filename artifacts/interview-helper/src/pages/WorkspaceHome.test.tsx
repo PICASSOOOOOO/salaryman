@@ -137,10 +137,6 @@ describe("The Office workspace", () => {
         .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     act(() => {
-      container.querySelector<HTMLButtonElement>('[data-testid="workspace-feature-group-phone"]')!
-        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    act(() => {
       container.querySelector<HTMLButtonElement>('[data-testid="workspace-feature-option-phone-main"]')!
         .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -148,10 +144,6 @@ describe("The Office workspace", () => {
 
     act(() => {
       container.querySelector<HTMLButtonElement>('[data-testid="change-feature-5"]')!
-        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    act(() => {
-      container.querySelector<HTMLButtonElement>('[data-testid="workspace-feature-group-pablo-prime"]')!
         .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     act(() => {
@@ -231,21 +223,39 @@ describe("The Office workspace", () => {
     expect(container.querySelectorAll(".workspace-slot")).toHaveLength(WORKSPACE_STARTER_PATHS.length + 2);
   });
 
-  it("shows feature choices inline instead of opening a dropdown menu", () => {
+  it("shows all feature groups in a dropdown without a horizontal scroller", () => {
     act(() => root.render(<WorkspaceHome />));
     const addFeature = container.querySelector<HTMLButtonElement>('[data-testid="add-workspace-feature"]');
     if (!addFeature) throw new Error("Missing Add a feature control");
 
     act(() => addFeature.dispatchEvent(new MouseEvent("click", { bubbles: true })));
 
-    expect(container.querySelector('[data-testid="workspace-feature-picker"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="workspace-feature-picker"]')?.getAttribute("role")).toBe("region");
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     expect(container.querySelector('[data-testid="workspace-feature-option-pablo-main"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="workspace-feature-group-business"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="workspace-feature-group-hemingway"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="workspace-feature-group-settings"]')).not.toBeNull();
+    expect(container.querySelector(".workspace-feature-groups")).toBeNull();
+    expect(container.querySelector('[data-testid="workspace-feature-option-armory-main"]')).toBeNull();
+    expect(container.querySelector('[data-testid="workspace-feature-option-marketplace-main"]')).toBeNull();
     expect(container.textContent).not.toContain("/workspace/");
     expect(container.textContent).not.toContain("WORKSPACE / TOOLS");
+  });
+
+  it("closes the feature dropdown with Escape and an outside click", () => {
+    act(() => root.render(<WorkspaceHome />));
+    const addFeature = container.querySelector<HTMLButtonElement>('[data-testid="add-workspace-feature"]')!;
+    act(() => addFeature.click());
+    expect(container.querySelector('[data-testid="workspace-feature-picker"]')).not.toBeNull();
+
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(container.querySelector('[data-testid="workspace-feature-picker"]')).toBeNull();
+
+    act(() => addFeature.click());
+    expect(container.querySelector('[data-testid="workspace-feature-picker"]')).not.toBeNull();
+    act(() => container.querySelector(".workspace-grid")?.dispatchEvent(new Event("pointerdown", { bubbles: true })));
+    expect(container.querySelector('[data-testid="workspace-feature-picker"]')).toBeNull();
   });
 
   it("opens feature choices from an empty widget tile and fills that widget", () => {
@@ -368,8 +378,6 @@ describe("The Office workspace", () => {
     act(() => root.render(<WorkspaceHome />));
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="add-workspace-feature"]')!
       .dispatchEvent(new MouseEvent("click", { bubbles: true })));
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="workspace-feature-group-settings"]')!
-      .dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(container.querySelector('[data-testid="workspace-feature-option-profile-profile-moderator"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="workspace-feature-option-profile-profile-admin"]')).toBeNull();
 
@@ -381,8 +389,6 @@ describe("The Office workspace", () => {
     act(() => root.render(<WorkspaceHome />));
     act(() => container.querySelector<HTMLButtonElement>('[data-testid="add-workspace-feature"]')!
       .dispatchEvent(new MouseEvent("click", { bubbles: true })));
-    act(() => container.querySelector<HTMLButtonElement>('[data-testid="workspace-feature-group-settings"]')!
-      .dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(container.querySelector('[data-testid="workspace-feature-option-profile-profile-admin"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="workspace-feature-option-profile-profile-moderator"]')).not.toBeNull();
   });
@@ -391,10 +397,6 @@ describe("The Office workspace", () => {
     act(() => root.render(<WorkspaceHome />));
     act(() => {
       container.querySelector<HTMLButtonElement>('[data-testid="change-feature-1"]')!
-        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    act(() => {
-      container.querySelector<HTMLButtonElement>('[data-testid="workspace-feature-group-creative"]')!
         .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     const feature = container.querySelector<HTMLButtonElement>(
