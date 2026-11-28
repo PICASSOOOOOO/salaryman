@@ -5,6 +5,7 @@
   --office-muted: #817a6e;
   --office-line: #d9d1c2;
   --office-focus: #a28c68;
+  position: relative;
   display: flex;
   width: 100%;
   min-height: 100dvh;
@@ -97,14 +98,19 @@
 }
 
 .workspace-feature-picker {
-  flex: 0 0 auto;
-  max-height: min(42dvh, 28rem);
-  margin: 0 0 0.65rem;
-  overflow: auto;
+  position: absolute;
+  z-index: 4;
+  top: 3.35rem;
+  left: 0.65rem;
+  width: min(54rem, calc(100vw - 1.3rem));
+  max-height: min(72dvh, 46rem);
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--office-line);
   border-radius: 6px;
   padding: 0.75rem;
   background: var(--office-card);
+  box-shadow: 0 12px 30px rgba(30, 25, 18, 0.18);
 }
 
 .workspace-feature-picker-header {
@@ -160,39 +166,6 @@
 .workspace-feature-search input::placeholder {
   color: var(--office-muted);
   opacity: 1;
-}
-
-.workspace-feature-groups {
-  display: flex;
-  gap: 0.35rem;
-  margin-bottom: 0.65rem;
-  overflow-x: auto;
-  padding: 0.1rem 0.1rem 0.3rem;
-  scrollbar-width: thin;
-}
-
-.workspace-feature-groups button {
-  flex: 0 0 auto;
-  min-height: 2rem;
-  border: 1px solid var(--office-line);
-  border-radius: 4px;
-  padding: 0.35rem 0.55rem;
-  color: var(--office-ink);
-  background: #fffdf8;
-  font: 700 0.55rem/1.2 var(--font-mono);
-  cursor: pointer;
-}
-
-.workspace-feature-groups button[aria-pressed="true"] {
-  border-color: var(--office-ink);
-  background: #eee8dc;
-}
-
-.workspace-feature-groups button svg {
-  width: 0.72rem;
-  height: 0.72rem;
-  margin-right: 0.25rem;
-  vertical-align: -0.12rem;
 }
 
 .workspace-feature-group + .workspace-feature-group {
@@ -597,6 +570,12 @@
 }
 
 @media (max-width: 767px) {
+  .workspace-feature-picker {
+    left: 0.5rem;
+    width: calc(100vw - 1rem);
+    max-height: min(76dvh, 42rem);
+  }
+
   .workspace-home {
     min-height: 100dvh;
     padding: max(0.45rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.55rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
