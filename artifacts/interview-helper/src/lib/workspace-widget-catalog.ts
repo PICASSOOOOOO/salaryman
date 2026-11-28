@@ -7,6 +7,7 @@ import {
   type Module,
   type SubItem,
 } from "./modules";
+import { isGameOnlyBrowserPath } from "./game-release";
 
 export type WorkspaceWidgetFeature = {
   id: string;
@@ -178,14 +179,6 @@ const rawGroups: WorkspaceWidgetGroup[] = [
     ],
   },
   {
-    id: "office",
-    label: "OFFICE",
-    features: [
-      moduleFeature("office", "OFFICE FLOOR"),
-      ...moduleSubfeatures("office", ["office-business", "office-settings"]),
-    ],
-  },
-  {
     id: "terminal",
     label: "TERMINAL",
     features: [
@@ -200,14 +193,6 @@ const rawGroups: WorkspaceWidgetGroup[] = [
       moduleFeature("marketing", "MARKETING", "/marketing"),
       standalone("marketing-command", "/marketing/command", "COMMAND CENTER", getModule("marketing").icon),
       ...moduleSubfeatures("marketing"),
-    ],
-  },
-  {
-    id: "armory",
-    label: "ARMORY",
-    features: [
-      moduleFeature("armory", "ARMORY"),
-      ...moduleSubfeatures("armory"),
     ],
   },
   {
@@ -232,10 +217,8 @@ const rawGroups: WorkspaceWidgetGroup[] = [
     icon: Settings,
     features: [
       standalone("settings", "/settings", "SETTINGS", Settings),
-      standalone("salaryman-os", "/desktop", "SALARYMAN OS", Settings),
       standalone("data-vault", "/creative/media", "DATA VAULT", FileText),
       standalone("data-vault-knowledge", "/creative/media?tab=knowledge", "KNOWLEDGE", FileText),
-      standalone("game-settings", "/game/settings", "GAME SETTINGS", Settings),
       ...PROFILE_MODULES.map((item) => subfeature(
         "profile",
         item,
@@ -260,6 +243,7 @@ const seenPaths = new Set<string>();
 export const WORKSPACE_WIDGET_GROUPS: WorkspaceWidgetGroup[] = rawGroups.map((group) => ({
   ...group,
   features: group.features.filter((feature) => {
+    if (isGameOnlyBrowserPath(feature.path)) return false;
     if (seenPaths.has(feature.path)) return false;
     seenPaths.add(feature.path);
     return true;
